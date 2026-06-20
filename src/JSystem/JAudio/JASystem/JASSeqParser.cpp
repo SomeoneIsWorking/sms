@@ -594,7 +594,7 @@ int TSeqParser::cmdPrintf(TTrack* track, u32* args)
 {
 	char buffer[128];
 	u8 byteArray[4];
-	int registers[4];
+	intptr_t registers[4];
 	u32 count = 0;
 
 	u32 i;
@@ -654,7 +654,7 @@ int TSeqParser::cmdPrintf(TTrack* track, u32* args)
 	for (i = 0; i < count; ++i) {
 		registers[i] = track->mSeqCtrl.readByte();
 		if (byteArray[i] == 2)
-			registers[i] = (int)&track->mSeqCtrl.mRawFilePtr[registers[i]];
+			registers[i] = (intptr_t)&track->mSeqCtrl.mRawFilePtr[registers[i]];
 		else if (byteArray[i] == 5)
 			registers[i] = track->unk308;
 		else if (byteArray[i] >= 3)

@@ -46,7 +46,7 @@ void J3DLoadArrayBasePtr(GXAttr attr, void* ptr)
 	u32 a = attr == GX_VA_NBT ? 1 : attr - 9;
 	GXCmd1u8(8);
 	GXCmd1u8(a + 0xA0);
-	GXCmd1u32((u32)ptr & 0x7fffffff);
+	GXCmd1u32((u32)((uintptr_t)ptr & 0x7fffffff));
 }
 
 void J3DSetVtxAttrFmtv(GXVtxFmt vtxfmt, GXVtxAttrFmtList* list, bool param_3)

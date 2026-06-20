@@ -65,8 +65,8 @@ namespace DSPInterface {
 	}
 	void setupBuffer()
 	{
-		DsetupTable(64, (u32)CH_BUF, (u32)&DSPRES_FILTER, (u32)&DSPADPCM_FILTER,
-		            (u32)FX_BUF);
+		DsetupTable(64, (u32)(uintptr_t)CH_BUF, (u32)(uintptr_t)&DSPRES_FILTER, (u32)(uintptr_t)&DSPADPCM_FILTER,
+		            (u32)(uintptr_t)FX_BUF);
 	}
 	void initBuffer()
 	{

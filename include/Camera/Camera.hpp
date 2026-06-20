@@ -313,7 +313,7 @@ public:
 		int getThing() const
 		{
 			if (unk4 <= 0)
-				return (int)unk8; // what
+				return (int)(intptr_t)unk8; // what
 
 			return unk8[unk4 - 1];
 		}

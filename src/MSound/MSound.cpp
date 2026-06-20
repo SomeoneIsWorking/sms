@@ -91,7 +91,7 @@ bool MSLoadWave::loadWaveBackword(JASystem::WaveArcLoader::TObject* obj)
 		return false;
 
 	JASystem::Kernel::THeap* root = JASystem::WaveArcLoader::getRootHeap();
-	if (!heap->selfAlloc(root, extent, (u32)root->unk8 + root->unk10 - extent))
+	if (!heap->selfAlloc(root, extent, (u32)((uintptr_t)root->unk8 + root->unk10 - extent)))
 		return false;
 
 	u32* ptr = obj->getLoadFlagPtr();

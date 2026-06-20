@@ -24,7 +24,7 @@ JKRMemArchive::JKRMemArchive(s32 entryNum,
 
 JKRMemArchive::JKRMemArchive(void* buffer, u32 bufferSize,
                              JKRMemBreakFlag memBreakFlag)
-    : JKRArchive((s32)buffer, MOUNT_MEM) // WTF?
+    : JKRArchive((s32)(intptr_t)buffer, MOUNT_MEM) // WTF?
 {
 	open(buffer, bufferSize, memBreakFlag);
 
@@ -66,10 +66,10 @@ void JKRMemArchive::fixedInit(s32 param_1)
 
 bool JKRMemArchive::mountFixed(void* param_1, JKRMemBreakFlag param_2)
 {
-	if (check_mount_already((s32)param_1)) {
+	if (check_mount_already((s32)(intptr_t)param_1)) {
 		return false;
 	}
-	fixedInit((s32)param_1);
+	fixedInit((s32)(intptr_t)param_1);
 	if (!open(param_1, 0xffff, param_2)) {
 		return false;
 	}
@@ -132,7 +132,7 @@ bool JKRMemArchive::open(s32 entryNum,
 		mStrTable    = (char*)((u8*)&mArcInfoBlock->num_nodes
                             + mArcInfoBlock->string_table_offset);
 
-		mArchiveData = (u8*)((u32)mArcHeader + mArcHeader->header_length
+		mArchiveData = (u8*)((uintptr_t)mArcHeader + mArcHeader->header_length
 		                     + mArcHeader->file_data_offset);
 		mIsOpen      = true;
 	}
@@ -152,7 +152,7 @@ bool JKRMemArchive::open(void* buffer, u32 bufferSize, JKRMemBreakFlag flag)
 	                               + mArcInfoBlock->file_entry_offset);
 	mStrTable    = (char*)((u8*)&mArcInfoBlock->num_nodes
                         + mArcInfoBlock->string_table_offset);
-	mArchiveData = (u8*)(((u32)mArcHeader + mArcHeader->header_length)
+	mArchiveData = (u8*)(((uintptr_t)mArcHeader + mArcHeader->header_length)
 	                     + mArcHeader->file_data_offset);
 	mIsOpen      = (flag == MBF_1) ? true : false; // mIsOpen might be u8
 	mHeap        = JKRHeap::findFromRoot(buffer);
