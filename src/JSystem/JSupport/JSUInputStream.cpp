@@ -21,6 +21,7 @@ char* JSUInputStream::read(char* str)
 		setState(EOF);
 		return nullptr;
 	}
+	sp8 = JSU_BE16(sp8); // length prefix is big-endian (raw readData, see header note)
 
 	s32 len  = readData(str, sp8);
 	str[len] = '\0';
@@ -37,6 +38,7 @@ char* JSUInputStream::readString()
 		setState(EOF);
 		return nullptr;
 	}
+	strLen = JSU_BE16(strLen); // big-endian length prefix (raw readData)
 
 	char* buf = new char[strLen + 1];
 
@@ -62,6 +64,7 @@ char* JSUInputStream::readString(char* buf, u16 len)
 		setState(EOF);
 		return nullptr;
 	}
+	strLen = JSU_BE16(strLen); // big-endian length prefix (raw readData)
 
 	s32 r = 0;
 	if (strLen < len) {
