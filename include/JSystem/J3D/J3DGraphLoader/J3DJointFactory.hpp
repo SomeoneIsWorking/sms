@@ -23,9 +23,10 @@ struct J3DJointBlock {
 	/* 0x08 */ u16 mJointNum;
 	/* 0x0A */ u16 _pad;
 
-	/* 0x0C */ J3DJointInitData* mpJointInitData;
-	/* 0x10 */ u16* mpIndexTable;
-	/* 0x14 */ ResNTAB* mpNameTable;
+	// LP64/native: file-overlay 32-bit offsets (see J3DModelLoader.hpp note).
+	/* 0x0C */ u32 mpJointInitData;
+	/* 0x10 */ u32 mpIndexTable;
+	/* 0x14 */ u32 mpNameTable;
 }; // Size: 0x18
 
 class J3DJointFactory {

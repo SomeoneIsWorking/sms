@@ -39,14 +39,17 @@ struct J3DShapeBlock {
 	/* 0x08 */ u16 mShapeNum;
 	/* 0x0A */ u16 _pad;
 
-	/* 0x0C */ J3DShapeInitData* mpShapeInitData;
-	/* 0x10 */ u16* mpIndexTable;
-	/* 0x14 */ ResNTAB* mpNameTable;
-	/* 0x18 */ GXVtxDescList* mpVtxDescList;
-	/* 0x1C */ u16* mpMtxTable;
-	/* 0x20 */ u8* mpDisplayListData;
-	/* 0x24 */ J3DShapeMtxInitData* mpMtxInitData;
-	/* 0x28 */ J3DShapeDrawInitData* mpDrawInitData;
+	// LP64/native: file-overlay 32-bit offsets (see J3DModelLoader.hpp note) — u32 so
+	// the struct matches the 4-byte on-disk layout (8-byte host pointers break it; the
+	// factory ctor already (u32)(uintptr_t)-casts the value).
+	/* 0x0C */ u32 mpShapeInitData;
+	/* 0x10 */ u32 mpIndexTable;
+	/* 0x14 */ u32 mpNameTable;
+	/* 0x18 */ u32 mpVtxDescList;
+	/* 0x1C */ u32 mpMtxTable;
+	/* 0x20 */ u32 mpDisplayListData;
+	/* 0x24 */ u32 mpMtxInitData;
+	/* 0x28 */ u32 mpDrawInitData;
 }; // Size: 0x2C
 
 enum J3DMdlDataFlag {
