@@ -3,6 +3,10 @@
 #include <JSystem/JUtility/JUTAssert.hpp>
 #include <JSystem/JMacro.hpp>
 #include <macros.h>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 
 static u32 whatdo;
 static u32 whatdo2;
@@ -26,6 +30,12 @@ JKRExpHeap* JKRExpHeap::createRoot(int maxHeaps, bool errorFlag)
 		sRootHeap = heap;
 	}
 	heap->mIsRoot = true;
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_HEAP_DBG"))
+		fprintf(stderr, "[heap] createRoot: sizeof(CMemBlock)=%zu sizeof(JKRExpHeap)=%zu "
+		        "root=%p free=%d total=%d\n", sizeof(CMemBlock), sizeof(JKRExpHeap),
+		        (void*)heap, heap->getFreeSize(), heap->getTotalFreeSize());
+#endif
 	return heap;
 }
 
@@ -159,6 +169,11 @@ void* JKRExpHeap::alloc(u32 size, int alignment)
 		}
 	}
 	if (ptr == nullptr) {
+#ifdef SMS_NATIVE_PLATFORM
+		if (getenv("SB_HEAP_DBG"))
+			fprintf(stderr, "[heap] alloc FAIL size=0x%x align=%d free=%d total=%d\n",
+			        size, alignment, getFreeSize(), getTotalFreeSize());
+#endif
 		JUTWarningConsole_f(":::cannot alloc memory (0x%x byte).\n", size);
 		if (mErrorFlag == true)
 			callErrorHandler(this, size, alignment);
