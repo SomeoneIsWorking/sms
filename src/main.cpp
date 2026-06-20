@@ -3,9 +3,10 @@
 // BSS
 TApplication gpApplication;
 
-void main(void)
+int main(void) // C++ requires main to return int (decomp had void)
 {
 	gpApplication.initialize();
 	gpApplication.proc();
 	gpApplication.finalize();
+	return 0;
 }
