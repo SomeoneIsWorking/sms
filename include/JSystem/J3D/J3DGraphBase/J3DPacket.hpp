@@ -61,8 +61,8 @@ public:
 	void setNextPacket(J3DPacket* packet) { unk4 = packet; }
 
 	// Weird, but TP debug says this is the signature
-	void setUserArea(u32 area) { unkC = (void*)area; }
-	u32 getUserArea() const { return (u32)unkC; }
+	void setUserArea(uintptr_t area) { unkC = (void*)area; }
+	uintptr_t getUserArea() const { return (uintptr_t)unkC; }
 
 public:
 	J3DPacket* unk4;
