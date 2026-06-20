@@ -616,8 +616,8 @@ void JUTException::createFB()
 	u32 size  = (u16)ALIGN_NEXT((u16)renderMode->fbWidth, 16)
 	           * renderMode->xfbHeight * 2;
 
-	void* begin  = (void*)ALIGN_PREV((u32)end - size, 32);
-	void* object = (void*)ALIGN_PREV((s32)begin - sizeof(JUTExternalFB), 32);
+	void* begin  = (void*)ALIGN_PREV((uintptr_t)end - size, 32);
+	void* object = (void*)ALIGN_PREV((uintptr_t)begin - sizeof(JUTExternalFB), 32);
 	new ((JUTExternalFB*)object)
 	    JUTExternalFB(renderMode, GX_GM_1_7, begin, size);
 
@@ -630,26 +630,11 @@ void JUTException::createFB()
 	mFrameMemory = (JUTExternalFB*)object;
 }
 
-// TODO: this looks very asm-y but peephole is still on after
-// it so maybe not? IDK!
-asm u32 JUTException::getFpscr() {
-#ifdef __MWERKS__ // clang-format off
-  stwu  r1, -0x10(r1)
-
-  // Enable the "floating-point available" flag just in case?
-  mfmsr r5
-  ori   r5, r5, 0x2000
-  mtmsr r5
-
-  isync
-
-  // Get contents of the "floating point status and control register"
-  mffs f1
-  stfd f1, 0x8(r1)
-  lwz  r3, 0xc(r1)
-
-  addi r1, r1, 0x10
-#endif // clang-format on
+// Native reimplementation: the original read the GameCube/Gekko FPSCR (floating
+// point status & control register) for the exception-dump screen. There is no
+// such register on the host; return 0.
+u32 JUTException::getFpscr() {
+  return 0;
 }
 
 #pragma peephole on

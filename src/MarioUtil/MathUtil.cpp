@@ -413,39 +413,21 @@ void SMSCalcJumpVelocityXZ(const JGeometry::TVec3<f32>& param_1,
 	result->z = resZ;
 }
 
-asm f32 MsVECMag2(register Vec* v)
+// Native reimplementation of the Metrowerks paired-single asm kernel.
+// Original computes mag2 = x*x + y*y + z*z, then returns mag2 * rsqrt(mag2) = sqrt(mag2).
+f32 MsVECMag2(Vec* v)
 {
-#ifdef __MWERKS__ // clang-format off
-  psq_l   f3, Vec.x(v), 0, qr0
-  ps_mul  f3, f3, f3
-
-  lfs     f4, Vec.z(v)
-  ps_madd f5, f4, f4, f3
-
-  ps_sum0 f2, f5, f3, f3
-  frsqrte f0, f2
-  fneg    f1, f2
-  fsel    f0, f1, f2, f0
-  fmuls   f1, f2, f0
-#endif // clang-format on
+  f32 mag2 = v->x * v->x + v->y * v->y + v->z * v->z;
+  return sqrtf(mag2);
 }
 
-asm void MsVECNormalize(register Vec* v1, register Vec* v2)
+// Native reimplementation of the Metrowerks paired-single asm kernel.
+// Original computes rsqrt(x*x + y*y + z*z) and scales the vector by it (normalize).
+void MsVECNormalize(Vec* v1, Vec* v2)
 {
-#ifdef __MWERKS__ // clang-format off
-  psq_l   f6, Vec.x(v1), 0, qr0
-  ps_mul  f3, f6, f6
-
-  lfs     f4, Vec.z(v1)
-  ps_madd f5, f4, f4, f3
-
-  ps_sum0 f2, f5, f3, f3
-
-  frsqrte  f0, f2
-  ps_muls0 f6, f6, f0
-
-  psq_st f6, Vec.x(v2), 0, qr0
-  fmuls  f4, f4, f0
-  stfs   f4, Vec.z(v2)
-#endif // clang-format on
+  f32 mag2 = v1->x * v1->x + v1->y * v1->y + v1->z * v1->z;
+  f32 inv  = 1.0f / sqrtf(mag2);
+  v2->x = v1->x * inv;
+  v2->y = v1->y * inv;
+  v2->z = v1->z * inv;
 }
