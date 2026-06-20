@@ -21,11 +21,11 @@ public:
 	{
 		mResources[entry] = timg;
 		mResources[entry].imageDataOffset
-		    = ((mResources[entry].imageDataOffset + (u32)&timg
-		        - (u32)(mResources + entry)));
+		    = ((mResources[entry].imageDataOffset + (uintptr_t)&timg
+		        - (uintptr_t)(mResources + entry)));
 		mResources[entry].paletteOffset
-		    = ((mResources[entry].paletteOffset + (u32)&timg
-		        - (u32)(mResources + entry)));
+		    = ((mResources[entry].paletteOffset + (uintptr_t)&timg
+		        - (uintptr_t)(mResources + entry)));
 	}
 };
 
