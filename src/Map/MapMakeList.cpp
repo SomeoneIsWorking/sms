@@ -290,7 +290,7 @@ void TMapCollisionData::updateCheckListNode(s32 param_1, s32 param_2,
 	TBGCheckListWarp* end = &unk30[param_3 + param_2];
 
 	// TODO: I think this is a fakematch.
-	u32 offset = ((u32)l - (u32)r);
+	u32 offset = (u32)((uintptr_t)l - (uintptr_t)r);
 
 	for (int i = param_1; i < param_1 + param_2; ++i) {
 		TBGCheckListWarp* warp2 = &unk30[i];

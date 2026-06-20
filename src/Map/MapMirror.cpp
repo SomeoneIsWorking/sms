@@ -304,7 +304,7 @@ void TMirrorModelManager::loadAfter()
 
 		target = source;
 		target.imageDataOffset
-		    = (u32)&source + source.imageDataOffset - (u32)&target;
+		    = (u32)((uintptr_t)&source + source.imageDataOffset - (uintptr_t)&target);
 	}
 }
 

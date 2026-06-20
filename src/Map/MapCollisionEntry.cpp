@@ -79,12 +79,12 @@ void TMapCollisionBase::init(const char* param_1, u16 param_2,
 
 	if (!(unk1C->unk4 & 0x8000)) {
 		for (s16 i = 0; i < unk18; ++i) {
-			unk1C[i].unk8  = (s16*)((int)unk1C[i].unk8 + (u8*)hdr);
-			unk1C[i].unkC  = (u8*)((int)unk1C[i].unkC + (u8*)hdr);
-			unk1C[i].unk10 = (u8*)((int)unk1C[i].unk10 + (u8*)hdr);
+			unk1C[i].unk8  = (s16*)((intptr_t)unk1C[i].unk8 + (u8*)hdr);
+			unk1C[i].unkC  = (u8*)((intptr_t)unk1C[i].unkC + (u8*)hdr);
+			unk1C[i].unk10 = (u8*)((intptr_t)unk1C[i].unk10 + (u8*)hdr);
 
 			if (unk1C[i].unk14)
-				unk1C[i].unk14 = (s16*)((int)unk1C[i].unk14 + (u8*)hdr);
+				unk1C[i].unk14 = (s16*)((intptr_t)unk1C[i].unk14 + (u8*)hdr);
 
 			unk1C[i].unk4 |= 0x8000;
 		}

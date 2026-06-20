@@ -275,7 +275,7 @@ void J3DGDSetTexImgPtr(GXTexMapID param_1, void* param_2)
 {
 	// clang-format off
 	u32 reg =
-		(u32) ((u32)OSPhysicalToCached(param_2) >> 5) |
+		(u32) ((uintptr_t)OSPhysicalToCached(param_2) >> 5) |
 		(u32) GXTexImage3Ids[param_1] << 24;
 	// clang-format on
 
@@ -306,7 +306,7 @@ void J3DGDLoadTlut(void* param_1, u32 param_2, GXTlutSize param_3)
 	GDOverflowCheck(5);
 	// clang-format off
 	J3DGDWriteBPCmd(
-		(u32) ((u32)OSPhysicalToCached(param_1) >> 5) |
+		(u32) ((uintptr_t)OSPhysicalToCached(param_1) >> 5) |
 		(u32) 0x64 << 24
 	);
 	// clang-format on

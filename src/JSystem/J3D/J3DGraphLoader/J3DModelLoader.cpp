@@ -148,10 +148,10 @@ void J3DModelLoader::setupBBoardInfo()
 
 		u32 shapeIndex  = mesh->getShape()->getIndex();
 		u16* indexTable = JSUConvertOffsetToPtr<u16>(
-		    mpShapeBlock, (u32)mpShapeBlock->mpIndexTable);
+		    mpShapeBlock, (u32)(uintptr_t)mpShapeBlock->mpIndexTable);
 		J3DShapeInitData* shapeInitDatas
 		    = JSUConvertOffsetToPtr<J3DShapeInitData>(
-		        mpShapeBlock, (u32)mpShapeBlock->mpShapeInitData);
+		        mpShapeBlock, (u32)(uintptr_t)mpShapeBlock->mpShapeInitData);
 
 		J3DShapeInitData* shapeInitData
 		    = &shapeInitDatas[indexTable[shapeIndex]];
@@ -240,10 +240,10 @@ void J3DModelLoader::readVertex(const J3DVertexBlock* i_block)
 		vertex_data.unk4 = 0;
 	} else if (nrm_end != NULL) {
 		vertex_data.unk4
-		    = ((u32)nrm_end - (u32)vertex_data.mVtxNormArray) / 12 + 1;
+		    = ((uintptr_t)nrm_end - (uintptr_t)vertex_data.mVtxNormArray) / 12 + 1;
 	} else {
 		vertex_data.unk4
-		    = (i_block->mSize - (u32)i_block->mpVtxNrmArray) / 12 + 1;
+		    = (i_block->mSize - (uintptr_t)i_block->mpVtxNrmArray) / 12 + 1;
 	}
 
 	void* color0_end = NULL;
@@ -257,10 +257,10 @@ void J3DModelLoader::readVertex(const J3DVertexBlock* i_block)
 		vertex_data.unk8 = 0;
 	} else if (color0_end != NULL) {
 		vertex_data.unk8
-		    = ((u32)color0_end - (u32)vertex_data.mVtxColorArray[0]) / 4 + 1;
+		    = ((uintptr_t)color0_end - (uintptr_t)vertex_data.mVtxColorArray[0]) / 4 + 1;
 	} else {
 		vertex_data.unk8
-		    = (i_block->mSize - (u32)i_block->mpVtxColorArray[0]) / 4 + 1;
+		    = (i_block->mSize - (uintptr_t)i_block->mpVtxColorArray[0]) / 4 + 1;
 	}
 }
 
@@ -331,7 +331,7 @@ void J3DModelLoader_v26::readMaterial(const J3DMaterialBlock* i_block,
 	if (i_flags & 0x200000) {
 		for (u16 i = 0; i < mpModelData->unk34; i++) {
 			factory.create(&mpModelData->unk38[i], i, i_flags);
-			mpModelData->unk38[i].unk18 = (u32)&mpModelData->unk38[i] >> 4;
+			mpModelData->unk38[i].unk18 = (u32)((uintptr_t)&mpModelData->unk38[i] >> 4);
 		}
 	}
 	for (u16 i = 0; i < mpModelData->mMaterialNum; i++) {
@@ -340,7 +340,7 @@ void J3DModelLoader_v26::readMaterial(const J3DMaterialBlock* i_block,
 	if (i_flags & 0x200000) {
 		for (u16 i = 0; i < mpModelData->mMaterialNum; i++) {
 			mpModelData->mMaterials[i]->unk18
-			    = (u32)&mpModelData->unk38[factory.getMaterialID(i)] >> 4;
+			    = (u32)((uintptr_t)&mpModelData->unk38[factory.getMaterialID(i)] >> 4);
 			mpModelData->mMaterials[i]->mOriginalMaterial
 			    = &mpModelData->unk38[factory.getMaterialID(i)];
 		}
@@ -372,7 +372,7 @@ void J3DModelLoader_v21::readMaterial_v21(const J3DMaterialBlock_v21* i_block,
 	if (i_flags & 0x200000) {
 		for (u16 i = 0; i < mpModelData->unk34; i++) {
 			factory.create(&mpModelData->unk38[i], i, i_flags);
-			mpModelData->unk38[i].unk18 = (u32)&mpModelData->unk38[i] >> 4;
+			mpModelData->unk38[i].unk18 = (u32)((uintptr_t)&mpModelData->unk38[i] >> 4);
 		}
 	}
 	for (u16 i = 0; i < mpModelData->mMaterialNum; i++) {
@@ -381,7 +381,7 @@ void J3DModelLoader_v21::readMaterial_v21(const J3DMaterialBlock_v21* i_block,
 	if (i_flags & 0x200000) {
 		for (u16 i = 0; i < mpModelData->mMaterialNum; i++) {
 			mpModelData->mMaterials[i]->unk18
-			    = (u32)&mpModelData->unk38[factory.getMaterialID(i)] >> 4;
+			    = (u32)((uintptr_t)&mpModelData->unk38[factory.getMaterialID(i)] >> 4);
 			mpModelData->mMaterials[i]->mOriginalMaterial
 			    = &mpModelData->unk38[factory.getMaterialID(i)];
 		}
@@ -449,7 +449,7 @@ void J3DModelLoader_v26::readMaterialTable(const J3DMaterialBlock* i_block,
 	}
 	for (u16 i = 0; i < mpMaterialTable->mMaterialNum; i++) {
 		mpMaterialTable->mMaterials[i]->unk18
-		    = (u32)mpMaterialTable->mMaterials + factory.getMaterialID(i);
+		    = (u32)((uintptr_t)mpMaterialTable->mMaterials + factory.getMaterialID(i));
 	}
 }
 
@@ -471,7 +471,7 @@ void J3DModelLoader_v21::readMaterialTable_v21(
 	}
 	for (u16 i = 0; i < mpMaterialTable->mMaterialNum; i++) {
 		mpMaterialTable->mMaterials[i]->unk18
-		    = ((u32)mpMaterialTable->mMaterials) + factory.getMaterialID(i);
+		    = (u32)(((uintptr_t)mpMaterialTable->mMaterials) + factory.getMaterialID(i));
 	}
 }
 

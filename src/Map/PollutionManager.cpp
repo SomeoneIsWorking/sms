@@ -141,10 +141,10 @@ TJointModel* TPollutionManager::newJointModel(int param_1) const
 void TPollutionManager::setDataAddress(TPollutionManager::TPollutionInfo* info)
 {
 	// pointer patching ewwww
-	info->unk4 = (TPollutionLayerInfo*)((u8*)info->unk4 + (u32)info);
+	info->unk4 = (TPollutionLayerInfo*)((u8*)info->unk4 + (uintptr_t)info);
 	unk6C      = info->unk4;
 	for (int i = 0; i < getJointModelNum(); ++i)
-		unk6C[i].unk28 += (u32)info;
+		unk6C[i].unk28 += (uintptr_t)info;
 }
 
 void TPollutionManager::initPollutionInfo()
