@@ -8,6 +8,10 @@
 #include <JSystem/JDrama/JDRNameRefGen.hpp>
 #include <dolphin/gx.h>
 
+// Single definition for the global declared `extern` in MapWireManager.hpp (was a
+// header tentative-def duplicated across every includer).
+TMapWireManager* gpMapWireManager;
+
 void TMapWireActor::checkTakingActor() { }
 
 f32 TMapWireActor::getPosInWire() const { }
