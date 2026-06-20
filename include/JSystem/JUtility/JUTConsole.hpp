@@ -151,7 +151,9 @@ public:
 	    ConsoleList;
 #else
 	// clangd does not support offsetof in template arguments.
-	typedef JGadget::TLinkList<JUTConsole, -sizeof(JKRDisposer)> ConsoleList;
+	// -(int) cast: TLinkList's offset param is int; on host size_t is 64-bit so
+	// -sizeof(...) is a huge u64 that overflows int (on GC size_t was 32-bit).
+	typedef JGadget::TLinkList<JUTConsole, -(int)sizeof(JKRDisposer)> ConsoleList;
 #endif
 
 private:
