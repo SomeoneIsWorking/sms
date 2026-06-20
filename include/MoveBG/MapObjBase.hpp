@@ -312,7 +312,8 @@ public:
 	                     f32 vertical_speed) const;
 	void throwObjToOverhead(TMapObjBase*, f32, f32) const;
 	void checkOnManhole();
-	static void loadHideObjInfo(JSUMemoryInputStream&, s32*, f32*, f32*, s32*);
+	static void loadHideObjInfo(JSUMemoryInputStream&, s32*, f32*, f32*,
+	                            s32*);
 	static bool isDemo();
 	static bool isHideObj(THitActor*);
 	void getObjCollisionHeightOffset() const { }

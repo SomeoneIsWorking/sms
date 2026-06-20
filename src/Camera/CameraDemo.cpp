@@ -157,7 +157,7 @@ void CPolarSubCamera::startGateDemoCamera(const JDrama::TActor* actor)
 
 void CPolarSubCamera::startDemoCamera(const char* name,
                                       const JGeometry::TVec3<f32>* offset,
-                                      s32 length_frames, f32 f, bool boolArg)
+                                      s32 longArg, f32 f, bool boolArg)
 {
 	mCameraDemo->unk0 = offset;
 	mCameraDemo->unk4 = f;

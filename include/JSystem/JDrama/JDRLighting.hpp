@@ -108,10 +108,6 @@ public:
 
 	void setLightNum(s32);
 
-	// fabricated
-	TIdxLight* getLight(int idx) { return &mLights[idx]; }
-	s32 getLightNum() const { return mLightCount; }
-
 public:
 	/* 0x10 */ TIdxLight* mLights;
 	/* 0x14 */ s32 mLightCount;
@@ -151,10 +147,6 @@ public:
 	virtual void perform(u32 cue, TGraphics* graphics) { }
 
 	void setAmbNum(s32);
-
-	// fabricated
-	TAmbColor* getAmb(int idx) { return &mAmbColors[idx]; }
-	s32 getAmbNum() const { return mAmbColorCount; }
 
 public:
 	/* 0x10 */ TAmbColor* mAmbColors;
