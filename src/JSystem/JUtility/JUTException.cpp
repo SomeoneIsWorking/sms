@@ -615,8 +615,8 @@ void JUTException::createFB()
 	u32 size  = (u16)ALIGN_NEXT((u16)renderMode->fbWidth, 16)
 	           * renderMode->xfbHeight * 2;
 
-	void* begin  = (void*)ALIGN_PREV((u32)end - size, 32);
-	void* object = (void*)ALIGN_PREV((s32)begin - sizeof(JUTExternalFB), 32);
+	void* begin  = (void*)ALIGN_PREV((uintptr_t)end - size, 32);
+	void* object = (void*)ALIGN_PREV((uintptr_t)begin - sizeof(JUTExternalFB), 32);
 	new ((JUTExternalFB*)object)
 	    JUTExternalFB(renderMode, GX_GM_1_7, begin, size);
 
@@ -629,24 +629,11 @@ void JUTException::createFB()
 	mFrameMemory = (JUTExternalFB*)object;
 }
 
-u32 JUTException::getFpscr()
-{
-	double tmp;
-#ifdef __MWERKS__ // clang-format off
-	asm {
-		// Set the "floating-point available" flag
-		mfmsr r5
-		ori   r5, r5, 0x2000
-		mtmsr r5
-
-		isync
-
-		// Read the "floating point status and control register".
-		mffs  f1
-		stfd  f1, tmp
-	}
-#endif // clang-format on
-	return ((u32*)&tmp)[1];
+// Native reimplementation: the original read the GameCube/Gekko FPSCR (floating
+// point status & control register) for the exception-dump screen. There is no
+// such register on the host; return 0.
+u32 JUTException::getFpscr() {
+  return 0;
 }
 
 void JUTException::setFpscr(u32 value) { }

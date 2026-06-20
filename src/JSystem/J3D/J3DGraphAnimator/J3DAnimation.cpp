@@ -376,38 +376,34 @@ static f32 J3DHermiteInterpolationS(f32 t, s16* time0, s16* value0,
 	// return (t1 * kt * kt + (timeRange * *(f32*)tangent0 + t2) * kt + v0)
 	//        - t2;
 
-	register f32 p1  = t;
-	register s16* p2 = time0;
-	register s16* p3 = value0;
-	register s16* p4 = tangent0;
-	register s16* p5 = time1;
-	register s16* p6 = value1;
-	register s16* p7 = tangent1;
-	register f32 fout;
-#ifdef __MWERKS__ // clang-format off
-	asm {
-		psq_l f0, 0(p2), 0x1, 5
-		psq_l f3, 0(p5), 0x1, 5
-		psq_l f2, 0(p3), 0x1, 5
-		fsubs f4, f3, f0
-		psq_l f3, 0(p6), 0x1, 5
-		fsubs f6, fout, f0
-		psq_l fout, 0(p7), 0x1, 5
-		fsubs f5, f3, f2
-		fdivs f6, f6, f4
-		psq_l f0, 0(p4), 0x1, 5
-		fmadds fout, fout, f4, f2
-		fmuls f7, f6, f6
-		fnmsubs f5, f4, f0, f5
-		fsubs fout, fout, f3
-		fsubs fout, fout, f5
-		fmuls f3, f7, fout
-		fmadds fout, f4, f0, f3
-		fmadds fout, fout, f6, f2
-		fmadds fout, f5, f7, fout
-		fsubs fout, fout, f3
-	}
-#endif // clang-format on
+	// Native reimplementation of the paired-single Hermite interpolation kernel.
+	// The s16* arguments point at keyframe data read as floats (the quantized
+	// loads dequantize s16 -> f32). Translated step-by-step from the asm.
+	f32 tm0 = (f32)*time0;     // time0
+	f32 tm1 = (f32)*time1;     // time1
+	f32 v0  = (f32)*value0;    // value0
+	f32 timeRange = tm1 - tm0; // f4
+
+	f32 v1  = (f32)*value1;    // value1
+	f32 kt  = (t - tm0) / timeRange; // f6 = (t - time0) / timeRange
+
+	f32 tan1 = (f32)*tangent1; // f7 register in asm (fout slot)
+	f32 dv   = v1 - v0;        // f5 = value1 - value0
+	f32 tan0 = (f32)*tangent0; // f0
+
+	f32 a    = tan1 * timeRange + v0; // fout = tangent1*timeRange + value0
+	f32 kt2  = kt * kt;               // f7
+
+	f32 f5   = dv - timeRange * tan0; // f5 = (value1-value0) - timeRange*tangent0
+	a        = a - v1;                // fout -= value1
+	a        = a - f5;                // fout -= f5
+
+	f32 f3   = kt2 * a;               // f3 = kt2 * fout
+	f32 fout = timeRange * tan0 + f3; // fout = timeRange*tangent0 + kt2*a
+	fout     = fout * kt + v0;        // fout = fout*kt + value0
+	fout     = f5 * kt2 + fout;       // fout = f5*kt2 + fout
+	fout     = fout - f3;             // fout -= f3
+
 	return fout;
 }
 
