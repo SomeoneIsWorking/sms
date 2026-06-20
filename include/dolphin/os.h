@@ -208,7 +208,7 @@ static inline void OSInitFastCast(void)
 // gotta ifdef out paired singles stuff in SDK headers
 #ifdef GEKKO
 
-inline void OSf32tos8(register f32* f, register s8* out)
+inline void OSf32tos8(f32* f, s8* out) // 'register' removed: ill-formed in C++17
 {
 #ifdef __MWERKS__ // clang-format off
 	asm {
@@ -216,6 +216,23 @@ inline void OSf32tos8(register f32* f, register s8* out)
 		psq_st f1, 0(out), 0x1, 4
 	}
 #endif // clang-format on
+}
+
+#elif defined(SUNBRIGHT_NATIVE_HOST)
+
+// Native host build: the GC version is a paired-single quantized store
+// (psq_st type s8, scale 0) gated behind GEKKO/__MWERKS__. Provide a portable
+// equivalent: saturating f32 -> s8. RUNTIME LANDMINE: GC quantized stores
+// round-to-nearest; this truncates after clamp. Verify the rounding against the
+// SDK when the audio path is exercised (used by JASTrack pan/vol conversion).
+inline void OSf32tos8(f32* f, s8* out)
+{
+	f32 v = *f;
+	if (v > 127.0f)
+		v = 127.0f;
+	else if (v < -128.0f)
+		v = -128.0f;
+	*out = (s8)v;
 }
 
 #endif
