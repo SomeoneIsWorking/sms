@@ -496,7 +496,12 @@ void JAIData::getInfoPointer(u32 param_1, void** param_2)
 	}
 
 	u32 tmp = param_1 & 0x3FF;
-	if (table->unk78 && table->unk2[thing] < tmp)
+	// Bounds check is `tmp < count`, NOT `count < tmp` (the decomp reversed the
+	// cmpl operands). Verified against the original PPC (getInfoPointer @80303f60:
+	// `cmpl r4,r0` with r4=id&0x3FF, r0=unk2[thing], branch-to-null unless tmp<count).
+	// With it reversed, every lookup with tmp==0 (e.g. the JAI init sound 0x80000800)
+	// returned null -> unk38 never set -> processFrameWork null-deref.
+	if (table->unk78 && tmp < table->unk2[thing])
 		*param_2 = &table->unk30[thing][tmp];
 	else
 		*param_2 = nullptr;
