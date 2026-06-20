@@ -261,7 +261,7 @@ void CPolarSubCamera::loadAfter()
 	if ((unk64 & CAMERA_FLAG_JET_COASTER_SCENE) && gpMarDirector->unk7D == 1) {
 		gpMarDirector->fireStartDemoCamera(
 		    cJetCoasterDemoBckName, nullptr, -1, 0.0f, true,
-		    &JetCoasterDemoCallBack, (u32)this, nullptr, JDrama::TFlagT<u16>());
+		    &JetCoasterDemoCallBack, (u32)(uintptr_t)this, nullptr, JDrama::TFlagT<u16>());
 	} else {
 		if (!JKRGetResource(cStartCamBckFileName))
 			calcInHouseNo_(true);

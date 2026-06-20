@@ -55,7 +55,7 @@ void* JKRSolidHeap::allocFromHead(u32 size, int align)
 
 	void* ret = nullptr;
 
-	char* alignedStart = (char*)ALIGN_NEXT((u32)mCurStart, align);
+	char* alignedStart = (char*)ALIGN_NEXT((uintptr_t)mCurStart, align);
 	u32 requiredSize   = (alignedStart - (char*)mCurStart) + size;
 	if (requiredSize <= mFreeSize) {
 		mCurStart = (char*)mCurStart + requiredSize;
@@ -77,7 +77,7 @@ void* JKRSolidHeap::allocFromTail(u32 size, int align)
 
 	void* ret = nullptr;
 
-	char* alignedEnd = (char*)ALIGN_PREV((u32)mCurEnd - size, align);
+	char* alignedEnd = (char*)ALIGN_PREV((uintptr_t)mCurEnd - size, align);
 	u32 requiredSize = (char*)mCurEnd - alignedEnd;
 	if (requiredSize <= mFreeSize) {
 		mCurEnd = (char*)mCurEnd - requiredSize;
@@ -180,8 +180,8 @@ void JKRSolidHeap::state_register(TState* state, u32 param_1) const
 	// builds of jsystem games are discovered
 	// + it really doesn't matter
 	char trash[0x10];
-	u32 checkCode = (u32)mCurStart;
-	checkCode += (u32)mCurEnd * 3;
+	u32 checkCode = (u32)(uintptr_t)mCurStart;
+	checkCode += (u32)((uintptr_t)mCurEnd * 3);
 	setState_u32CheckCode_(state, checkCode);
 }
 

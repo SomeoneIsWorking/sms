@@ -77,19 +77,14 @@ void TMapCollisionBase::init(const char* path, u16 param_2,
 	if (param_2 & 0x8000)
 		onFlag(FLAG_UNK8000);
 
-	if (!(mCollisionGroups->mFlags & WAS_PATCHED)) {
-		for (s16 i = 0; i < mCollisionGroupNum; ++i) {
-			mCollisionGroups[i].mIndices
-			    = (s16*)((int)mCollisionGroups[i].mIndices + (u8*)hdr);
-			mCollisionGroups[i].unkC
-			    = (u8*)((int)mCollisionGroups[i].unkC + (u8*)hdr);
-			mCollisionGroups[i].unk10
-			    = (u8*)((int)mCollisionGroups[i].unk10 + (u8*)hdr);
+	if (!(unk1C->unk4 & 0x8000)) {
+		for (s16 i = 0; i < unk18; ++i) {
+			unk1C[i].unk8  = (s16*)((intptr_t)unk1C[i].unk8 + (u8*)hdr);
+			unk1C[i].unkC  = (u8*)((intptr_t)unk1C[i].unkC + (u8*)hdr);
+			unk1C[i].unk10 = (u8*)((intptr_t)unk1C[i].unk10 + (u8*)hdr);
 
-			if (mCollisionGroups[i].mAdditionalDatas)
-				mCollisionGroups[i].mAdditionalDatas
-				    = (s16*)((int)mCollisionGroups[i].mAdditionalDatas
-				             + (u8*)hdr);
+			if (unk1C[i].unk14)
+				unk1C[i].unk14 = (s16*)((intptr_t)unk1C[i].unk14 + (u8*)hdr);
 
 			mCollisionGroups[i].mFlags |= WAS_PATCHED;
 		}

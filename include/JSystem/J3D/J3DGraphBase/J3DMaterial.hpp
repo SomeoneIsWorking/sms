@@ -96,8 +96,8 @@ public:
 
 	J3DMaterialAnm* getMaterialAnm()
 	{
-		if ((uintptr_t)mMaterialAnm < 0xC0000000) {
-			return mMaterialAnm;
+		if ((uintptr_t)unk38 < 0xC0000000) {
+			return unk38;
 		} else {
 			return nullptr;
 		}
