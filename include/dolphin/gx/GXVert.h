@@ -7,7 +7,17 @@
 extern "C" {
 #endif
 
+#ifdef SMS_NATIVE_PLATFORM
+// Native PC build: the GameCube write-gather pipe (MMIO at 0xCC008000) does not
+// exist. The native renderer consumes the J3D object model directly and ignores the
+// GX FIFO command stream, so every GXWGFifo write is dead output here — point it at a
+// host scratch sink (a bit-bucket) so the inline writers don't fault on unmapped MMIO.
+#include <stdint.h>
+extern volatile unsigned char sb_gx_wgfifo_sink[32];
+#define GXFIFO_ADDR ((uintptr_t)sb_gx_wgfifo_sink)
+#else
 #define GXFIFO_ADDR 0xCC008000
+#endif
 
 typedef union {
 	u8 u8;
