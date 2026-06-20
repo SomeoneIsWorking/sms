@@ -20,6 +20,7 @@ void J2DScreen::makeHiearachyPanes(J2DPane* parent,
 	if (we_are_root) {
 		u32 magic;
 		stream->peek(&magic, 4);
+		magic  = JSU_BE32(magic); // FourCC read raw (not via readU32) -> swap on LE
 		is_ex  = magic == 'SCRN' ? true : false;
 		mColor = 0;
 		if (is_ex) {
@@ -46,10 +47,12 @@ void J2DScreen::makeHiearachyPanes(J2DPane* parent,
 			if (stream->read(&magic, 4) != 4) {
 				OSPanic("J2DScreen.cpp", 0x91, "SCRN resource is broken.\n");
 			}
+			magic = JSU_BE32(magic); // FourCC read raw -> swap on LE
 			u32 size;
 			if (stream->peek(&size, 4) != 4) {
 				OSPanic("J2DScreen.cpp", 0x96, "SCRN resource is broken.\n");
 			}
+			size = JSU_BE32(size); // big-endian block size read raw -> swap on LE
 			stream->skip(-4);
 			*out_next_pane_offset = size + stream->getPosition();
 
@@ -87,6 +90,7 @@ void J2DScreen::makeHiearachyPanes(J2DPane* parent,
 			if (stream->peek(&tag, 2) != 2) {
 				OSPanic("J2DScreen.cpp", 199, "SCRN resource is broken.\n");
 			}
+			tag = JSU_BE16(tag); // big-endian tag read raw -> swap on LE
 			switch (tag) {
 			case 0:
 				return;
