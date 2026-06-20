@@ -9,8 +9,10 @@ class J3DModel;
 class TMapStaticObj;
 
 // NOTE: seems like they wrote something weird for these vars...
-extern const char* cSunVolumeName    = "/scene/sun";
-extern const char* cSunsetVolumeName = "/scene/sunset";
+// LP64/native: `extern ... = "..."` is a DEFINITION; this header is pulled by 4 TUs ->
+// multiple-definition at the full-closure boot link. C++17 `inline` = single merged def.
+inline const char* cSunVolumeName    = "/scene/sun";
+inline const char* cSunsetVolumeName = "/scene/sunset";
 
 class TSunModel : public JDrama::TActor {
 public:
