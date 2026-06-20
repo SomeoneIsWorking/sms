@@ -140,8 +140,8 @@ DEFINE_NERVE(TNerveRHGraphWander, TLiveActor)
 	TRiccoHook* self = (TRiccoHook*)spine->getBody();
 
 	if (spine->getTime() == 0) {
-		f32 y                              = self->getRotation().y;
-		const JGeometry::TVec3<f32>& polar = polarXZ(y, 1.0f);
+		f32 y                        = self->getRotation().y;
+		JGeometry::TVec3<f32> polar = polarXZ(y, 1.0f);
 
 		self->goToDirectedNextGraphNode(polar);
 	}

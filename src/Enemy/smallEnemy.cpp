@@ -242,7 +242,6 @@ void TSmallEnemy::attackToMario()
 
 	// TODO: wtf
 	JGeometry::TVec3<f32> local_14(0, 0, 0);
-	(void)&local_14;
 
 	JGeometry::TVec3<f32> local_20;
 	local_20.sub(mPosition, SMS_GetMarioPos());
