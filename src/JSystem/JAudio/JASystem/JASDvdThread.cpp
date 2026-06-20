@@ -412,10 +412,12 @@ s32 Dvd::openDvd(char* path, DVDFileInfo* fileInfo)
 		DVDOpen(path, fileInfo);
 	else
 		DVDFastOpen(entryNum, fileInfo);
-	// TODO: is this a bug that they forgot to return entryNum
-	// but the assembly HAPPENS to work out in such a way that
-	// r3 still contains entryNum?
-	// Or is this a fakematch?
+	// The decomp matches MWERKS by falling off the end with no return: on PPC
+	// r3 still held entryNum so callers worked by luck. On a host -O2 build the
+	// missing return is UB — execution falls through into the adjacent function
+	// (re-entering loadToDramDvdTMain -> infinite recursion -> stack overflow).
+	// Return the value the PPC r3 carried; this is the documented intent.
+	return entryNum;
 }
 
 static void* Dvd::getCallStack()
