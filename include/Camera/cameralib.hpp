@@ -336,8 +336,10 @@ inline void CLBScreenFPosToSPos(JGeometry::TVec2<s16>* out,
                                 const JGeometry::TVec2<f32>& in)
 {
 	// can't include Resolution.hpp because of troubles with MapDraw.cpp
-	extern s16 SMSGetGameRenderHeight();
-	extern s16 SMSGetGameRenderWidth();
+	// (return type must match the canonical u16 decl in System/Resolution.hpp,
+	// else a TU including both gets an ambiguating-redeclaration error on host)
+	extern u16 SMSGetGameRenderHeight();
+	extern u16 SMSGetGameRenderWidth();
 
 	f32 x = in.x;
 	// TODO: definitely more inlines but I couldn't get it to work out...
