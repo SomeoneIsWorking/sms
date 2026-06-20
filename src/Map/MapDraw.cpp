@@ -12,8 +12,12 @@
 // NOTE: Yes, this is an ODR violation, and I'm pretty sure they had it
 // in the original code as well, because everywhere else these functions
 // return a u16, but here they MUST return an int for some reason???
-int SMSGetGameRenderHeight();
-int SMSGetGameRenderWidth();
+// Native build: must match the canonical u16 decl (System/Resolution.hpp /
+// Camera/cameralib.hpp) -- a TU seeing both an int and a u16 decl errors with
+// "ambiguating new declaration". The original's `int` here was a GC codegen
+// fakematch quirk with no bearing on the value (448/640 fit either type).
+u16 SMSGetGameRenderHeight();
+u16 SMSGetGameRenderWidth();
 
 void TMapDrawWall::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
