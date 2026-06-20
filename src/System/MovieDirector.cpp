@@ -19,6 +19,11 @@
 #include <GC2D/ScrnFader.hpp>
 #include <GC2D/hx_wiper.h>
 
+#ifdef SMS_NATIVE_PLATFORM
+#include <dolphin/os.h>
+#include <cstdlib>
+#endif
+
 // rogue includes needed for matching sinit & bss
 #include <MSound/MSSetSound.hpp>
 #include <MSound/MSoundBGM.hpp>
@@ -50,7 +55,14 @@ TMovieDirector::TMovieDirector()
 
 void* TMovieDirector::setupThreadFunc(void* self)
 {
-	((TMovieDirector*)self)->rsetup();
+	// NOTE (native fix): the decomp omits the return. On PPC this was a tail call
+	// to rsetup() (its r3 result flows through as the thread's return value, read
+	// back as `errc` in TMovieDirector::direct()). Falling off the end of a
+	// value-returning function is UB; GCC -O2 emits no `ret` here (the body is just
+	// the call), so the thread runs straight off the end of setupThreadFunc into
+	// the adjacent decideNextMode() with a garbage `this` -> SEGV. Return the
+	// rsetup() result so the thread terminates cleanly and errc is correct.
+	return (void*)(intptr_t)((TMovieDirector*)self)->rsetup();
 }
 
 extern OSThread gSetupThread;
@@ -401,6 +413,17 @@ int TMovieDirector::direct()
 		}
 		unk1C = nextState;
 	}
+
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_MOVIE_DBG")) {
+		static int dbgframe = 0;
+		if ((dbgframe++ % 30) == 0)
+			OSReport("[movie] f=%d appstate=%d movie=%u unk1C=%d thpState=%d "
+			         "desired=%d\n",
+			         dbgframe, gpApplication.mAppState, gpApplication.getMovie(),
+			         (int)unk1C, (int)THPPlayerGetState(), desiredAppState);
+	}
+#endif
 
 	return desiredAppState;
 }
