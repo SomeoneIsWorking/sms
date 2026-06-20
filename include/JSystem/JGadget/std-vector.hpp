@@ -236,7 +236,14 @@ public:
 		if (count == 0)
 			return pIt;
 
-		if (mCapacity <= count + size()) {
+		// NOTE (native fix): the in-place-shift branch is valid only when the
+		// existing storage can already hold size()+count elements; otherwise we must
+		// grow (the else branch allocates). The decomp's condition was inverted
+		// (`mCapacity <= count + size()`), which for an empty/under-capacity vector
+		// (e.g. mCallbacks(5), cap=0) skipped allocation and shifted/filled into
+		// unallocated memory at a null pBegin_ -> SEGV. Corrected to the proper
+		// capacity test (template header matching is best-effort in the decomp).
+		if (count + size() <= mCapacity) {
 			T* holeEnd = pIt + count;
 			if (holeEnd < pEnd_) {
 				T* split = pEnd_ - count;

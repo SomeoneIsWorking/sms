@@ -63,7 +63,16 @@ bool JKRHeap::initArena(char** outUserRamStart, u32* outUserRamSize,
 	mCodeStart       = (u8*)start;
 	mUserRamStart    = (u8*)arenaLo;
 	mUserRamEnd      = (u8*)arenaHi;
+#ifdef SMS_NATIVE_PLATFORM
+	// Native PC build: there is no GC physical low-memory page, so the simulated
+	// memory-size field at OSPhysicalToCached(0)+0x28 is unmapped (a deref would
+	// SEGV). The host arena IS our memory, so report its usable size. mCodeStart/
+	// mCodeEnd/mMemorySize are informational here (only written, never read by the
+	// engine), so this preserves behaviour while owning the GC-hardware dependency.
+	mMemorySize      = (u32)((uintptr_t)arenaHi - (uintptr_t)arenaLo);
+#else
 	mMemorySize      = *(u32*)((start + 0x28));
+#endif
 	OSReport("%x %x %x %x %x\n", mCodeStart, mCodeEnd, mUserRamStart,
 	         mUserRamEnd, mMemorySize);
 	OSSetArenaLo(arenaHi);
