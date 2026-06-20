@@ -173,11 +173,11 @@ void* OSCachedToUncached(void* caddr);
 void* OSUncachedToCached(void* ucaddr);
 #if !DEBUG
 #define OSPhysicalToCached(paddr)                                              \
-	((void*)((u32)(OS_BASE_CACHED + (u32)(paddr))))
+	((void*)((uintptr_t)(OS_BASE_CACHED + (uintptr_t)(paddr))))
 #define OSPhysicalToUncached(paddr)                                            \
-	((void*)((u32)(OS_BASE_UNCACHED + (u32)(paddr))))
-#define OSCachedToPhysical(caddr)    ((u32)((u32)(caddr) - OS_BASE_CACHED))
-#define OSUncachedToPhysical(ucaddr) ((u32)((u32)(ucaddr) - OS_BASE_UNCACHED))
+	((void*)((uintptr_t)(OS_BASE_UNCACHED + (uintptr_t)(paddr))))
+#define OSCachedToPhysical(caddr)    ((u32)((uintptr_t)(caddr) - OS_BASE_CACHED))
+#define OSUncachedToPhysical(ucaddr) ((u32)((uintptr_t)(ucaddr) - OS_BASE_UNCACHED))
 #define OSCachedToUncached(caddr)                                              \
 	((void*)((u8*)(caddr) + (OS_BASE_UNCACHED - OS_BASE_CACHED)))
 #define OSUncachedToCached(ucaddr)                                             \

@@ -148,7 +148,7 @@ namespace BankMgr {
 
 		// TODO: WTF?
 		chan->unk10 = (Driver::Wave_*)waveInfo;
-		chan->unk14 = (u32)wave;
+		chan->unk14 = (u32)(uintptr_t)wave;
 		chan->unkC  = instParam.unk0;
 		chan->unk0  = param_5;
 		chan->unk1  = param_4;

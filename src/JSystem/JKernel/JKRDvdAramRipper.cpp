@@ -110,7 +110,7 @@ JKRADCommand* JKRDvdAramRipper::callCommand_Async(JKRADCommand* command)
 
 		if (command->mExpandSwitch == 1) {
 			u8 buffer[0x40];
-			u8* bufPtr = (u8*)ALIGN_NEXT((u32)&buffer, 0x20);
+			u8* bufPtr = (u8*)ALIGN_NEXT((uintptr_t)&buffer, 0x20);
 			while (true) {
 				if (DVDReadPrio(dvdFile->getFileInfo(), bufPtr, 0x20, 0, 2)
 				    >= 0) {
@@ -187,7 +187,7 @@ JKRADCommand* JKRDvdAramRipper::callCommand_Async(JKRADCommand* command)
 		if (!command->mCallback) {
 			sDvdAramAsyncList.append(&command->mLink);
 		} else {
-			command->mCallback((u32)command);
+			command->mCallback((u32)(uintptr_t)command);
 		}
 	}
 
@@ -437,7 +437,7 @@ static u32 dmaBufferFlush(u32 param_1)
 		return 0;
 	}
 	u32 size = ALIGN_NEXT(dmaCurrent - dmaBuf, 0x20);
-	JKRAramPiece::orderSync(0, (u32)dmaBuf, param_1, size, nullptr);
+	JKRAramPiece::orderSync(0, (u32)(uintptr_t)dmaBuf, param_1, size, nullptr);
 	dmaCurrent = dmaBuf;
 	return size;
 }

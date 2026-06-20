@@ -43,7 +43,7 @@ namespace Kernel {
 			DCStoreRange(dac[i], getDacSize() * 2);
 		}
 		AIInit(nullptr);
-		AIInitDMA(u32(dac[2]), getDacSize() * 2);
+		AIInitDMA(u32((uintptr_t)dac[2]), getDacSize() * 2);
 		Vload::initVloadBuffers();
 	}
 
@@ -110,7 +110,7 @@ namespace Kernel {
 		}
 
 		if (useRspMadep) {
-			AIInitDMA((u32)useRspMadep, getDacSize() * 2);
+			AIInitDMA((u32)(uintptr_t)useRspMadep, getDacSize() * 2);
 			useRspMadep = nullptr;
 		} else {
 			JASUniversalDacCounter++;
