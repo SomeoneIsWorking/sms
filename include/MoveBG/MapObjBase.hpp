@@ -208,16 +208,22 @@ public:
 	void initUnique();
 	void setMatTableTex(J3DMaterialTable*);
 	void setMatTable(J3DMaterialTable*);
-	JPABaseEmitter* emitAndRotate(s32, u8, const JGeometry::TVec3<f32>*) const;
-	JPABaseEmitter* emitAndScale(s32, u8, const JGeometry::TVec3<f32>*,
+	JPABaseEmitter* emitAndRotate(s32, unsigned char,
+	                              const JGeometry::TVec3<f32>*) const;
+	JPABaseEmitter* emitAndScale(s32, unsigned char,
+	                             const JGeometry::TVec3<f32>*,
 	                             const JGeometry::TVec3<f32>&) const;
-	JPABaseEmitter* emitAndBindScale(s32, u8, const JGeometry::TVec3<f32>*,
+	JPABaseEmitter* emitAndBindScale(s32, unsigned char,
+	                                 const JGeometry::TVec3<f32>*,
 	                                 const JGeometry::TVec3<f32>&) const;
-	JPABaseEmitter* emitAndScale(s32, u8, const JGeometry::TVec3<f32>*) const;
-	void emitAndRotateScale(s32, u8, const JGeometry::TVec3<f32>*) const;
-	static void emitAndSRT(s32, u8, const JGeometry::TVec3<f32>*,
-	                       const JGeometry::TVec3<f32>&,
-	                       const JGeometry::TVec3<f32>&);
+	JPABaseEmitter* emitAndScale(s32, unsigned char,
+	                             const JGeometry::TVec3<f32>*) const;
+	JPABaseEmitter* emitAndRotateScale(s32, unsigned char,
+	                                   const JGeometry::TVec3<f32>*) const;
+	JPABaseEmitter* emitAndSRT(s32, unsigned char,
+	                           const JGeometry::TVec3<f32>*,
+	                           const JGeometry::TVec3<f32>&,
+	                           const JGeometry::TVec3<f32>&);
 	void emitColumnWater();
 	bool marioHipAttack() const;
 	bool marioHeadAttack() const;
