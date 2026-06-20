@@ -250,11 +250,12 @@ void JAIBasic::checkInitDataOnMemory()
 	// singles. unk4C (the in-memory aaf) is NOT freed for unk13==4, so we point
 	// directly into it (no transInitDataFile copy needed).
 	//
-	// NOTE (audio frontier): bank/wave registration (unk50/unk54) is intentionally
-	// left null here. registWaveBankWS/registBankBNK parse the GC big-endian
-	// WSYS/IBNK blobs, which need their own BE swap before they can be wired; the
-	// game null-guards unk50/unk54 (silent audio, no crash). Wiring them is the
-	// next audio step. Only unk88 (required for seCategoryMax / boot) is set.
+	// NOTE (audio frontier): cid-3 (WSYS wave banks) are wired into unk54 here so
+	// initBankWave can registWaveBankWS them (each blob is BE-swapped to host in
+	// registWaveBankWS). cid-2 (IBNK instrument banks) -> unk50 is still left null:
+	// registBankBNK needs its own IBNK BE swap before it can be wired (game
+	// null-guards unk50 -> silent instruments, no crash). unk88 (seCategoryMax /
+	// boot) comes from cid-1.
 	{
 		u32* w = (u32*)unk4C;
 		u32 o  = 0;
@@ -271,7 +272,28 @@ void JAIBasic::checkInitDataOnMemory()
 					data->unk88.unk28 = size;
 					data->unk1B0      = 0;
 				}
-			} else if (cid == 2 || cid == 3) {
+			} else if (cid == 3) {
+				// WSYS wave banks: list of (offset,size,flag) until offset==0.
+				// Build the null-terminated unk54 table the game expects.
+				u32 start = o;
+				u32 n     = 0;
+				while (__builtin_bswap32(w[o]) != 0) {
+					++n;
+					o += 3;
+				}
+				o += 1; // terminator word
+				unk54 = (FabricatedUnk54Struct*)allocHeap(
+				    (n + 1) * sizeof(FabricatedUnk54Struct));
+				for (u32 i = 0; i < n; ++i) {
+					u32 off = __builtin_bswap32(w[start + i * 3 + 0]);
+					u32 sz  = __builtin_bswap32(w[start + i * 3 + 1]);
+					u32 fl  = __builtin_bswap32(w[start + i * 3 + 2]);
+					unk54[i].unk0 = (u8*)unk4C + off;
+					unk54[i].unk4 = sz;
+					unk54[i].unk8 = fl;
+				}
+				unk54[n].unk0 = nullptr; // terminator
+			} else if (cid == 2) {
 				while (__builtin_bswap32(w[o]) != 0)
 					o += 3; // skip (offset, size, flag) entries
 				o += 1;     // the 0 terminator word
@@ -351,6 +373,21 @@ void JAIBasic::initBankWave()
 	JASystem::WaveArcLoader::init();
 
 	if (unk54) {
+#ifdef SMS_NATIVE_PLATFORM
+		// The decomp writes unk60[i]/unk64[i] in the loop below but never
+		// allocates the arrays (its reconstruction is incomplete here). Allocate
+		// them sized to the wave-bank count (per-bank scene-wave load state:
+		// unk60 = loaded wave index, unk64 = load phase 0/1/2).
+		int bankCount = 0;
+		while (unk54[bankCount].unk0)
+			++bankCount;
+		unk60 = (s32*)allocHeap(bankCount * sizeof(s32));
+		unk64 = (s32*)allocHeap(bankCount * sizeof(s32));
+		for (int i = 0; i < bankCount; ++i) {
+			unk60[i] = -1;
+			unk64[i] = 0;
+		}
+#endif
 		for (int i = 0; unk54[i].unk0; ++i) {
 			void* data = unk54[i].unk0;
 			if (data) {

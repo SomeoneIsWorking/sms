@@ -103,7 +103,7 @@ void JKRAramPiece::startDMA(JKRAMCommand* command)
 	               JKRAramPiece::doneDMA);
 }
 
-void JKRAramPiece::doneDMA(u32 requestAddress)
+void JKRAramPiece::doneDMA(ARQRequestRef requestAddress)
 {
 	JKRAMCommand* command = (JKRAMCommand*)requestAddress;
 
