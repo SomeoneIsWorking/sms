@@ -688,9 +688,19 @@ void JAIData::initInfoDataWork(JAISoundTable* soundTable, char* path)
 
 	// TODO: definitely fake, but a header struct doesn't work either
 	for (u8 i = 0; i < 18; ++i) {
+#ifdef SMS_NATIVE_PLATFORM
+		// The seInfo blob is GC big-endian; these per-category {u16 count; u16
+		// idx} entries (stride 4 from offset 6) must be read big-endian, else the
+		// byteswapped count drives a huge `new u16[count]` in TFlagManager (and a
+		// wrong idx into the JAISoundInfo array). Read explicitly big-endian.
+		const u8* e = soundTable->unk78 + 6 + (u32)i * 4;
+		soundTable->unk2[i] = (u16)(((u16)e[0] << 8) | e[1]);
+		u32 idx             = (u16)(((u16)e[2] << 8) | e[3]);
+#else
 		soundTable->unk2[i]
 		    = reinterpret_cast<u16*>(soundTable->unk78 + 6)[i * 2];
 		u32 idx = reinterpret_cast<u16*>(soundTable->unk78 + 8)[i * 2];
+#endif
 		soundTable->unk30[i]
 		    = &(reinterpret_cast<JAISoundInfo*>(soundTable->unk78 + 0x50)[idx]);
 		if (i < 0x10 && soundTable->unk2[i] != 0) {
