@@ -64,7 +64,7 @@ public:
 				unkC[i] = J3DAnmLoaderDataBase::load(res);
 		}
 		char trash[8];
-		sortByFileNameRaw(unkC);
+		sortByFileNameRaw((void**)unkC);
 	}
 
 	T* getAnmPtr(int idx) const
