@@ -17,7 +17,7 @@ class TPauseMenu2;
 
 class TCardSave : public JDrama::TViewObj {
 public:
-	TEProgress changeMode(long);
+	TEProgress changeMode(s32);
 
 	TCardSave(const char* name = "<TCardSave>", bool = false);
 
@@ -26,7 +26,7 @@ public:
 	void init(int);
 	void perform(u32, JDrama::TGraphics*);
 	void makeBuffer(J2DTextBox*, int);
-	void setMessage(J2DTextBox*, long, u32);
+	void setMessage(J2DTextBox*, s32, u32);
 	s8 waitForStop(TEProgress);
 	void endWaitForChoice();
 	s8 waitForChoice(TEProgress, TEProgress, signed char);
