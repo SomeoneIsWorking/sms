@@ -99,7 +99,7 @@ public:
 	void* getMaxFreeBlock();
 	u32 getMaxAllocatableSize(int alignment);
 	JKRHeap* find(void*) const;
-	void dispose_subroutine(u32 begin, u32 end);
+	void dispose_subroutine(uintptr_t begin, uintptr_t end);
 	bool dispose(void*, u32);
 	void dispose(void*, void*);
 	void dispose();

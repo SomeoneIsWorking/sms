@@ -30,66 +30,41 @@ f32 J3DCalcZValue(MtxPtr m, Vec v)
 }
 #pragma pop
 
-asm bool J3DPSCalcInverseTranspose(register MtxPtr src, register ROMtxPtr dst)
+// Native reimplementation of the Metrowerks paired-single inverse-transpose
+// kernel (a copy of PSMTXInverse that also transposes). Computes the
+// inverse-transpose of the upper-left 3x3 of `src` and stores it into `dst`
+// (a ROMtx, rows of 3). Used to transform normals. Returns false (and leaves
+// `dst` untouched) when the matrix is singular.
+bool J3DPSCalcInverseTranspose(MtxPtr src, ROMtxPtr dst)
 {
-	// NOTE: copy-paste of PSMTXInverse
-#ifdef __MWERKS__ // clang-format off
-	psq_l      f0, 0x0(src), 1, qr0
-	psq_l      f1, 0x4(src), 0, qr0
-	psq_l      f2, 0x10(src), 1, qr0
-	ps_merge10 f6, f1, f0
-	psq_l      f3, 0x14(src), 0, qr0
-	psq_l      f4, 0x20(src), 1, qr0
-	ps_merge10 f7, f3, f2
-	psq_l      f5, 0x24(src), 0, qr0
-	ps_mul     f11, f3, f6
-	ps_merge10 f8, f5, f4
-	ps_mul     f13, f5, f7
-	ps_msub    f11, f1, f7, f11
-	ps_mul     f12, f1, f8
-	ps_msub    f13, f3, f8, f13
-	ps_msub    f12, f5, f6, f12
-	ps_mul     f10, f3, f4
-	ps_mul     f9, f0, f5
-	ps_mul     f8, f1, f2
-	ps_msub    f10, f2, f5, f10
-	ps_msub    f9, f1, f4, f9
-	ps_msub    f8, f0, f3, f8
-	ps_mul     f7, f0, f13
-	ps_sub     f1, f1, f1
-	ps_madd    f7, f2, f12, f7
-	ps_madd    f7, f4, f11, f7
+	f32 m00 = src[0][0], m01 = src[0][1], m02 = src[0][2];
+	f32 m10 = src[1][0], m11 = src[1][1], m12 = src[1][2];
+	f32 m20 = src[2][0], m21 = src[2][1], m22 = src[2][2];
 
-	ps_cmpo0 cr0, f7, f1
-	bne skip
-	li r3, 0x0
-	blr
+	f32 c00 =  (m11 * m22 - m12 * m21);
+	f32 c01 = -(m10 * m22 - m12 * m20);
+	f32 c02 =  (m10 * m21 - m11 * m20);
 
-skip:
-	fres     f0, f7
-	ps_add   f6, f0, f0
-	ps_mul   f5, f0, f0
-	ps_nmsub f0, f7, f5, f6
-	ps_add   f6, f0, f0
-	ps_mul   f5, f0, f0
-	ps_nmsub f0, f7, f5, f6
-	ps_muls0 f13, f13, f0
-	ps_muls0 f12, f12, f0
-	psq_st   f13, 0x0(dst), 0, qr0
-	ps_muls0 f11, f11, f0
-	psq_st   f12, 0xc(dst), 0, qr0
-	ps_muls0 f10, f10, f0
-	psq_st   f11, 0x18(dst), 0, qr0
-	ps_muls0 f9, f9, f0
-	psq_st   f10, 0x8(dst), 1, qr0
-	ps_muls0 f8, f8, f0
-	psq_st   f9, 0x14(dst), 1, qr0
-	// TODO: supposedly, this should go one line lower and mwcc
-	// should optimize it to happen one line earlier by itself?!
-	// #pragma optimizewithasm on doesn't work
-	li r3, 0x1
-	psq_st   f8, 0x20(dst), 1, qr0
-#endif // clang-format on
+	f32 det = m00 * c00 + m01 * c01 + m02 * c02;
+	if (det == 0.0f)
+		return false;
+
+	f32 inv = 1.0f / det;
+
+	// inverse-transpose = cofactor / det
+	dst[0][0] = c00 * inv;
+	dst[0][1] = c01 * inv;
+	dst[0][2] = c02 * inv;
+
+	dst[1][0] = -(m01 * m22 - m02 * m21) * inv;
+	dst[1][1] =  (m00 * m22 - m02 * m20) * inv;
+	dst[1][2] = -(m00 * m21 - m01 * m20) * inv;
+
+	dst[2][0] =  (m01 * m12 - m02 * m11) * inv;
+	dst[2][1] = -(m00 * m12 - m02 * m10) * inv;
+	dst[2][2] =  (m00 * m11 - m01 * m10) * inv;
+
+	return true;
 }
 
 void J3DGetTranslateRotateMtx(const J3DTransformInfo& tx, Mtx dst)
@@ -239,364 +214,101 @@ void J3DGetTextureMtxMayaOld(const J3DTextureSRTInfo& srt, Mtx dst)
 	dst[2][3] = 0.0f;
 }
 
-void J3DScaleNrmMtx33(register ROMtxPtr mtx, const register Vec& scl)
+// Native reimplementation: scale each row of the 3x3 (ROMtx layout, rows of 3)
+// component-wise by the scale vector: mtx[i][j] *= scl[j].
+void J3DScaleNrmMtx33(ROMtxPtr mtx, const Vec& scl)
 {
-	register f32 mtx0_xy, mtx0_z_;
-	register f32 mtx1_xy, mtx1_z_;
-	register f32 mtx2_xy, mtx2_z_;
-	register f32 scl__xy, scl__z_;
-#ifdef __MWERKS__ // clang-format off
-	asm {
-		psq_l  mtx0_xy, 0(mtx), 0, qr0
-		psq_l  scl__xy, 0(scl), 0, qr0
-		lfs    mtx0_z_, 8(mtx)
-		lfs    scl__z_, 8(scl)
-		ps_mul mtx0_xy, mtx0_xy, scl__xy
-		psq_l  mtx1_xy, 12(mtx), 0, qr0
-		fmuls  mtx0_z_, mtx0_z_, scl__z_
-		lfs    mtx1_z_, 20(mtx)
-		ps_mul mtx1_xy, mtx1_xy, scl__xy
-		psq_l  mtx2_xy, 24(mtx), 0, qr0
-		fmuls  mtx1_z_, mtx1_z_, scl__z_
-		lfs    mtx2_z_, 32(mtx)
-		ps_mul mtx2_xy, mtx2_xy, scl__xy
-		psq_st mtx0_xy, 0(mtx), 0, qr0
-		fmuls  mtx2_z_, mtx2_z_, scl__z_
-		stfs   mtx0_z_, 8(mtx)
-		psq_st mtx1_xy, 12(mtx), 0, qr0
-		stfs   mtx1_z_, 20(mtx)
-		psq_st mtx2_xy, 24(mtx), 0, qr0
-		stfs   mtx2_z_, 32(mtx)
+	for (int i = 0; i < 3; i++) {
+		mtx[i][0] *= scl.x;
+		mtx[i][1] *= scl.y;
+		mtx[i][2] *= scl.z;
 	}
-#endif // clang-format on
 }
 
-void J3DMtxProjConcat(register Mtx param_1, register Mtx param_2,
-                      register Mtx result)
+// Native reimplementation of the paired-single projection concat:
+//   result(3x4) = param_1(3x4) x param_2(4x4)
+// param_1's 4th column multiplies param_2's 4th row (full 4x4 second operand).
+void J3DMtxProjConcat(MtxPtr param_1, MtxPtr param_2, MtxPtr result)
 {
-	// TODO: register naming (but does it really matter though)
-#ifdef __MWERKS__ // clang-format off
-	asm {
-		psq_l      f2, 0x0(param_1), 0, qr0
-		psq_l      f3, 0x8(param_1), 0, qr0
-		ps_merge00 f6, f2, f2
-		ps_merge11 f7, f2, f2
-		ps_merge00 f8, f3, f3
-		ps_merge11 f9, f3, f3
-		psq_l      f10, 0x0(param_2),  0, qr0
-		psq_l      f11, 0x10(param_2), 0, qr0
-		psq_l      f12, 0x20(param_2), 0, qr0
-		psq_l      f13, 0x30(param_2), 0, qr0
-		ps_mul     f0, f6, f10
-		ps_madd    f0, f7, f11, f0
-		ps_madd    f0, f8, f12, f0
-		ps_madd    f0, f9, f13, f0
-		psq_st     f0, 0x0(result), 0, 0
-
-		psq_l      f10, 0x8(param_2),  0, qr0
-		psq_l      f11, 0x18(param_2), 0, qr0
-		psq_l      f12, 0x28(param_2), 0, qr0
-		psq_l      f13, 0x38(param_2), 0, qr0
-		ps_mul     f0, f6, f10
-		ps_madd    f0, f7, f11, f0
-		ps_madd    f0, f8, f12, f0
-		ps_madd    f0, f9, f13, f0
-		psq_st     f0, 0x8(result), 0, qr0
-
-		psq_l      f2, 0x10(param_1), 0, qr0
-		psq_l      f3, 0x18(param_1), 0, qr0
-		ps_merge00 f6, f2, f2
-		ps_merge11 f7, f2, f2
-		ps_merge00 f8, f3, f3
-		ps_merge11 f9, f3, f3
-		psq_l      f10, 0x0(param_2),  0, qr0
-		psq_l      f11, 0x10(param_2), 0, qr0
-		psq_l      f12, 0x20(param_2), 0, qr0
-		psq_l      f13, 0x30(param_2), 0, qr0
-		ps_mul     f0, f6, f10
-		ps_madd    f0, f7, f11, f0
-		ps_madd    f0, f8, f12, f0
-		ps_madd    f0, f9, f13, f0
-		psq_st     f0, 0x10(result), 0, qr0
-
-		psq_l      f10, 0x8(param_2),  0, qr0
-		psq_l      f11, 0x18(param_2), 0, qr0
-		psq_l      f12, 0x28(param_2), 0, qr0
-		psq_l      f13, 0x38(param_2), 0, qr0
-		ps_mul     f0, f6, f10
-		ps_madd    f0, f7, f11, f0
-		ps_madd    f0, f8, f12, f0
-		ps_madd    f0, f9, f13, f0
-		psq_st     f0, 0x18(result), 0, qr0
-
-		psq_l      f2, 0x20(param_1), 0, qr0
-		psq_l      f3, 0x28(param_1), 0, qr0
-		ps_merge00 f6, f2, f2
-		ps_merge11 f7, f2, f2
-		ps_merge00 f8, f3, f3
-		ps_merge11 f9, f3, f3
-		psq_l      f10, 0x0(param_2),  0, qr0
-		psq_l      f11, 0x10(param_2), 0, qr0
-		psq_l      f12, 0x20(param_2), 0, qr0
-		psq_l      f13, 0x30(param_2), 0, qr0
-		ps_mul     f0, f6, f10
-		ps_madd    f0, f7, f11, f0
-		ps_madd    f0, f8, f12, f0
-		ps_madd    f0, f9, f13, f0
-		psq_st     f0, 0x20(result), 0, qr0
-
-		psq_l      f10, 0x8(param_2),  0, qr0
-		psq_l      f11, 0x18(param_2), 0, qr0
-		psq_l      f12, 0x28(param_2), 0, qr0
-		psq_l      f13, 0x38(param_2), 0, qr0
-		ps_mul     f0, f6, f10
-		ps_madd    f0, f7, f11, f0
-		ps_madd    f0, f8, f12, f0
-		ps_madd    f0, f9, f13, f0
-		psq_st     f0, 0x28(result), 0, qr0
+	for (int i = 0; i < 3; i++) {
+		for (int k = 0; k < 4; k++) {
+			result[i][k] = param_1[i][0] * param_2[0][k]
+			             + param_1[i][1] * param_2[1][k]
+			             + param_1[i][2] * param_2[2][k]
+			             + param_1[i][3] * param_2[3][k];
+		}
 	}
-#endif // clang-format on
 }
 
-void J3DPSMtx33Copy(register ROMtxPtr src, register ROMtxPtr dst)
+// Native reimplementation: copy a 3x3 matrix (ROMtx, 9 contiguous floats).
+void J3DPSMtx33Copy(ROMtxPtr src, ROMtxPtr dst)
 {
-	register f32 x1_y1;
-	register f32 z1_x2;
-	register f32 y2_z2;
-	register f32 x3_y3;
-	register f32 z3;
-#ifdef __MWERKS__ // clang-format off
-	asm {
-		psq_l x1_y1, 0(src),  0, qr0
-		psq_l z1_x2, 8(src),  0, qr0
-		psq_l y2_z2, 16(src), 0, qr0
-		psq_l x3_y3, 24(src), 0, qr0
-		lfs z3, 32(src)
+	for (int i = 0; i < 3; i++)
+		for (int j = 0; j < 3; j++)
+			dst[i][j] = src[i][j];
+}
 
-		psq_st x1_y1, 0(dst),  0, qr0
-		psq_st z1_x2, 8(dst),  0, qr0
-		psq_st y2_z2, 16(dst), 0, qr0
-		psq_st x3_y3, 24(dst), 0, qr0
-		stfs z3, 32(dst)
+// Native reimplementation: copy the upper-left 3x3 of a 3x4 matrix (`src`,
+// MtxPtr) into a 3x3 ROMtx (`dst`).
+void J3DPSMtx33CopyFrom34(MtxPtr src, ROMtxPtr dst)
+{
+	for (int i = 0; i < 3; i++)
+		for (int j = 0; j < 3; j++)
+			dst[i][j] = src[i][j];
+}
+
+// Native reimplementation: copy an array of `size` 3x4 matrices (each 12 floats)
+// from `src` to `dst`.
+void J3DPSMtxArrayCopy(MtxPtr src, MtxPtr dst, u32 size)
+{
+	for (u32 m = 0; m < size; m++) {
+		for (int i = 0; i < 3; i++)
+			for (int j = 0; j < 4; j++)
+				dst[m * 3 + i][j] = src[m * 3 + i][j];
 	}
-#endif // clang-format on
 }
 
-asm void J3DPSMtx33CopyFrom34(register MtxPtr src, register ROMtxPtr dst)
+// Native reimplementation: for each k, dst[k] = mat1 x mat2[param_3[k]], an
+// affine 3x4 concat where mat1 is a single 3x4 matrix, mat2 is an array of 3x4
+// matrices indexed by the u16 index array param_3 (one index per output).
+void J3DMTXConcatArrayIndexedSrc(const float (*mat1)[4],
+                                 const float (*mat2)[3][4],
+                                 const u16* param_3, Mtx* dst, u32 count)
 {
-#ifdef __MWERKS__ // clang-format off
-	psq_l  f0, 0(src), 0, qr0
-	psq_st f0, 0(dst), 0, qr0
-
-	lfs    f1, 8(src)
-	stfs   f1, 8(dst)
-
-	psq_l  f2, 16(src), 0, qr0
-	psq_st f2, 12(dst), 0, qr0
-
-	lfs    f3, 24(src)
-	stfs   f3, 20(dst)
-
-	psq_l  f4, 32(src), 0, qr0
-	psq_st f4, 24(dst), 0, qr0
-
-	lfs    f5, 40(src)
-	stfs   f5, 32(dst)
-#endif // clang-format on
-}
-
-asm void J3DPSMtxArrayCopy(register MtxPtr src, register MtxPtr dst,
-                           register u32 size)
-{
-	// NOTE: I'm almost sure this weird `subi` was not generated automatically
-	// and rather the entire function was coded in asm
-#ifdef __MWERKS__ // clang-format off
-	subi src, src, 0x8
-	subi dst, dst, 0x8
-	mtctr size
-loop:
-	psq_l   f0, 0x8(src),  0, qr0
-	psq_st  f0, 0x8(dst),  0, qr0
-
-	psq_l   f1, 0x10(src), 0, qr0
-	psq_st  f1, 0x10(dst), 0, qr0
-
-	psq_l   f2, 0x18(src), 0, qr0
-	psq_st  f2, 0x18(dst), 0, qr0
-
-	psq_l   f3, 0x20(src), 0, qr0
-	psq_st  f3, 0x20(dst), 0, qr0
-
-	psq_l   f4, 0x28(src), 0, qr0
-	psq_st  f4, 0x28(dst), 0, qr0
-
-	psq_lu  f5, 0x30(src), 0, qr0
-	psq_stu f5, 0x30(dst), 0, qr0
-	bdnz loop
-#endif // clang-format on
-}
-
-void J3DMTXConcatArrayIndexedSrc(register const float (*mat1)[4],
-                                 register const float (*mat2)[3][4],
-                                 register const u16* param_3, register Mtx* dst,
-                                 register u32 count)
-{
-	register float* unit01 = Unit01;
-	register u16 tmp       = param_3[0];
-
-#ifdef __MWERKS__ // clang-format off
-	asm {
-		psq_l f0, 0x0(mat1), 0, qr0
-		mtctr count
-
-		psq_l     f2, 0x10(mat1), 0, qr0
-		mulli     tmp, tmp, 0x30
-		psq_l     f4, 0x20(mat1), 0, qr0
-		psq_lx    f6, mat2, tmp, 0, qr0
-		add       r7, mat2, tmp
-		ps_muls0  f9, f6, f0
-		psq_l     f7, 0x10(r7), 0, qr0
-		ps_muls0  f10, f6, f2
-		ps_muls0  f11, f6, f4
-		psq_l     f8, 0x20(r7), 0, qr0
-		ps_madds1 f9, f7, f0, f9
-		psq_l     f1, 0x8(mat1), 0, qr0
-		ps_madds1 f10, f7, f2, f10
-		psq_l     f3, 0x18(mat1), 0, qr0
-		ps_madds1 f11, f7, f4, f11
-		psq_l     f5, 0x28(mat1), 0, qr0
-		ps_madds0 f9, f8, f1, f9
-		psq_l     f6, 0x8(r7), 0, qr0
-		ps_madds0 f10, f8, f3, f10
-		ps_madds0 f11, f8, f5, f11
-		psq_l     f7, 0x18(r7), 0, qr0
-		psq_st    f9, 0x0(dst), 0, qr0
-		ps_muls0  f8, f6, f0
-		ps_muls0  f9, f6, f2
-		ps_muls0  f12, f6, f4
-		psq_l     f6, 0x28(r7), 0, qr0
-		psq_st    f10, 0x10(dst), 0, qr0
-		ps_madds1 f8, f7, f0, f8
-		ps_madds1 f9, f7, f2, f9
-		ps_madds1 f12, f7, f4, f12
-		psq_l     f13, 0x0(unit01), 0, qr0
-		psq_st    f11, 0x20(dst), 0, qr0
-
-	loop:
-		ps_madds0 f8,  f6, f1, f8
-		ps_madds0 f9,  f6, f3, f9
-		ps_madds0 f12, f6, f5, f12
-		ps_madd   f8,  f13, f1, f8
-		ps_madd   f9,  f13, f3, f9
-		ps_madd   f12, f13, f5, f12
-		psq_st    f8,  0x8(dst),  0, qr0
-		psq_st    f9,  0x18(dst), 0, qr0
-		psq_st    f12, 0x28(dst), 0, qr0
-
-		bdz end
-
-		lhzu      tmp, 0x2(param_3)
-		addi      dst, dst, 0x30
-		mulli     tmp, tmp, 0x30
-
-		psq_lx    f6, mat2, tmp, 0, qr0
-		add       r7, mat2, tmp
-		ps_muls0  f9, f6, f0
-		psq_l     f7, 0x10(r7), 0, qr0
-		ps_muls0  f10, f6, f2
-		ps_muls0  f11, f6, f4
-		psq_l     f8, 0x20(r7), 0, qr0
-		ps_madds1 f9, f7, f0, f9
-		ps_madds1 f10, f7, f2, f10
-		ps_madds1 f11, f7, f4, f11
-		psq_l     f6, 0x8(r7), 0, qr0
-		ps_madds0 f9, f8, f1, f9
-		ps_madds0 f10, f8, f3, f10
-		ps_madds0 f11, f8, f5, f11
-		psq_l     f7, 0x18(r7), 0, qr0
-		psq_st    f9, 0x0(dst), 0, qr0
-		ps_muls0  f8, f6, f0
-		ps_muls0  f9, f6, f2
-		ps_muls0  f12, f6, f4
-		psq_l     f6, 0x28(r7), 0, qr0
-		psq_st    f10, 0x10(dst), 0, qr0
-		ps_madds1 f8, f7, f0, f8
-		ps_madds1 f9, f7, f2, f9
-		ps_madds1 f12, f7, f4, f12
-		psq_st    f11, 0x20(dst), 0, qr0
-		b loop
-	end:
+	for (u32 k = 0; k < count; k++) {
+		const float (*src)[4] = mat2[param_3[k]];
+		for (int i = 0; i < 3; i++) {
+			for (int j = 0; j < 4; j++) {
+				f32 v = mat1[i][0] * src[0][j]
+				      + mat1[i][1] * src[1][j]
+				      + mat1[i][2] * src[2][j];
+				if (j == 3)
+					v += mat1[i][3];
+				dst[k][i][j] = v;
+			}
+		}
 	}
-#endif // clang-format on
 }
 
-asm void J3DPSMtxArrayConcat(register Mtx fst, register Mtx snd,
-                             register Mtx dst, register u32 size)
+// Native reimplementation: concatenate the single 3x4 affine matrix `fst` with
+// each of the `size` matrices in the `snd` array, writing dst[k] = fst x snd[k].
+// Each matrix is a 3x4 affine (implicit 4th row [0,0,0,1]).
+void J3DPSMtxArrayConcat(Mtx fst, Mtx snd, Mtx dst, u32 size)
 {
-#ifdef __MWERKS__ // clang-format off
-	nofralloc
-
-	stwu r1, -0x40(r1)
-	stfd f14, 0x8(r1)
-	lis r7, Unit01@ha
-	stfd f15, 0x10(r1)
-	addi r7, r7, Unit01@l
-	stfd f31, 0x28(r1)
-
-	subi snd, snd, 0x8
-	subi dst, dst, 0x8
-
-	mtctr size
-
-loop:
-	psq_l     f0, 0x0(fst), 0, qr0
-	psq_l     f6, 0x8(snd), 0, qr0
-	psq_l     f7, 0x10(snd), 0, qr0
-	psq_l     f8, 0x18(snd), 0, qr0
-	ps_muls0  f12, f6, f0
-	psq_l     f2, 0x10(fst), 0, qr0
-	ps_muls0  f13, f7, f0
-	psq_l     f31, 0x0(r7), 0, qr0
-	ps_muls0  f14, f6, f2
-	psq_l     f9, 0x20(snd), 0, qr0
-	ps_muls0  f15, f7, f2
-	psq_l     f1, 0x8(fst), 0, qr0
-	ps_madds1 f12, f8, f0, f12
-	psq_l     f3, 0x18(fst), 0, qr0
-	ps_madds1 f14, f8, f2, f14
-	psq_l     f10, 0x28(snd), 0, qr0
-	ps_madds1 f13, f9, f0, f13
-	psq_lu    f11, 0x30(snd), 0, qr0
-	ps_madds1 f15, f9, f2, f15
-	psq_l     f4, 0x20(fst), 0, qr0
-	psq_l     f5, 0x28(fst), 0, qr0
-	ps_madds0 f12, f10, f1, f12
-	ps_madds0 f13, f11, f1, f13
-	ps_madds0 f14, f10, f3, f14
-	ps_madds0 f15, f11, f3, f15
-	psq_st    f12, 0x8(dst), 0, qr0
-	ps_muls0  f2, f6, f4
-	ps_madds1 f13, f31, f1, f13
-	ps_muls0  f0, f7, f4
-	psq_st    f14, 0x18(dst), 0, qr0
-	ps_madds1 f15, f31, f3, f15
-	psq_st    f13, 0x10(dst), 0, qr0
-	ps_madds1 f2, f8, f4, f2
-	ps_madds1 f0, f9, f4, f0
-	ps_madds0 f2, f10, f5, f2
-	psq_st    f15, 0x20(dst), 0, qr0
-	ps_madds0 f0, f11, f5, f0
-	psq_st    f2, 0x28(dst), 0, qr0
-	ps_madds1 f0, f31, f5, f0
-	psq_stu   f0, 0x30(dst), 0, qr0
-
-	bdnz loop
-
-	lfd f14, 0x8(r1)
-	lfd f15, 0x10(r1)
-	lfd f31, 0x28(r1)
-	addi r1, r1, 0x40
-
-	blr
-#endif // clang-format on
+	MtxPtr s = (MtxPtr)snd;
+	MtxPtr d = (MtxPtr)dst;
+	for (u32 m = 0; m < size; m++) {
+		MtxPtr sm = s + m * 3;
+		MtxPtr dm = d + m * 3;
+		for (int i = 0; i < 3; i++) {
+			for (int j = 0; j < 4; j++) {
+				f32 v = fst[i][0] * sm[0][j]
+				      + fst[i][1] * sm[1][j]
+				      + fst[i][2] * sm[2][j];
+				if (j == 3)
+					v += fst[i][3];
+				dm[i][j] = v;
+			}
+		}
+	}
 }
