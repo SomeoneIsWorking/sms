@@ -29,6 +29,12 @@ JKRExpHeap* JKRExpHeap::createRoot(int maxHeaps, bool errorFlag)
 		heap = new (memory) JKRExpHeap(start, alignedSize, nullptr, errorFlag);
 		sRootHeap = heap;
 	}
+	// If the root heap already existed (e.g. the native platform created it during
+	// PlatformInit so operator new works before the game's own createRoot call), the
+	// `heap` local is still null here — load it from sRootHeap so this is idempotent
+	// and returns the existing root instead of dereferencing null.
+	if (!heap)
+		heap = static_cast<JKRExpHeap*>(sRootHeap);
 	heap->mIsRoot = true;
 #ifdef SMS_NATIVE_PLATFORM
 	if (getenv("SB_HEAP_DBG"))
