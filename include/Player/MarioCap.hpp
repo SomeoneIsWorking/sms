@@ -18,7 +18,7 @@ public:
 
 	TMarioCap(TMario*);
 
-	virtual void perform(unsigned long, JDrama::TGraphics*);
+	virtual void perform(u32, JDrama::TGraphics*);
 
 	void createMirrorCap();
 	void mtxEffectHide();

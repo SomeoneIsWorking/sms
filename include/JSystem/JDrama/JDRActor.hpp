@@ -25,7 +25,7 @@ public:
 
 	virtual int getType() const;
 	virtual void load(JSUMemoryInputStream&);
-	void issueGXLight(unsigned long, JDrama::TGraphics*);
+	void issueGXLight(u32, JDrama::TGraphics*);
 
 	virtual void perform(u32, TGraphics*);
 

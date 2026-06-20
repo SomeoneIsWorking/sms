@@ -76,8 +76,8 @@ public:
 
 class TDamageObj : public THitActor {
 public:
-	void perform(unsigned long, JDrama::TGraphics*);
-	void init(unsigned long);
+	void perform(u32, JDrama::TGraphics*);
+	void init(u32);
 	void load(JSUMemoryInputStream&);
 	TDamageObj(const char* name = "ダメージオブジェ")
 	    : THitActor(name)
@@ -99,7 +99,7 @@ public:
 
 class THideObjInfo : public JDrama::TViewObj {
 public:
-	void perform(unsigned long, JDrama::TGraphics*);
+	void perform(u32, JDrama::TGraphics*);
 	void action(long);
 	void load(JSUMemoryInputStream&);
 	THideObjInfo(const char* name = "オブジェ出現情報");
@@ -108,7 +108,7 @@ public:
 class TMapObjSwitch : public TMapObjBase {
 public:
 	void control();
-	BOOL receiveMessage(THitActor*, unsigned long);
+	BOOL receiveMessage(THitActor*, u32);
 	void registerObjInfo(THideObjInfo*);
 	void load(JSUMemoryInputStream&);
 	TMapObjSwitch(const char* name = "オブジェスイッチ");
@@ -116,7 +116,7 @@ public:
 
 class TRedCoinSwitch : public TMapObjBase {
 public:
-	BOOL receiveMessage(THitActor*, unsigned long);
+	BOOL receiveMessage(THitActor*, u32);
 	void control();
 	void loadAfter();
 	void load(JSUMemoryInputStream&);
