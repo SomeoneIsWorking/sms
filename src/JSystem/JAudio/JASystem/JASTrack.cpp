@@ -669,6 +669,7 @@ s8 TTrack::mainProc()
 	mIntrMgr.timerProcess();
 
 	s32 retcode;
+	u32 r31 = 0; // hoisted above `goto bail` so the goto doesn't cross its init
 	do {
 		if (!(mSeqCtrl.mPreviousFilePtr != 0 ? true : false)) {
 			void* intr = mIntrMgr.checkIntr();
@@ -705,7 +706,7 @@ s8 TTrack::mainProc()
 			return -1;
 	} while (retcode == -2);
 
-	u32 r31 = 0;
+	r31 = 0; // declared above the do-loop (hoisted past goto bail)
 	for (int i = 0; i != TIMED_Count; ++i) {
 		MoveParam_* param = &mTimedParam.mMoveParams[i];
 		if (param->mMoveTime > 0.0f) {

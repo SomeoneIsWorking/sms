@@ -1,3 +1,4 @@
+#include <cctype> // std::tolower (decomp got it transitively via MSL)
 #include <MoveBG/MapObjBase.hpp>
 #include <MoveBG/MapObjTurn.hpp>
 #include <MoveBG/MapObjMessenger.hpp>
