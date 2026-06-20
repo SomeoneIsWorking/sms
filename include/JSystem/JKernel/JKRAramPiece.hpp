@@ -59,7 +59,7 @@ public:
 	static bool sync(JKRAMCommand*, int);
 	static bool orderSync(int, u32, u32, u32, JKRAramBlock*);
 	static void startDMA(JKRAMCommand*);
-	static void doneDMA(u32);
+	static void doneDMA(ARQRequestRef);
 
 private:
 	static void lock() { OSLockMutex(&mMutex); }
