@@ -118,6 +118,11 @@ void* SMSLoadArchive(const char* param_1, void* param_2, u32 param_3,
 	if (loc != nullptr) {
 		strcpy(loc, ".szs");
 		s32 entryNum = DVDConvertPathToEntrynum(compressedArcPath);
+#ifdef SMS_NATIVE_PLATFORM
+		if (getenv("SB_ARC_DBG"))
+			OSReport("[SBDBG] SMSLoadArchive szs=%s entryNum=%d\n",
+			         compressedArcPath, entryNum);
+#endif
 		if (entryNum != -1) {
 			result = JKRDvdRipper::loadToMainRAM(
 			    compressedArcPath, (u8*)param_2, EXPAND_SWITCH_DECOMPRESS,
@@ -131,6 +136,10 @@ void* SMSLoadArchive(const char* param_1, void* param_2, u32 param_3,
 		result = JKRDvdRipper::loadToMainRAM(
 		    param_1, (u8*)param_2, EXPAND_SWITCH_DEFAULT, param_3, param_4,
 		    JKRDvdRipper::ALLOC_DIRECTION_FORWARD, 0, nullptr);
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_ARC_DBG"))
+		OSReport("[SBDBG] SMSLoadArchive(%s) -> %p\n", param_1, result);
+#endif
 
 	return result;
 }
