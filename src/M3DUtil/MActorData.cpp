@@ -226,51 +226,111 @@ char* MActorAnmData::getSimpleName(const char* file_name)
 
 void MActorAnmData::addFileTable(const char* param_1)
 {
-	if (strstr(param_1, ".bck") != nullptr) {
-		char* simple_name = getSimpleName(param_1);
-		unk2C->unk8[unk4] = simple_name;
-		u16 key           = MActorCalcKeyCode(simple_name);
-		unk2C->unk4[unk4] = key;
+	char* pcVar1;
+	size_t sVar2;
+	size_t sVar3;
+	u16 uVar4;
+	u32 uVar5;
+
+	pcVar1 = (char*)strstr(param_1, ".bck");
+	if (pcVar1 != (char*)0x0) {
+		sVar2  = strlen(param_1);
+		pcVar1 = (char*)strrchr(param_1, 0x2e);
+		sVar3  = strlen(pcVar1);
+		uVar5  = sVar2 - (sVar3 - 1);
+		pcVar1 = new char[uVar5];
+		snprintf(pcVar1, uVar5, "%s", param_1);
+		uVar4             = 0;
+		unk2C->unk8[unk4] = pcVar1;
+		while (*pcVar1 != '\0') {
+			uVar4 = *pcVar1++ + uVar4 * 5;
+		}
+		unk2C->unk4[unk4] = uVar4;
 		++unk4;
 	}
 
-	if (strstr(param_1, ".bpk") != nullptr) {
-		char* simple_name = getSimpleName(param_1);
-		unk30->unk8[unkC] = simple_name;
-		u16 key           = MActorCalcKeyCode(simple_name);
-		unk30->unk4[unkC] = key;
+	pcVar1 = (char*)strstr(param_1, ".bpk");
+	if (pcVar1 != (char*)0x0) {
+		sVar2  = strlen(param_1);
+		pcVar1 = (char*)strrchr(param_1, 0x2e);
+		sVar3  = strlen(pcVar1);
+		uVar5  = sVar2 - (sVar3 - 1);
+		pcVar1 = new char[uVar5];
+		snprintf(pcVar1, uVar5, "%s", param_1);
+		uVar4             = 0;
+		unk30->unk8[unkC] = pcVar1;
+		while (*pcVar1 != '\0') {
+			uVar4 = *pcVar1++ + uVar4 * 5;
+		}
+		unk30->unk4[unkC] = uVar4;
 		++unkC;
 	}
 
-	if (strstr(param_1, ".btp") != nullptr) {
-		char* simple_name  = getSimpleName(param_1);
-		unk34->unk8[unk10] = simple_name;
-		u16 key            = MActorCalcKeyCode(simple_name);
-		unk34->unk4[unk10] = key;
+	pcVar1 = (char*)strstr(param_1, ".btp");
+	if (pcVar1 != (char*)0x0) {
+		sVar2  = strlen(param_1);
+		pcVar1 = (char*)strrchr(param_1, 0x2e);
+		sVar3  = strlen(pcVar1);
+		uVar5  = sVar2 - (sVar3 - 1);
+		pcVar1 = new char[uVar5];
+		snprintf(pcVar1, uVar5, "%s", param_1);
+		uVar4              = 0;
+		unk34->unk8[unk10] = pcVar1;
+		while (*pcVar1 != '\0') {
+			uVar4 = *pcVar1++ + uVar4 * 5;
+		}
+		unk34->unk4[unk10] = uVar4;
 		++unk10;
 	}
 
-	if (strstr(param_1, ".btk") != nullptr) {
-		char* simple_name  = getSimpleName(param_1);
-		unk38->unk8[unk14] = simple_name;
-		u16 key            = MActorCalcKeyCode(simple_name);
-		unk38->unk4[unk14] = key;
+	pcVar1 = (char*)strstr(param_1, ".btk");
+	if (pcVar1 != (char*)0x0) {
+		sVar2  = strlen(param_1);
+		pcVar1 = (char*)strrchr(param_1, 0x2e);
+		sVar3  = strlen(pcVar1);
+		uVar5  = sVar2 - (sVar3 - 1);
+		pcVar1 = new char[uVar5];
+		snprintf(pcVar1, uVar5, "%s", param_1);
+		uVar4              = 0;
+		unk38->unk8[unk14] = pcVar1;
+		while (*pcVar1 != '\0') {
+			uVar4 = *pcVar1++ + uVar4 * 5;
+		}
+		unk38->unk4[unk14] = uVar4;
 		++unk14;
 	}
 
-	if (strstr(param_1, ".brk") != nullptr) {
-		char* simple_name  = getSimpleName(param_1);
-		unk3C->unk8[unk18] = simple_name;
-		u16 key            = MActorCalcKeyCode(simple_name);
-		unk3C->unk4[unk18] = key;
+	pcVar1 = (char*)strstr(param_1, ".brk");
+	if (pcVar1 != (char*)0x0) {
+		sVar2  = strlen(param_1);
+		pcVar1 = (char*)strrchr(param_1, 0x2e);
+		sVar3  = strlen(pcVar1);
+		uVar5  = sVar2 - (sVar3 - 1);
+		pcVar1 = new char[uVar5];
+		snprintf(pcVar1, uVar5, "%s", param_1);
+		uVar4              = 0;
+		unk3C->unk8[unk18] = pcVar1;
+		while (*pcVar1 != '\0') {
+			uVar4 = *pcVar1++ + uVar4 * 5;
+		}
+		unk3C->unk4[unk18] = uVar4;
 		++unk18;
 	}
 
-	if (strstr(param_1, ".blk") != nullptr) {
-		char* simple_name = getSimpleName(param_1);
-		unk40->unk8[unk8] = simple_name;
-		u16 key           = MActorCalcKeyCode(simple_name);
-		unk40->unk4[unk8] = key;
+	pcVar1 = (char*)strstr(param_1, ".blk");
+	if (pcVar1 != (char*)0x0) {
+		sVar2  = strlen(param_1);
+		pcVar1 = (char*)strrchr(param_1, 0x2e);
+		sVar3  = strlen(pcVar1);
+		uVar5  = sVar2 - (sVar3 - 1);
+		pcVar1 = new char[uVar5];
+		snprintf(pcVar1, uVar5, "%s", param_1);
+		uVar4             = 0;
+		unk40->unk8[unk8] = pcVar1;
+		while (*pcVar1 != '\0') {
+			uVar4 = *pcVar1++ + uVar4 * 5;
+		}
+		unk40->unk4[unk8] = uVar4;
 		++unk8;
 	}
 }
