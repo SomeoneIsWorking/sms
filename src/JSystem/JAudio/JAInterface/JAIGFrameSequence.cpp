@@ -36,7 +36,7 @@ void JAIBasic::stopSeq(JAISound* param_1)
 void JAIBasic::checkEntriedSeq() { }
 
 #pragma dont_inline on
-void JAIBasic::checkPlayingSeqTrack(unsigned long trackID) { }
+void JAIBasic::checkPlayingSeqTrack(u32 trackID) { }
 #pragma dont_inline off
 
 void JAIBasic::checkPlayingSeq()
