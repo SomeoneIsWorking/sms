@@ -117,7 +117,13 @@ void TGCLogoDir::setup(JDrama::TDisplay* param_1, TMarioGamePad* param_2)
 	JDrama::TScreen* screen = new JDrama::TScreen(logoRendArea, "Screen 2D");
 	stageDisp->getUnk14()->getChildren().push_back(screen);
 	screen->assignCamera(proj);
-	screen->assignViewObj(stageDisp);
+	// The view object is the 2D content list, NOT stageDisp: the decomp had
+	// assignViewObj(stageDisp), which makes the screen's camera connecter point
+	// back to its own owning stageDisp (stageDisp -> unk14 list -> screen ->
+	// camConnecter -> stageDisp), an infinite perform() recursion / stack overflow
+	// (unkC flag masking is all-0 here, so nothing cuts it). Every other director
+	// (MovieDirector, MenuDir) assigns group2d here; match them.
+	screen->assignViewObj(group2d);
 
 	gpApplication.mFader->setColor(JUtility::TColor(0, 0, 0, 0));
 	gpApplication.mFader->startWipe(14, 0.4f, 0.0f);
