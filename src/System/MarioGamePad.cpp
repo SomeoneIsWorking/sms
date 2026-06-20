@@ -171,4 +171,7 @@ u32 TMarioGamePad::read()
 	if (checkReset(&resetPort)) {
 		handleReset(resetPort);
 	}
+	// NOTE (native fix): u32 read() with no return is UB the decomp inherited
+	// from MWERKS (result unused); GCC -O2 miscompiles on it. Return 0.
+	return 0;
 }

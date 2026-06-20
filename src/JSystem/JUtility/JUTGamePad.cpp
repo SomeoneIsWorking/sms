@@ -152,6 +152,13 @@ u32 JUTGamePad::read()
 	}
 
 	checkResetSwitch();
+	// NOTE (native fix): the decomp declares read() as u32 but has no return
+	// (a MWERKS-ism: the result is unused, so the original left r3 as-is).
+	// Falling off the end of a non-void function is UB; GCC -O2 exploits it
+	// (treats the function end as unreachable) and miscompiles the post-loop
+	// control flow -> the pad-list loop re-enters its body with a null link.
+	// reset_mask is the meaningful computed value; returning it is harmless.
+	return reset_mask;
 }
 
 void JUTGamePad::assign()
