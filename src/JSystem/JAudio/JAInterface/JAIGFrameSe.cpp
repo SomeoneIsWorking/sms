@@ -65,7 +65,7 @@ void JAIBasic::checkNextFrameSe()
 					if (it->unk24 == 0) {
 						pi->unk0 = JAIConst::dummyZeroVec;
 					} else {
-						MTXMultVec(unk8[uVar14].unk8, it->unk24, &pi->unk0);
+						MTXMultVec(unk8[uVar14].unk8, (Vec*)it->unk24, &pi->unk0);
 					}
 
 					pi->unk18 = pi->unk0.x * pi->unk0.x

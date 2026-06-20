@@ -7,7 +7,7 @@
 class JKRArchive;
 
 struct JKRFileFinderBase {
-	char* mFileName;    // _00
+	const char* mFileName; // _00 (const: only read as a string)
 	int mFileIndex;     // _04
 	u16 mFileID;        // _08
 	u16 mFileTypeFlags; // _0A

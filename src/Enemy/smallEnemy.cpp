@@ -240,7 +240,7 @@ void TSmallEnemy::attackToMario()
 	sendAttackMsgToMario();
 
 	// TODO: wtf
-	volatile JGeometry::TVec3<f32> local_14(0, 0, 0);
+	JGeometry::TVec3<f32> local_14(0, 0, 0);
 
 	JGeometry::TVec3<f32> local_20;
 	local_20.sub(mPosition, *gpMarioPos);

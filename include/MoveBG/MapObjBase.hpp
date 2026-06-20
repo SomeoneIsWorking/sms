@@ -208,19 +208,19 @@ public:
 	void initUnique();
 	void setMatTableTex(J3DMaterialTable*);
 	void setMatTable(J3DMaterialTable*);
-	JPABaseEmitter* emitAndRotate(long, unsigned char,
+	JPABaseEmitter* emitAndRotate(s32, unsigned char,
 	                              const JGeometry::TVec3<f32>*) const;
-	JPABaseEmitter* emitAndScale(long, unsigned char,
+	JPABaseEmitter* emitAndScale(s32, unsigned char,
 	                             const JGeometry::TVec3<f32>*,
 	                             const JGeometry::TVec3<f32>&) const;
-	JPABaseEmitter* emitAndBindScale(long, unsigned char,
+	JPABaseEmitter* emitAndBindScale(s32, unsigned char,
 	                                 const JGeometry::TVec3<f32>*,
 	                                 const JGeometry::TVec3<f32>&) const;
-	JPABaseEmitter* emitAndScale(long, unsigned char,
+	JPABaseEmitter* emitAndScale(s32, unsigned char,
 	                             const JGeometry::TVec3<f32>*) const;
-	JPABaseEmitter* emitAndRotateScale(long, unsigned char,
+	JPABaseEmitter* emitAndRotateScale(s32, unsigned char,
 	                                   const JGeometry::TVec3<f32>*) const;
-	JPABaseEmitter* emitAndSRT(long, unsigned char,
+	JPABaseEmitter* emitAndSRT(s32, unsigned char,
 	                           const JGeometry::TVec3<f32>*,
 	                           const JGeometry::TVec3<f32>&,
 	                           const JGeometry::TVec3<f32>&);
