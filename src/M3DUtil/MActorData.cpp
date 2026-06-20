@@ -208,10 +208,10 @@ void MActorAnmData::addFileTable(const char* param_1)
 	u16 uVar4;
 	u32 uVar5;
 
-	pcVar1 = strstr(param_1, ".bck");
+	pcVar1 = (char*)strstr(param_1, ".bck");
 	if (pcVar1 != (char*)0x0) {
 		sVar2  = strlen(param_1);
-		pcVar1 = strrchr(param_1, 0x2e);
+		pcVar1 = (char*)strrchr(param_1, 0x2e);
 		sVar3  = strlen(pcVar1);
 		uVar5  = sVar2 - (sVar3 - 1);
 		pcVar1 = new char[uVar5];
@@ -225,10 +225,10 @@ void MActorAnmData::addFileTable(const char* param_1)
 		++unk4;
 	}
 
-	pcVar1 = strstr(param_1, ".bpk");
+	pcVar1 = (char*)strstr(param_1, ".bpk");
 	if (pcVar1 != (char*)0x0) {
 		sVar2  = strlen(param_1);
-		pcVar1 = strrchr(param_1, 0x2e);
+		pcVar1 = (char*)strrchr(param_1, 0x2e);
 		sVar3  = strlen(pcVar1);
 		uVar5  = sVar2 - (sVar3 - 1);
 		pcVar1 = new char[uVar5];
@@ -242,10 +242,10 @@ void MActorAnmData::addFileTable(const char* param_1)
 		++unkC;
 	}
 
-	pcVar1 = strstr(param_1, ".btp");
+	pcVar1 = (char*)strstr(param_1, ".btp");
 	if (pcVar1 != (char*)0x0) {
 		sVar2  = strlen(param_1);
-		pcVar1 = strrchr(param_1, 0x2e);
+		pcVar1 = (char*)strrchr(param_1, 0x2e);
 		sVar3  = strlen(pcVar1);
 		uVar5  = sVar2 - (sVar3 - 1);
 		pcVar1 = new char[uVar5];
@@ -259,10 +259,10 @@ void MActorAnmData::addFileTable(const char* param_1)
 		++unk10;
 	}
 
-	pcVar1 = strstr(param_1, ".btk");
+	pcVar1 = (char*)strstr(param_1, ".btk");
 	if (pcVar1 != (char*)0x0) {
 		sVar2  = strlen(param_1);
-		pcVar1 = strrchr(param_1, 0x2e);
+		pcVar1 = (char*)strrchr(param_1, 0x2e);
 		sVar3  = strlen(pcVar1);
 		uVar5  = sVar2 - (sVar3 - 1);
 		pcVar1 = new char[uVar5];
@@ -276,10 +276,10 @@ void MActorAnmData::addFileTable(const char* param_1)
 		++unk14;
 	}
 
-	pcVar1 = strstr(param_1, ".brk");
+	pcVar1 = (char*)strstr(param_1, ".brk");
 	if (pcVar1 != (char*)0x0) {
 		sVar2  = strlen(param_1);
-		pcVar1 = strrchr(param_1, 0x2e);
+		pcVar1 = (char*)strrchr(param_1, 0x2e);
 		sVar3  = strlen(pcVar1);
 		uVar5  = sVar2 - (sVar3 - 1);
 		pcVar1 = new char[uVar5];
@@ -293,10 +293,10 @@ void MActorAnmData::addFileTable(const char* param_1)
 		++unk18;
 	}
 
-	pcVar1 = strstr(param_1, ".blk");
+	pcVar1 = (char*)strstr(param_1, ".blk");
 	if (pcVar1 != (char*)0x0) {
 		sVar2  = strlen(param_1);
-		pcVar1 = strrchr(param_1, 0x2e);
+		pcVar1 = (char*)strrchr(param_1, 0x2e);
 		sVar3  = strlen(pcVar1);
 		uVar5  = sVar2 - (sVar3 - 1);
 		pcVar1 = new char[uVar5];
