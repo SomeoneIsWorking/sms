@@ -1,5 +1,12 @@
 #include <dolphin/types.h>
 
+#ifdef SUNBRIGHT_NATIVE_HOST
+// Native host build: libstdc++ <cmath> already provides global float overloads
+// of sqrt/sqrtf/fabs/floor; the GC-approximation definitions below would be
+// conflicting redeclarations. Defer to the host (exact, fine for a native port).
+#include <cmath>
+#else
+
 #pragma cplusplus on
 
 extern inline float sqrtf(float x)
@@ -57,3 +64,5 @@ inline float floor(float x)
 }
 
 #pragma cplusplus reset
+
+#endif // SUNBRIGHT_NATIVE_HOST
