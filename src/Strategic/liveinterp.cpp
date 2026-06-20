@@ -595,14 +595,14 @@ void linPushNerve(TSpcTypedInterp<TLiveActor>* interp, u32 arg_num)
 
 template <> void TSpcTypedBinary<TLiveActor>::initUserBuiltin()
 {
-	bindSystemDataToSymbol("pushNerve", (u32)&linPushNerve);
-	bindSystemDataToSymbol("setBck", (u32)&linSetBck);
-	bindSystemDataToSymbol("setBpk", (u32)&linSetBpk);
-	bindSystemDataToSymbol("setBtp", (u32)&linSetBtp);
-	bindSystemDataToSymbol("setBtk", (u32)&linSetBtk);
-	bindSystemDataToSymbol("setBlk", (u32)&linSetBlk);
-	bindSystemDataToSymbol("setBls", (u32)&linSetBls);
-	bindSystemDataToSymbol("setSRT", (u32)&linSetSRT);
-	bindSystemDataToSymbol("getSRT", (u32)&linGetSRT);
-	bindSystemDataToSymbol("setAnmRate", (u32)&linSetAnmRate);
+	bindSystemDataToSymbol("pushNerve", (void*)&linPushNerve);
+	bindSystemDataToSymbol("setBck", (void*)&linSetBck);
+	bindSystemDataToSymbol("setBpk", (void*)&linSetBpk);
+	bindSystemDataToSymbol("setBtp", (void*)&linSetBtp);
+	bindSystemDataToSymbol("setBtk", (void*)&linSetBtk);
+	bindSystemDataToSymbol("setBlk", (void*)&linSetBlk);
+	bindSystemDataToSymbol("setBls", (void*)&linSetBls);
+	bindSystemDataToSymbol("setSRT", (void*)&linSetSRT);
+	bindSystemDataToSymbol("getSRT", (void*)&linGetSRT);
+	bindSystemDataToSymbol("setAnmRate", (void*)&linSetAnmRate);
 }
