@@ -24,7 +24,7 @@ public:
 		u8 getGroupId() const { return mGroupID; }
 		static CMemBlock* getBlock(void* data)
 		{
-			return (CMemBlock*)((uintptr_t)data + -0x10);
+			return (CMemBlock*)((uintptr_t)data - sizeof(CMemBlock));
 		}
 
 		u16 mUsageHeader;    // _00
@@ -33,6 +33,18 @@ public:
 		int mAllocatedSpace; // _04
 		CMemBlock* mPrev;    // _08
 		CMemBlock* mNext;    // _0C
+#ifdef SMS_NATIVE_PLATFORM
+		// On GC sizeof(CMemBlock) == 0x10 (4-byte links), and the allocator relies
+		// on content (= block + sizeof(CMemBlock), see getContent) being naturally
+		// aligned to the max alloc alignment (0x10): header size == alignment. On a
+		// 64-bit host the two link pointers grow the header to 0x18, so content is
+		// 0x10+8 -> misaligned, and allocating ~the whole free block (e.g.
+		// JKRSolidHeap::create(getFreeSize())) overflows by the 8-byte alignment
+		// offset and returns null. Pad the header up to a 0x10 multiple (0x20) so
+		// content stays 0x10-aligned. getContent/getHeapBlock use sizeof so they
+		// track this; the one hardcoded 0x10 (ctor initiate) is fixed in the .cpp.
+		u8 _pad[8]; // -> sizeof(CMemBlock) == 0x20
+#endif
 	};
 
 	JKRExpHeap(void* data, u32 size, JKRHeap* parent, bool errorFlag);
