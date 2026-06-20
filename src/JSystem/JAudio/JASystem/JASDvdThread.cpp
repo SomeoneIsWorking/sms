@@ -53,8 +53,8 @@ namespace Dvd {
 	static void allocDvdBuffer();
 	static void writeBufferSize(u8*, u32, u32);
 	static void updateBuffer();
-	static void aramDmaFinish(u32);
-	static void aramDmaFinish2(u32);
+	static void aramDmaFinish(ARQRequestRef);
+	static void aramDmaFinish2(ARQRequestRef);
 } // namespace Dvd
 
 void Dvd::init()
@@ -163,12 +163,20 @@ int Dvd::loadToDramDvdT(u32 param1, char* path, void* buffer, u32 size,
 	call->unk28 = size;
 	call->unk2C = param5;
 
+#ifdef SMS_NATIVE_PLATFORM
+	// PC: resource loading is synchronous (no background DVD worker thread, so no
+	// init-ordering race on msgBuf/callStackArray). loadToDramDvdTMain reads into
+	// the caller's own buffer and calls doFinish, so it runs inline cleanly.
+	(void)cs;
+	loadToDramDvdTMain(call);
+#else
 	if (mqInit) {
 		cs = getCallStack();
 		Calc::bcopy(call, (void**)cs + 1, 0x38);
 		*(void**)cs = (void*)&loadToDramDvdTMain;
 		OSSendMessage(&mq, cs, 1);
 	}
+#endif
 
 	return 0;
 }
@@ -260,12 +268,26 @@ int Dvd::loadToAramDvdT(u32 param1, char* path, void* buffer, u32 size,
 	call->unk28 = size;
 	call->unk2C = param5;
 
+#ifdef SMS_NATIVE_PLATFORM
+	// PC: synchronous load (see loadToDramDvdT). loadToAramDvdTMain needs the DVD
+	// scratch buffers that dvdProc normally allocates on the worker thread; set
+	// them up lazily here. The ARAM ARQ DMA is inert (ARQPostRequest completes
+	// instantly, native_jas plays waves from disc), so this just reads the .aw,
+	// validates it, and sets the load flag the wave bookkeeping waits on.
+	(void)cs;
+	if (buffersize == 0) {
+		u8* b = (u8*)Kernel::allocFromSysDram(dvdBufSize * 2);
+		writeBufferSize(b, 2, dvdBufSize);
+	}
+	loadToAramDvdTMain(call);
+#else
 	if (mqInit) {
 		cs = getCallStack();
 		Calc::bcopy(call, (void**)cs + 1, 0x38);
 		*(void**)cs = (void*)&loadToAramDvdTMain;
 		OSSendMessage(&mq, cs, 1);
 	}
+#endif
 
 	return 0;
 }
@@ -333,12 +355,21 @@ int Dvd::checkPassDvdT(u32 param1, u32* param2, void (*callback)(u32))
 	callData.unk30 = param2;
 	callData.unk34 = callback;
 
+#ifdef SMS_NATIVE_PLATFORM
+	// PC: synchronous (see loadToDramDvdT). On HW this is queued AFTER the load
+	// messages so it runs once they finish; with synchronous loads the load has
+	// already completed before this call, so running the callback inline preserves
+	// that ordering (e.g. finishSceneSet -> scene-wave load phase = 2).
+	(void)cs;
+	dvdThreadCheckBack(call);
+#else
 	if (mqInit) {
 		cs = getCallStack();
 		Calc::bcopy(call, (void**)cs + 1, 0x38);
 		*(void**)cs = (void*)&dvdThreadCheckBack;
 		OSSendMessage(&mq, cs, 1);
 	}
+#endif
 	return 0;
 }
 int Dvd::checkFile(char* path)
@@ -520,7 +551,7 @@ static void Dvd::updateBuffer()
 	nextBufferTop = 0;
 }
 
-static void Dvd::aramDmaFinish(u32 param) { --bufferFull; }
-static void Dvd::aramDmaFinish2(u32 param) { }
+static void Dvd::aramDmaFinish(ARQRequestRef param) { --bufferFull; }
+static void Dvd::aramDmaFinish2(ARQRequestRef param) { }
 
 } // namespace JASystem
