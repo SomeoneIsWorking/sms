@@ -3,7 +3,19 @@
 
 #include <dolphin/types.h>
 
-typedef void (*ARQCallback)(u32 pointerToARQRequest);
+// The ARQ completion callback receives the ARQRequest pointer as its argument. On
+// GC that is a 32-bit value; on a 64-bit host a real main-memory pointer (e.g.
+// JKRAMCommand's leading ARQRequest, which JKRAramPiece::doneDMA casts straight
+// back to JKRAMCommand*) cannot round-trip through a u32 -> it truncates to a wild
+// pointer. Widen the userdata to pointer width natively so the round-trip is
+// lossless (the SDK-signature widening the inert-ARAM seam note prescribed).
+#ifdef SMS_NATIVE_PLATFORM
+#include <stdint.h>
+typedef uintptr_t ARQRequestRef;
+#else
+typedef u32 ARQRequestRef;
+#endif
+typedef void (*ARQCallback)(ARQRequestRef pointerToARQRequest);
 
 struct ARQRequest {
 	/* 0x00 */ struct ARQRequest* next;
