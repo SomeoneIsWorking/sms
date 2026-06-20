@@ -9,6 +9,124 @@ IsLeadByte_func const JUTResFont::saoAboutEncoding_[3] = {
 	isLeadByte_ShiftJIS,
 };
 
+#ifdef SMS_NATIVE_PLATFORM
+// =============================================================================
+// Native PC build: ResFONT (.bfn) resources are GC BIG-ENDIAN, but the decomp
+// walks them via host-endian struct overlay (numBlocks, every block mType/mSize,
+// and all u16/u32 glyph/map/width header fields) -> misread on a little-endian
+// host (numBlocks huge, mSize wild -> getNext() walks off the buffer -> SEGV in
+// countBlock). Swap the metadata to host endian once at load (the same boundary
+// pattern as the RARC fix and native/assets/bmd_swap.cpp). Glyph TEXTURE bytes
+// and per-glyph WID1 width pairs stay as-is (byte/nibble data the GX texture
+// path and width lookup read directly). Idempotent (guards on the first block's
+// already-host tag) so a re-initiate on the same buffer is a no-op.
+// =============================================================================
+namespace {
+inline void fsw16(u8* p)
+{
+	u8 t = p[0];
+	p[0] = p[1];
+	p[1] = t;
+}
+inline void fsw32(u8* p)
+{
+	u8 t;
+	t = p[0]; p[0] = p[3]; p[3] = t;
+	t = p[1]; p[1] = p[2]; p[2] = t;
+}
+inline u32 fbe32(const u8* p)
+{
+	return ((u32)p[0] << 24) | ((u32)p[1] << 16) | ((u32)p[2] << 8) | (u32)p[3];
+}
+inline u16 fbe16(const u8* p) { return (u16)(((u16)p[0] << 8) | p[1]); }
+
+// Host-endian FourCC of the first block (data starts at +0x20). If it already
+// reads as a known block tag, the buffer was swapped before -> skip.
+inline bool bfn_already_host(const u8* base)
+{
+	u32 t = *(const u32*)(base + 0x20);
+	return t == 'INF1' || t == 'WID1' || t == 'GLY1' || t == 'MAP1';
+}
+
+void bfn_swap_to_host(void* buffer)
+{
+	u8* base = (u8*)buffer;
+	if (bfn_already_host(base))
+		return;
+
+	// ResFONT header (0x20): u64 magic | u32 filesize | u32 numBlocks | pad.
+	fsw32(base + 0x08); // filesize
+	u32 numBlocks = fbe32(base + 0x0C);
+	fsw32(base + 0x0C); // numBlocks
+
+	u8* p = base + 0x20;
+	for (u32 i = 0; i < numBlocks; i++) {
+		u32 type = fbe32(p + 0x00);
+		u32 size = fbe32(p + 0x04);
+		fsw32(p + 0x00); // mType (so the host 'WID1'/... switch matches)
+		fsw32(p + 0x04); // mSize (block stride)
+		if (size < 8)
+			break; // malformed -> stop rather than walk off the buffer
+
+		switch (type) {
+		case 'INF1': // fontType,ascent,descent,width,leading,defaultCode (6xu16)
+			for (u32 o = 0x08; o <= 0x12; o += 2)
+				fsw16(p + o);
+			break;
+		case 'WID1': // startCode,endCode (u16); width pairs after are u8 -> leave
+			fsw16(p + 0x08);
+			fsw16(p + 0x0A);
+			break;
+		case 'GLY1':
+			fsw16(p + 0x08); // startCode
+			fsw16(p + 0x0A); // endCode
+			fsw16(p + 0x0C); // cellWidth
+			fsw16(p + 0x0E); // cellHeight
+			fsw32(p + 0x10); // textureSize
+			fsw16(p + 0x14); // textureFormat
+			fsw16(p + 0x16); // numRows
+			fsw16(p + 0x18); // numColumns
+			fsw16(p + 0x1A); // textureWidth
+			fsw16(p + 0x1C); // textureHeight
+			fsw16(p + 0x1E); // padding
+			// data[] (GC texture bytes) untouched.
+			break;
+		case 'MAP1': {
+			fsw16(p + 0x08); // mappingMethod
+			fsw16(p + 0x0A); // startCode
+			fsw16(p + 0x0C); // endCode
+			fsw16(p + 0x0E); // numEntries
+			u16 method = fbe16(p + 0x08);
+			u16 start  = fbe16(p + 0x0A);
+			u16 end    = fbe16(p + 0x0C);
+			u16 num    = fbe16(p + 0x0E);
+			// Entry table begins at +0x10 (mLeading aliases entry[0]).
+			//   method 2: (end-start+1) u16 indexed directly by (chr-start).
+			//   method 3: num pairs -> 2*num u16 (binary-searched key/value).
+			//   method 0/1: no table; swap the lone mLeading field.
+			u32 count = 0;
+			if (method == 2)
+				count = (u32)(end - start + 1);
+			else if (method == 3)
+				count = (u32)num * 2;
+			else
+				count = 1; // mLeading field only
+			u32 maxByOff = (size > 0x10) ? (size - 0x10) / 2 : 0;
+			if (count > maxByOff)
+				count = maxByOff;
+			for (u32 e = 0; e < count; e++)
+				fsw16(p + 0x10 + e * 2);
+			break;
+		}
+		default:
+			break; // unknown -> header already swapped; size advances us
+		}
+		p += size;
+	}
+}
+} // namespace
+#endif
+
 JUTResFont::JUTResFont(const ResFONT* font, JKRArchive* arch)
 {
 	mpWidthBlocks = nullptr;
@@ -57,6 +175,10 @@ void JUTResFont::protected_initiate(const ResFONT* font)
 		return;
 
 	mResFont = font;
+#ifdef SMS_NATIVE_PLATFORM
+	// .bfn is GC big-endian; convert its metadata to host endian before walking.
+	bfn_swap_to_host((void*)font);
+#endif
 	countBlock();
 	if (mWidthBlockNum)
 		mpWidthBlocks = new ResFONT::WID1*[mWidthBlockNum];

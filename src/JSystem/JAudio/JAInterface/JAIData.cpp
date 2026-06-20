@@ -5,6 +5,9 @@
 #include <JSystem/JAudio/JAInterface/JAISystemInterface.hpp>
 #include <JSystem/JAudio/JAInterface/JAIConst.hpp>
 #include <JSystem/JAudio/JASystem/JASDvdThread.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdlib>
+#endif
 
 void JAIData::init()
 {
@@ -186,6 +189,14 @@ void JAIData::initSeqParameter(JAISeqParameter* param)
 void JAIData::initSeParaLinkBuffer()
 {
 	int i;
+
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_JAI_DBG"))
+		OSReport("[SBDBG] initSeParaLinkBuffer unk1D0=%p seRegistMax=%u "
+		         "seCategoryMax=%u\n",
+		         (void*)unk1D0, JAIGlobalParameter::seRegistMax,
+		         JAIGlobalParameter::getParamSeCategoryMax());
+#endif
 
 	unk1C8 = &unk1D0[0];
 	unk1CC = nullptr;
