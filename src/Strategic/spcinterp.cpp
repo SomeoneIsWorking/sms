@@ -129,15 +129,15 @@ void TSpcBinary::calcAndStoreKeys()
 
 void TSpcBinary::initSystemBuiltin()
 {
-	bindSystemDataToSymbol("yield", (u32)&spcYield);
-	bindSystemDataToSymbol("exit", (u32)&spcExit);
-	bindSystemDataToSymbol("lock", (u32)&spcLock);
-	bindSystemDataToSymbol("unlock", (u32)&spcUnlock);
-	bindSystemDataToSymbol("print", (u32)&spcPrint);
-	bindSystemDataToSymbol("dump", (u32)&spcDump);
-	bindSystemDataToSymbol("int", (u32)&spcInt);
-	bindSystemDataToSymbol("float", (u32)&spcFloat);
-	bindSystemDataToSymbol("typeof", (u32)&spcTypeof);
+	bindSystemDataToSymbol("yield", (void*)&spcYield);
+	bindSystemDataToSymbol("exit", (void*)&spcExit);
+	bindSystemDataToSymbol("lock", (void*)&spcLock);
+	bindSystemDataToSymbol("unlock", (void*)&spcUnlock);
+	bindSystemDataToSymbol("print", (void*)&spcPrint);
+	bindSystemDataToSymbol("dump", (void*)&spcDump);
+	bindSystemDataToSymbol("int", (void*)&spcInt);
+	bindSystemDataToSymbol("float", (void*)&spcFloat);
+	bindSystemDataToSymbol("typeof", (void*)&spcTypeof);
 	SpcTrace("TSpcBinary : system symbol installed\n");
 }
 
@@ -159,13 +159,16 @@ TSpcSymbol* TSpcBinary::searchSymbol(const char* name)
 	return nullptr;
 }
 
-void TSpcBinary::bindSystemDataToSymbol(const char* name, u32 param_2)
+void TSpcBinary::bindSystemDataToSymbol(const char* name, void* param_2)
 {
 	TSpcSymbol* symbol = searchSymbol(name);
 	if (symbol == nullptr) {
 		SpcTrace("TSpcBinary : unknown symbol %s\n", name);
 	} else {
-		symbol->mNativeCall = param_2;
+		// Keep mNativeCall as a 32-bit presence flag (the on-disk slot stays
+		// 0x14 bytes wide); hold the real pointer-width value in the side table.
+		symbol->mNativeCall   = param_2 ? 1u : 0u;
+		mNativeCallPtrs[symbol] = param_2;
 	}
 }
 
@@ -517,7 +520,7 @@ void TSpcInterp::dispatchBuiltinDefault(u32 sym_index, u32 arg_count)
 	}
 
 	typedef void (*Call)(TSpcInterp*, u32);
-	Call call = (Call)sym->mNativeCall;
+	Call call = (Call)mBinary->getNativeCall(sym);
 	if (call == nullptr) {
 		SpcTrace("TSpcInterp : unknown builtin function %s\n",
 		         mBinary->getSymbolName(sym));

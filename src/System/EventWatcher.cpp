@@ -45,7 +45,9 @@ template <class T> inline T* get_name_ref(TSpcSlice slice)
 		break;
 
 	case TSpcSlice::TYPE_INT:
-		result = (T*)slice.getDataInt();
+		// LP64: the slot carries a host pointer (pushed via pushPtr); read it at
+		// full pointer width, never truncated through the 32-bit int path.
+		result = (T*)slice.getDataPtr();
 		break;
 	}
 
@@ -82,7 +84,7 @@ static void evGetNameRefHandle(TSpcTypedInterp<TEventWatcher>* interp,
 	JDrama::TNameRef* ref = JDrama::TNameRefGen::search<JDrama::TNameRef>(
 	    interp->pop().getDataString());
 
-	interp->push((int)ref);
+	interp->pushPtr(ref);
 }
 
 static void evGetNameRefName(TSpcTypedInterp<TEventWatcher>* interp,
@@ -135,7 +137,10 @@ static void evGetTalkNPC(TSpcTypedInterp<TEventWatcher>* interp, u32 arg_num)
 
 	TBaseNPC* npc = gpMarDirector->getTalkingNPC();
 
-	interp->push(!npc ? 0 : (int)npc);
+	if (!npc)
+		interp->push(0);
+	else
+		interp->pushPtr(npc);
 }
 
 static void evGetTalkNPCName(TSpcTypedInterp<TEventWatcher>* interp,
@@ -921,94 +926,94 @@ static void evIsWaterMelonIsReached(TSpcTypedInterp<TEventWatcher>* interp,
 template <> void TSpcTypedBinary<TEventWatcher>::initUserBuiltin()
 {
 	// clang-format off
-  bindSystemDataToSymbol("getSystemFlag", (u32)&evGetSystemFlag);
-  bindSystemDataToSymbol("setSystemFlag", (u32)&evSetSystemFlag);
-  bindSystemDataToSymbol("getNameRefHandle", (u32)&evGetNameRefHandle);
-  bindSystemDataToSymbol("getNameRefName", (u32)&evGetNameRefName);
-  bindSystemDataToSymbol("getNPCType", (u32)&evGetNPCType);
-  bindSystemDataToSymbol("setFlagNPCDontTalk", (u32)&evSetFlagNPCDontTalk);
-  bindSystemDataToSymbol("setFlagNPCDontThrow", (u32)&evSetFlagNPCDontThrow);
-  bindSystemDataToSymbol("setFlagNPCDead", (u32)&evSetFlagNPCDead);
-  bindSystemDataToSymbol("isNearSameActors", (u32)&evIsNearSameActors);
-  bindSystemDataToSymbol("isNearActors", (u32)&evIsNearActors);
-  bindSystemDataToSymbol("getTalkNPC", (u32)&evGetTalkNPC);
-  bindSystemDataToSymbol("getTalkNPCName", (u32)&evGetTalkNPCName);
-  bindSystemDataToSymbol("setTalkMsgID", (u32)&evSetTalkMsgID);
-  bindSystemDataToSymbol("getTalkMode", (u32)&evGetTalkMode);
-  bindSystemDataToSymbol("getTalkSelectedValue", (u32)&evGetTalkSelectedValue);
-  bindSystemDataToSymbol("setValue2TalkVariable", (u32)&evSetValue2TalkVariable);
-  bindSystemDataToSymbol("isTalkModeNow", (u32)&evIsTalkModeNow);
-  bindSystemDataToSymbol("setFlagNPCCanTaken", (u32)&evSetFlagNPCCanTaken);
-  bindSystemDataToSymbol("pushNerve4LiveActor", (u32)&evPushNerve4LiveActor);
-  bindSystemDataToSymbol("isOnLiveActorFlag", (u32)&evIsOnLiveActorFlag);
-  bindSystemDataToSymbol("setHide4LiveActor", (u32)&evSetHide4LiveActor);
-  bindSystemDataToSymbol("setDead4LiveActor", (u32)&evSetDead4LiveActor);
-  bindSystemDataToSymbol("setTimeLimit", (u32)&evSetTimeLimit);
-  bindSystemDataToSymbol("setAttentionTime", (u32)&evSetAttentionTime);
-  bindSystemDataToSymbol("setPollutionIncreaseCount", (u32)&evSetPollutionIncreaseCount);
-  bindSystemDataToSymbol("getRestTime", (u32)&evGetRestTime);
-  bindSystemDataToSymbol("getPollutionLevel", (u32)&evGetPollutionLevel);
-  bindSystemDataToSymbol("setNextStage", (u32)&evSetNextStage);
-  bindSystemDataToSymbol("registerMovie", (u32)&evRegisterMovie);
-  bindSystemDataToSymbol("gameOver", (u32)&evGameOver);
-  bindSystemDataToSymbol("isGraffitoCoverage0", (u32)&evIsGraffitoCoverage0);
-  bindSystemDataToSymbol("setGraffitoMultiplied", (u32)&evSetGraffitoMultiplied);
-  bindSystemDataToSymbol("isBossDefeated", (u32)&evIsBossDefeated);
-  bindSystemDataToSymbol("launchEventClearDemo", (u32)&evLaunchEventClearDemo);
-  bindSystemDataToSymbol("isEMarioReachedToGoal", (u32)&evIsEMarioReachedToGoal);
-  bindSystemDataToSymbol("isEMarioDownWaitingToTalk", (u32)&evIsEMarioDownWaitingToTalk);
-  bindSystemDataToSymbol("startEMarioRunAway", (u32)&evStartEMarioRunAway);
-  bindSystemDataToSymbol("startEMarioGateDrawing", (u32)&evStartEMarioGateDrawing);
-  bindSystemDataToSymbol("startEMarioDisappear", (u32)&evStartEMarioDisappear);
-  bindSystemDataToSymbol("startOpenModelGate", (u32)&evStartOpenModelGate);
-  bindSystemDataToSymbol("isMapEventFinishedAll", (u32)&evIsMapEventFinishedAll);
-  bindSystemDataToSymbol("raiseBuilding", (u32)&evRaiseBuilding);
-  bindSystemDataToSymbol("forceCloseTalk", (u32)&evForceCloseTalk);
-  bindSystemDataToSymbol("insertTimer", (u32)&evInsertTimer);
-  bindSystemDataToSymbol("startTimer", (u32)&evStartTimer);
-  bindSystemDataToSymbol("startMonteman", (u32)&evStartMonteman);
-  bindSystemDataToSymbol("stopTimer", (u32)&evStopTimer);
-  bindSystemDataToSymbol("monteManReachFlag", (u32)&evMonteManReachFlag);
-  bindSystemDataToSymbol("getTime", (u32)&evGetTime);
-  bindSystemDataToSymbol("killShine", (u32)&evKillShine);
-  bindSystemDataToSymbol("killMushroom1up", (u32)&evKillMushroom1up);
-  bindSystemDataToSymbol("appearMushroom1up", (u32)&evAppearMushroom1up);
-  bindSystemDataToSymbol("appearShineFromNPC", (u32)&evAppearShineFromNPC);
-  bindSystemDataToSymbol("appearShineFromNPCWithoutDemo", (u32)&evAppearShineFromNPCWithoutDemo);
-  bindSystemDataToSymbol("appearShineFromKageMario", (u32)&evAppearShineFromKageMario);
-  bindSystemDataToSymbol("appearShine", (u32)&evAppearShine);
-  bindSystemDataToSymbol("appearShineForWoodBox", (u32)&evAppearShineForWoodBox);
-  bindSystemDataToSymbol("changeNozzle", (u32)&evChangeNozzle);
-  bindSystemDataToSymbol("startMarioTalking", (u32)&evStartMarioTalking);
-  bindSystemDataToSymbol("isInsideCube", (u32)&evIsInsideCube);
-  bindSystemDataToSymbol("setMarioWaiting", (u32)&evSetMarioWaiting);
-  bindSystemDataToSymbol("setTransScale", (u32)&evSetTransScale);
-  bindSystemDataToSymbol("setEventID", (u32)&evSetEventID);
-  bindSystemDataToSymbol("startBGM", (u32)&evStartBGM);
-  bindSystemDataToSymbol("stopBGM", (u32)&evStopBGM);
-  bindSystemDataToSymbol("startMiss", (u32)&evStartMiss);
-  bindSystemDataToSymbol("startSE", (u32)&evStartSE);
-  bindSystemDataToSymbol("startEventSE", (u32)&evStartEventSE);
-  bindSystemDataToSymbol("changeSunglass", (u32)&evChangeSunglass);
-  bindSystemDataToSymbol("setCollision", (u32)&evSetCollision);
-  bindSystemDataToSymbol("warpMario", (u32)&evWarpMario);
-  bindSystemDataToSymbol("startAppearJetBalloon", (u32)&evStartAppearJetBalloon);
-  bindSystemDataToSymbol("appear8RedCoinsAndTimer", (u32)&evAppear8RedCoinsAndTimer);
-  bindSystemDataToSymbol("warpFrontToMario", (u32)&evWarpFrontToMario);
-  bindSystemDataToSymbol("appearReadyGo", (u32)&evAppearReadyGo);
-  bindSystemDataToSymbol("onNeutralMarioKey", (u32)&evOnNeutralMarioKey);
-  bindSystemDataToSymbol("invalidatePad", (u32)&evInvalidatePad);
-  bindSystemDataToSymbol("checkWoodBox", (u32)&evCheckWoodBox);
-  bindSystemDataToSymbol("refreshWoodBox", (u32)&evRefreshWoodBox);
-  bindSystemDataToSymbol("killWoodBox", (u32)&evKillWoodBox);
-  bindSystemDataToSymbol("maniCoinFallDown", (u32)&evManiCoinDown);
-  bindSystemDataToSymbol("eggYoshiStartFruit", (u32)&evEggYoshiStartFruit);
-  bindSystemDataToSymbol("putNozzle", (u32)&evPutNozzle);
-  bindSystemDataToSymbol("startMareBottleDemo", (u32)&evStartMareBottleDemo);
-  bindSystemDataToSymbol("isFinishMareBottleDemo", (u32)&evIsFinishMareBottleDemo);
-  bindSystemDataToSymbol("isInsideFastCube", (u32)&evIsInsideFastCube);
-  bindSystemDataToSymbol("setEventForWaterMelon", (u32)&evSetEventForWaterMelon);
-  bindSystemDataToSymbol("isWaterMelonIsReached", (u32)&evIsWaterMelonIsReached);
+  bindSystemDataToSymbol("getSystemFlag", (void*)&evGetSystemFlag);
+  bindSystemDataToSymbol("setSystemFlag", (void*)&evSetSystemFlag);
+  bindSystemDataToSymbol("getNameRefHandle", (void*)&evGetNameRefHandle);
+  bindSystemDataToSymbol("getNameRefName", (void*)&evGetNameRefName);
+  bindSystemDataToSymbol("getNPCType", (void*)&evGetNPCType);
+  bindSystemDataToSymbol("setFlagNPCDontTalk", (void*)&evSetFlagNPCDontTalk);
+  bindSystemDataToSymbol("setFlagNPCDontThrow", (void*)&evSetFlagNPCDontThrow);
+  bindSystemDataToSymbol("setFlagNPCDead", (void*)&evSetFlagNPCDead);
+  bindSystemDataToSymbol("isNearSameActors", (void*)&evIsNearSameActors);
+  bindSystemDataToSymbol("isNearActors", (void*)&evIsNearActors);
+  bindSystemDataToSymbol("getTalkNPC", (void*)&evGetTalkNPC);
+  bindSystemDataToSymbol("getTalkNPCName", (void*)&evGetTalkNPCName);
+  bindSystemDataToSymbol("setTalkMsgID", (void*)&evSetTalkMsgID);
+  bindSystemDataToSymbol("getTalkMode", (void*)&evGetTalkMode);
+  bindSystemDataToSymbol("getTalkSelectedValue", (void*)&evGetTalkSelectedValue);
+  bindSystemDataToSymbol("setValue2TalkVariable", (void*)&evSetValue2TalkVariable);
+  bindSystemDataToSymbol("isTalkModeNow", (void*)&evIsTalkModeNow);
+  bindSystemDataToSymbol("setFlagNPCCanTaken", (void*)&evSetFlagNPCCanTaken);
+  bindSystemDataToSymbol("pushNerve4LiveActor", (void*)&evPushNerve4LiveActor);
+  bindSystemDataToSymbol("isOnLiveActorFlag", (void*)&evIsOnLiveActorFlag);
+  bindSystemDataToSymbol("setHide4LiveActor", (void*)&evSetHide4LiveActor);
+  bindSystemDataToSymbol("setDead4LiveActor", (void*)&evSetDead4LiveActor);
+  bindSystemDataToSymbol("setTimeLimit", (void*)&evSetTimeLimit);
+  bindSystemDataToSymbol("setAttentionTime", (void*)&evSetAttentionTime);
+  bindSystemDataToSymbol("setPollutionIncreaseCount", (void*)&evSetPollutionIncreaseCount);
+  bindSystemDataToSymbol("getRestTime", (void*)&evGetRestTime);
+  bindSystemDataToSymbol("getPollutionLevel", (void*)&evGetPollutionLevel);
+  bindSystemDataToSymbol("setNextStage", (void*)&evSetNextStage);
+  bindSystemDataToSymbol("registerMovie", (void*)&evRegisterMovie);
+  bindSystemDataToSymbol("gameOver", (void*)&evGameOver);
+  bindSystemDataToSymbol("isGraffitoCoverage0", (void*)&evIsGraffitoCoverage0);
+  bindSystemDataToSymbol("setGraffitoMultiplied", (void*)&evSetGraffitoMultiplied);
+  bindSystemDataToSymbol("isBossDefeated", (void*)&evIsBossDefeated);
+  bindSystemDataToSymbol("launchEventClearDemo", (void*)&evLaunchEventClearDemo);
+  bindSystemDataToSymbol("isEMarioReachedToGoal", (void*)&evIsEMarioReachedToGoal);
+  bindSystemDataToSymbol("isEMarioDownWaitingToTalk", (void*)&evIsEMarioDownWaitingToTalk);
+  bindSystemDataToSymbol("startEMarioRunAway", (void*)&evStartEMarioRunAway);
+  bindSystemDataToSymbol("startEMarioGateDrawing", (void*)&evStartEMarioGateDrawing);
+  bindSystemDataToSymbol("startEMarioDisappear", (void*)&evStartEMarioDisappear);
+  bindSystemDataToSymbol("startOpenModelGate", (void*)&evStartOpenModelGate);
+  bindSystemDataToSymbol("isMapEventFinishedAll", (void*)&evIsMapEventFinishedAll);
+  bindSystemDataToSymbol("raiseBuilding", (void*)&evRaiseBuilding);
+  bindSystemDataToSymbol("forceCloseTalk", (void*)&evForceCloseTalk);
+  bindSystemDataToSymbol("insertTimer", (void*)&evInsertTimer);
+  bindSystemDataToSymbol("startTimer", (void*)&evStartTimer);
+  bindSystemDataToSymbol("startMonteman", (void*)&evStartMonteman);
+  bindSystemDataToSymbol("stopTimer", (void*)&evStopTimer);
+  bindSystemDataToSymbol("monteManReachFlag", (void*)&evMonteManReachFlag);
+  bindSystemDataToSymbol("getTime", (void*)&evGetTime);
+  bindSystemDataToSymbol("killShine", (void*)&evKillShine);
+  bindSystemDataToSymbol("killMushroom1up", (void*)&evKillMushroom1up);
+  bindSystemDataToSymbol("appearMushroom1up", (void*)&evAppearMushroom1up);
+  bindSystemDataToSymbol("appearShineFromNPC", (void*)&evAppearShineFromNPC);
+  bindSystemDataToSymbol("appearShineFromNPCWithoutDemo", (void*)&evAppearShineFromNPCWithoutDemo);
+  bindSystemDataToSymbol("appearShineFromKageMario", (void*)&evAppearShineFromKageMario);
+  bindSystemDataToSymbol("appearShine", (void*)&evAppearShine);
+  bindSystemDataToSymbol("appearShineForWoodBox", (void*)&evAppearShineForWoodBox);
+  bindSystemDataToSymbol("changeNozzle", (void*)&evChangeNozzle);
+  bindSystemDataToSymbol("startMarioTalking", (void*)&evStartMarioTalking);
+  bindSystemDataToSymbol("isInsideCube", (void*)&evIsInsideCube);
+  bindSystemDataToSymbol("setMarioWaiting", (void*)&evSetMarioWaiting);
+  bindSystemDataToSymbol("setTransScale", (void*)&evSetTransScale);
+  bindSystemDataToSymbol("setEventID", (void*)&evSetEventID);
+  bindSystemDataToSymbol("startBGM", (void*)&evStartBGM);
+  bindSystemDataToSymbol("stopBGM", (void*)&evStopBGM);
+  bindSystemDataToSymbol("startMiss", (void*)&evStartMiss);
+  bindSystemDataToSymbol("startSE", (void*)&evStartSE);
+  bindSystemDataToSymbol("startEventSE", (void*)&evStartEventSE);
+  bindSystemDataToSymbol("changeSunglass", (void*)&evChangeSunglass);
+  bindSystemDataToSymbol("setCollision", (void*)&evSetCollision);
+  bindSystemDataToSymbol("warpMario", (void*)&evWarpMario);
+  bindSystemDataToSymbol("startAppearJetBalloon", (void*)&evStartAppearJetBalloon);
+  bindSystemDataToSymbol("appear8RedCoinsAndTimer", (void*)&evAppear8RedCoinsAndTimer);
+  bindSystemDataToSymbol("warpFrontToMario", (void*)&evWarpFrontToMario);
+  bindSystemDataToSymbol("appearReadyGo", (void*)&evAppearReadyGo);
+  bindSystemDataToSymbol("onNeutralMarioKey", (void*)&evOnNeutralMarioKey);
+  bindSystemDataToSymbol("invalidatePad", (void*)&evInvalidatePad);
+  bindSystemDataToSymbol("checkWoodBox", (void*)&evCheckWoodBox);
+  bindSystemDataToSymbol("refreshWoodBox", (void*)&evRefreshWoodBox);
+  bindSystemDataToSymbol("killWoodBox", (void*)&evKillWoodBox);
+  bindSystemDataToSymbol("maniCoinFallDown", (void*)&evManiCoinDown);
+  bindSystemDataToSymbol("eggYoshiStartFruit", (void*)&evEggYoshiStartFruit);
+  bindSystemDataToSymbol("putNozzle", (void*)&evPutNozzle);
+  bindSystemDataToSymbol("startMareBottleDemo", (void*)&evStartMareBottleDemo);
+  bindSystemDataToSymbol("isFinishMareBottleDemo", (void*)&evIsFinishMareBottleDemo);
+  bindSystemDataToSymbol("isInsideFastCube", (void*)&evIsInsideFastCube);
+  bindSystemDataToSymbol("setEventForWaterMelon", (void*)&evSetEventForWaterMelon);
+  bindSystemDataToSymbol("isWaterMelonIsReached", (void*)&evIsWaterMelonIsReached);
 	// clang-format on
 	TNpcEvent::initNpcBuiltin(this);
 }

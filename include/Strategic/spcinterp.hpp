@@ -4,6 +4,8 @@
 #include <dolphin/types.h>
 #include <string.h>
 #include <types.h>
+#include <cstdint>
+#include <map>
 
 void SpcTrace(const char*, ...);
 
@@ -60,6 +62,12 @@ public:
 		int asInt;
 		float asFloat;
 		const char* asString;
+		// LP64 widening: a script slot may carry a host object pointer (stored
+		// as an int by the GC code, then cast back to T*). On LP64 that pointer
+		// is 64-bit, so it must be held/read at pointer width — never truncated
+		// through asInt. The union is already pointer-sized (asString), this
+		// just gives the pointer path an explicit, signed-or-unsigned name.
+		void* asPtr;
 	} mData;
 
 public:
@@ -129,6 +137,17 @@ public:
 		mData.asInt = i;
 		mType       = TYPE_INT;
 	}
+
+	// LP64 pointer path. A host pointer round-trips through an int-typed slot in
+	// the original code; store/read it at full pointer width so it is never
+	// truncated. Tag stays TYPE_INT to preserve the VM's int-slot semantics.
+	void setDataPtr(void* p)
+	{
+		mData.asPtr = p;
+		mType       = TYPE_INT;
+	}
+
+	void* getDataPtr() const { return mData.asPtr; }
 
 	void setDataFloat(f32 f)
 	{
@@ -322,6 +341,14 @@ struct TSpcHeader {
 class TSpcBinary {
 	/* 0x0 */ u8* mData;
 
+	// LP64 widening: TSpcSymbol::mNativeCall is a 32-bit slot in the on-disk
+	// SPC blob (the symbol-array stride and getSymbolName() offset math depend
+	// on sizeof(TSpcSymbol) staying 0x14), so a native function pointer no
+	// longer fits there. The slot's on-disk value is always 0 (bound only at
+	// runtime), so we keep mNativeCall as a presence flag and hold the real
+	// pointer-width value in this side table keyed by symbol.
+	std::map<const TSpcSymbol*, void*> mNativeCallPtrs;
+
 public:
 	TSpcBinary(void*);
 
@@ -333,7 +360,14 @@ public:
 	void calcAndStoreKeys();
 	void initSystemBuiltin();
 	TSpcSymbol* searchSymbol(const char*);
-	void bindSystemDataToSymbol(const char*, u32);
+	void bindSystemDataToSymbol(const char*, void*);
+
+	void* getNativeCall(const TSpcSymbol* sym) const
+	{
+		std::map<const TSpcSymbol*, void*>::const_iterator it
+		    = mNativeCallPtrs.find(sym);
+		return it == mNativeCallPtrs.end() ? nullptr : it->second;
+	}
 
 	TSpcHeader* getHeader() const { return (TSpcHeader*)mData; }
 
@@ -433,6 +467,14 @@ public:
 
 	void push(const TSpcSlice& slice) { mProcessStack.push(slice); }
 	void push() { push(TSpcSlice()); }
+	// LP64: push a host pointer into an int-typed slot without truncation.
+	// Pairs with TSpcSlice::getDataPtr() on the read side.
+	void pushPtr(void* p)
+	{
+		TSpcSlice slice;
+		slice.setDataPtr(p);
+		push(slice);
+	}
 	TSpcSlice pop() { return mProcessStack.pop(); }
 
 public:
@@ -659,8 +701,9 @@ public:
 		typedef void (*TypedNativeCall)(TSpcTypedInterp<T>*, u32);
 		TSpcSymbol* sym = mBinary->getSymbol(sym_index);
 
-		if (sym && sym->mNativeCall) {
-			TypedNativeCall call = (TypedNativeCall)sym->mNativeCall;
+		void* native = sym ? mBinary->getNativeCall(sym) : nullptr;
+		if (native) {
+			TypedNativeCall call = (TypedNativeCall)native;
 
 			mCurrentlyExecutingBuiltinName = mBinary->getSymbolName(sym);
 			call(this, arg_count);
