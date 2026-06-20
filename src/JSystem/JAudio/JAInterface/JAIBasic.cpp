@@ -237,6 +237,50 @@ void JAIBasic::checkInitDataOnMemory()
 {
 	JAIData* data = unk0;
 
+#ifdef SMS_NATIVE_PLATFORM
+	// The decomp's reconstruction here is incomplete/non-matching (Fabricated
+	// structs, "sick of it" TODO) AND reads the GC big-endian AAF as host-endian.
+	// Parse the real AAF init-data format instead (verified by the project's
+	// tools/jingle/jingle.py and a live walk of mSound.aaf):
+	//   u32 cid; cid==0 ends. cid in {1,4,5,6,7}: ONE (offset,size,flag) triplet.
+	//   cid in {2,3}: a LIST of (offset,size,flag) triplets until offset==0.
+	// All scalars big-endian; offsets are byte offsets from the AAF base. For
+	// SMS the layout is: cid1 single = the SE info table (-> unk88 -> seCategory
+	// count), cid2 = IBNK instrument banks, cid3 = WSYS wave banks, cid4-7 small
+	// singles. unk4C (the in-memory aaf) is NOT freed for unk13==4, so we point
+	// directly into it (no transInitDataFile copy needed).
+	//
+	// NOTE (audio frontier): bank/wave registration (unk50/unk54) is intentionally
+	// left null here. registWaveBankWS/registBankBNK parse the GC big-endian
+	// WSYS/IBNK blobs, which need their own BE swap before they can be wired; the
+	// game null-guards unk50/unk54 (silent audio, no crash). Wiring them is the
+	// next audio step. Only unk88 (required for seCategoryMax / boot) is set.
+	{
+		u32* w = (u32*)unk4C;
+		u32 o  = 0;
+		for (;;) {
+			u32 cid = __builtin_bswap32(w[o++]);
+			if (cid == 0)
+				break;
+			if (cid == 1 || cid == 4 || cid == 5 || cid == 6 || cid == 7) {
+				u32 offset = __builtin_bswap32(w[o]);
+				u32 size   = __builtin_bswap32(w[o + 1]);
+				o += 3; // offset, size, flag
+				if (cid == 1) {
+					data->unk88.unk78 = (u8*)unk4C + offset;
+					data->unk88.unk28 = size;
+					data->unk1B0      = 0;
+				}
+			} else if (cid == 2 || cid == 3) {
+				while (__builtin_bswap32(w[o]) != 0)
+					o += 3; // skip (offset, size, flag) entries
+				o += 1;     // the 0 terminator word
+			} else {
+				break; // unknown chunk -> stop (alignment unknown)
+			}
+		}
+	}
+#else
 	bool shouldContinue = true;
 	u32 i               = 0;
 	while (shouldContinue) {
@@ -287,6 +331,7 @@ void JAIBasic::checkInitDataOnMemory()
 		}
 		}
 	}
+#endif
 }
 
 void* JAIBasic::transInitDataFile(u8* buffer, u32 size)
