@@ -101,4 +101,4 @@ TMapDrawWall::TMapDrawWall(const char* name)
 {
 }
 
-void TMap::draw(unsigned long, JDrama::TGraphics*) const { }
+void TMap::draw(u32, JDrama::TGraphics*) const { }
