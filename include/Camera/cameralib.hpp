@@ -46,6 +46,12 @@ BOOL CLBChaseGeneralConstantSpecifySpeed(T* param_1, T param_2, T param_3)
 	return true;
 }
 
+// Forward decl: CLBEaseInInbetween calls this template before its definition
+// (line ~77). GCC's two-phase lookup needs the name visible at definition; ADL
+// finds nothing for scalar args. (MWcc resolved it lazily.)
+template <class T>
+T CLBTwoDegreeGeneralInbetween(T param_1, T param_2, f32 param_3, f32 param_4);
+
 template <class T> T CLBEaseInInbetween(T param_1, T param_2, f32 param_3)
 {
 	return CLBTwoDegreeGeneralInbetween(param_1, param_2, param_3,
