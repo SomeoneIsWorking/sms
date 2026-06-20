@@ -21,7 +21,7 @@ public:
 	{
 		u32 i;
 		peek(&i, sizeof(u32));
-		return i;
+		return JSU_BE32(i);
 	}
 };
 

@@ -4,6 +4,20 @@
 #include <types.h>
 #include <JSystem/JSupport/JSUIosBase.hpp>
 
+// JSU streams read serialized GC asset data, which is big-endian. read()/readData()
+// copy raw bytes, so the multi-byte scalar readers must byteswap to host endian on a
+// little-endian host (else counts/offsets/pointers in e.g. the JDrama NameRef tree in
+// stageArc.bin come back byteswapped -> wild pointers). u8/raw reads are unaffected.
+#ifdef SMS_NATIVE_PLATFORM
+#define JSU_BE16(x) __builtin_bswap16(x)
+#define JSU_BE32(x) __builtin_bswap32(x)
+#define JSU_BE64(x) __builtin_bswap64(x)
+#else
+#define JSU_BE16(x) (x)
+#define JSU_BE32(x) (x)
+#define JSU_BE64(x) (x)
+#endif
+
 class JSUInputStream : public JSUIosBase {
 public:
 	virtual ~JSUInputStream();
@@ -37,14 +51,14 @@ public:
 	{
 		u16 s;
 		read(&s, sizeof(u16));
-		return s;
+		return JSU_BE16(s);
 	}
 
 	u32 read32b()
 	{
 		u32 i;
 		read(&i, sizeof(u32));
-		return i;
+		return JSU_BE32(i);
 	}
 
 	/* @fabricated */
@@ -66,35 +80,35 @@ public:
 	{
 		s16 s;
 		read(&s, sizeof(s16));
-		return s;
+		return (s16)JSU_BE16((u16)s);
 	}
 
 	u16 readU16()
 	{
 		u16 s;
 		read(&s, sizeof(u16));
-		return s;
+		return JSU_BE16(s);
 	}
 
 	s32 readS32()
 	{
 		s32 i;
 		read(&i, sizeof(s32));
-		return i;
+		return (s32)JSU_BE32((u32)i);
 	}
 
 	u32 readU32()
 	{
 		u32 i;
 		read(&i, sizeof(u32));
-		return i;
+		return JSU_BE32(i);
 	}
 
 	u64 readU64()
 	{
 		u64 i;
 		read(&i, sizeof(u64));
-		return i;
+		return JSU_BE64(i);
 	}
 
 	/* @fabricated */
