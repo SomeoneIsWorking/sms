@@ -14,7 +14,9 @@ void TMultiMtxEffect::setup(J3DModel* model, const char* prmLocation)
 		snprintf(path, 0x40, "/%s/MtxEffect%d.prm", prmLocation, mBoneIDs[i]);
 
 		switch (mMtxEffectType[i]) {
-		case TMTX_EFFECT_TIME_LAG:
+		// each case braced: C++ forbids a later case label jumping over a
+		// case-scoped variable initialization (MWcc allowed it).
+		case TMTX_EFFECT_TIME_LAG: {
 			TMtxTimeLag* timeLag = new TMtxTimeLag(path);
 			model->getModelData()
 			    ->getJointNodePointer(mBoneIDs[i])
@@ -24,7 +26,8 @@ void TMultiMtxEffect::setup(J3DModel* model, const char* prmLocation)
 			    ->setCallBackUserData(timeLag);
 			mMtxEffectTbl[i] = timeLag;
 			break;
-		case TMTX_EFFECT_SWING_RZ:
+		}
+		case TMTX_EFFECT_SWING_RZ: {
 			TMtxSwingRZ* swingRz = new TMtxSwingRZ(path);
 			model->getModelData()
 			    ->getJointNodePointer(mBoneIDs[i])
@@ -34,7 +37,8 @@ void TMultiMtxEffect::setup(J3DModel* model, const char* prmLocation)
 			    ->setCallBackUserData(swingRz);
 			mMtxEffectTbl[i] = swingRz;
 			break;
-		case TMTX_EFFECT_SWING_RZ_REVERSE_XZ:
+		}
+		case TMTX_EFFECT_SWING_RZ_REVERSE_XZ: {
 			TMtxSwingRZ* swingRzReverse = new TMtxSwingRZ(path);
 			model->getModelData()
 			    ->getJointNodePointer(mBoneIDs[i])
@@ -44,6 +48,7 @@ void TMultiMtxEffect::setup(J3DModel* model, const char* prmLocation)
 			    ->setCallBackUserData(swingRzReverse);
 			mMtxEffectTbl[i] = swingRzReverse;
 			break;
+		}
 		}
 	}
 	for (u16 i = 0; i < mNumBones; ++i) {

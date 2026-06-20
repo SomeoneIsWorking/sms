@@ -71,7 +71,8 @@ void TSandBlock::control()
 			setState(TSandBlock::STATE_FALLING);
 		}
 		break;
-	case TSandBlock::STATE_FALLING:
+	case TSandBlock::STATE_FALLING: { // braced: particleScale init must not be
+		                              // crossed by the next case label (C++)
 		mScaling.y -= mSandScaleDown;
 		gpMSound->startSoundActor(MSD_SE_OBJ_SANDBLOCK_BREAK, &mPosition, 0,
 		                          nullptr, 0, 0x4);
@@ -88,6 +89,7 @@ void TSandBlock::control()
 		}
 
 		break;
+	}
 	case TSandBlock::STATE_GONE:
 		if (!isAppearTimeFinished()
 		    && getDistance(SMS_GetMarioPos()) > mScaling.x * 100.0f) {
