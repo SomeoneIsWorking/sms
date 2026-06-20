@@ -33,7 +33,7 @@ public:
 	}
 
 	virtual void load(JSUMemoryInputStream&);
-	virtual void perform(unsigned long cue, TGraphics* graphics);
+	virtual void perform(u32, TGraphics*);
 
 public:
 	/* 0x10 */ s32 mLightInfoCount;
