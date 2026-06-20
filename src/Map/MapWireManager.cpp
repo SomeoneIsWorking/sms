@@ -8,12 +8,9 @@
 #include <JSystem/JDrama/JDRNameRefGen.hpp>
 #include <dolphin/gx.h>
 
-// rogue includes needed for matching sinit & bss
-#include <MSound/MSSetSound.hpp>
-#include <MSound/MSoundBGM.hpp>
-
-f32 TMapWireActor::mCommonAttackRadius = 200.0f;
-f32 TMapWireActor::mCommonAttackHeight = 200.0f;
+// Single definition for the global declared `extern` in MapWireManager.hpp (was a
+// header tentative-def duplicated across every includer).
+TMapWireManager* gpMapWireManager;
 
 void TMapWireActor::checkTakingActor() { }
 

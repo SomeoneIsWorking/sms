@@ -20,8 +20,9 @@
 // rogue
 #include <M3DUtil/InfectiousStrings.hpp>
 
-// TODO: figure out the odr violations with this symbol
-const char* cNpcPartsNameRootJoint = "__ROOT_JOINT__";
+// LP64/native: resolves the noted ODR violation — this symbol is DEFINED in NpcAnm.cpp;
+// here it's a declaration (was a duplicate definition that collided at the boot link).
+extern const char* cNpcPartsNameRootJoint;
 const char* cPeachPartsTextureName = "H_peach_main_dummy";
 const char* cPeachHostTextureName  = "H_peach_main_s3tc";
 

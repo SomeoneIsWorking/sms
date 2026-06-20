@@ -42,7 +42,9 @@ public:
 
 class TMapWireManager;
 
-TMapWireManager* gpMapWireManager;
+// LP64/native: was a tentative DEFINITION in this header -> one per includer = multiple
+// definition at the full-closure boot link. `extern` here; defined once in MapWireManager.cpp.
+extern TMapWireManager* gpMapWireManager;
 
 class TMapWireManager : public JDrama::TViewObj {
 public:
