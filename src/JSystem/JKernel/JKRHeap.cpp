@@ -69,7 +69,7 @@ bool JKRHeap::initArena(char** outUserRamStart, u32* outUserRamSize,
 	OSSetArenaLo(arenaHi);
 	OSSetArenaHi(arenaHi);
 	*outUserRamStart = (char*)arenaLo;
-	*outUserRamSize  = (u32)arenaHi - (u32)arenaLo;
+	*outUserRamSize  = (u32)((uintptr_t)arenaHi - (uintptr_t)arenaLo);
 	OSReport("arenaLo=%x arenaHi=%x \n", arenaLo, arenaHi);
 	return true;
 }
