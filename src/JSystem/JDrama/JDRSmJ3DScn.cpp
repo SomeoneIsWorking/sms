@@ -45,5 +45,5 @@ void TSmJ3DScn::loadSuper(JSUMemoryInputStream& stream)
 {
 	TViewObjPtrListT::loadSuper(stream);
 	mLightMap = new TLightMap;
-	load(stream);
+	mLightMap->load(stream);
 }
