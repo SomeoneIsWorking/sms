@@ -13,6 +13,9 @@
 #include <Camera/SunMgr.hpp>
 #include <Camera/cameralib.hpp>
 #include <Camera/SunModel.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <dolphin/os.h>
+#endif
 #include <System/Resolution.hpp>
 #include <stdio.h>
 
@@ -53,7 +56,14 @@ TLensGlow::TLensGlow(bool param_1, const char* name)
 
 	char buf[0x100];
 	snprintf(buf, sizeof(buf), "%s/%s", base, "glow.bmd");
-	unk10 = J3DModelLoaderDataBase::load(JKRGetResource(buf), 0x10020000);
+	void* glowRes = JKRGetResource(buf);
+#ifdef SMS_NATIVE_PLATFORM
+	// FAIL FAST: a missing resource makes load() return null, then
+	// new J3DModel(null) derefs null in entryModelData. Name the missing path.
+	if (glowRes == nullptr)
+		OSPanic(__FILE__, __LINE__, "TLensGlow: resource not found: %s", buf);
+#endif
+	unk10 = J3DModelLoaderDataBase::load(glowRes, 0x10020000);
 	unk14 = new J3DModel(unk10, 0, 1);
 
 	snprintf(buf, sizeof(buf), "%s/%s", base, "glow.btk");
