@@ -2,6 +2,10 @@
 #include <JSystem/JParticle/JPAEmitterLoader.hpp>
 #include <JSystem/JKernel/JKRHeap.hpp>
 #include <JSystem/JKernel/JKRFileLoader.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <dolphin/os.h>
+#include <cstdlib>
+#endif
 
 JPATextureResource::JPATextureResource(u32 count, JKRHeap* heap)
 {
@@ -65,6 +69,15 @@ int JPAResourceManager::load(const char* param_1, u16 param_2)
 
 int JPAResourceManager::load(const void* param_1, u16 param_2)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_JKR_DBG")) {
+		JPAEmitterData* d
+		    = JPAEmitterLoaderDataBase::load((const u8*)param_1, unk0, unk8);
+		OSReport("[jpa] load id=%u jpaData=%p emitterData=%p heap=%p\n",
+		         (unsigned)param_2, param_1, d, unk0);
+		return unk4->registration(d, param_2);
+	}
+#endif
 	return unk4->registration(
 	    JPAEmitterLoaderDataBase::load((const u8*)param_1, unk0, unk8),
 	    param_2);
