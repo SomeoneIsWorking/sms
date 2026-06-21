@@ -170,11 +170,46 @@ void J2DScreen::draw(int x, int y, const J2DGrafContext* pCtx)
 	GXSetCullMode(GX_CULL_NONE);
 }
 
+#ifdef SMS_NATIVE_PLATFORM
+#include <new>
+// Region-tolerant pane fallback. The disc is GMSE01 (US) but the engine is the
+// GMSJ01/PAL decomp, so US UI archives lack many panes the loaders look up by tag
+// (e.g. big_tx_1.blo has 6 'sg' panes vs the 9 the code reserves; option/card screens
+// differ further). Rather than null-deref across the hundreds of
+// `screen->search(tag)->method()` sites in the GC2D loaders, J2DScreen::search returns
+// this shared, hidden, inert pane for a tag that isn't present. It is over-allocated
+// past the largest J2D pane type (J2DPicture ~0x160) so the loaders' NON-virtual
+// derived accesses — (J2DPicture*)p->setBlendKonstColor / changeTexture / ->mWhite,
+// (J2DTextBox*)p->setString / setFont — land within the buffer; base J2DPane virtuals
+// dispatch correctly via its real vtable; it is hidden (mVisible=false) and never
+// linked into a screen's child tree, so it never draws. Only J2DScreen::search (the
+// screen-level entry the loaders use) falls back; the recursive J2DPane::search still
+// returns null, so tree traversal and the few null-checking callers are unaffected.
+static J2DPane* getRegionTolerantDummyPane()
+{
+	static unsigned char s_buf[0x200] __attribute__((aligned(16)));
+	static J2DPane* s_dummy = nullptr;
+	if (!s_dummy) {
+		for (unsigned i = 0; i < sizeof(s_buf); ++i)
+			s_buf[i] = 0;
+		s_dummy = new (s_buf) J2DPane();
+		s_dummy->hide();
+	}
+	return s_dummy;
+}
+#endif
+
 J2DPane* J2DScreen::search(u32 tag)
 {
 	if (tag == 0)
 		return nullptr;
+#ifdef SMS_NATIVE_PLATFORM
+	if (J2DPane* p = J2DPane::search(tag))
+		return p;
+	return getRegionTolerantDummyPane(); // pane absent in a US (GMSE01) UI archive
+#else
 	return J2DPane::search(tag);
+#endif
 }
 
 J2DSetScreen::J2DSetScreen(const char* name, JKRArchive* arch)
@@ -190,19 +225,8 @@ J2DSetScreen::J2DSetScreen(const char* name, JKRArchive* arch)
 		u32 sz = JKRFileLoader::getResSize(res, nullptr);
 		// Probably an assert
 		(void)!res;
-#ifdef SMS_NATIVE_PLATFORM
-		if (::getenv("SB_ARC_DBG"))
-			OSReport("[SBDBG]   sz=%u magic=%02x%02x%02x%02x%02x%02x%02x%02x\n",
-			         sz, res[0], res[1], res[2], res[3], res[4], res[5], res[6],
-			         res[7]);
-#endif
 		JSUMemoryInputStream stream(res, sz);
 		makeHiearachyPanes(this, &stream, false, true, false, nullptr);
-#ifdef SMS_NATIVE_PLATFORM
-		if (::getenv("SB_ARC_DBG"))
-			OSReport("[SBDBG]   after makeHiearachyPanes: search('go00')=%p\n",
-			         (void*)search('go00'));
-#endif
 	}
 	mbClipToParent = false;
 }
