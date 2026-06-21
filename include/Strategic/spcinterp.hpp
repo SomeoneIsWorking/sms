@@ -404,37 +404,39 @@ public:
 	/* 0x58 */ const char* mCurrentlyExecutingBuiltinName;
 
 public:
-	// The text section is not aligned, so the four bytes are copied one at a
-	// time. The bound is unsigned (sizeof), which is what earns the `lbzu`
-	// peephole. The loop also keeps these three over the inliner's budget from
-	// pass 2 down, which is why execint, execadr and execstr call them instead
-	// of expanding them.
-	//
-	// `result` must be the only named local here, which is why `src` is written
-	// as a cast of a void* rather than kept in a u8* variable of its own. MWCC
-	// numbers a function's locals in declaration order when it compiles the
-	// body, but in *reverse* declaration order when it inlines it, so any two
-	// named locals swap places between the out-of-line copy and every inlined
-	// one. With only `result` needing a stack home there is nothing left to
-	// swap, and both agree.
+	// TODO: the fetches take up too much stack
+	static void hacky_memcpy(u8* dst, u8* src, u32 count)
+	{
+		for (int i = 0; i < count; ++i)
+			dst[i] = src[i];
+	}
+
+	// On SMS_NATIVE_PLATFORM the bytecode operand stream is big-endian on disc and
+	// cannot be pre-swapped (mixed 1-byte opcodes + 4-byte operands), so byteswap
+	// the 4-byte fetch here. See spc_swap_blob() in spcinterp.cpp.
+	static void spc_fetch4(u8* dst, const u8* src)
+	{
+		hacky_memcpy(dst, (u8*)src, 4);
+#ifdef SMS_NATIVE_PLATFORM
+		u8 t;
+		t = dst[0]; dst[0] = dst[3]; dst[3] = t;
+		t = dst[1]; dst[1] = dst[2]; dst[2] = t;
+#endif
+	}
 	f32 fetchF32()
 	{
 		u8* src = (u8*)mBinary->getText(mProgramCounter);
 		f32 result;
-		u8* dst = (u8*)&result;
-		for (int i = 0; i < sizeof(f32); ++i)
-			dst[i] = src[i];
-		mProgramCounter += sizeof(f32);
+		spc_fetch4((u8*)&result, mBinary->getText(mProgramCounter));
+		mProgramCounter += 4;
 		return result;
 	}
 	s32 fetchS32()
 	{
 		u8* src = (u8*)mBinary->getText(mProgramCounter);
 		s32 result;
-		u8* dst = (u8*)&result;
-		for (int i = 0; i < sizeof(s32); ++i)
-			dst[i] = src[i];
-		mProgramCounter += sizeof(s32);
+		spc_fetch4((u8*)&result, mBinary->getText(mProgramCounter));
+		mProgramCounter += 4;
 		return result;
 	}
 
@@ -442,10 +444,8 @@ public:
 	{
 		u8* src = (u8*)mBinary->getText(mProgramCounter);
 		u32 result;
-		u8* dst = (u8*)&result;
-		for (int i = 0; i < sizeof(u32); ++i)
-			dst[i] = src[i];
-		mProgramCounter += sizeof(u32);
+		spc_fetch4((u8*)&result, mBinary->getText(mProgramCounter));
+		mProgramCounter += 4;
 		return result;
 	}
 
