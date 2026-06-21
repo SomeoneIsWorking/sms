@@ -4,6 +4,10 @@
 
 void SMSMakeTextBuffer(J2DTextBox* param_1, int param_2)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	if (!param_1) // region-tolerant: textbox pane absent in a US (GMSE01) UI archive
+		return;
+#endif
 	char* buffer = new char[param_2];
 	for (int i = 0; i < param_2 - 1; ++i)
 		buffer[i] = ' ';

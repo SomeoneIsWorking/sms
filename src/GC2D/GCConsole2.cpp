@@ -1732,10 +1732,13 @@ void TGCConsole2::load(JSUMemoryInputStream& stream)
 	unk178 = new TBoundPane(unkB0, 'l_tx');
 	unk1C4 = new TBoundPane(unkB0, '\0l_0');
 
+	// Decomp transcription bug: the original indexes the TAG (life-meter panes
+	// lm01,lm11,..,lm81 / lm02,..,lm82 — third byte = '0'+i, i.e. +0x100 per step),
+	// not the screen pointer. `unkB0[i].search(...)` treated a single J2DSetScreen* as
+	// an array -> out-of-bounds `this` -> crash. Restore the tag arithmetic.
 	for (int i = 0; i < 9; ++i) {
-		unk17C[i]     = unkB0->search('lm01' + (i << 8));
-		unk17C[i + 1] = unkB0->search('lm02' + (i << 8));
-		unk1D0[i]     = unk17C[i]->getBounds();
+		unk17C[i]     = unkB0->search('lm01' + 0x100 * i);
+		unk17C[9 + i] = unkB0->search('lm02' + 0x100 * i);
 	}
 
 	unk260 = new TBoundPane(unkB0, 'lm_0');
@@ -1750,26 +1753,44 @@ void TGCConsole2::load(JSUMemoryInputStream& stream)
 	unk274 = unk278[0];
 	unk288 = unk28C[0];
 
-	unk274->getPane()->setBasePosition(J2DBasePosition_5);
-	unk288->show();
+	// Region-tolerant: panes a US (GMSE01) UI archive lacks come back null from
+	// search(); guard the derefs (see TBoundPane ctor). [#ifdef preserves the GC match]
+#ifdef SMS_NATIVE_PLATFORM
+	if (unk274->getPane())
+#endif
+		unk274->getPane()->setBasePosition(J2DBasePosition_5);
+#ifdef SMS_NATIVE_PLATFORM
+	if (unk288)
+#endif
+		unk288->show();
 
 	unk29C = new TBoundPane(unkB0, 'w_t0');
 	unk2F8 = new TExPane(unkB0, '\0w_0');
 	for (int i = 0; i < 3; ++i) {
 		unk2A0[i] = (J2DPicture*)unkB0->search('w_t1' + i);
 
-		unk2A0[i]->setBlendKonstColor(1.0f, 0.0f, 0.0f, 0.0f);
-		unk2A0[i]->setBlendKonstAlpha(0.0f, 0.0f, 0.0f, 0.0f);
+#ifdef SMS_NATIVE_PLATFORM
+		if (unk2A0[i]) // region-tolerant (pane absent in a US UI archive)
+#endif
+		{
+			unk2A0[i]->setBlendKonstColor(1.0f, 0.0f, 0.0f, 0.0f);
+			unk2A0[i]->setBlendKonstAlpha(0.0f, 0.0f, 0.0f, 0.0f);
 
-		unk2A0[i]->hide();
+			unk2A0[i]->hide();
+		}
 
 		if (i != 0) {
 			unk2AC[i] = (J2DPicture*)unkB0->search('w_m1' + i);
 
-			unk2AC[i]->setBlendKonstColor(0.0f, 0.0f, 0.0f, 0.0f);
-			unk2AC[i]->setBlendKonstAlpha(1.0f, 0.0f, 0.0f, 0.0f);
+#ifdef SMS_NATIVE_PLATFORM
+			if (unk2AC[i]) // region-tolerant
+#endif
+			{
+				unk2AC[i]->setBlendKonstColor(0.0f, 0.0f, 0.0f, 0.0f);
+				unk2AC[i]->setBlendKonstAlpha(1.0f, 0.0f, 0.0f, 0.0f);
 
-			unk2AC[i]->hide();
+				unk2AC[i]->hide();
+			}
 		}
 	}
 
@@ -1803,10 +1824,19 @@ void TGCConsole2::load(JSUMemoryInputStream& stream)
 	SMSMakeTextBuffer(unk3B8, 0x401);
 	SMSMakeTextBuffer(unk3B4, 0x401);
 
-	unk3B8->setFont(gpSystemFont);
-	unk3B4->setFont(gpSystemFont);
+#ifdef SMS_NATIVE_PLATFORM
+	if (unk3B8) // region-tolerant (textbox pane absent in a US UI archive)
+#endif
+		unk3B8->setFont(gpSystemFont);
+#ifdef SMS_NATIVE_PLATFORM
+	if (unk3B4)
+#endif
+		unk3B4->setFont(gpSystemFont);
 
-	unk3B4->show();
+#ifdef SMS_NATIVE_PLATFORM
+	if (unk3B4)
+#endif
+		unk3B4->show();
 	unk3D0 = new TMessageLoader("/common/2d/balloon.bmg");
 
 	unk3FC = new TExPane(unkB0, '\0b_0');
@@ -1818,8 +1848,10 @@ void TGCConsole2::load(JSUMemoryInputStream& stream)
 	for (int i = 0; i < 4; ++i)
 		unk414[i] = new TBlendPane(unkB0, 'b_n1' + i);
 
-	((J2DPicture*)unk414[2]->getPane())
-	    ->changeTexture(unkE0[8]->getTexInfo(), 0);
+#ifdef SMS_NATIVE_PLATFORM
+	if (unk414[2]->getPane()) // region-tolerant
+#endif
+		((J2DPicture*)unk414[2]->getPane())->changeTexture(unkE0[8]->mTexInfo, 0);
 
 	unk428 = new TExPane(unkB0, '\0r_0');
 	unk42C = new TBoundPane(unkB0, 'r_ba');
@@ -1840,8 +1872,20 @@ void TGCConsole2::load(JSUMemoryInputStream& stream)
 	unk458[9] = new TBoundPane(unkB0, 't_n0');
 
 	// TODO: is this the right cast?
-	unk508 = ((J2DPicture*)unk458[6]->getPane())->getWhite();
-	unk50C = ((J2DPicture*)unk458[7]->getPane())->getWhite();
+#ifdef SMS_NATIVE_PLATFORM
+	// region-tolerant: pane absent in a US UI archive
+	if (unk458[6]->getPane())
+		unk508 = ((J2DPicture*)unk458[6]->getPane())->mWhite;
+	else
+		unk508 = 0;
+	if (unk458[7]->getPane())
+		unk50C = ((J2DPicture*)unk458[7]->getPane())->mWhite;
+	else
+		unk50C = 0;
+#else
+	unk508 = ((J2DPicture*)unk458[6]->getPane())->mWhite;
+	unk50C = ((J2DPicture*)unk458[7]->getPane())->mWhite;
+#endif
 
 	for (int i = 0; i < 3; ++i)
 		unk480[i] = new TBoundPane(unkB0, 't_c1' + i);
