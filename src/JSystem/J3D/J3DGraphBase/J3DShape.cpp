@@ -220,8 +220,24 @@ void J3DShape::loadVtxArray() const
 	J3DLoadArrayBasePtr(GX_VA_CLR0, j3dSys.unk114);
 }
 
+#ifdef SMS_NATIVE_PLATFORM
+// SLICE 3a renderer-attach: capture this shape's geometry into the native renderer's
+// frame buffer (native/render/sms_boot_j3d_capture.cpp drains it at present). WEAK so
+// builds that link this TU but NOT the capture body (e.g. the j3dmesh_test/loader tests)
+// resolve it to null and skip the hook. The capture itself is gated on SB_J3D_CAPTURE.
+extern "C" bool sb_boot_capture_j3d(J3DShape* shape) __attribute__((weak));
+#endif
+
 void J3DShape::draw() const
 {
+#ifdef SMS_NATIVE_PLATFORM
+	if (&sb_boot_capture_j3d && sb_boot_capture_j3d(const_cast<J3DShape*>(this))) {
+		// Captured natively; the GX issue below is a no-op on this platform anyway, so
+		// continuing is harmless — but return to skip the per-element matrix loads /
+		// mDraws[i]->draw() (also no-ops) and keep the draw path cheap when capturing.
+		return;
+	}
+#endif
 	GXCallDisplayList(mGDCommands, 0xC0);
 
 	J3DShapeMtx::currentPipeline = unk8 >> 2 & 3;

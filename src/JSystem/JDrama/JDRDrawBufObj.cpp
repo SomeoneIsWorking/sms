@@ -1,6 +1,10 @@
 #include <JSystem/JDrama/JDRDrawBufObj.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DDrawBuffer.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DSys.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 
 using namespace JDrama;
 
@@ -47,6 +51,15 @@ void TDrawBufObj::perform(u32 cue, TGraphics* graphics)
 
 	if (cue & CUE_DRAW) {
 		j3dSys.unk4C = unk18;
+#ifdef SMS_NATIVE_PLATFORM
+		{
+			static int dbg = -1;
+			if (dbg < 0) { const char* e = getenv("SB_J3D_DBG"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
+			static long s_n = 0;
+			if (dbg && (++s_n % 2000) == 0)
+				fprintf(stderr, "[drawbuf] TDrawBufObj::perform draw() calls=%ld\n", s_n);
+		}
+#endif
 		mDrawBuffer->draw();
 	}
 }
