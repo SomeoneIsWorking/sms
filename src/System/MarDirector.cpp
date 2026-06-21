@@ -84,7 +84,7 @@ u32 TMarDirector::setup(JDrama::TDisplay* param_1, TMarioGamePad** param_2,
 	mMap  = param_3;
 	unk7D = param_4;
 #ifdef SMS_NATIVE_PLATFORM
-	if (getenv("SB_JKR_DBG"))
+	if (getenv("SB_JKR_DBG") || getenv("SB_MOVIE_DBG"))
 		OSReport("[mardir] TMarDirector::setup spawning setup thread "
 		         "(map=%d unk30=%p)\n",
 		         mMap, (void*)gpApplication.unk30);
