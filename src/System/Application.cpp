@@ -191,6 +191,17 @@ void SMSMountAramArchive(JKRMemArchive* param_1, TARAMBlock& param_2)
 JKRArchive* SMSSwitch2DArchive(const char* param_1, TARAMBlock& param_2)
 {
 	JKRMemArchive* arch = (JKRMemArchive*)JKRFileLoader::getVolume(param_1);
+#ifdef SMS_NATIVE_PLATFORM
+	// FAIL FAST: getVolume returns null when the named 2D archive volume isn't mounted
+	// (e.g. "guide" — the 2D/ARAM archive subsystem hasn't loaded it). The decomp then
+	// null-derefs in unmountFixed; crash at the root naming the missing volume.
+	if (!arch)
+		OSPanic(__FILE__, __LINE__,
+		        "SMSSwitch2DArchive: 2D archive volume '%s' not mounted "
+		        "(JKRFileLoader::getVolume returned null) -- the 2D/ARAM archive "
+		        "subsystem must mount it first",
+		        param_1 ? param_1 : "(null)");
+#endif
 	arch->unmountFixed();
 	SMSMountAramArchive(arch, param_2);
 	return arch;
