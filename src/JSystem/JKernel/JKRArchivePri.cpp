@@ -43,7 +43,20 @@ bool JKRArchive::isSameName(JKRArchive::CArcName& name, u32 nameOffset,
 JKRArchive::SDIDirEntry* JKRArchive::findDirectory(const char* name,
                                                    u32 directoryId) const
 {
-	if (name == nullptr) {
+	if (name == nullptr
+#ifdef SMS_NATIVE_PLATFORM
+	    // A trailing-slash directory path (e.g. findFirstFile("/mario/01_waterboost/"))
+	    // leaves an EMPTY remainder after the last component is consumed: CArcName's
+	    // store() returns name+1 pointing at "" (not nullptr) when it stops on the
+	    // delimiter, so the recursion lands here with a non-null empty string. An
+	    // empty path component means "this directory" -> resolve it to directoryId
+	    // instead of failing the name match. Without this, every subdirectory
+	    // enumeration returns null and MActorAnmData::init counts zero anims (the
+	    // s18 null-finder guards then silently leave the actor anim-less, which
+	    // later null-derefs in e.g. TMarioEffect::init's getFrameCtrl(0)->setRate).
+	    || *name == '\0'
+#endif
+	) {
 		return mDirectories + directoryId;
 	}
 
