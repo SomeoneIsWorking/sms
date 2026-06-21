@@ -23,8 +23,12 @@ TDrawBufObj::TDrawBufObj(u32 param_1, u32 param_2, const char* name)
 void TDrawBufObj::load(JSUMemoryInputStream& stream)
 {
 	TNameRef::load(stream);
-	stream.read(&unk18, sizeof(u32));
-	stream.read(&mDrawBufferSize, sizeof(u32));
+	// The on-disc stream is BIG-ENDIAN; these are u32 scalars, so use the byteswap-
+	// aware readU32() (not the raw read(), which copies BE bytes into a host LE u32 ->
+	// a garbage huge mDrawBufferSize -> J3DDrawBuffer over-allocates and overflows the
+	// SolidHeap). On GC (non-native) readU32 is a no-op, matching the original read().
+	unk18           = stream.readU32();
+	mDrawBufferSize = stream.readU32();
 	mDrawBuffer = new J3DDrawBuffer(mDrawBufferSize);
 }
 
