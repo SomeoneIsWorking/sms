@@ -60,7 +60,12 @@ TMarDirector::TMarDirector()
 
 void* TMarDirector::setupThreadFunc(void* param_1)
 {
-	((TMarDirector*)param_1)->loadResource();
+	// NOTE (native fix): same omitted-return UB as TMovieDirector::setupThreadFunc.
+	// On PPC this was a tail call to loadResource() whose r3 result flows through as
+	// the thread's return value; GCC -O2 emits no `ret`, so the thread runs off the
+	// end into the adjacent function with a garbage `this` -> SEGV. Return the
+	// loadResource() result so the setup thread terminates cleanly.
+	return (void*)(intptr_t)((TMarDirector*)param_1)->loadResource();
 }
 
 extern OSThread gSetupThread;
