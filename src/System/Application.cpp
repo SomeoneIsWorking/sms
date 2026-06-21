@@ -38,6 +38,12 @@
 #include <System/ProcessMeter.hpp>
 #include <System/CardManager.hpp>
 #include <System/ScenarioArchiveName.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+// In-memory mSound.aaf capture for the native BARC-backed sequence loader
+// (native/src/sms_boot_audio.cpp). Defined there; set at the /audi resource read.
+extern "C" const unsigned char* sb_aaf_data;
+extern "C" unsigned int sb_aaf_size;
+#endif
 #include <System/MarNameRefGen.hpp>
 #include <System/StageUtil.hpp>
 #include <System/GCLogoDir.hpp>
@@ -313,6 +319,14 @@ void TApplication::initialize_bootAfter()
 	u32 uVar3 = this_01->getResSize(this_01->getResource("mSound.aaf"));
 	u8* buf   = new u8[uVar3];
 	this_01->readResource(buf, uVar3, "mSound.aaf");
+#ifdef SMS_NATIVE_PLATFORM
+	// Capture the in-memory mSound.aaf (read here as the /audi resource from
+	// nintendo.szs — it is NOT on the disc FST) for the native BARC-backed sequence
+	// loader (native/src/sms_boot_audio.cpp), which builds the stage-BGM sequence
+	// table from it (the dead JaiArcS.hed Vload path can't).
+	sb_aaf_data = buf;
+	sb_aaf_size = uVar3;
+#endif
 	JKRHeap* prevHeap = JKRGetCurrentHeap();
 	gpMSound = new MSound(prevHeap, nullptr, 0xF40000, buf, nullptr, 0xb00000);
 
