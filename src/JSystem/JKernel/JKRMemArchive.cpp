@@ -6,6 +6,8 @@
 #include <string.h>
 
 #ifdef SMS_NATIVE_PLATFORM
+#include <dolphin/os.h>
+#include <cstdlib>
 // =============================================================================
 // Native PC build: RARC archives are GC BIG-ENDIAN, but the decomp parses them
 // by casting raw file bytes to host-endian structs -> every multi-byte field is
@@ -87,8 +89,29 @@ JKRArchive::SDIFileEntry* sb_rarc_swap_to_host(void* buffer, JKRHeap* heap)
 	// File entries: packed 0x14 BE in the blob -> host 0x18 side array.
 	u32 n      = di->num_file_entries;
 	u8* feBase = infoBase + di->file_entry_offset;
-	JKRArchive::SDIFileEntry* side = (JKRArchive::SDIFileEntry*)JKRHeap::alloc(
-	    n * sizeof(JKRArchive::SDIFileEntry), 4, heap);
+	u32 sideBytes = n * sizeof(JKRArchive::SDIFileEntry);
+	JKRArchive::SDIFileEntry* side
+	    = (JKRArchive::SDIFileEntry*)JKRHeap::alloc(sideBytes, 4, heap);
+	// The side array is a HOST-ONLY structure (GC swapped the 0x14 entries in place;
+	// the host needs a 0x18-stride copy). It is allocated from the archive buffer's
+	// own heap, which the GC sized with no slack for it — a tight per-archive heap can
+	// fail. Fall back to the CURRENT heap (the active gameplay solid heap, which has
+	// room) and then the root. (The root is often fully drained by a "claim the rest of
+	// the arena" gameplay solid heap, so the current heap is the roomy one.) Frees use
+	// findFromRoot, so any origin frees correctly.
+	if (!side)
+		side = (JKRArchive::SDIFileEntry*)JKRHeap::alloc(
+		    sideBytes, 4, JKRHeap::getCurrentHeap());
+	if (!side)
+		side = (JKRArchive::SDIFileEntry*)JKRHeap::alloc(
+		    sideBytes, 4, JKRHeap::getRootHeap());
+	if (getenv("SB_JKR_DBG"))
+		OSReport("[rarc] swap buffer=%p heap=%p n=%u allocBytes=%u side=%p "
+		         "root=%p rootFree=0x%x cur=%p\n",
+		         buffer, heap, n, sideBytes, side, JKRHeap::getRootHeap(),
+		         JKRHeap::getRootHeap()
+		             ? (u32)JKRHeap::getRootHeap()->getTotalFreeSize() : 0,
+		         JKRHeap::getCurrentHeap());
 	for (u32 i = 0; i < n; i++) {
 		const u8* src              = feBase + (size_t)i * 0x14;
 		side[i].mFileID            = be16(src + 0x00);
@@ -144,7 +167,7 @@ JKRMemArchive::~JKRMemArchive()
 		}
 #ifdef SMS_NATIVE_PLATFORM
 		if (mFileEntries) { // host-stride side array (open() built it)
-			JKRHeap::free(mFileEntries, mHeap);
+			JKRHeap::free(mFileEntries, nullptr); // host side array: locate its heap via findFromRoot (may be root, not mHeap)
 			mFileEntries = nullptr;
 		}
 #endif
@@ -196,7 +219,7 @@ void JKRMemArchive::unmountFixed()
 	}
 #ifdef SMS_NATIVE_PLATFORM
 	if (mFileEntries) { // host-stride side array (open() built it)
-		JKRHeap::free(mFileEntries, mHeap);
+		JKRHeap::free(mFileEntries, nullptr); // host side array: locate its heap via findFromRoot (may be root, not mHeap)
 		mFileEntries = nullptr;
 	}
 #endif
