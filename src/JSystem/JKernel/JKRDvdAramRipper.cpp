@@ -437,7 +437,7 @@ static u32 dmaBufferFlush(u32 param_1)
 		return 0;
 	}
 	u32 size = ALIGN_NEXT(dmaCurrent - dmaBuf, 0x20);
-	JKRAramPiece::orderSync(0, (u32)(uintptr_t)dmaBuf, param_1, size, nullptr);
+	JKRAramPiece::orderSync(0, (uintptr_t)dmaBuf, param_1, size, nullptr);
 	dmaCurrent = dmaBuf;
 	return size;
 }
