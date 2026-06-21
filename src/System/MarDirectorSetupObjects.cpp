@@ -29,6 +29,9 @@
 #include <MSound/MSound.hpp>
 #include <Camera/Camera.hpp>
 #include <Enemy/Conductor.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <Enemy/GraphSwap.h>
+#endif
 
 // rogue includes needed for matching sinit & bss
 #include <MSound/MSSetSound.hpp>
@@ -273,7 +276,19 @@ bool TMarDirector::setupObjects()
 	measurementGroup->insert(
 	    new TSnapTimeObj(0xFFFFFFFF, "Particle Draw SnapTime"));
 
-	gpConductor->makeGraphGroup(JKRGetResource("/scene/map/scene.ral"));
+	{
+		void* ral = JKRGetResource("/scene/map/scene.ral");
+#ifdef SMS_NATIVE_PLATFORM
+		// scene.ral is GameCube big-endian; TGraphGroup/TGraphWeb read it via raw
+		// struct access (no auto-swap). Swap it to host order before use, else a
+		// node count reads byte-swapped (e.g. 0xB0 -> 0xB0000000) -> ~2.9 GB
+		// `new TGraphNode[]` -> JKRSolidHeap OOM. See Enemy/GraphSwap.h.
+		if (ral)
+			smsport::sb_ral_swap_to_host(
+			    ral, JKRFileLoader::getResSize(ral, nullptr));
+#endif
+		gpConductor->makeGraphGroup(ral);
+	}
 
 	{
 		void* tables = JKRGetResource("/scene/map/tables.bin");
