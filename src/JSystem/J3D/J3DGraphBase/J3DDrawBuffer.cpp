@@ -5,6 +5,10 @@
 #include <JSystem/J3D/J3DGraphBase/J3DTransform.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DPacket.hpp>
 #include <JSystem/JKernel/JKRHeap.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 
 J3DDrawBuffer::sortFunc J3DDrawBuffer::sortFuncTable[6] = {
 	&J3DDrawBuffer::entryMatSort,     &J3DDrawBuffer::entryMatAnmSort,
@@ -195,6 +199,20 @@ void J3DDrawBuffer::draw() const
 
 void J3DDrawBuffer::drawHead() const
 {
+#ifdef SMS_NATIVE_PLATFORM
+	{
+		static int dbg = -1;
+		if (dbg < 0) { const char* e = getenv("SB_J3D_DBG"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
+		static long s_calls = 0, s_pkts = 0;
+		long pk = 0;
+		for (u32 i = 0; i < mSize; i++)
+			for (J3DPacket* p = mBuffer[i]; p; p = p->getNextPacket()) ++pk;
+		s_pkts += pk; ++s_calls;
+		if (dbg && (s_calls % 2000) == 0)
+			fprintf(stderr, "[drawbuf] drawHead calls=%ld mSize=%u pkts_this=%ld total_pkts=%ld\n",
+			        s_calls, mSize, pk, s_pkts);
+	}
+#endif
 	for (u32 i = 0; i < mSize; i++) {
 		for (J3DPacket* packet = mBuffer[i]; packet != nullptr;
 		     packet            = packet->getNextPacket()) {
