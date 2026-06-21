@@ -28,6 +28,12 @@ static inline void GXSetTexCoordGen(GXTexCoordID dst_coord, GXTexGenType func,
 }
 
 void GXBegin(GXPrimitive type, GXVtxFmt vtxfmt, u16 nverts);
+#ifdef SMS_NATIVE_PLATFORM
+// Native PC build: GXEnd closes the immediate-mode primitive the gx_imm seam captured
+// (the writers stream to sb_gx_imm_*; GXEnd triangulates it). See gx_imm_impl.cpp.
+extern void sb_gx_imm_end(void);
+static inline void GXEnd(void) { sb_gx_imm_end(); }
+#else
 static inline void GXEnd(void)
 {
 #if DEBUG
@@ -39,6 +45,7 @@ static inline void GXEnd(void)
 	__GXinBegin = GX_FALSE;
 #endif
 }
+#endif
 void GXSetLineWidth(u8 width, GXTexOffset texOffsets);
 void GXSetPointSize(u8 pointSize, GXTexOffset texOffsets);
 void GXEnableTexOffsets(GXTexCoordID coord, u8 line_enable, u8 point_enable);
