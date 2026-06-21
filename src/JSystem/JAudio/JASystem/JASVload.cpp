@@ -3,6 +3,9 @@
 #include <JSystem/JAudio/JASystem/JASSystemHeap.hpp>
 #include <JSystem/JKernel/JKRHeap.hpp>
 #include <types.h>
+#ifdef SMS_NATIVE_PLATFORM
+#include <dolphin/os.h>
+#endif
 
 namespace JASystem {
 
@@ -142,6 +145,14 @@ u32 Vload::loadFile(u32 param1, u8* param2, u32 param3, u32 param4)
 
 	VLArcEntry* hndl = getRealHandle(param1);
 
+#ifdef SMS_NATIVE_PLATFORM
+	if (!hndl || (param1 >> 0x10) >= (u32)vlCurrentArcs || !vlArc[hi])
+		OSPanic(__FILE__, __LINE__,
+		        "Vload::loadFile: unregistered arc handle param1=%08x hi=%u "
+		        "vlCurrentArcs=%d (Vload dead-path for SMS; sequence not resident)",
+		        param1, hi, vlCurrentArcs);
+#endif
+
 	thing = hndl->unk18 + param3;
 
 	strcpy(buffer, vlDirName[hi]);
@@ -166,6 +177,20 @@ u32 Vload::loadFileAsync(u32 param1, u8* param2, u32 param3, u32 param4,
 	hi = param1 >> 0x10;
 
 	VLArcEntry* hndl = getRealHandle(param1);
+
+#ifdef SMS_NATIVE_PLATFORM
+	// FAIL FAST: getRealHandle returns null when the Vload arc table isn't populated
+	// (the JaiArcS.hed Vload header is not on the SMS FST — Vload is the dead path for
+	// SMS; sequences should be resident via BARC and found by checkOnMemory). The
+	// decomp then dereferences a null handle three frames deep. Crash AT the root with
+	// the offending index so the cause is readable from the panic.
+	if (!hndl || (param1 >> 0x10) >= (u32)vlCurrentArcs || !vlArc[hi])
+		OSPanic(__FILE__, __LINE__,
+		        "Vload::loadFileAsync: unregistered arc handle param1=%08x hi=%u "
+		        "vlCurrentArcs=%d (Vload dead-path for SMS; sequence not resident -- "
+		        "the BARC/checkOnMemory residency path must load it instead)",
+		        param1, hi, vlCurrentArcs);
+#endif
 
 	thing = hndl->unk18 + param3;
 
