@@ -127,6 +127,13 @@ void MActorAnmData::init(const char* param_1, const char** param_2)
 	JKRFileFinder* fileFinder = JKRFileLoader::findFirstFile(thing2);
 
 	JKRFileFinder* finder = fileFinder;
+#ifdef SMS_NATIVE_PLATFORM
+	// findFirstFile returns null when the model/anim directory isn't present in the
+	// mounted archives (a US (GMSE01) asset the JP/PAL decomp expects, or a map-object
+	// resource dir absent on this stage). The original do/while assumes a non-null
+	// finder; guard it so the actor simply gets no animations instead of crashing.
+	if (finder)
+#endif
 	do {
 		addFileNum(finder->mBase.mFileName);
 	} while (finder->findNextFile());
@@ -158,6 +165,9 @@ void MActorAnmData::init(const char* param_1, const char** param_2)
 	unk18 = 0;
 
 	fileFinder = JKRFileLoader::findFirstFile(thing2);
+#ifdef SMS_NATIVE_PLATFORM
+	if (fileFinder) // see above: directory may be absent in the mounted archives
+#endif
 	do {
 		strstr(fileFinder->mBase.mFileName, "#");
 		addFileTable(fileFinder->mBase.mFileName);
