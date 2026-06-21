@@ -1,6 +1,10 @@
 #include <JSystem/JKernel/JKRSolidHeap.hpp>
 #include <JSystem/JUtility/JUTConsole.hpp>
 #include <macros.h>
+#ifdef SMS_NATIVE_PLATFORM
+#include <dolphin/os.h>
+#include <cstdlib>
+#endif
 
 JKRSolidHeap* JKRSolidHeap::create(u32 size, JKRHeap* parent, bool errorFlag)
 {
@@ -12,6 +16,12 @@ JKRSolidHeap* JKRSolidHeap::create(u32 size, JKRHeap* parent, bool errorFlag)
 
 	void* ptr     = JKRHeap::alloc(alignedSize, 0x10, parent);
 	void* dataPtr = (char*)ptr + expHeapSize;
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_JKR_DBG"))
+		OSReport("[jkr] SolidHeap::create size=0x%x parent=%p -> ptr=%p dataPtr=%p "
+		         "expHeapSize=0x%x alignedSize=0x%x\n",
+		         size, parent, ptr, dataPtr, expHeapSize, alignedSize);
+#endif
 	if (ptr == nullptr)
 		return nullptr;
 
@@ -57,6 +67,12 @@ void* JKRSolidHeap::allocFromHead(u32 size, int align)
 
 	char* alignedStart = (char*)ALIGN_NEXT((uintptr_t)mCurStart, align);
 	u32 requiredSize   = (alignedStart - (char*)mCurStart) + size;
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_JKR_DBG") && (uintptr_t)alignedStart < 0x10000)
+		OSReport("[jkr] SolidHeap %p allocFromHead DEGENERATE: mStart=%p mEnd=%p "
+		         "mCurStart=%p mFreeSize=0x%x size=0x%x align=%d -> alignedStart=%p\n",
+		         this, mStart, mEnd, mCurStart, mFreeSize, size, align, alignedStart);
+#endif
 	if (requiredSize <= mFreeSize) {
 		mCurStart = (char*)mCurStart + requiredSize;
 		mFreeSize -= requiredSize;
