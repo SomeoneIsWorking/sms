@@ -398,31 +398,58 @@ TIndirectLightWithDBSet::TIndirectLightWithDBSet()
 {
 }
 
+// The decomp left the TLightWithDBSet hierarchy ctors and the manager's unk14
+// initialization unimplemented (declared-only). The base/subclass ctors are restored
+// here (minimal: the draw-buffer setup that the unimplemented makeDrawBuffer would
+// build is left null — the whole light-with-DB-set path is stubbed, perform/
+// makeDrawBuffer are no-ops). unk20 is the per-light "enabled" flag the actor managers
+// write (TLiveManager / MActor: getUnk14(i)->unk20 = 1); it must be addressable.
+TLightWithDBSet::TLightWithDBSet(int idx, const char* name)
+    : JDrama::TViewObj(name)
+    , unk10(nullptr)
+    , unk14(nullptr)
+    , unk18(nullptr)
+    , unk1C(idx)
+    , unk20(0)
+{
+}
+
+TPlayerLightWithDBSet::TPlayerLightWithDBSet()
+    : TLightWithDBSet(0, "<TPlayerLightWithDBSet>")
+{
+}
+TMapObjectLightWithDBSet::TMapObjectLightWithDBSet()
+    : TLightWithDBSet(0, "<TMapObjectLightWithDBSet>")
+{
+}
+TObjectLightWithDBSet::TObjectLightWithDBSet()
+    : TLightWithDBSet(0, "<TObjectLightWithDBSet>")
+{
+}
+TIndirectLightWithDBSet::TIndirectLightWithDBSet()
+    : TLightWithDBSet(0, "<TIndirectLightWithDBSet>")
+{
+}
+
 TLightWithDBSetManager::TLightWithDBSetManager(const char* name)
     : JDrama::TViewObj(name)
 {
-	unk10          = nullptr;
-	unk14          = nullptr;
-	unk54          = 0;
-	unk55          = 1;
-	unk14          = new TLightWithDBSet*[4];
-	unk14[0]       = new TPlayerLightWithDBSet();
-	unk14[1]       = new TObjectLightWithDBSet();
-	unk14[2]       = new TMapObjectLightWithDBSet();
-	unk14[3]       = new TIndirectLightWithDBSet();
-	gpLightManager = this;
-	unk48.x        = 0.0f;
-	unk48.y        = 0.0f;
-	unk48.z        = 0.0f;
-	unk28          = 1.0f;
-	unk2C          = 100.0f;
-	unk30          = 400.0f;
-	unk34          = 1000.0f;
-	unk38          = 1.80535f;
-	unk3C          = -0.012058f;
-	unk40          = 0.00003f;
-	unk44          = 90.0f;
-	calcLightBorder();
+#ifdef SMS_NATIVE_PLATFORM
+	// Allocate the 4-entry light-set array the managers index by light kind
+	// (player/mapobj/object/indirect). The decomp's empty ctor left unk14 wild, so
+	// the first getUnk14(i)->unk20 = 1 (TLiveManager ctor) dereferenced garbage.
+	unk10 = new TLightMario;
+	unk14 = new TLightWithDBSet*[4];
+	unk14[0] = new TPlayerLightWithDBSet;
+	unk14[1] = new TMapObjectLightWithDBSet;
+	unk14[2] = new TObjectLightWithDBSet;
+	unk14[3] = new TIndirectLightWithDBSet;
+	unk18.r = unk18.g = unk18.b = unk18.a = 0;
+	unk1C = unk20 = unk24 = 0;
+	unk28 = unk2C = unk30 = unk34 = unk38 = unk3C = unk40 = unk44 = 0.0f;
+	unk48.x = unk48.y = unk48.z = 0.0f;
+	unk54 = unk55 = 0;
+#endif
 }
 
 void TLightWithDBSetManager::loadAfter()
