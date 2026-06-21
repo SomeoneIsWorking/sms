@@ -6,6 +6,10 @@
 #include <JSystem/JKernel/JKRHeap.hpp>
 #include <JSystem/JKernel/JKRSolidHeap.hpp>
 #include <macros.h>
+#ifdef SMS_NATIVE_PLATFORM
+#include <dolphin/os.h>
+#include <cstdlib>
+#endif
 
 JPAEmitterManager::JPAEmitterManager(JPAResourceManager* param_1, s32 param_2,
                                      s32 param_3, s32 param_4, JKRHeap* param_5)
@@ -15,9 +19,29 @@ JPAEmitterManager::JPAEmitterManager(JPAResourceManager* param_1, s32 param_2,
 	if (!param_5)
 		param_5 = JKRHeap::getCurrentHeap();
 
+	// Each JKRCreateSolidHeap below carves its own JKRSolidHeap header (expHeapSize =
+	// ALIGN_NEXT(sizeof(JKRSolidHeap), 0x10)) off the front of the block it is given,
+	// so the caller must add that header size to the data it needs. The decomp
+	// hardcoded 0x80 — exactly that header size on the 32-bit GameCube. On the 64-bit
+	// host the JKRSolidHeap object is larger (0xf0), so 0x80 leaves the data region
+	// short and the last particle/emitter/field alloc returns a near-null pointer ->
+	// SEGV. Reserve the ACTUAL header size instead.
+	const u32 solidHdr = ALIGN_NEXT(sizeof(JKRSolidHeap), 0x10);
+
+	// The loop below allocates the CONCRETE derived type `JPAParticle` (which adds the
+	// dynamics/field/draw-params members), not `JPABaseParticle`. The decomp budgeted
+	// the base size, which under-sizes the heap (sizeof(JPAParticle) > JPABaseParticle)
+	// and the later particle allocs fail -> near-null -> SEGV. Budget the allocated type.
 	u32 bytesForParticles
-	    = ALIGN_NEXT(param_2 * sizeof(JPABaseParticle), 0x20) + 0x80;
+	    = ALIGN_NEXT(param_2 * sizeof(JPAParticle), 0x20) + solidHdr;
 	unkC = JKRCreateSolidHeap(bytesForParticles, param_5, false);
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_JKR_DBG"))
+		OSReport("[jpa] EmitterMgr p2=%d p3=%d p4=%d heap=%p sizeofP=%zu sizeofE=%zu "
+		         "sizeofF=%zu bytesP=0x%x unkC=%p\n",
+		         param_2, param_3, param_4, param_5, sizeof(JPABaseParticle),
+		         sizeof(JPABaseEmitter), sizeof(JPABaseField), bytesForParticles, unkC);
+#endif
 	if (unkC) {
 		for (int i = 0; i < param_2; ++i) {
 			JPABaseParticle* particle = new (unkC, 0) JPAParticle;
@@ -27,7 +51,7 @@ JPAEmitterManager::JPAEmitterManager(JPAResourceManager* param_1, s32 param_2,
 	}
 
 	u32 bytesForEmitters
-	    = ALIGN_NEXT(param_3 * sizeof(JPABaseEmitter), 0x20) + 0x80;
+	    = ALIGN_NEXT(param_3 * sizeof(JPABaseEmitter), 0x20) + solidHdr;
 	unk20 = JKRCreateSolidHeap(bytesForEmitters, param_5, false);
 	if (unk20) {
 		for (int i = 0; i < param_3; ++i) {
@@ -37,7 +61,7 @@ JPAEmitterManager::JPAEmitterManager(JPAResourceManager* param_1, s32 param_2,
 	}
 
 	u32 bytesForFields
-	    = ALIGN_NEXT(param_4 * sizeof(JPABaseField), 0x20) + 0x80;
+	    = ALIGN_NEXT(param_4 * sizeof(JPABaseField), 0x20) + solidHdr;
 	unk34 = JKRCreateSolidHeap(bytesForFields, param_5, false);
 	if (unk34) {
 		for (int i = 0; i < param_4; ++i) {
