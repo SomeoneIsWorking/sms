@@ -234,8 +234,8 @@ int Dvd::loadToAramDvdTMain(void* param)
 			call->unk28 += buffersize;
 			call->unk2C -= buffersize;
 		}
-		ARQPostRequest(&req[arq_index], 0x12345678, 0, 1, (u32)(uintptr_t)buf,
-		               (u32)(uintptr_t)call->unk24, batchSize, &aramDmaFinish);
+		ARQPostRequest(&req[arq_index], 0x12345678, 0, 1, (uintptr_t)buf,
+		               (uintptr_t)call->unk24, batchSize, &aramDmaFinish);
 		++bufferFull;
 		++arq_index;
 		arq_index %= 4;
