@@ -863,7 +863,17 @@ bool TCardLoad::titleDraw()
 	} break;
 
 	case 4: {
+		// unkF8/unk222/unk20C/unk124 are the 11 coin-digit panes (created by the
+		// i<11 init loops; arrays declared [11]). This loop's bound is 13 (a copy of
+		// the unk1D4[13]-pane cases above) — i=11,12 read garbage TExPane* past the
+		// array -> wild `this` in unkF8[i]->update() -> SEGV (LP64 has no trailing pad
+		// to absorb it). Iterate only the 11 panes that exist on native. Same class as
+		// the TCardLoad unk22E/unk248 [13]-not-[8] sizing fix.
+#ifdef SMS_NATIVE_PLATFORM
+		for (int i = 0; i < 11; ++i) {
+#else
 		for (int i = 0; i < 13; ++i) {
+#endif
 			switch (unk222[i]) {
 			case 0:
 				if (unkF8[i]->update()) {
