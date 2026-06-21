@@ -8,6 +8,14 @@
 #include <JSystem/JDrama/JDRNameRefGen.hpp>
 #include <dolphin/gx.h>
 
+#ifdef SMS_NATIVE_PLATFORM
+// Big-endian -> host swap for raw read(&x,4) scalars; identity off-platform so
+// the GC decomp match is preserved.
+#define SB_BE32(x) ((int)__builtin_bswap32((u32)(x)))
+#else
+#define SB_BE32(x) (x)
+#endif
+
 // Single definition for the global declared `extern` in MapWireManager.hpp (was a
 // header tentative-def duplicated across every includer).
 TMapWireManager* gpMapWireManager;
@@ -224,25 +232,43 @@ void TMapWireManager::load(JSUMemoryInputStream& stream)
 {
 	JDrama::TViewObj::load(stream);
 	stream.readString();
-	stream >> unk14;
-	stream >> unk20;
-	stream >> TMapWire::mDrawWidth;
-	stream >> TMapWire::mDrawHeight;
+	stream.read(&unk14, 4);
+	stream.read(&unk20, 4);
+	stream.read(&TMapWire::mDrawWidth, 4);
+	stream.read(&TMapWire::mDrawHeight, 4);
+	int val;
+	stream.read(&val, 4);
+	mUpperSurface.r = SB_BE32(val);
+	stream.read(&val, 4);
+	mUpperSurface.g = SB_BE32(val);
+	stream.read(&val, 4);
+	mUpperSurface.b = SB_BE32(val);
 
-	s32 val;
-	stream >> val;
-	mUpperSurface.r = val;
-	stream >> val;
-	mUpperSurface.g = val;
-	stream >> val;
-	mUpperSurface.b = val;
+	stream.read(&val, 4);
+	mLowerSurface.r = SB_BE32(val);
+	stream.read(&val, 4);
+	mLowerSurface.g = SB_BE32(val);
+	stream.read(&val, 4);
+	mLowerSurface.b = SB_BE32(val);
 
-	stream >> val;
-	mLowerSurface.r = val;
-	stream >> val;
-	mLowerSurface.g = val;
-	stream >> val;
-	mLowerSurface.b = val;
+#ifdef SMS_NATIVE_PLATFORM
+	// These fields are big-endian on disc but read via the raw read(&x,4) (which
+	// does not byteswap, unlike the typed readers). Swap to host: unk14/unk20 are
+	// array counts (unswapped -> a ~1GB `new TMapWire*[unk14]` OOM-panics), and
+	// mDrawWidth/mDrawHeight are f32 line dimensions. The color components above
+	// use SB_BE32 since `int val` is truncated to a u8 immediately.
+	unk14 = __builtin_bswap32(unk14);
+	unk20 = __builtin_bswap32(unk20);
+	{
+		u32 w, h;
+		__builtin_memcpy(&w, &TMapWire::mDrawWidth, 4);
+		__builtin_memcpy(&h, &TMapWire::mDrawHeight, 4);
+		w = __builtin_bswap32(w);
+		h = __builtin_bswap32(h);
+		__builtin_memcpy(&TMapWire::mDrawWidth, &w, 4);
+		__builtin_memcpy(&TMapWire::mDrawHeight, &h, 4);
+	}
+#endif
 
 	unk18 = new TMapWire*[unk14];
 	unk24 = new TMapWireActorManager*[unk20];
