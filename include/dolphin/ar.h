@@ -12,8 +12,16 @@
 #ifdef SMS_NATIVE_PLATFORM
 #include <stdint.h>
 typedef uintptr_t ARQRequestRef;
+// A main-memory address handed to the ARAM DMA. On GC it is a 32-bit pointer; on a
+// 64-bit host a real JKRHeap allocation cannot round-trip through a u32 -> it would
+// truncate to a wild pointer and the ARAM<->mainRAM copy would read/write garbage
+// (the inert-ARAM-seam note's "widen the SDK signatures" fix, made real now that the
+// 2D/ARAM archive path genuinely DMAs through ARAM). The ARAM-side address stays a
+// small offset (fits u32) but is carried in the same widened slot for symmetry.
+typedef uintptr_t ARMemAddr;
 #else
 typedef u32 ARQRequestRef;
+typedef u32 ARMemAddr;
 #endif
 typedef void (*ARQCallback)(ARQRequestRef pointerToARQRequest);
 
@@ -53,7 +61,7 @@ extern "C" {
 // ar.c
 ARQCallback ARRegisterDMACallback(ARQCallback callback);
 u32 ARGetDMAStatus(void);
-void ARStartDMA(u32 type, u32 mainmem_addr, u32 aram_addr, u32 length);
+void ARStartDMA(u32 type, ARMemAddr mainmem_addr, u32 aram_addr, u32 length);
 u32 ARAlloc(u32 length);
 u32 ARFree(u32* length);
 int ARCheckInit(void);
@@ -67,7 +75,7 @@ u32 ARGetSize(void);
 void ARQInit(void);
 void ARQReset(void);
 void ARQPostRequest(struct ARQRequest* request, u32 owner, u32 type,
-                    u32 priority, u32 source, u32 dest, u32 length,
+                    u32 priority, ARMemAddr source, ARMemAddr dest, u32 length,
                     ARQCallback callback);
 void ARQRemoveRequest(struct ARQRequest* request);
 void ARQRemoveOwnerRequest(u32 owner);

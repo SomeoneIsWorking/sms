@@ -22,8 +22,11 @@ public:
 
 	/* 0x40 */ s32 mTransferDirection;
 	/* 0x44 */ u32 mDataLength;
-	/* 0x48 */ u32 mSrc;
-	/* 0x4C */ u32 mDst;
+	// Main-memory side carries a host pointer on a 64-bit host; widen to pointer
+	// width (== u32 on GC, so the on-target layout is unchanged). The ARAM side is a
+	// small offset that fits either way. See ARMemAddr in dolphin/ar.h.
+	/* 0x48 */ uintptr_t mSrc;
+	/* 0x50 */ uintptr_t mDst;
 	/* 0x50 */ JKRAramBlock* mAramBlock;
 	/* 0x54 */ u32 field_0x54;
 	/* 0x58 */ AsyncCallback mCallback;
@@ -50,14 +53,15 @@ public:
 	};
 
 public:
-	static JKRAMCommand* prepareCommand(int, u32, u32, u32, JKRAramBlock*,
+	static JKRAMCommand* prepareCommand(int, uintptr_t, uintptr_t, u32,
+	                                    JKRAramBlock*,
 	                                    JKRAMCommand::AsyncCallback);
 	static void sendCommand(JKRAMCommand*);
 
-	static JKRAMCommand* orderAsync(int, u32, u32, u32, JKRAramBlock*,
+	static JKRAMCommand* orderAsync(int, uintptr_t, uintptr_t, u32, JKRAramBlock*,
 	                                JKRAMCommand::AsyncCallback);
 	static bool sync(JKRAMCommand*, int);
-	static bool orderSync(int, u32, u32, u32, JKRAramBlock*);
+	static bool orderSync(int, uintptr_t, uintptr_t, u32, JKRAramBlock*);
 	static void startDMA(JKRAMCommand*);
 	static void doneDMA(ARQRequestRef);
 
@@ -66,8 +70,8 @@ private:
 	static void unlock() { OSUnlockMutex(&mMutex); }
 };
 
-inline BOOL JKRAramPcs(int direction, u32 source, u32 destination, u32 length,
-                       JKRAramBlock* block)
+inline BOOL JKRAramPcs(int direction, uintptr_t source, uintptr_t destination,
+                       u32 length, JKRAramBlock* block)
 {
 	return JKRAramPiece::orderSync(direction, source, destination, length,
 	                               block);

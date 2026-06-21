@@ -4,8 +4,9 @@
 #include <JSystem/JKernel/JKRHeap.hpp>
 #include <dolphin/os.h>
 
-JKRAMCommand* JKRAramPiece::prepareCommand(int direction, u32 src, u32 dst,
-                                           u32 length, JKRAramBlock* block,
+JKRAMCommand* JKRAramPiece::prepareCommand(int direction, uintptr_t src,
+                                           uintptr_t dst, u32 length,
+                                           JKRAramBlock* block,
                                            JKRAMCommand::AsyncCallback callback)
 {
 	JKRAMCommand* command = new (JKRHeap::getSystemHeap(), -4) JKRAMCommand();
@@ -23,16 +24,16 @@ void JKRAramPiece::sendCommand(JKRAMCommand* command) { startDMA(command); }
 JSUList<JKRAMCommand> JKRAramPiece::sAramPieceCommandList;
 OSMutex JKRAramPiece::mMutex;
 
-JKRAMCommand* JKRAramPiece::orderAsync(int direction, u32 source,
-                                       u32 destination, u32 length,
+JKRAMCommand* JKRAramPiece::orderAsync(int direction, uintptr_t source,
+                                       uintptr_t destination, u32 length,
                                        JKRAramBlock* block,
                                        JKRAMCommand::AsyncCallback callback)
 {
 	lock();
 	if ((source & 0x1f) != 0 || (destination & 0x1f) != 0) {
 		OSReport("direction = %x\n", direction);
-		OSReport("source = %x\n", source);
-		OSReport("destination = %x\n", destination);
+		OSReport("source = %llx\n", (unsigned long long)source);
+		OSReport("destination = %llx\n", (unsigned long long)destination);
 		OSReport("length = %x\n", length);
 		OSPanic(__FILE__, 102, "Abort.");
 	}
@@ -76,8 +77,9 @@ bool JKRAramPiece::sync(JKRAMCommand* command, int is_non_blocking)
 	return TRUE;
 }
 
-bool JKRAramPiece::orderSync(int direction, u32 source, u32 destination,
-                             u32 length, JKRAramBlock* block)
+bool JKRAramPiece::orderSync(int direction, uintptr_t source,
+                             uintptr_t destination, u32 length,
+                             JKRAramBlock* block)
 {
 	lock();
 
