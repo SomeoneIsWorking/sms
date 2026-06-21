@@ -241,6 +241,19 @@ void JKRDefaultMemoryErrorRoutine(void* heap, u32 size, int alignment)
 // JKR and malloc pools never cross. Fallbacks are counted + logged (fail-loud).
 // =============================================================================
 static uint64_t g_native_malloc_fallbacks = 0;
+
+// Host-allocation gate: while raised (thread-local), a PLAIN `new` is routed
+// UNCONDITIONALLY to host malloc instead of the JKR heap. The os_impl thread layer
+// raises it around std::thread construction so the thread's internal _State_impl
+// (which libstdc++ allocates via the global operator new) is malloc-backed and
+// therefore survives the game's JKRHeap freeAll()/destroy() on scene transitions —
+// otherwise a thread carrier created before a transition is wiped and crashes the
+// next time that thread is touched (seen: SIGSEGV in execute_native_thread_routine
+// after mountStageArchive). Counted via the same fallback counter (fail-loud).
+static thread_local int g_sb_host_alloc_gate = 0;
+extern "C" void sb_host_alloc_push(void) { ++g_sb_host_alloc_gate; }
+extern "C" void sb_host_alloc_pop(void)  { if (g_sb_host_alloc_gate > 0) --g_sb_host_alloc_gate; }
+
 static void* sb_host_malloc(size_t n, int alignment)
 {
 	size_t a = alignment <= 0 ? 16 : (size_t)alignment;
@@ -261,6 +274,9 @@ static void* sb_host_malloc(size_t n, int alignment)
 }
 static inline void* sb_plain_new(size_t n, int alignment)
 {
+	// Host-isolation gate raised -> straight to malloc (skip the JKR heap entirely),
+	// so host-runtime state never lives on a heap the game later wipes.
+	if (g_sb_host_alloc_gate) return sb_host_malloc(n, alignment);
 	void* p = JKRHeap::alloc(n, alignment, nullptr);
 	return p ? p : sb_host_malloc(n, alignment);
 }
