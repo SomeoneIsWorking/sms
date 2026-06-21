@@ -1,11 +1,49 @@
 #include <JSystem/J3D/J3DGraphLoader/J3DAnmLoader.hpp>
 #include <JSystem/J3D/J3DGraphAnimator/J3DAnimation.hpp>
 #include <JSystem/JSupport.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstring>
+#include <vector>
+#include <dolphin/os.h>
+#include "anm_swap.h"
+#endif
 
 J3DAnmBase* J3DAnmLoaderDataBase::load(const void* i_data)
 {
 	if (!i_data)
 		return nullptr;
+
+#ifdef SMS_NATIVE_PLATFORM
+	// On-disc J3D1 animation files are big-endian; the decomp loader reads every
+	// multibyte field (incl. the 'J3D1' magic and the block tags it compares as
+	// host u32 constants) by raw struct cast, so on a little-endian host the magic
+	// check below fails and load() returns null -> loadAnmTexPattern derefs the
+	// null (MarioDraw.cpp). Produce a host-endian copy at load (same swap-at-load
+	// pattern as the BMD path in J3DModelLoaderDataBase::load). FAIL FAST if any
+	// present block lacks a real swapper rather than feeding half-swapped data.
+	{
+		const uint8_t* raw     = (const uint8_t*)i_data;
+		uint32_t       beMagic = (raw[0] << 24) | (raw[1] << 16) | (raw[2] << 8)
+		                   | raw[3];
+		if (beMagic == 0x4A334431 /* 'J3D1' big-endian on disc */) {
+			uint32_t len = (raw[8] << 24) | (raw[9] << 16) | (raw[10] << 8)
+			               | raw[11];
+			std::vector<uint8_t> swapped;
+			smsport::assets::AnmSwapResult sr
+			    = smsport::assets::anm_swap_to_host(raw, len, swapped);
+			if (!sr.all_covered)
+				OSPanic(__FILE__, __LINE__,
+				        "anm swap incomplete: %u/%u blocks covered (%s)",
+				        sr.blocks_covered, sr.block_num,
+				        sr.error ? sr.error : "ok");
+			// Persist a host-endian copy for the anim's lifetime (the loader
+			// retains pointers into it).
+			uint8_t* host = new uint8_t[len];
+			memcpy(host, swapped.data(), len);
+			i_data = host;
+		}
+	}
+#endif
 
 	const JUTDataFileHeader* header = ((const JUTDataFileHeader*)i_data);
 	if (header->mMagic == 'J3D1') {
