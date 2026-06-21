@@ -104,7 +104,7 @@ s32 JKRAramStream::writeToAram(JKRAramStreamCommand* command)
 
 			s32 readLength = command->mStream->read(buffer, length);
 
-			JKRAramPcs(0, (u32)(uintptr_t)buffer, destination, length, nullptr);
+			JKRAramPcs(0, (uintptr_t)buffer, destination, length, nullptr);
 			dstSize -= length;
 			offset += length;
 			writtenLength += length;

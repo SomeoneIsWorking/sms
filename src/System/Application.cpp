@@ -185,7 +185,16 @@ void SMSMountAramArchive(JKRMemArchive* param_1, TARAMBlock& param_2)
 		                       0, EXPAND_SWITCH_DEFAULT, 0, nullptr, -1,
 		                       nullptr);
 	}
-	param_1->mountFixed(gpMarDirector->getUnkD4(), MBF_0);
+	bool ok = param_1->mountFixed(gpMarDirector->getUnkD4(), MBF_0);
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_ARC_DBG")) {
+		const u8* d = (const u8*)gpMarDirector->getUnkD4();
+		OSReport("[SBDBG] SMSMountAramArchive: aram->main expand=%d unk0=%p "
+		         "first8=%02x%02x%02x%02x%02x%02x%02x%02x mountFixed=%d\n",
+		         (int)param_2.unk4, (void*)param_2.unk0, d[0], d[1], d[2], d[3],
+		         d[4], d[5], d[6], d[7], (int)ok);
+	}
+#endif
 }
 
 JKRArchive* SMSSwitch2DArchive(const char* param_1, TARAMBlock& param_2)
