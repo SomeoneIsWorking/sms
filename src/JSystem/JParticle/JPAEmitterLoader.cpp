@@ -5,6 +5,9 @@
 #include <JSystem/JParticle/JPASweepShape.hpp>
 #include <JSystem/JParticle/JPAExTexShape.hpp>
 #include <types.h>
+#ifdef SMS_NATIVE_PLATFORM
+#include <dolphin/os.h>
+#endif
 
 JPAEmitterData* JPAEmitterLoaderDataBase::load(const u8* param_1,
                                                JKRHeap* param_2,
@@ -14,9 +17,19 @@ JPAEmitterData* JPAEmitterLoaderDataBase::load(const u8* param_1,
 	if (header->unk0 == 'JEFF' && header->unk4 == 'jpa1') {
 		JPAEmitterLoader_v10 loader(param_2, param_1, header);
 		return loader.load(param_3);
-	} else {
-		return nullptr;
 	}
+#ifdef SMS_NATIVE_PLATFORM
+	// A failed magic check is a PARSE failure, not a benign "no resource" — returning
+	// null just defers the crash to a confusing downstream null-deref. Fail loud at the
+	// real cause. On the little-endian host this fires because the JPA1/'JEFF' header is
+	// BIG-ENDIAN: it reads as the byte-reversed value. The fix is a native BE->host swap
+	// of the .jpa (like sb_rarc_swap_to_host); until then this panic names the exact spot.
+	OSPanic(__FILE__, __LINE__,
+	        "JPAEmitterLoaderDataBase::load: bad JPA magic %08x %08x (expected "
+	        "'JEFF' 'jpa1'; .jpa is big-endian and needs a host swap)",
+	        header->unk0, header->unk4);
+#endif
+	return nullptr;
 }
 
 JPAEmitterLoader_v10::JPAEmitterLoader_v10(JKRHeap* param_1, const u8* param_2,
