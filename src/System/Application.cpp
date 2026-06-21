@@ -339,6 +339,11 @@ void TApplication::initialize_bootAfter()
 
 void TApplication::initialize_nlogoAfter()
 {
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_JKR_DBG"))
+		OSReport("[app] >>> initialize_nlogoAfter ENTER (mAppState=%d)\n",
+		         mAppState);
+#endif
 	JKRMemArchive* arch = (JKRMemArchive*)JKRFileLoader::getVolume("nintendo");
 	arch->unmountFixed();
 	delete arch;
@@ -357,6 +362,11 @@ void TApplication::initialize_nlogoAfter()
 		unk30 = JDrama::TNameRefGen::search<
 		    TNameRefPtrAryT<TNameRefAryT<TScenarioArchiveName> > >(
 		    "ステージ毎シナリオアーカイブ名群");
+#ifdef SMS_NATIVE_PLATFORM
+		if (getenv("SB_JKR_DBG"))
+			OSReport("[app] initialize_nlogoAfter set unk30=%p\n",
+			         (void*)unk30);
+#endif
 
 		delete JDrama::TNameRefGen::instance;
 		JDrama::TNameRefGen::instance = nullptr;
@@ -803,6 +813,11 @@ JKRMemArchive* TApplication::mountStageArchive()
 {
 	JKRMemArchive* result = nullptr;
 
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_JKR_DBG"))
+		OSReport("[app] mountStageArchive entry unk30=%p stage=%d scen=%d\n",
+		         (void*)unk30, mCurrArea.getStage(), mCurrArea.getScenario());
+#endif
 	TNameRefPtrAryT<TNameRefAryT<TScenarioArchiveName> >& tmp = *unk30;
 	if (mCurrArea.getStage() < tmp.size()) {
 		if (mCurrArea.getScenario() < tmp[mCurrArea.getStage()].size()) {
