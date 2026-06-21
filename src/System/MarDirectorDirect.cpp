@@ -60,6 +60,32 @@ int TMarDirector::direct()
 
 	JDrama::TGraphics local_140;
 
+#ifdef SMS_NATIVE_PLATFORM
+	// The first loop iteration of every direct() call takes the else-branch
+	// (catch-up render) because unk4C&0x4000 persists from the prior call's
+	// `break` (which skips the line-180 clear). That branch consumes
+	// local_140.mRenderMode before the unk34 path's TFrmGXSet (the only place
+	// the render mode is copied from the display) runs. On GC local_140 reuses
+	// the same stack slot and still holds the previous frame's (display-derived)
+	// render mode, so it works; on LP64 that slot is eventually clobbered and
+	// the uninitialized GXRenderModeObj (efbHeight==0) divide-by-zeros in
+	// GXGetYScaleFactor during IssueGXCopyDisp. Seed the TFrmGXSet-managed
+	// fields from the display (unkC0) up front — the same source of truth
+	// TFrmGXSet::perform copies from — so the catch-up render is deterministic.
+	local_140.mFrameBuffer = unkC0->getCurrentFrameBuffer();
+	local_140.mRenderMode  = unkC0->getRenderMode();
+	local_140.getUnkFC().setBit(0x1, unkC0->unk64.check(0x1));
+	local_140.getUnkFC().setBit(0x2, unkC0->unk64.check(0x2));
+	local_140.getUnkFC().setBit(0x4, unkC0->unk64.check(0x4));
+	local_140.getUnkFC().setBit(0x8, unkC0->unk64.check(0x8));
+	local_140.getUnkFC().setBit(0x10, unkC0->unk64.check(0x10));
+	local_140.getUnkFC().setBit(0x20, unkC0->unk64.check(0x20));
+	local_140.getUnkFC().setBit(0x40, unkC0->unk64.check(0x40));
+	local_140.mFBClamp    = unkC0->getFBClamp();
+	local_140.mClearColor = unkC0->getClearColor();
+	local_140.mClearZ     = unkC0->getClearZ();
+#endif
+
 	u8 bVar2 = gpMSound->unkA8;
 	unk54 += vsyncRate;
 
