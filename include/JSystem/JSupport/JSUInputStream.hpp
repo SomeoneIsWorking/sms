@@ -137,33 +137,48 @@ public:
 		return *this;
 	}
 
+	// NB: like read16b/read32b above, the multi-byte operator>> overloads read
+	// raw BE asset bytes and must byteswap to host endian on a little-endian host
+	// (JSU_BE* is identity on BE). On the GameCube these were plain raw reads; on
+	// our LE port a missing swap returns byteswapped scalars (e.g. TCameraMapTool
+	// mMode 22 -> 0x16000000 -> OOB mSaveKindParam[] fetch).
 	JSUInputStream& operator>>(s16& p)
 	{
 		read(&p, sizeof(s16));
+		p = (s16)JSU_BE16((u16)p);
 		return *this;
 	}
 
 	JSUInputStream& operator>>(u16& p)
 	{
 		read(&p, sizeof(u16));
+		p = JSU_BE16(p);
 		return *this;
 	}
 
 	JSUInputStream& operator>>(s32& p)
 	{
 		read(&p, sizeof(s32));
+		p = (s32)JSU_BE32((u32)p);
 		return *this;
 	}
 
 	JSUInputStream& operator>>(u32& p)
 	{
 		read(&p, sizeof(u32));
+		p = JSU_BE32(p);
 		return *this;
 	}
 
 	JSUInputStream& operator>>(f32& p)
 	{
 		read(&p, sizeof(f32));
+#ifdef SMS_NATIVE_PLATFORM
+		u32 bits;
+		__builtin_memcpy(&bits, &p, sizeof(bits));
+		bits = __builtin_bswap32(bits);
+		__builtin_memcpy(&p, &bits, sizeof(bits));
+#endif
 		return *this;
 	}
 };
