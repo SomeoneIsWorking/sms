@@ -88,7 +88,7 @@ volatile PPCWGPipe GXWGFifo : GXFIFO_ADDR;
 
 #endif
 
-// GXCmd
+// GXCmd  (raw FIFO command/param words — internal DL building, kept on the sink)
 FUNC_1PARAM(GXCmd, u8)
 FUNC_1PARAM(GXCmd, u16)
 FUNC_1PARAM(GXCmd, u32)
@@ -103,6 +103,65 @@ FUNC_1PARAM(GXParam, s32)
 FUNC_1PARAM(GXParam, f32)
 FUNC_3PARAM(GXParam, f32)
 FUNC_4PARAM(GXParam, f32)
+
+#ifdef SMS_NATIVE_PLATFORM
+// Native PC build: the immediate-mode VERTEX writers feed the gx_imm capture seam
+// (gx_imm_impl.cpp) instead of the (nonexistent) write-gather FIFO. Position/Colour go
+// to the renderer; Normal/TexCoord are captured-but-unused by the 2D path today (no-op
+// so they don't poke the sink); INDEXED forms (array-referenced) and the raw Cmd/Param
+// words above stay on the sink. See SLICE 2 of the renderer-attach handoff.
+extern void sb_gx_imm_pos(float x, float y, float z);
+extern void sb_gx_imm_color_rgba(unsigned r, unsigned g, unsigned b, unsigned a);
+extern void sb_gx_imm_color_u32(unsigned c);
+
+// GXPosition — value forms -> capture (2-component forms set z = 0).
+static inline void GXPosition3f32(f32 x, f32 y, f32 z) { sb_gx_imm_pos(x, y, z); }
+static inline void GXPosition3u8(u8 x, u8 y, u8 z)     { sb_gx_imm_pos(x, y, z); }
+static inline void GXPosition3s8(s8 x, s8 y, s8 z)     { sb_gx_imm_pos(x, y, z); }
+static inline void GXPosition3u16(u16 x, u16 y, u16 z) { sb_gx_imm_pos(x, y, z); }
+static inline void GXPosition3s16(s16 x, s16 y, s16 z) { sb_gx_imm_pos(x, y, z); }
+static inline void GXPosition2f32(f32 x, f32 y)        { sb_gx_imm_pos(x, y, 0); }
+static inline void GXPosition2u8(u8 x, u8 y)           { sb_gx_imm_pos(x, y, 0); }
+static inline void GXPosition2s8(s8 x, s8 y)           { sb_gx_imm_pos(x, y, 0); }
+static inline void GXPosition2u16(u16 x, u16 y)        { sb_gx_imm_pos(x, y, 0); }
+static inline void GXPosition2s16(s16 x, s16 y)        { sb_gx_imm_pos(x, y, 0); }
+FUNC_INDEX16(GXPosition)
+FUNC_INDEX8(GXPosition)
+
+// GXNormal — captured-but-unused by the 2D path (no lighting on immediate verts yet).
+static inline void GXNormal3f32(f32, f32, f32) {}
+static inline void GXNormal3s16(s16, s16, s16) {}
+static inline void GXNormal3s8(s8, s8, s8) {}
+FUNC_INDEX16(GXNormal)
+FUNC_INDEX8(GXNormal)
+
+// GXColor — value forms -> capture.
+static inline void GXColor4u8(u8 r, u8 g, u8 b, u8 a) { sb_gx_imm_color_rgba(r, g, b, a); }
+static inline void GXColor1u32(u32 c)                 { sb_gx_imm_color_u32(c); }
+static inline void GXColor3u8(u8 r, u8 g, u8 b)       { sb_gx_imm_color_rgba(r, g, b, 0xff); }
+// 16-bit packed colour (RGBA4444) — expand each nibble to 8 bits.
+static inline void GXColor1u16(u16 c) {
+	sb_gx_imm_color_rgba(((c >> 12) & 0xf) * 0x11, ((c >> 8) & 0xf) * 0x11,
+	                     ((c >> 4) & 0xf) * 0x11, (c & 0xf) * 0x11);
+}
+FUNC_INDEX16(GXColor)
+FUNC_INDEX8(GXColor)
+
+// GXTexCoord — captured-but-unused by the 2D path (no textured immediate draw yet).
+static inline void GXTexCoord2f32(f32, f32) {}
+static inline void GXTexCoord2s16(s16, s16) {}
+static inline void GXTexCoord2u16(u16, u16) {}
+static inline void GXTexCoord2s8(s8, s8) {}
+static inline void GXTexCoord2u8(u8, u8) {}
+static inline void GXTexCoord1f32(f32) {}
+static inline void GXTexCoord1s16(s16) {}
+static inline void GXTexCoord1u16(u16) {}
+static inline void GXTexCoord1s8(s8) {}
+static inline void GXTexCoord1u8(u8) {}
+FUNC_INDEX16(GXTexCoord)
+FUNC_INDEX8(GXTexCoord)
+
+#else
 
 // GXPosition
 FUNC_3PARAM(GXPosition, f32)
@@ -146,6 +205,8 @@ FUNC_1PARAM(GXTexCoord, s8)
 FUNC_1PARAM(GXTexCoord, u8)
 FUNC_INDEX16(GXTexCoord)
 FUNC_INDEX8(GXTexCoord)
+
+#endif // SMS_NATIVE_PLATFORM
 
 // GXMatrixIndex
 FUNC_1PARAM(GXMatrixIndex, u8)
