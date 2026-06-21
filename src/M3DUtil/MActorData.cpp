@@ -194,18 +194,25 @@ void MActorAnmData::init(const char* anm_folder, const char** additional_files)
 
 	delete fileFinder;
 
+	// loadAnmPtrArray concatenates param_1 + storedName (+ ext) with NO separator,
+	// so param_1 must be the slash-TERMINATED directory (thing2 = "<dir>/"), not the
+	// bare directory (thing = "<dir>"). Passing `thing` built e.g.
+	// "/yoshiyoshi_born_tx.btp" -> findVolume looks up a volume literally named
+	// "yoshiyoshi_born_tx.btp" -> null -> every anim slot left unloaded -> null
+	// deref in MActorAnmBtp::setTexNoAnmFullPtr. (Decomp transcription bug; wrong on
+	// GC too, hence unguarded.)
 	if (unk2C)
-		unk2C->loadAnmPtrArray2(anmFolder, ".bck");
+		unk2C->loadAnmPtrArray2(thing2, ".bck");
 	if (unk30)
-		unk30->loadAnmPtrArray2(anmFolder, ".bpk");
+		unk30->loadAnmPtrArray2(thing2, ".bpk");
 	if (unk34)
-		unk34->loadAnmPtrArray2(anmFolder, ".btp");
+		unk34->loadAnmPtrArray2(thing2, ".btp");
 	if (unk38)
-		unk38->loadAnmPtrArray2(anmFolder, ".btk");
+		unk38->loadAnmPtrArray2(thing2, ".btk");
 	if (unk3C)
-		unk3C->loadAnmPtrArray2(anmFolder, ".brk");
+		unk3C->loadAnmPtrArray2(thing2, ".brk");
 	if (unk40)
-		unk40->loadAnmPtrArray2(anmFolder, ".blk");
+		unk40->loadAnmPtrArray2(thing2, ".blk");
 }
 
 void MActorAnmData::addFileNum(const char* name)
