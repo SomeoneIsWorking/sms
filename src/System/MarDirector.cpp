@@ -1,6 +1,11 @@
 #include <System/MarDirector.hpp>
 #include <System/PerformList.hpp>
 #include <System/EventWatcher.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <System/Application.hpp>
+#include <dolphin/os.h>
+#include <cstdlib>
+#endif
 
 // rogue includes needed for matching sinit & bss
 #include <MSound/MSSetSound.hpp>
@@ -78,6 +83,12 @@ u32 TMarDirector::setup(JDrama::TDisplay* param_1, TMarioGamePad** param_2,
 	unk18 = param_2;
 	mMap  = param_3;
 	unk7D = param_4;
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_JKR_DBG"))
+		OSReport("[mardir] TMarDirector::setup spawning setup thread "
+		         "(map=%d unk30=%p)\n",
+		         mMap, (void*)gpApplication.unk30);
+#endif
 	OSCreateThread(&gSetupThread, &setupThreadFunc, this,
 	               (void*)(gpSetupThreadStack + 0x10000), 0x10000, 0x11, 0);
 	OSResumeThread(&gSetupThread);
