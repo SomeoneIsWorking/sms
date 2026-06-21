@@ -1203,6 +1203,30 @@ TWaterGun::TWaterGun(TMario* mario)
 	mMario = mario;
 }
 
+#ifdef SMS_NATIVE_PLATFORM
+// Region tolerance (GMSE01 US disc vs the GMSJ01/PAL decomp): the US watergun
+// nozzle models name their joints differently than the decomp hardcodes — e.g.
+// /mario/watergun2/normal_wg/normal_wg.bmd on the US disc has joints
+// chn_muzzle_1/2/3 + null_G_muzzle, NOT chn_muzzle_l / jnt_nozzle_L / jnt_nozzle_R
+// / chn_back_nozzle_prop / jnt_back_nozzle_neck. So JUTNameTab::getIndex returns
+// -1, getJointNodePointer(u16)-1 is a null/OOB joint node, and ->setCallBack
+// derefs null -> SEGV. Skip the callback bind when the joint is absent instead of
+// dereferencing. (User directive: tolerate missing region assets, never switch
+// discs — memory us-disc-vs-jp-decomp-region-tolerance.)
+static void sb_setJointCallBack(J3DModelData* md, const char* name,
+                                J3DNodeCallBack cb)
+{
+	if (md == nullptr || md->getJointName() == nullptr)
+		return;
+	s32 idx = md->getJointName()->getIndex(name);
+	if (idx < 0 || idx >= md->getJointNum())
+		return;
+	J3DJoint* node = md->getJointNodePointer((u16)idx);
+	if (node != nullptr)
+		node->setCallBack(cb);
+}
+#endif
+
 void TWaterGun::init()
 {
 	mFlags                     = 0;
@@ -1344,6 +1368,20 @@ void TWaterGun::init()
 		}
 	}
 
+#ifdef SMS_NATIVE_PLATFORM
+	// Region-tolerant joint-callback binds (see sb_setJointCallBack above): the US
+	// disc's Spray nozzle model lacks these GMSJ01/PAL joint names, so bind only
+	// the joints that actually exist instead of dereferencing a null node.
+	{
+		J3DModelData* sprayMd
+		    = mNozzleList[Spray]->unk380->getModel()->getModelData();
+		sb_setJointCallBack(sprayMd, "chn_muzzle_l", &NozzleCtrl);
+		sb_setJointCallBack(sprayMd, "jnt_nozzle_L", &WaterGunDivingCtrlL);
+		sb_setJointCallBack(sprayMd, "jnt_nozzle_R", &WaterGunDivingCtrlR);
+		sb_setJointCallBack(sprayMd, "chn_back_nozzle_prop", &RotateCtrl);
+		sb_setJointCallBack(sprayMd, "jnt_back_nozzle_neck", &NozzleCtrl);
+	}
+#else
 	mNozzleList[Spray]
 	    ->unk380->getModel()
 	    ->getModelData()
@@ -1393,6 +1431,7 @@ void TWaterGun::init()
 	                              ->getJointName()
 	                              ->getIndex("jnt_back_nozzle_neck"))
 	    ->setCallBack(&NozzleCtrl);
+#endif
 
 	mFluddModel->getModel()->setBaseTRMtx(r24);
 	mFluddModel->getModel()->calc();
