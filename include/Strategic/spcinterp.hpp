@@ -419,17 +419,29 @@ public:
 			dst[i] = src[i];
 	}
 
+	// On SMS_NATIVE_PLATFORM the bytecode operand stream is big-endian on disc and
+	// cannot be pre-swapped (mixed 1-byte opcodes + 4-byte operands), so byteswap
+	// the 4-byte fetch here. See spc_swap_blob() in spcinterp.cpp.
+	static void spc_fetch4(u8* dst, const u8* src)
+	{
+		hacky_memcpy(dst, (u8*)src, 4);
+#ifdef SMS_NATIVE_PLATFORM
+		u8 t;
+		t = dst[0]; dst[0] = dst[3]; dst[3] = t;
+		t = dst[1]; dst[1] = dst[2]; dst[2] = t;
+#endif
+	}
 	f32 fetchF32()
 	{
 		f32 result;
-		hacky_memcpy((u8*)&result, mBinary->getText(mProgramCounter), 4);
+		spc_fetch4((u8*)&result, mBinary->getText(mProgramCounter));
 		mProgramCounter += 4;
 		return result;
 	}
 	s32 fetchS32()
 	{
 		s32 result;
-		hacky_memcpy((u8*)&result, mBinary->getText(mProgramCounter), 4);
+		spc_fetch4((u8*)&result, mBinary->getText(mProgramCounter));
 		mProgramCounter += 4;
 		return result;
 	}
@@ -442,7 +454,7 @@ public:
 	u32 fetchU32()
 	{
 		u32 result;
-		hacky_memcpy((u8*)&result, mBinary->getText(mProgramCounter), 4);
+		spc_fetch4((u8*)&result, mBinary->getText(mProgramCounter));
 		mProgramCounter += 4;
 		return result;
 	}
