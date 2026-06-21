@@ -20,6 +20,17 @@ bool gParticleFlagLoaded[0x201];
 JPAResourceManager* gpResourceManager;
 JPAEmitterManager* gpEmitterManager4D2;
 
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdlib>
+static inline int SB_LR_FAIL(int code, const char* what) {
+	if (getenv("SB_MOVIE_DBG") || getenv("SB_JKR_DBG"))
+		OSReport("[loadres] FAIL step %d: %s -> return 1\n", code, what);
+	return code ? 1 : 0;
+}
+#else
+#define SB_LR_FAIL(code, what) (1)
+#endif
+
 int TMarDirector::loadResource()
 {
 	TMarioParticleManager* this_00 = new TMarioParticleManager;
@@ -42,38 +53,38 @@ int TMarDirector::loadResource()
 	void* rawArch = SMSLoadArchive("/data/yoshi.arc", nullptr, 0, nullptr);
 	JKRMemArchive* arch = new JKRMemArchive;
 	if (!arch->mountFixed(rawArch, MBF_0))
-		return 1;
+		return SB_LR_FAIL(1, "yoshi.arc mountFixed");
 
 	{
 		JKRDvdFile sceneDvdFile;
 		if (!sceneDvdFile.open("/data/scenecmn.bin"))
-			return 1;
+			return SB_LR_FAIL(2, "scenecmn.bin open");
 
 		gpSceneCmnDatSize = sceneDvdFile.getFileSize();
 		gpSceneCmnDat     = JKRDvdRipper::loadToMainRAM(
             &sceneDvdFile, nullptr, EXPAND_SWITCH_DEFAULT, 0, nullptr,
             JKRDvdRipper::ALLOC_DIRECTION_FORWARD, 0, nullptr);
 		if (gpSceneCmnDat == nullptr)
-			return 1;
+			return SB_LR_FAIL(3, "scenecmn loadToMainRAM");
 	}
 
 	void* paramsBlob = new (0x20) char[0x80000];
 	if (!SMSLoadArchive("/data/params.arc", paramsBlob, 0x80000, nullptr))
-		return 1;
+		return SB_LR_FAIL(4, "params.arc load");
 
 	JKRMemArchive* paramsArch = new (0x20) JKRMemArchive;
 	if (!paramsArch->mountFixed(paramsBlob, MBF_0))
-		return 1;
+		return SB_LR_FAIL(5, "params.arc mountFixed");
 
 	unkB8 = gpApplication.mountStageArchive();
 	if (!unkB8)
-		return 1;
+		return SB_LR_FAIL(6, "mountStageArchive");
 
 	if (gpApplication.mCurrArea.unk0 == 15) {
 		void* optionBlob          = SMSLoadArchive("/data/option.arc", 0, 0, 0);
 		JKRMemArchive* optionArch = new JKRMemArchive;
 		if (!optionArch->mountFixed(optionBlob, MBF_0))
-			return 1;
+			return SB_LR_FAIL(7, "option.arc mountFixed");
 	}
 
 	unkD4 = new (0x20) char[0x64000];

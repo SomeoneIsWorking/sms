@@ -603,6 +603,13 @@ void TApplication::proc()
 			}
 		}
 
+#ifdef SMS_NATIVE_PLATFORM
+		if (getenv("SB_MOVIE_DBG"))
+			OSReport("[app] proc: mAppState=%d -> nextState=%d (iVar9=%d "
+			         "isSomethingPushed=%d)\n",
+			         mAppState, nextState, iVar9,
+			         (int)mGamePads[0]->isSomethingPushed());
+#endif
 		mAppState = nextState;
 		mPrevArea = mCurrArea;
 		mCurrArea = mNextArea;
@@ -819,6 +826,11 @@ JKRMemArchive* TApplication::mountStageArchive()
 		         (void*)unk30, mCurrArea.getStage(), mCurrArea.getScenario());
 #endif
 	TNameRefPtrAryT<TNameRefAryT<TScenarioArchiveName> >& tmp = *unk30;
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_MOVIE_DBG") || getenv("SB_JKR_DBG"))
+		OSReport("[app] mountStageArchive: tmp.size()=%d stage=%d scen=%d\n",
+		         (int)tmp.size(), mCurrArea.getStage(), mCurrArea.getScenario());
+#endif
 	if (mCurrArea.getStage() < tmp.size()) {
 		if (mCurrArea.getScenario() < tmp[mCurrArea.getStage()].size()) {
 			const char* scenarioArcName
@@ -827,7 +839,11 @@ JKRMemArchive* TApplication::mountStageArchive()
 			DVDChangeDir("/data/scene");
 			void* archBlob
 			    = SMSLoadArchive(scenarioArcName, nullptr, 0, nullptr);
-
+#ifdef SMS_NATIVE_PLATFORM
+			if (getenv("SB_MOVIE_DBG") || getenv("SB_JKR_DBG"))
+				OSReport("[app] mountStageArchive: arcName='%s' archBlob=%p\n",
+				         scenarioArcName ? scenarioArcName : "(null)", archBlob);
+#endif
 			if (archBlob) {
 				JKRMemArchive* arch = new JKRMemArchive;
 				arch->mountFixed(archBlob, MBF_0);

@@ -184,6 +184,11 @@ int TMovieDirector::rsetup()
 
 TMovieDirector::~TMovieDirector()
 {
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_MOVIE_DBG"))
+		OSReport("[movie] ~TMovieDirector (movie=%u) -> THPPlayerStop/Close/Quit\n",
+		         gpApplication.getMovie());
+#endif
 	if (JKRMemArchive* arc
 	    = (JKRMemArchive*)JKRFileLoader::getVolume("endsave"))
 		arc->unmountFixed();
@@ -326,6 +331,12 @@ int TMovieDirector::direct()
 			nextState = STATE_FADE_OUT;
 		} else if (THPPlayerGetState() == 3) {
 			desiredAppState = decideNextMode(&nextState);
+#ifdef SMS_NATIVE_PLATFORM
+			if (getenv("SB_MOVIE_DBG"))
+				OSReport("[movie] STATE_PLAYING saw thp==3 -> decideNextMode "
+				         "desiredAppState=%d nextState=%d (movie=%u)\n",
+				         desiredAppState, nextState, gpApplication.getMovie());
+#endif
 		}
 		break;
 
