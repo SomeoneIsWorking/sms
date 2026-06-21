@@ -94,7 +94,12 @@ public:
 	/* 0x208 */ J2DPane* unk208;
 	/* 0x20C */ u16 unk20C[11];
 	/* 0x222 */ u8 unk222[11];
-	/* 0x22E */ u16 unk22E[13];
+	// These are sized [13] (one per unk1D4[13] pane), not [8]: titleDraw loops
+	// i<13 writing unk22E[i]/unk248[i]. The decomp split them [8]+char-pad; the
+	// padding exactly covered indices 8..12 on GC, but the C-level OOB access is
+	// UB and miscompiled on the LP64 host (the i<13 loop ran past 13 into garbage
+	// unk1D4 -> wild TExPane this). 0x22E + 13*2 = 0x248; 0x248 + 13 = 0x255.
+	/* 0x22E */ s16 unk22E[13];
 	/* 0x248 */ u8 unk248[13];
 	/* 0x255 */ char unk255[0x258 - 0x255];
 	/* 0x258 */ u16 unk258;
