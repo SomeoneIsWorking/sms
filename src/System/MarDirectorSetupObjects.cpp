@@ -421,12 +421,18 @@ bool TMarDirector::setupObjects()
 	{
 		JKRDvdFile auStack_1d8;
 		auStack_1d8.open("/data/PerformLists.bin");
-		JKRDvdRipper::loadToMainRAM(
+		// loadToMainRAM returns the heap buffer the file data was read into
+		// (its `dst`); that is what must back the stream. The original decomp
+		// discarded this and passed getFileInfo() (the DVDFileInfo handle, not
+		// the data) -> genObject read garbage/EOF and getNameRef got a null name
+		// -> strcmp(NULL,...) crash. Stream from the loaded buffer like the
+		// scene/tables loads above do.
+		void* performListsData = JKRDvdRipper::loadToMainRAM(
 		    &auStack_1d8, nullptr, EXPAND_SWITCH_DEFAULT, 0, nullptr,
 		    JKRDvdRipper::ALLOC_DIRECTION_FORWARD, 0, nullptr);
 
 		{
-			JSUMemoryInputStream stream(auStack_1d8.getFileInfo(),
+			JSUMemoryInputStream stream(performListsData,
 			                            auStack_1d8.getFileSize());
 			JSUMemoryInputStream leftoversStream(nullptr, nullptr);
 			JDrama::TViewObj* performLists
