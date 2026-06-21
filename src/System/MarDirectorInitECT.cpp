@@ -122,7 +122,13 @@ void TMarDirector::initECDisp(
 	    = JDrama::TNameRefGen::search<JDrama::TViewObj>("太陽モデル");
 
 	if (sunModel) {
-		lensGlow = new TLensGlow(true, "太陽遮蔽物グロー");
+		// Sun-model scene -> sun volume (/scene/sun). The original decomp passed
+		// `true` here (sunset volume /scene/sunset), but that matches the
+		// 夕日モデル branch below, not this one: a sun-only stage has no
+		// /scene/sunset and TLensGlow's glow.bmd load would null-deref. The
+		// false/true (sun/sunset) split mirrors TSunModel::load's volumeName
+		// selection (cSunVolumeName vs cSunsetVolumeName).
+		lensGlow = new TLensGlow(false, "太陽遮蔽物グロー");
 		param_2->insert(lensGlow);
 		lensFlare = new TLensFlare("レンズフレア");
 		param_2->insert(lensFlare);
