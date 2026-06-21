@@ -31,11 +31,17 @@ J3DAnmBase* J3DAnmLoaderDataBase::load(const void* i_data)
 			std::vector<uint8_t> swapped;
 			smsport::assets::AnmSwapResult sr
 			    = smsport::assets::anm_swap_to_host(raw, len, swapped);
-			if (!sr.all_covered)
+			if (!sr.all_covered) {
+				uint32_t t = sr.first_uncovered_tag;
+				char tag[5] = { (char)(t >> 24), (char)(t >> 16),
+				                (char)(t >> 8), (char)t, 0 };
 				OSPanic(__FILE__, __LINE__,
-				        "anm swap incomplete: %u/%u blocks covered (%s)",
-				        sr.blocks_covered, sr.block_num,
+				        "anm swap incomplete: %u/%u blocks covered, first "
+				        "uncovered tag='%s' (0x%08X) type=%c%c%c%c (%s)",
+				        sr.blocks_covered, sr.block_num, tag, t,
+				        raw[4], raw[5], raw[6], raw[7],
 				        sr.error ? sr.error : "ok");
+			}
 			// Persist a host-endian copy for the anim's lifetime (the loader
 			// retains pointers into it).
 			uint8_t* host = new uint8_t[len];
