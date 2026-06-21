@@ -7,6 +7,10 @@
 #include <Camera/camerasave.hpp>
 #include <MarioUtil/MapUtil.hpp>
 #include <JSystem/JMath.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cmath>
+#include <dolphin/os.h>
+#endif
 
 void CPolarSubCamera::calcInHouseNoSub_()
 {
@@ -47,6 +51,29 @@ void CPolarSubCamera::calcInHouseNo_(bool param_1)
 		for (int i = 0; i < 9; ++i) {
 			local_120[9 + i].scaleAdd(fVar1, local_120[i], unk25C);
 		}
+
+#ifdef SMS_NATIVE_PLATFORM
+		// FAIL FAST: inputs to CLBCalcNearNinePos were finite (checked above),
+		// so a NaN in the 18 near-plane positions points at either the rotation
+		// math inside CLBCalcNearNinePos or the scaleAdd here (unk2C4/unk25C).
+		// Crash naming the offending row/field rather than OOB-indexing the
+		// collision grid (cvttss2si(NaN)=INT_MIN) in checkGround.
+		for (int gi = 0; gi < 18; ++gi) {
+			if (!std::isfinite(local_120[gi].x)
+			    || !std::isfinite(local_120[gi].y)
+			    || !std::isfinite(local_120[gi].z)) {
+				OSPanic(__FILE__, __LINE__,
+				        "calcInHouseNo_ NaN near-pos[%d]=(%g,%g,%g): mMode=%d "
+				        "eye=(%g,%g,%g) at=(%g,%g,%g) near=%g fovy=%g "
+				        "aspect=%g angZ=%d unk2C4=%g unk25C=(%g,%g,%g)",
+				        gi, local_120[gi].x, local_120[gi].y, local_120[gi].z,
+				        mMode, unk124.x, unk124.y, unk124.z, unk148.x,
+				        unk148.y, unk148.z, mNear, mFovy, mAspect,
+				        (int)getFinalAngleZ(), unk2C4, unk25C.x, unk25C.y,
+				        unk25C.z);
+			}
+		}
+#endif
 
 		f32 tmp = unk2C0;
 		for (int i = 0; i < 9; ++i) {
