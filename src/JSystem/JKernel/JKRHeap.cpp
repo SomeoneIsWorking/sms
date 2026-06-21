@@ -219,6 +219,84 @@ void JKRDefaultMemoryErrorRoutine(void* heap, u32 size, int alignment)
 	OSErrorLine(694, "abort\n");
 }
 
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdlib>
+#include <cstdint>
+// =============================================================================
+// Native host-runtime isolation. The single global operator-new override forces
+// EVERY native allocation into the JKR heap — not just game objects, but the
+// HOST-RUNTIME ones too: std::thread state, std container nodes, the nvk
+// renderer + glslang, os_impl's NativeThread. On hardware there is no such host
+// runtime; here they drain the JKR root heap to 0, so a later allocation (game
+// or host) returns null -> nondeterministic null-deref / std::thread terminate
+// (seen: TApplication::mountStageArchive unk30==null, AudioThread::start abort).
+//
+// Policy: an EXPLICIT-heap placement (`new (heap, align)`) stays STRICT — it
+// returns null on failure so a genuinely under-sized solid heap fails fast at
+// the real cause (the LP64 sizing bug), never silently masked. A PLAIN `new`
+// (heap == nullptr, which is what the host runtime AND general game allocations
+// use via sCurrentHeap) falls back to malloc when the JKR heap is full/absent,
+// so host bookkeeping is malloc-backed and isolated from the game heap. delete
+// routes each pointer to its true owner by address range (findFromRoot), so the
+// JKR and malloc pools never cross. Fallbacks are counted + logged (fail-loud).
+// =============================================================================
+static uint64_t g_native_malloc_fallbacks = 0;
+static void* sb_host_malloc(size_t n, int alignment)
+{
+	size_t a = alignment <= 0 ? 16 : (size_t)alignment;
+	if (n == 0) n = 1;
+	void* m;
+	if (a <= 16) {
+		m = std::malloc(n);
+	} else {
+		// posix_memalign needs a power-of-two >= sizeof(void*); JKR aligns are.
+		if (posix_memalign(&m, a, n) != 0) m = nullptr;
+	}
+	uint64_t c = ++g_native_malloc_fallbacks;
+	if (getenv("SB_JKR_DBG") && (c <= 8 || (c & (c - 1)) == 0))
+		OSReport("[heap] host malloc fallback #%llu size=%zu align=%d "
+		         "(JKR plain heap full/absent)\n",
+		         (unsigned long long)c, n, alignment);
+	return m;
+}
+static inline void* sb_plain_new(size_t n, int alignment)
+{
+	void* p = JKRHeap::alloc(n, alignment, nullptr);
+	return p ? p : sb_host_malloc(n, alignment);
+}
+
+void* operator new(size_t byteCount) { return sb_plain_new(byteCount, 4); }
+void* operator new(size_t byteCount, int alignment)
+{
+	return sb_plain_new(byteCount, alignment);
+}
+void* operator new(size_t byteCount, JKRHeap* heap, int alignment)
+{
+	// explicit heap -> strict (fail fast on a real solid-heap sizing bug)
+	return JKRHeap::alloc(byteCount, alignment, heap);
+}
+void* operator new[](size_t byteCount) { return sb_plain_new(byteCount, 4); }
+void* operator new[](size_t byteCount, int alignment)
+{
+	return sb_plain_new(byteCount, alignment);
+}
+void* operator new[](size_t byteCount, JKRHeap* heap, int alignment)
+{
+	return JKRHeap::alloc(byteCount, alignment, heap);
+}
+
+// delete keeps the decomp behavior: JKRHeap::free no-ops when findFromRoot does
+// not own the pointer. A malloc-fallback pointer therefore LEAKS rather than
+// risking a wrong libc free() — using findFromRoot to route the free is unsafe
+// during heap bring-up, when a JKR pointer can be allocated before sRootHeap is
+// wired (its owning heap is then not reachable from root, so findFromRoot==null
+// and free() on a JKR pointer aborts with "invalid size"). The fallback only
+// fires on JKR exhaustion (bounded host bookkeeping), so the leak is bounded;
+// the SB_JKR_DBG counter surfaces the volume. A self-describing tagged free can
+// replace this if the count proves large.
+void operator delete(void* memory) { JKRHeap::free(memory, nullptr); }
+void operator delete[](void* memory) { JKRHeap::free(memory, nullptr); }
+#else
 void* operator new(size_t byteCount)
 {
 	return JKRHeap::alloc(byteCount, 4, nullptr);
@@ -248,6 +326,7 @@ void* operator new[](size_t byteCount, JKRHeap* heap, int alignment)
 // this is not needed without the other pragma and asm bs
 void operator delete(void* memory) { JKRHeap::free(memory, nullptr); }
 void operator delete[](void* memory) { JKRHeap::free(memory, nullptr); }
+#endif
 
 void JKRHeap::state_register(JKRHeap::TState* p, u32) const
 {
