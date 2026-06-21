@@ -7,6 +7,9 @@
 #include <JSystem/JSupport/JSUMemoryInputStream.hpp>
 #include <dolphin/gx.h>
 #include <dolphin/os.h>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdlib>
+#endif
 
 J2DScreen::~J2DScreen() { }
 
@@ -178,12 +181,28 @@ J2DSetScreen::J2DSetScreen(const char* name, JKRArchive* arch)
     : J2DScreen()
 {
 	u8* res = (u8*)JKRGetNameResource(name, arch);
+#ifdef SMS_NATIVE_PLATFORM
+	if (::getenv("SB_ARC_DBG"))
+		OSReport("[SBDBG] J2DSetScreen('%s', arch=%p) res=%p\n", name, (void*)arch,
+		         (void*)res);
+#endif
 	if (res) {
 		u32 sz = JKRFileLoader::getResSize(res, nullptr);
 		// Probably an assert
 		(void)!res;
+#ifdef SMS_NATIVE_PLATFORM
+		if (::getenv("SB_ARC_DBG"))
+			OSReport("[SBDBG]   sz=%u magic=%02x%02x%02x%02x%02x%02x%02x%02x\n",
+			         sz, res[0], res[1], res[2], res[3], res[4], res[5], res[6],
+			         res[7]);
+#endif
 		JSUMemoryInputStream stream(res, sz);
 		makeHiearachyPanes(this, &stream, false, true, false, nullptr);
+#ifdef SMS_NATIVE_PLATFORM
+		if (::getenv("SB_ARC_DBG"))
+			OSReport("[SBDBG]   after makeHiearachyPanes: search('go00')=%p\n",
+			         (void*)search('go00'));
+#endif
 	}
 	mbClipToParent = false;
 }
