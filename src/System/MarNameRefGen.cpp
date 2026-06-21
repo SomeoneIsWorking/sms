@@ -30,6 +30,7 @@
 #include <GC2D/SunGlass.hpp>
 #include <Map/MapMirror.hpp>
 #include <Map/MapEventSink.hpp>
+#include <Enemy/Beam.hpp>
 #include <Enemy/Conductor.hpp>
 #include <Enemy/EffectObj.hpp>
 #include <Enemy/AreaCylinder.hpp>
@@ -53,6 +54,9 @@ JDrama::TNameRef* TMarNameRefGen::getNameRef(const char* name) const
 
 	if (strcmp(name, "shadowLight") == 0)
 		return new TLightShadow;
+
+	if (strcmp(name, "BeamManager") == 0)
+		return new TBeamManager;
 
 	if (strcmp(name, "EffectObjManager") == 0)
 		return new TEffectObjManager;

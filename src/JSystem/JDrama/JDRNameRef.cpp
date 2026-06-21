@@ -1,5 +1,9 @@
 #include <JSystem/JDrama/JDRNameRef.hpp>
 #include <JSystem/JDrama/JDRNameRefGen.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstring>
+#include <dolphin/os.h>
+#endif
 
 using namespace JDrama;
 
@@ -29,7 +33,38 @@ const char* TNameRef::getType(JSUMemoryInputStream& param_1,
 TNameRef* TNameRef::genObject(JSUMemoryInputStream& param_1,
                               JSUMemoryInputStream& param_2)
 {
-	return TNameRefGen::getInstance()->getNameRef(getType(param_1, param_2));
+	const char* type = getType(param_1, param_2);
+	TNameRef* obj    = TNameRefGen::getInstance()->getNameRef(type);
+#ifdef SMS_NATIVE_PLATFORM
+	// FAIL FAST: getNameRef returning null means the scene asset references a
+	// type no getNameRef case creates. The list loaders silently skip the null
+	// child (JDRNameRefPtrList.hpp:29), so the object never enters the tree and a
+	// later setup search() returns null -> null deref three frames away (e.g.
+	// setup2's TCardLoad "データロード"). Crash here naming the missing type.
+	if (obj == nullptr && type != nullptr && type[0] != '\0') {
+		// Known-unimplemented types: classes not yet decompiled (TODO cases in
+		// the getNameRef tables). The object is skipped; tolerated rather than
+		// panicked so boot proceeds, but logged so it's never invisible. Any
+		// OTHER null type is a real bug (missing getNameRef case) -> fail fast.
+		static const char* const kUnimplemented[] = { "MapObjFlagManager" };
+		bool known = false;
+		for (unsigned i = 0; i < sizeof(kUnimplemented) / sizeof(*kUnimplemented);
+		     ++i) {
+			if (strcmp(type, kUnimplemented[i]) == 0) {
+				known = true;
+				break;
+			}
+		}
+		if (known) {
+			OSReport("[genObject] skipping unimplemented type \"%s\"\n", type);
+		} else {
+			OSPanic(__FILE__, __LINE__,
+			        "TNameRef::genObject: no getNameRef case for type \"%s\"",
+			        type);
+		}
+	}
+#endif
+	return obj;
 }
 
 TNameRef::~TNameRef() { }
