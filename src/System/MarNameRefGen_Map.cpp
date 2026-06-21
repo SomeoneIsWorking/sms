@@ -1,5 +1,6 @@
 
 #include "Camera/SunMgr.hpp"
+#include "Camera/SunModel.hpp"
 #include "Map/BathWaterManager.hpp"
 #include "Map/Map.hpp"
 #include "Map/MapDraw.hpp"
@@ -34,13 +35,11 @@ JDrama::TNameRef* TMarNameRefGen::getNameRef_Map(const char* name) const
 	if (strcmp(name, "SunMgr") == 0)
 		return new TSunMgr;
 
-	// TODO:
-	// if ( strcmp(name, "SunModel" ) == 0 )
-	//     return new TSunModel(false, "<TSunModel>");
+	if (strcmp(name, "SunModel") == 0)
+		return new TSunModel(false, "<TSunModel>");
 
-	// TODO:
-	// if ( strcmp(name, "SunsetModel" ) == 0 )
-	//     return new TSunModel(true, "<TSunModel>");
+	if (strcmp(name, "SunsetModel") == 0)
+		return new TSunModel(true, "<TSunModel>");
 
 	if (strcmp(name, "MarineSnow") == 0)
 		return new TMarineSnow;
