@@ -78,6 +78,15 @@ void* JKRSolidHeap::allocFromHead(u32 size, int align)
 		mFreeSize -= requiredSize;
 		ret = alignedStart;
 	} else {
+#ifdef SMS_NATIVE_PLATFORM
+		// FAIL FAST diagnostic: name the heap + dump the exact shortfall so an LP64
+		// heap-sizing fix is precise (pointer arrays are 2x larger on the 64-bit host,
+		// so 32-bit-sized SolidHeaps overflow — e.g. J3DDrawBuffer's J3DPacket*[size]).
+		OSReport("[jkr] SolidHeap %p OUT OF MEMORY: requiredSize=0x%x (size=0x%x align=%d) "
+		         "mFreeSize=0x%x short=0x%x span mStart=%p mEnd=%p\n",
+		         this, requiredSize, size, align, mFreeSize,
+		         requiredSize - mFreeSize, mStart, mEnd);
+#endif
 		JUTWarningConsole_f("allocFromHead: cannot alloc memory (0x%x byte).\n",
 		                    requiredSize);
 		if (mErrorFlag == true && mErrorHandler != nullptr) {
