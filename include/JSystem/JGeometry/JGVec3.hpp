@@ -218,6 +218,25 @@ public:
 	}
 
 	// fabricated and fake and UB but it makes things match??
+	// The original returns a reference to the by-value temporary `fst`, which
+	// is destroyed on return. On GC PPC the stale stack slot survived (the
+	// fakematch), but on LP64 -O2 the compiler proves the dangling reference is
+	// UB, folds the caller's `.length()` load to address 0 and emits `ud2`
+	// (the TMarioCap::perform null-float trap). Return by value natively — the
+	// arithmetic result is identical; only the dangling-reference UB is removed.
+#ifdef SMS_NATIVE_PLATFORM
+	friend TVec3 operator-(TVec3 fst, const TVec3& snd)
+	{
+		fst -= snd;
+		return fst;
+	}
+
+	friend TVec3 operator+(TVec3 fst, const TVec3& snd)
+	{
+		fst += snd;
+		return fst;
+	}
+#else
 	friend const TVec3& operator-(TVec3 fst, const TVec3& snd)
 	{
 		fst -= snd;
@@ -230,6 +249,7 @@ public:
 		fst += snd;
 		return fst;
 	}
+#endif
 
 	// @fabricated
 	friend TVec3 operator*(TVec3 fst, f32 snd)
