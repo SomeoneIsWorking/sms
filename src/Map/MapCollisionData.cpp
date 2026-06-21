@@ -57,6 +57,18 @@ void TMapCollisionData::init(JSUMemoryInputStream& stream)
 	stream.read(&value, 4);
 	unk24 = value;
 
+#ifdef SMS_NATIVE_PLATFORM
+	// map.col counts are big-endian on disc; the raw read(&value,4) above copies
+	// bytes without swapping (unlike the typed readS32). Left unswapped, unk1C/
+	// unk20/unk24 become huge garbage and `new TBGCheckData[unk1C]` (etc.) walks
+	// off the heap, crashing in the element ctor. Swap to host before use.
+	unk8  = __builtin_bswap32(unk8);
+	unkC  = __builtin_bswap32(unkC);
+	unk1C = __builtin_bswap32(unk1C);
+	unk20 = __builtin_bswap32(unk20);
+	unk24 = __builtin_bswap32(unk24);
+#endif
+
 	mGridExtentX = (unk8 / 2) * 1024.0f;
 	mGridExtentY = (unkC / 2) * 1024.0f;
 

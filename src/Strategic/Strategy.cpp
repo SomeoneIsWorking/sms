@@ -8,6 +8,13 @@ void TIdxGroupObj::loadSuper(JSUMemoryInputStream& stream)
 {
 	JDrama::TViewObjPtrListT<THitActor>::loadSuper(stream);
 	stream.read(&unk20, 4);
+#ifdef SMS_NATIVE_PLATFORM
+	// unk20 is the big-endian group index read via the raw read(&x,4) (no
+	// byteswap). It indexes TStrategy::unk10[16] in TStrategy::load
+	// (unk10[ref->unk20] = ref); left unswapped it is huge garbage -> OOB wild
+	// write -> SEGV. Swap to host.
+	unk20 = __builtin_bswap32(unk20);
+#endif
 }
 
 TStrategy::TStrategy(const char* name)
