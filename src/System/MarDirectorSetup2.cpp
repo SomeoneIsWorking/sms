@@ -74,6 +74,19 @@ void TMarDirector::setup2()
 	unkB0 = JDrama::TNameRefGen::search<TTalk2D2>("会話表示");
 	unk70 = JDrama::TNameRefGen::search<TCardLoad>("データロード");
 
+#ifdef SMS_NATIVE_PLATFORM
+	// FAIL FAST: these scene-common objects are dereferenced unguarded below; a
+	// null means the named object wasn't found in the NameRef tree (e.g. a stub
+	// load() that skipped TNameRef::load left mName at its ctor default ->
+	// unsearchable). Name the culprit instead of crashing on its field store.
+	if (!unk70 || !unk78 || !unkE0 || !unkAC || !unkB0)
+		OSPanic(__FILE__, __LINE__,
+		        "setup2: null required obj cardLoad=%p guide=%p sunGlass=%p "
+		        "pause=%p talk=%p",
+		        (void*)unk70, (void*)unk78, (void*)unkE0, (void*)unkAC,
+		        (void*)unkB0);
+#endif
+
 	unk70->unk38 = unk18[0];
 	unk78->unkC0 = unk18[0];
 
