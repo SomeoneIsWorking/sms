@@ -130,6 +130,10 @@ void J2DTextBox::initiate(const ResFONT* font, const char* str,
 	mWhite      = 0xFFFFFFFF;
 	mHBinding   = hbind;
 	mVBinding   = vbind;
+#ifdef SMS_NATIVE_PLATFORM
+	if (!str) // region-tolerant: a missing message (e.g. a US bmg lacking a JP/PAL
+		str = ""; // index) yields null from SMSGetMessageData -> treat as empty text
+#endif
 	size_t temp = strlen(str);
 	mText       = new char[temp + 1];
 	strcpy(mText, str);
@@ -199,6 +203,10 @@ size_t J2DTextBox::setString(const char* str, ...)
 	if (mText)
 		delete[] mText;
 
+#ifdef SMS_NATIVE_PLATFORM
+	if (!str) // region-tolerant: null message (missing US bmg index) -> empty text
+		str = "";
+#endif
 	size_t sz = strlen(str);
 	mText     = new char[sz + 1];
 	strcpy(mText, str);
