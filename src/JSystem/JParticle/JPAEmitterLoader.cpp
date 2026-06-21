@@ -7,12 +7,20 @@
 #include <types.h>
 #ifdef SMS_NATIVE_PLATFORM
 #include <dolphin/os.h>
+#include <JSystem/JParticle/JPASwap.h>
 #endif
 
 JPAEmitterData* JPAEmitterLoaderDataBase::load(const u8* param_1,
                                                JKRHeap* param_2,
                                                JPATextureResource* param_3)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// .jpa is GameCube BIG-ENDIAN; swap to host before the magic check + the
+	// raw-cast block parsing below. Idempotent + only acts on a BE JPA1 magic,
+	// so an already-host or genuinely bad buffer falls through to the fail-fast
+	// OSPanic with the offending bytes.
+	sb_jpa_swap_to_host((u8*)param_1);
+#endif
 	JPABinaryHeader* header = (JPABinaryHeader*)param_1;
 	if (header->unk0 == 'JEFF' && header->unk4 == 'jpa1') {
 		JPAEmitterLoader_v10 loader(param_2, param_1, header);
