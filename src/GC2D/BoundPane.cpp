@@ -4,7 +4,15 @@
 TBoundPane::TBoundPane(J2DScreen* param_1, u32 param_2)
 {
 	unk0  = param_1->search(param_2);
+#ifdef SMS_NATIVE_PLATFORM
+	// Region-tolerant: a US (GMSE01) UI archive can lack panes the JP/PAL decomp
+	// expects (e.g. big_tx_1.blo has 6 'sg' panes vs the 9 unk244[] reserves), so
+	// search() returns null. Tolerate it instead of null-derefing; this TBoundPane
+	// is inert (update()/move/resize skip it) until/unless its pane exists.
+	unk4 = unk0 ? unk0->mBounds : JUTRect(0, 0, 0, 0);
+#else
 	unk4  = unk0->mBounds;
+#endif
 	unk28 = 0.0f;
 	unk2C = 0.0f;
 	unk30 = 0.0f;
@@ -40,6 +48,10 @@ void TBoundPane::setPaneSize(s32 param_1, const JUTPoint& param_2,
 
 bool TBoundPane::update()
 {
+#ifdef SMS_NATIVE_PLATFORM
+	if (!unk0) // region-tolerant: inert pane (see ctor) — nothing to animate
+		return true;
+#endif
 	if (unk24) {
 		if (unk28 > 1.0f) {
 			unk28 = 1.0f;
