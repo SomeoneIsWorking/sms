@@ -10,11 +10,50 @@
 #include <JSystem/J3D/J3DGraphLoader/J3DMaterialFactory_v21.hpp>
 #include <JSystem/JUtility/JUTNameTab.hpp>
 #include <JSystem/JKernel/JKRHeap.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstring>
+#include <vector>
+#include <dolphin/os.h>
+#include "bmd_swap.h"
+#endif
 
 J3DModelData* J3DModelLoaderDataBase::load(const void* i_data, u32 i_flags)
 {
 	if (i_data == nullptr)
 		return nullptr;
+
+#ifdef SMS_NATIVE_PLATFORM
+	// On-disc J3D2 BMD/BDL files are big-endian; the decomp loader reads every
+	// multibyte field (incl. the 'J3D2' fourcc) by raw struct cast, so on a
+	// little-endian host the magic check below would fail and load() would return
+	// null -> a null J3DModelData deref in J3DModel::entryModelData. Produce a
+	// host-endian copy at load: bmd_swap_to_host swaps the structural fields and
+	// deliberately leaves DL / vertex-array / texel byte-streams big-endian (the
+	// render path consumes those as BE). FAIL FAST if any present block lacks a
+	// real swapper rather than feeding the loader half-swapped data.
+	{
+		const uint8_t* raw    = (const uint8_t*)i_data;
+		uint32_t       beMagic = (raw[0] << 24) | (raw[1] << 16) | (raw[2] << 8)
+		                   | raw[3];
+		if (beMagic == 0x4A334432 /* 'J3D2' big-endian on disc */) {
+			uint32_t len = (raw[8] << 24) | (raw[9] << 16) | (raw[10] << 8)
+			               | raw[11];
+			std::vector<uint8_t> swapped;
+			smsport::assets::BmdSwapResult sr
+			    = smsport::assets::bmd_swap_to_host(raw, len, swapped);
+			if (!sr.all_covered)
+				OSPanic(__FILE__, __LINE__,
+				        "BMD swap incomplete: %u/%u blocks covered (%s)",
+				        sr.blocks_covered, sr.block_num,
+				        sr.error ? sr.error : "ok");
+			// Persist a host-endian copy for the model's lifetime (the loader
+			// retains pointers into it).
+			uint8_t* host = new uint8_t[len];
+			memcpy(host, swapped.data(), len);
+			i_data = host;
+		}
+	}
+#endif
 
 	const JUTDataFileHeader* fileHeader = (const JUTDataFileHeader*)i_data;
 	u32 magic                           = fileHeader->mMagic;
