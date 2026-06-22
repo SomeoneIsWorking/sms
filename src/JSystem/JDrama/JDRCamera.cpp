@@ -1,6 +1,15 @@
 #include <JSystem/JDrama/JDRCamera.hpp>
 #include <dolphin/mtx.h>
 #include <dolphin/gx.h>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+static bool sb_cam_dbg() {
+	static int v = -1;
+	if (v < 0) { const char* e = getenv("SB_J3D_DBG"); v = (e && e[0] && e[0] != '0') ? 1 : 0; }
+	return v != 0;
+}
+#endif
 
 using namespace JDrama;
 
@@ -63,7 +72,15 @@ void TPolarCamera::JSGSetProjectionAspect(float aspect) { mAspect = aspect; }
 
 void TLookAtCamera::perform(u32 cue, TGraphics* graphics)
 {
-	if (!(cue & (CUE_CALC_VIEW | CUE_SET_PROJECTION)))
+#ifdef SMS_NATIVE_PLATFORM
+	if (sb_cam_dbg()) {
+		static long n = 0;
+		if ((++n % 200) == 0 || n <= 4)
+			fprintf(stderr, "[cam-perform] TLookAtCamera n=%ld param_1=0x%x fovy=%.2f aspect=%.2f gxproj=%d\n",
+			        n, param_1, mFovy, mAspect, (param_1 & 0x10) != 0);
+	}
+#endif
+	if (!(param_1 & 0x14))
 		return;
 
 	MtxPtr projMtx = graphics->mProjMtx.mMtx;

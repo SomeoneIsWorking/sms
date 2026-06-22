@@ -32,6 +32,22 @@
 #include <NPC/NpcBase.hpp>
 #include <dolphin/gx.h>
 
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+static bool sb_dir_dbg() {
+	static int v = -1;
+	if (v < 0) { const char* e = getenv("SB_J3D_DBG"); v = (e && e[0] && e[0] != '0') ? 1 : 0; }
+	return v != 0;
+}
+static int sb_pl_count(TPerformList* l) {
+	if (!l) return -1;
+	int n = 0;
+	for (auto it = l->getChildren().begin(); it != l->getChildren().end(); ++it) ++n;
+	return n;
+}
+#endif
+
 // rogue includes needed for matching sinit & bss
 #include <MSound/MSSetSound.hpp>
 #include <MSound/MSoundBGM.hpp>
@@ -88,6 +104,27 @@ int TMarDirector::direct()
 
 	u8 bVar2 = gpMSound->unkA8;
 	unk54 += vsyncRate;
+
+#ifdef SMS_NATIVE_PLATFORM
+	if (sb_dir_dbg()) {
+		static bool once = false;
+		if (!once) {
+			once = true;
+			fprintf(stderr,
+			        "[dir] LIST SIZES: unk30=%d unk34(preEntry)=%d unk38=%d unk3C=%d unk40=%d "
+			        "GX=%d GXPost=%d Silhouette=%d CalcAnim=%d Movement=%d ShineMov=%d ShineAnm=%d\n",
+			        sb_pl_count(unk30), sb_pl_count(unk34), sb_pl_count(unk38), sb_pl_count(unk3C),
+			        sb_pl_count(unk40), sb_pl_count(mPerformListGX), sb_pl_count(mPerformListGXPost),
+			        sb_pl_count(mPerformListSilhouette), sb_pl_count(mPerformListCalcAnim),
+			        sb_pl_count(mPerformListMovement), sb_pl_count(mShinePfLstMov),
+			        sb_pl_count(mShinePfLstAnm));
+		}
+		static long dc = 0;
+		if ((++dc % 200) == 0)
+			fprintf(stderr, "[dir] direct() call %ld entry-state unk4C=0x%x mState=%d\n",
+			        dc, unk4C, mState);
+	}
+#endif
 
 	int i = 0;
 	for (;;) {
@@ -186,10 +223,24 @@ int TMarDirector::direct()
 
 			if (unk4C & 0x4000) {
 				local_140.unk2 = 0;
-				unk34->perform(CUE_ALL, &local_140);
+#ifdef SMS_NATIVE_PLATFORM
+				if (sb_dir_dbg()) {
+					static long n = 0;
+					if ((++n % 200) == 0 || n <= 2)
+						fprintf(stderr, "[dir] unk34->perform (ENTRY pass) n=%ld\n", n);
+				}
+#endif
+				unk34->perform(0xffffffff, &local_140);
 				break;
 			}
 		} else {
+#ifdef SMS_NATIVE_PLATFORM
+			if (sb_dir_dbg()) {
+				static long n = 0;
+				if ((++n % 200) == 0 || n <= 2)
+					fprintf(stderr, "[dir] RENDER-else branch n=%ld\n", n);
+			}
+#endif
 			local_140.unk2 = 0;
 			unk40->perform(CUE_ALL, &local_140);
 			unk38->perform(CUE_ALL, &local_140);

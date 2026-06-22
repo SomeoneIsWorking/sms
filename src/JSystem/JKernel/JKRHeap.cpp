@@ -2,6 +2,11 @@
 #include <JSystem/JUtility/JUTAssert.hpp>
 #include "dolphin/os.h"
 
+#ifdef SMS_NATIVE_PLATFORM
+// Defined in the SMS_NATIVE block below; truly free()s a host-overflow (tagged) pointer.
+extern "C" bool sb_host_free_if_tagged(void*);
+#endif
+
 JKRHeap* JKRHeap::sSystemHeap;
 JKRHeap* JKRHeap::sCurrentHeap;
 JKRHeap* JKRHeap::sRootHeap;
@@ -110,6 +115,9 @@ void* JKRHeap::alloc(u32 byteCount, int padding, JKRHeap* heap)
 
 void JKRHeap::free(void* memory, JKRHeap* heap)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	if (sb_host_free_if_tagged(memory)) return;
+#endif
 	if (heap != nullptr || (heap = findFromRoot(memory)) != nullptr)
 		heap->free(memory);
 }
@@ -222,6 +230,7 @@ void JKRDefaultMemoryErrorRoutine(void* heap, u32 size, int alignment)
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdlib>
 #include <cstdint>
+#include <atomic>
 // =============================================================================
 // Native host-runtime isolation. The single global operator-new override forces
 // EVERY native allocation into the JKR heap — not just game objects, but the
@@ -254,23 +263,91 @@ static thread_local int g_sb_host_alloc_gate = 0;
 extern "C" void sb_host_alloc_push(void) { ++g_sb_host_alloc_gate; }
 extern "C" void sb_host_alloc_pop(void)  { if (g_sb_host_alloc_gate > 0) --g_sb_host_alloc_gate; }
 
+// --- Host-malloc overflow accounting + hard cap -------------------------------------------
+// Every host fallback used to LEAK: operator delete -> JKRHeap::free no-ops a pointer that
+// is outside every JKR arena, so it was never freed. That is fine for one-time bookkeeping,
+// but the per-frame scene-capture (std::vectors under sb_host_alloc gate) and a heap-full
+// game retry loop allocate continuously -> unbounded host growth -> Linux OOM. Two fixes:
+//   (1) TAG each host allocation with a header so JKRHeap::free can recognise and truly
+//       free() it (sb_host_free_if_tagged). The per-frame leak then disappears.
+//   (2) A hard cap on OUTSTANDING tagged bytes; exceeding it FAILS FAST (OSPanic) naming the
+//       cap + the live total, instead of silently driving the host to OOM.
+// SB_HOST_ALLOC_CAP_MB overrides the cap (default 2048 MB). The cap bounds how much memory
+// the game (incl. JKR-overflow + capture) can hold at once on the host.
+static const uint64_t SB_HOST_TAG_MAGIC = 0x53424845415021ULL; // "SBHEAP!"
+struct SbHostHdr { uint64_t magic; void* base; uint64_t bytes; uint64_t pad; };
+static std::atomic<uint64_t> g_host_outstanding{0};
+
+static uint64_t sb_host_cap_bytes()
+{
+	static uint64_t cap = 0;
+	if (cap == 0) {
+		uint64_t mb = 2048;
+		if (const char* e = getenv("SB_HOST_ALLOC_CAP_MB")) {
+			unsigned long v = strtoul(e, nullptr, 10);
+			if (v > 0) mb = v;
+		}
+		cap = mb * 1024ull * 1024ull;
+	}
+	return cap;
+}
+
 static void* sb_host_malloc(size_t n, int alignment)
 {
 	size_t a = alignment <= 0 ? 16 : (size_t)alignment;
+	if (a < 16) a = 16;
 	if (n == 0) n = 1;
-	void* m;
-	if (a <= 16) {
-		m = std::malloc(n);
-	} else {
-		// posix_memalign needs a power-of-two >= sizeof(void*); JKR aligns are.
-		if (posix_memalign(&m, a, n) != 0) m = nullptr;
+
+	// Enforce the cap on outstanding host bytes BEFORE allocating. Fail fast (the project's
+	// hard rule) so a runaway allocation crashes here, naming the cause, not far downstream.
+	const uint64_t total = (uint64_t)n + a + sizeof(SbHostHdr);
+	uint64_t live = g_host_outstanding.load(std::memory_order_relaxed);
+	if (live + total > sb_host_cap_bytes()) {
+		OSPanic(__FILE__, __LINE__,
+		        "[heap] HOST ALLOC CAP EXCEEDED: outstanding=%llu MB + req=%zu would pass cap=%llu MB "
+		        "(raise SB_HOST_ALLOC_CAP_MB or fix the leak/runaway alloc)\n",
+		        (unsigned long long)(live >> 20), n,
+		        (unsigned long long)(sb_host_cap_bytes() >> 20));
+		return nullptr;
 	}
+
+	// Over-allocate room for the header + alignment slack; place the user pointer at the
+	// next `a`-aligned address past the header so (user - sizeof hdr) >= base.
+	void* base = std::malloc((size_t)total);
+	if (!base) {
+		OSPanic(__FILE__, __LINE__, "[heap] host malloc returned NULL for %zu bytes\n", n);
+		return nullptr;
+	}
+	uintptr_t raw  = (uintptr_t)base + sizeof(SbHostHdr);
+	uintptr_t user = (raw + (a - 1)) & ~(uintptr_t)(a - 1);
+	SbHostHdr* h = (SbHostHdr*)(user - sizeof(SbHostHdr));
+	h->magic = SB_HOST_TAG_MAGIC;
+	h->base  = base;
+	h->bytes = total;
+	h->pad   = 0;
+	g_host_outstanding.fetch_add(total, std::memory_order_relaxed);
+
 	uint64_t c = ++g_native_malloc_fallbacks;
 	if (getenv("SB_JKR_DBG") && (c <= 8 || (c & (c - 1)) == 0))
-		OSReport("[heap] host malloc fallback #%llu size=%zu align=%d "
+		OSReport("[heap] host malloc fallback #%llu size=%zu align=%d outstanding=%llu MB "
 		         "(JKR plain heap full/absent)\n",
-		         (unsigned long long)c, n, alignment);
-	return m;
+		         (unsigned long long)c, n, alignment,
+		         (unsigned long long)(g_host_outstanding.load() >> 20));
+	return (void*)user;
+}
+
+// Detect + truly free a host-tagged pointer. Returns true if it owned `p`. Reading the 32
+// bytes immediately before a non-tagged (JKR) pointer is safe — JKR blocks carry their own
+// header there — and a 56-bit magic makes a false positive astronomically unlikely.
+extern "C" bool sb_host_free_if_tagged(void* p)
+{
+	if (!p) return false;
+	SbHostHdr* h = (SbHostHdr*)((uintptr_t)p - sizeof(SbHostHdr));
+	if (h->magic != SB_HOST_TAG_MAGIC) return false;
+	g_host_outstanding.fetch_sub(h->bytes, std::memory_order_relaxed);
+	h->magic = 0;          // poison so a double free is not mistaken for a live tag
+	std::free(h->base);
+	return true;
 }
 
 // Exported so JKRExpHeap::alloc (and any other heap) can overflow to host memory instead
@@ -317,8 +394,16 @@ void* operator new[](size_t byteCount, JKRHeap* heap, int alignment)
 // fires on JKR exhaustion (bounded host bookkeeping), so the leak is bounded;
 // the SB_JKR_DBG counter surfaces the volume. A self-describing tagged free can
 // replace this if the count proves large.
-void operator delete(void* memory) { JKRHeap::free(memory, nullptr); }
-void operator delete[](void* memory) { JKRHeap::free(memory, nullptr); }
+void operator delete(void* memory)
+{
+	if (sb_host_free_if_tagged(memory)) return;
+	JKRHeap::free(memory, nullptr);
+}
+void operator delete[](void* memory)
+{
+	if (sb_host_free_if_tagged(memory)) return;
+	JKRHeap::free(memory, nullptr);
+}
 #else
 void* operator new(size_t byteCount)
 {
