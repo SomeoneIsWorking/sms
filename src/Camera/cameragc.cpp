@@ -945,8 +945,21 @@ void CPolarSubCamera::ctrlGameCamera_()
 
 void CPolarSubCamera::perform(u32 cue, JDrama::TGraphics* graphics)
 {
-	if (cue & CUE_MOVE) {
-		if (graphics->unk0 & 1) {
+#ifdef SMS_NATIVE_PLATFORM
+	{
+		static int dbg = -1;
+		if (dbg < 0) { const char* e = getenv("SB_J3D_DBG"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
+		if (dbg) {
+			static long n = 0;
+			if ((++n % 200) == 0 || n <= 4)
+				fprintf(stderr, "[cam-perform] CPolarSubCamera n=%ld param_1=0x%x mMode=%d fovy=%.2f "
+				        "ctrl(b0)=%d gxproj(b10)=%d\n", n, param_1, mMode, mFovy,
+				        (param_1 & 1) != 0, (param_1 & 0x10) != 0);
+		}
+	}
+#endif
+	if (param_1 & 1) {
+		if (param_2->unk0 & 1) {
 			unk13C.set(unk124);
 			unk160.set(unk148);
 			for (int i = 0; i < 4; ++i)
