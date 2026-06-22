@@ -35,6 +35,7 @@
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
 #include <cstdlib>
+extern "C" bool sb_boot_drive_scene();   // native/src/scene_drive.cpp
 static bool sb_dir_dbg() {
 	static int v = -1;
 	if (v < 0) { const char* e = getenv("SB_J3D_DBG"); v = (e && e[0] && e[0] != '0') ? 1 : 0; }
@@ -258,6 +259,13 @@ int TMarDirector::direct()
 	}
 
 	gpMSound->unkA8 = bVar2;
+
+#ifdef SMS_NATIVE_PLATFORM
+	// OWN the scene-draw flow: the GC perform dispatch never delivers bit 0x8 to the scene,
+	// so drive TSmJ3DScn::perform(8) directly (once/frame) — entry()+draw of only the active
+	// scene models, with the live camera view + a valid render mode. See native/src/scene_drive.cpp.
+	sb_boot_drive_scene();
+#endif
 	return desiredAppState;
 }
 
