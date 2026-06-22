@@ -4,6 +4,8 @@
 #ifdef SMS_NATIVE_PLATFORM
 #include <dolphin/os.h>
 #include <cstdlib>
+#include <cstddef>
+extern "C" void* sb_jkr_host_alloc(size_t, int);  // host-memory overflow (JKRHeap.cpp)
 #endif
 
 JKRSolidHeap* JKRSolidHeap::create(u32 size, JKRHeap* parent, bool errorFlag)
@@ -55,6 +57,14 @@ void* JKRSolidHeap::alloc(u32 size, int alignment)
 		ret = allocFromTail(size, -alignment < 4 ? 4 : -alignment);
 	}
 
+#ifdef SMS_NATIVE_PLATFORM
+	// PC-native memory ownership: overflow to host memory when the GC-sized solid heap is
+	// full, instead of returning null (which downstream code may deref). free() here is a
+	// no-op for every block anyway (solid heaps free via freeAll/freeTail), so the host
+	// pointer leaks like any other solid-heap block until the heap is reset.
+	if (ret == nullptr) ret = sb_jkr_host_alloc(size, alignment);
+#endif
+
 	unlock();
 	return ret;
 }
@@ -89,9 +99,13 @@ void* JKRSolidHeap::allocFromHead(u32 size, int align)
 #endif
 		JUTWarningConsole_f("allocFromHead: cannot alloc memory (0x%x byte).\n",
 		                    requiredSize);
+#ifndef SMS_NATIVE_PLATFORM
+		// Native: do NOT invoke the error handler (it aborts). Return null so the caller
+		// (JKRSolidHeap::alloc) overflows to host memory — PC owns memory, no fixed limit.
 		if (mErrorFlag == true && mErrorHandler != nullptr) {
 			(*mErrorHandler)(this, size, align);
 		}
+#endif
 	}
 	return ret;
 }
@@ -111,9 +125,11 @@ void* JKRSolidHeap::allocFromTail(u32 size, int align)
 	} else {
 		JUTWarningConsole_f("allocFromTail: cannot alloc memory (0x%x byte).\n",
 		                    requiredSize);
+#ifndef SMS_NATIVE_PLATFORM
 		if (mErrorFlag == true && mErrorHandler != nullptr) {
 			(*mErrorHandler)(this, size, align);
 		}
+#endif
 	}
 	return ret;
 }

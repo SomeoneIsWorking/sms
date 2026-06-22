@@ -272,6 +272,13 @@ static void* sb_host_malloc(size_t n, int alignment)
 		         (unsigned long long)c, n, alignment);
 	return m;
 }
+
+// Exported so JKRExpHeap::alloc (and any other heap) can overflow to host memory instead
+// of aborting (JKRDefaultMemoryErrorRoutine) when its fixed GC-sized arena is exhausted.
+// PC-native: we own memory; a GameCube heap's fixed size is not a hard limit here. The
+// returned pointer lies OUTSIDE every JKR heap's [mStart,mEnd], so JKRExpHeap::free no-ops
+// it (bounded leak) — identical to the operator-new plain-fallback policy above.
+extern "C" void* sb_jkr_host_alloc(size_t n, int alignment) { return sb_host_malloc(n, alignment); }
 static inline void* sb_plain_new(size_t n, int alignment)
 {
 	// Host-isolation gate raised -> straight to malloc (skip the JKR heap entirely),
