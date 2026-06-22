@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <cstddef>
 extern "C" void* sb_jkr_host_alloc(size_t, int);  // host-memory overflow (JKRHeap.cpp)
+extern "C" bool  sb_host_free_if_tagged(void*);   // truly free a host-overflow ptr (JKRHeap.cpp)
 #endif
 
 JKRSolidHeap* JKRSolidHeap::create(u32 size, JKRHeap* parent, bool errorFlag)
@@ -136,6 +137,11 @@ void* JKRSolidHeap::allocFromTail(u32 size, int align)
 
 void JKRSolidHeap::free(void* ptr)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// SolidHeap-overflow allocations went to host memory (sb_jkr_host_alloc) and are tagged;
+	// truly free them (a real SolidHeap genuinely cannot free individual blocks). See JKRHeap.cpp.
+	if (sb_host_free_if_tagged(ptr)) return;
+#endif
 	JUTWarningConsole_f("free: cannot free memory block (%08x)\n", ptr);
 }
 
