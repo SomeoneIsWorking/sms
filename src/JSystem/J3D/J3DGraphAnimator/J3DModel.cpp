@@ -1,4 +1,10 @@
 #include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+extern "C" void sb_gx_get_projection(int*, float*, float*);
+extern "C" void sb_boot_capture_model(J3DModel*) __attribute__((weak));
+#endif
 #include <JSystem/J3D/J3DGraphAnimator/J3DJoint.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DMaterial.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DShape.hpp>
@@ -713,6 +719,23 @@ void J3DModel::update()
 
 void J3DModel::calc()
 {
+#ifdef SMS_NATIVE_PLATFORM
+	{
+		static int dbg = -1;
+		if (dbg < 0) { const char* e = getenv("SB_J3D_DBG"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
+		static long s_n = 0;
+		if (dbg && (++s_n % 1000) == 0) {
+			MtxPtr v = j3dSys.getViewMtx();
+			int pt; float pj[6]; float vp[6];
+			sb_gx_get_projection(&pt, pj, vp);
+			fprintf(stderr,
+			    "[j3dmodel] calc() calls=%ld view=[%.2f %.2f %.2f %.2f / %.2f %.2f %.2f %.2f / %.2f %.2f %.2f %.2f] "
+			    "projType=%d proj=[%.3f %.3f %.3f %.3f %.3f %.3f] vp=[%.0f %.0f %.0f %.0f]\n",
+			    s_n, v[0][0],v[0][1],v[0][2],v[0][3], v[1][0],v[1][1],v[1][2],v[1][3], v[2][0],v[2][1],v[2][2],v[2][3],
+			    pt, pj[0],pj[1],pj[2],pj[3],pj[4],pj[5], vp[0],vp[1],vp[2],vp[3]);
+		}
+	}
+#endif
 	j3dSys.setModel(this);
 
 	if (checkFlag(4)) {
@@ -753,10 +776,27 @@ void J3DModel::calc()
 
 	if (unkC)
 		unkC(this, 0);
+
+#ifdef SMS_NATIVE_PLATFORM
+	// PC-native scene render: the GC draw phase (entry/draw-buffer/GXCallDisplayList) does
+	// not run in sms-boot, so render the model directly here from its just-computed matrices
+	// (native/render/sms_boot_j3d_capture.cpp). Weak + SB_J3D_CAPTURE-gated: inert by default.
+	if (&sb_boot_capture_model)
+		sb_boot_capture_model(this);
+#endif
 }
 
 void J3DModel::entry()
 {
+#ifdef SMS_NATIVE_PLATFORM
+	{
+		static int dbg = -1;
+		if (dbg < 0) { const char* e = getenv("SB_J3D_DBG"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
+		static long s_n = 0;
+		if (dbg && (++s_n % 1000) == 0)
+			fprintf(stderr, "[j3dmodel] entry() calls=%ld (this=%p)\n", s_n, (void*)this);
+	}
+#endif
 
 	j3dSys.setModel(this);
 

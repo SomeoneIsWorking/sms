@@ -6,6 +6,10 @@
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
 #include <cstdlib>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstddef>
+extern "C" void* sb_jkr_host_alloc(size_t, int);  // host-memory overflow (JKRHeap.cpp)
+#endif
 #endif
 
 static u32 whatdo;
@@ -176,13 +180,20 @@ void* JKRExpHeap::alloc(u32 size, int alignment)
 	}
 	if (ptr == nullptr) {
 #ifdef SMS_NATIVE_PLATFORM
+		// PC-native memory ownership: the GameCube heap's fixed arena is exhausted, but on
+		// PC we are not bound by GC's 24 MB RAM — overflow to host memory instead of the GC
+		// OOM abort (JKRDefaultMemoryErrorRoutine). The host pointer is outside [mStart,mEnd]
+		// so this heap's free() no-ops it (bounded leak, fires only on real exhaustion).
+		// This drops the fixed-size-heap-as-hard-limit GameCube behavior entirely.
+		ptr = sb_jkr_host_alloc(size, alignment);
 		if (getenv("SB_HEAP_DBG"))
-			fprintf(stderr, "[heap] alloc FAIL size=0x%x align=%d free=%d total=%d\n",
-			        size, alignment, getFreeSize(), getTotalFreeSize());
-#endif
+			fprintf(stderr, "[heap] JKR arena full (size=0x%x align=%d free=%d) -> host overflow %p\n",
+			        size, alignment, getFreeSize(), ptr);
+#else
 		JUTWarningConsole_f(":::cannot alloc memory (0x%x byte).\n", size);
 		if (mErrorFlag == true)
 			callErrorHandler(this, size, alignment);
+#endif
 	}
 	unlock();
 
