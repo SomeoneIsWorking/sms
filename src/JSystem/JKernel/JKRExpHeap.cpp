@@ -9,6 +9,7 @@
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstddef>
 extern "C" void* sb_jkr_host_alloc(size_t, int);  // host-memory overflow (JKRHeap.cpp)
+extern "C" bool  sb_host_free_if_tagged(void*);   // truly free a host-overflow ptr (JKRHeap.cpp)
 #endif
 #endif
 
@@ -432,6 +433,12 @@ void* JKRExpHeap::allocFromTail(u32 size)
 
 void JKRExpHeap::free(void* ptr)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// A pointer that overflowed to host memory (sb_jkr_host_alloc) is tagged and lives
+	// outside [mStart,mEnd]; truly free it instead of leaking it (the in-range branch
+	// can't, and the out-of-range path would just warn + no-op). See JKRHeap.cpp.
+	if (sb_host_free_if_tagged(ptr)) return;
+#endif
 	lock();
 	if (mStart <= ptr && ptr <= mEnd) {
 		CMemBlock* block = CMemBlock::getHeapBlock(ptr);
