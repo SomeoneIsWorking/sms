@@ -221,10 +221,10 @@ void J3DShape::loadVtxArray() const
 }
 
 #ifdef SMS_NATIVE_PLATFORM
-// SLICE 3a renderer-attach: capture this shape's geometry into the native renderer's
-// frame buffer (native/render/sms_boot_j3d_capture.cpp drains it at present). WEAK so
-// builds that link this TU but NOT the capture body (e.g. the j3dmesh_test/loader tests)
-// resolve it to null and skip the hook. The capture itself is gated on SB_J3D_CAPTURE.
+// PC-native renderer (single owned path): capture this active shape's geometry into the native
+// renderer's frame buffer (native/render/sms_boot_j3d_capture.cpp drains it at present). Driven by
+// scene_drive.cpp's TSmJ3DScn::perform(8). WEAK so builds that link this TU but NOT the capture
+// body (e.g. the j3dmesh_test/loader tests) resolve it to null and skip the hook.
 extern "C" bool sb_boot_capture_j3d(J3DShape* shape) __attribute__((weak));
 #endif
 
