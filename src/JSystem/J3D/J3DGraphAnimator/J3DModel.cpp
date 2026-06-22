@@ -3,7 +3,6 @@
 #include <cstdio>
 #include <cstdlib>
 extern "C" void sb_gx_get_projection(int*, float*, float*);
-extern "C" void sb_boot_capture_model(J3DModel*) __attribute__((weak));
 #endif
 #include <JSystem/J3D/J3DGraphAnimator/J3DJoint.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DMaterial.hpp>
@@ -776,14 +775,6 @@ void J3DModel::calc()
 
 	if (unkC)
 		unkC(this, 0);
-
-#ifdef SMS_NATIVE_PLATFORM
-	// PC-native scene render: the GC draw phase (entry/draw-buffer/GXCallDisplayList) does
-	// not run in sms-boot, so render the model directly here from its just-computed matrices
-	// (native/render/sms_boot_j3d_capture.cpp). Weak + SB_J3D_CAPTURE-gated: inert by default.
-	if (&sb_boot_capture_model)
-		sb_boot_capture_model(this);
-#endif
 }
 
 void J3DModel::entry()
