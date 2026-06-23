@@ -1,5 +1,9 @@
 #include <GC2D/CardLoad.hpp>
 #include <stdio.h>
+#ifdef SMS_NATIVE_PLATFORM
+#include <stdlib.h>  // getenv (SB_SEL_DBG trace)
+extern "C" void sb_boot_request_dump(int);  // native present: event-triggered frame dump
+#endif
 #include <JSystem/JKernel/JKRFileLoader.hpp>
 #include <JSystem/JDrama/JDRNameRefGen.hpp>
 #include <JSystem/J2D/J2DScreen.hpp>
@@ -61,7 +65,7 @@ u32 TCardLoad::cMessageID[] = {
 TCardLoad::TCardLoad(const char* name)
     : JDrama::TViewObj(name)
     , unk10(5)
-    , unk14(10)
+    , mState(10)
     , unk1C(PROGRESS_UNK0)
     , unk28(nullptr)
     , unk2C(nullptr)
@@ -486,8 +490,29 @@ void TCardLoad::loadAfter()
 
 void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 {
-	if (cue & CUE_MOVE) {
-		switch (unk14) {
+#ifdef SMS_NATIVE_PLATFORM
+	if (param_1 & 1) {
+		static int s_lastState = -1;
+		static long s_perfCount = 0;
+		++s_perfCount;
+		static const char* s_selDbg = getenv("SB_SEL_DBG");
+		if (s_selDbg && mState != s_lastState) {
+			fprintf(stderr,
+			    "[cardload] frame~%ld mState %d -> %d (unk18=%d unk1C=%d unkBC=%d "
+			    "introChase=%d loadPan=%d updownPan=%d)\n",
+			    s_perfCount, s_lastState, mState, unk18, unk1C, unkBC,
+			    gpCameraOption ? gpCameraOption->mIntroChaseTimer : -1,
+			    gpCameraOption ? gpCameraOption->mLoadPanTimer : -1,
+			    gpCameraOption ? gpCameraOption->mUpDownPanTimer : -1);
+			// When asked, dump frames as soon as the file/score select state is entered.
+			if (mState == 0 && getenv("SB_SEL_DUMP"))
+				sb_boot_request_dump(6);
+			s_lastState = mState;
+		}
+	}
+#endif
+	if (param_1 & 1) {
+		switch (mState) {
 		case 0: {
 			changeScene();
 			int alpha1 = unk25C->getAlpha();
@@ -529,7 +554,7 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 					if (unk10 == 2)
 						unk10 = 3;
 					if (unk10 == 5)
-						unk14 = 6;
+						mState = 6;
 				}
 			}
 		} break;
@@ -544,7 +569,7 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 						unkB8 = 1;
 					}
 				} else {
-					unk14 = 0;
+					mState = 0;
 					unk1C = PROGRESS_UNK3;
 					unk10 = 1;
 				}
@@ -577,7 +602,7 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 				root2->setAlpha(alpha2);
 
 				if (done)
-					unk14 = 1;
+					mState = 1;
 			}
 		} break;
 
@@ -610,7 +635,7 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 					gpCameraOption->moveToDown();
 					unkB8 = 0;
 				} else if (gpCameraOption->mUpDownPanTimer == 0) {
-					unk14 = 0;
+					mState = 0;
 					unk1C = PROGRESS_UNK2;
 					gpCardManager->getBookmarkInfos(unk40);
 					unk10 = 0;
@@ -618,37 +643,37 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 			}
 		} break;
 		case 1:
-			if (unk38->checkFrameMeaning(0x20)
-			    || unk38->checkFrameMeaning(0x40)) {
+			if (mGamePad->checkFrameMeaning(0x20)
+			    || mGamePad->checkFrameMeaning(0x40)) {
 				SMSGetMSound()->startSoundSystemSE(MSD_SE_SY_CANCEL_COMMON, 0,
 				                                   nullptr, 0);
 				unkB8 = 1;
-				unk14 = 5;
+				mState = 5;
 			}
 			break;
 
 		case 6:
 			if (unk754->movementCard2Option()) {
-				unk38->offFlag(0x1);
-				unk14 = 2;
+				mGamePad->offFlag(0x1);
+				mState = 2;
 			} else if (gpCameraOption->mFlags & 1) {
-				unk14 = 7;
+				mState = 7;
 			}
 			break;
 
 		case 2:
 			if (unk754->movementOption())
-				unk14 = 7;
+				mState = 7;
 			break;
 
 		case 7:
 			if (!(gpCameraOption->mFlags & 1)) {
-				unk14 = 6;
+				mState = 6;
 			} else {
 				if (unk754->movementOption2Card()) {
 					unk284->onCollision();
-					unk14 = 0;
-					unk38->onFlag(0x1);
+					mState = 0;
+					mGamePad->onFlag(0x1);
 					if (unk754->isChangedSetting()) {
 						gpCardManager->getBookmarkInfos(unk40);
 						unk1C = PROGRESS_UNK32;
@@ -671,7 +696,7 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 			if (gpCameraOption->mLoadPanTimer == 0) {
 				MSBgm::startBGM(MSD_BGM_BOSSPAKU_DEMO);
 				unk1C = PROGRESS_UNK30;
-				unk14 = 0;
+				mState = 0;
 			}
 		} break;
 
@@ -679,19 +704,19 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 			titleDraw();
 			if (unk18 >= 4) {
 				if (unk18 >= 4 && unkBC >= 100 && gpCameraOption->mIntroChaseTimer == 0
-				    && (unk38->checkFrameMeaning(0x20)
-				        || unk38->getTrigger() & 0x1000)) {
+				    && (mGamePad->checkFrameMeaning(0x20)
+				        || mGamePad->getTrigger() & 0x1000)) {
 					SMSGetMSound()->startSoundSystemSE(MSD_SE_SY_DECIDE, 0,
 					                                   nullptr, 0);
 					gpCameraOption->moveToLoadFromTitle();
 					gpMarioOriginal->waitingStart(nullptr, 0.0f);
-					unk14 = 8;
+					mState = 8;
 				}
 				unkF0->update();
 				unkF4->update();
 				unkBC += 1;
-			} else if (unk38->checkFrameMeaning(0x20)
-			           || unk38->getTrigger() & 0x1000) {
+			} else if (mGamePad->checkFrameMeaning(0x20)
+			           || mGamePad->getTrigger() & 0x1000) {
 				unkF0->setPaneAlpha(10, 255, unkF0->getPane()->getAlpha());
 				unkF4->setPaneAlpha(10, 255, unkF4->getPane()->getAlpha());
 				for (int i = 0; i < 13; ++i)
@@ -716,10 +741,10 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 
 		case 9:
 			if (gpCameraOption->mIntroChaseTimer == 0)
-				unk14 = 3;
+				mState = 3;
 
-			if (unk38->checkFrameMeaning(0x20)
-			    || unk38->getTrigger() & 0x1000) {
+			if (mGamePad->checkFrameMeaning(0x20)
+			    || mGamePad->getTrigger() & 0x1000) {
 				unkF0->setPaneAlpha(10, 255, unkF0->getPane()->getAlpha());
 				unkF4->setPaneAlpha(10, 255, unkF4->getPane()->getAlpha());
 				for (int i = 0; i < 13; ++i)
@@ -727,16 +752,16 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 				unk258 = 0;
 				unkBC  = 0;
 				unk18  = 4;
-				unk14  = 3;
+				mState  = 3;
 			}
 			titleDraw();
 			break;
 
 		case 10:
 			MSBgm::startBGM(MSD_BGM_CHUBOSS2);
-			unk38->onFlag(0x1);
+			mGamePad->onFlag(0x1);
 			gpMarioOriginal->offFlag(MARIO_FLAG_GAME_OVER);
-			unk14 = 9;
+			mState = 9;
 			unk18 = 1;
 			unkF0->getPane()->setAlpha(0);
 			unkF4->getPane()->setAlpha(0);
@@ -754,7 +779,7 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 		const JDrama::TRect& rect = graphics->getScissor();
 		J2DOrthoGraph graph(graphics->getViewport());
 		graph.setup2D();
-		switch (unk14) {
+		switch (mState) {
 		case 0:
 			unk28->draw(0, 0, &graph);
 			break;
@@ -1026,11 +1051,11 @@ s8 TCardLoad::waitForChoice(TEProgress param_1, TEProgress param_2, int param_3)
 
 	case 2: {
 		s8 old = unkB7;
-		if (unk38->checkFrameMeaning(0x8)) {
+		if (mGamePad->checkFrameMeaning(0x8)) {
 			unkB7 = 0;
-		} else if (unk38->checkFrameMeaning(0x10)) {
+		} else if (mGamePad->checkFrameMeaning(0x10)) {
 			unkB7 = 1;
-		} else if (unk38->checkFrameMeaning(0x20)) {
+		} else if (mGamePad->checkFrameMeaning(0x20)) {
 			if (old == 0)
 				SMSGetMSound()->startSoundSystemSE(MSD_SE_SY_SELECT_COMMON, 0,
 				                                   nullptr, 0);
@@ -1038,7 +1063,7 @@ s8 TCardLoad::waitForChoice(TEProgress param_1, TEProgress param_2, int param_3)
 				SMSGetMSound()->startSoundSystemSE(MSD_SE_SY_CANCEL_COMMON, 0,
 				                                   nullptr, 0);
 			unk10 = 3;
-		} else if (unk38->checkFrameMeaning(0x40)) {
+		} else if (mGamePad->checkFrameMeaning(0x40)) {
 			unkB7 = 1;
 			SMSGetMSound()->startSoundSystemSE(MSD_SE_SY_CANCEL_COMMON, 0,
 			                                   nullptr, 0);
@@ -1210,15 +1235,15 @@ s8 TCardLoad::waitForChoiceBM(TEProgress param_1, TEProgress param_2,
 
 	case 2: {
 		s8 old = unkB7;
-		if (unk38->checkFrameMeaning(0x8)) {
+		if (mGamePad->checkFrameMeaning(0x8)) {
 			unkB7 = 0;
-		} else if (unk38->checkFrameMeaning(0x10)) {
+		} else if (mGamePad->checkFrameMeaning(0x10)) {
 			unkB7 = 1;
-		} else if (unk38->checkFrameMeaning(0x20)) {
+		} else if (mGamePad->checkFrameMeaning(0x20)) {
 			SMSGetMSound()->startSoundSystemSE(MSD_SE_SY_SELECT_COMMON, 0,
 			                                   nullptr, 0);
 			unk10 = 3;
-		} else if (unk38->checkFrameMeaning(0x40)) {
+		} else if (mGamePad->checkFrameMeaning(0x40)) {
 			unkB7 = 1;
 			SMSGetMSound()->startSoundSystemSE(MSD_SE_SY_CANCEL_COMMON, 0,
 			                                   nullptr, 0);
@@ -1329,7 +1354,7 @@ s8 TCardLoad::waitForAnyKey(TEProgress progress)
 		break;
 
 	case 2:
-		if (unkB4 <= 600 && unk38->checkFrameMeaning(0x60)) {
+		if (unkB4 <= 600 && mGamePad->checkFrameMeaning(0x60)) {
 			SMSGetMSound()->startSoundSystemSE(MSD_SE_SY_SELECT_COMMON, 0,
 			                                   nullptr, 0);
 			unk10 = 3;
@@ -1437,7 +1462,7 @@ s8 TCardLoad::waitForAnyKeyBM(TEProgress param_1)
 
 	case 2: {
 		int b4 = unkB4;
-		if (b4 <= 600 && unk38->checkFrameMeaning(0x60)) {
+		if (b4 <= 600 && mGamePad->checkFrameMeaning(0x60)) {
 			SMSGetMSound()->startSoundSystemSE(MSD_SE_SY_SELECT_COMMON, 0,
 			                                   nullptr, 0);
 			unk10 = 3;
@@ -1512,7 +1537,7 @@ s8 TCardLoad::waitForStart(TEProgress param_1)
 	} break;
 
 	case 2:
-		if (unk38->checkFrameMeaning(0x20) || unkB0 != -1)
+		if (mGamePad->checkFrameMeaning(0x20) || unkB0 != -1)
 			unk10 = 3;
 		break;
 
@@ -1786,14 +1811,14 @@ s8 TCardLoad::selectBookmark(TEProgress param_1, TEProgress param_2,
 	} break;
 
 	case 2:
-		if (param_2 != 0 && unk38->getTrigger() & 0x200)
+		if (param_2 != 0 && mGamePad->getTrigger() & 0x200)
 			unk10 = 3;
 		if (unkB0 != -1)
 			unk10 = 3;
 		break;
 
 	case 3:
-		unk38->onFlag(0x1);
+		mGamePad->onFlag(0x1);
 		unk2A0->hide();
 		unk288->setCenteredSize(30, 0, 0, unk28C.getWidth(),
 		                        unk28C.getHeight());
@@ -1833,8 +1858,8 @@ s8 TCardLoad::selectBookmark(TEProgress param_1, TEProgress param_2,
 		if (unk1C == PROGRESS_UNK1C)
 			unk278[unkB1]->makeBlockNormal();
 		result = unkB0;
-		if (unk14 == 0)
-			unk38->offFlag(0x1);
+		if (mState == 0)
+			mGamePad->offFlag(0x1);
 		if (unkB0 != -1)
 			unk1C = param_1;
 		else
@@ -1953,7 +1978,7 @@ s8 TCardLoad::selectFunction()
 	} break;
 
 	case 2:
-		if (unk38->checkFrameMeaning(0x20)) {
+		if (mGamePad->checkFrameMeaning(0x20)) {
 			if (bVar1 == 0)
 				SMSGetMSound()->startSoundSystemSE(MSD_SE_SY_DECIDE_COMMON, 0,
 				                                   nullptr, 0);
@@ -1961,7 +1986,7 @@ s8 TCardLoad::selectFunction()
 				SMSGetMSound()->startSoundSystemSE(MSD_SE_SY_SELECT_COMMON, 0,
 				                                   nullptr, 0);
 			unk10 = 3;
-		} else if (unk38->checkFrameMeaning(0x4)) {
+		} else if (mGamePad->checkFrameMeaning(0x4)) {
 			TCardBookmarkInfo* bm = &unk40[unkB0];
 			if (bm->unk18 == 0)
 				unkB6 = 0;
@@ -1969,7 +1994,7 @@ s8 TCardLoad::selectFunction()
 				unkB6 = bVar1 + 1;
 			if (unkB6 > 3)
 				unkB6 = 0;
-		} else if (unk38->checkFrameMeaning(0x2)) {
+		} else if (mGamePad->checkFrameMeaning(0x2)) {
 			TCardBookmarkInfo* bm = &unk40[unkB0];
 			if (bm->unk18 == 0)
 				unkB6 = 0;
@@ -1977,7 +2002,7 @@ s8 TCardLoad::selectFunction()
 				unkB6 = bVar1 - 1;
 			if (unkB6 < 0)
 				unkB6 = 3;
-		} else if (unk38->checkFrameMeaning(0x40)) {
+		} else if (mGamePad->checkFrameMeaning(0x40)) {
 			unkB6 = -1;
 			SMSGetMSound()->startSoundSystemSE(MSD_SE_SY_CANCEL_COMMON, 0,
 			                                   nullptr, 0);
@@ -2084,7 +2109,7 @@ s8 TCardLoad::selectFunction()
 
 void TCardLoad::setSelected(u8 param_1)
 {
-	if (unk14 == 0) {
+	if (mState == 0) {
 		SMSGetMSound()->startSoundSystemSE(MSD_SE_SY_COIN_APPEAR, 0, nullptr,
 		                                   0);
 		unkB0 = param_1;
@@ -2119,7 +2144,7 @@ void TCardLoad::changeScene()
 	} break;
 
 	case PROGRESS_UNK0:
-		unk38->onFlag(0x1);
+		mGamePad->onFlag(0x1);
 		gpCardManager->getBookmarkInfos(unk40);
 		unk1C = PROGRESS_UNK2;
 		break;
@@ -2354,7 +2379,7 @@ void TCardLoad::changeScene()
 				unk2C->search('ROOT')->setAlpha(0);
 				gpCameraOption->moveToUp();
 				gpCardManager->readBlock(unkB0);
-				unk14 = 4;
+				mState = 4;
 				unkB8 = 0;
 				break;
 			}
@@ -2599,7 +2624,7 @@ void TCardLoad::changeScene()
 		case PROGRESS_UNKD:
 		case PROGRESS_UNK10:
 		case PROGRESS_UNK2D:
-			unk38->onFlag(0x1);
+			mGamePad->onFlag(0x1);
 			unk275 = 0;
 			break;
 		}
@@ -2608,7 +2633,7 @@ void TCardLoad::changeScene()
 		case PROGRESS_UNK1C:
 			unk284->onCollision();
 			unk275 = 0;
-			unk38->offFlag(0x1);
+			mGamePad->offFlag(0x1);
 			break;
 
 		case PROGRESS_UNK13:
@@ -2620,7 +2645,7 @@ void TCardLoad::changeScene()
 		case PROGRESS_UNK10:
 		case PROGRESS_UNK2D:
 			unk275 = 1;
-			unk38->offFlag(0x1);
+			mGamePad->offFlag(0x1);
 			break;
 		}
 
