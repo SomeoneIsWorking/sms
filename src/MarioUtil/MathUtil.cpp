@@ -1,5 +1,8 @@
 #include <MarioUtil/MathUtil.hpp>
 #include <JSystem/JMath.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <stdio.h>  // matan OOB fail-fast diagnostic
+#endif
 
 static Vec dummy1   = { 1.0f, 1.0f, 1.0f };
 static Vec dummy2   = { 1.0f, 1.0f, 1.0f };
@@ -131,25 +134,48 @@ static u16 GetAtanTable(f32 param_1, f32 param_2)
 	if (param_1 == 0)
 		return atntable[0];
 
-	return atntable[(int)(param_2 * __fres(param_1) * 1024.0f + 0.5f)];
+	int idx = param_2 * __fres(param_1) * 1024.0f + 0.5f;
+#ifdef SMS_NATIVE_PLATFORM
+	// matan/GetAtanTable callers guarantee 0 <= param_2 <= param_1, so idx ∈ [0,1024].
+	// A degenerate/NaN input (e.g. a camera whose position == its look-at target → a zero
+	// direction vector → __fres on a tiny value) blows idx out of range and reads OOB → SEGV.
+	// Fail-fast with the offending values rather than read garbage. (atntable has 1025 entries.)
+	if (idx < 0 || idx > 1024) {
+		static int s_warned = 0;
+		if (s_warned < 16) {
+			++s_warned;
+			fprintf(stderr, "[matan] OOB GetAtanTable idx=%d (p1=%g p2=%g fres=%g)\n",
+			        idx, param_1, param_2, __fres(param_1));
+		}
+		if (idx < 0) idx = 0;
+		if (idx > 1024) idx = 1024;
+	}
+#endif
+	return atntable[idx];
 }
 
 s16 matan(f32 param_1, f32 param_2)
 {
-	u16 result;
-	// TODO: currently too lazy to figure out how exactly they use symmetries
-	// here and what exact result transforms are needed in various branches.
-	// Probably should be something nice and symmetric and not this.
+	// matan is an octant-reduced atan2: GetAtanTable(a,b) returns atan(b/a) and is only valid
+	// for b <= a (its index (b/a)*1024 must stay within atntable[0..1024]). Each octant offset
+	// (0x4000/0x8000/-0x4000) below assumes GetAtanTable was handed (larger, smaller) so it
+	// returns atan(smaller/larger) ∈ [0, 0x2000]. The original reconstruction forgot to swap
+	// the args in the four branches where param_1 < param_2 — there it passed (smaller, larger),
+	// making the index (larger/smaller)*1024 > 1024 → OOB table read → SEGV on PC (the
+	// title→file-select camera fed matan(252, 828) and crashed; on GC the OOB read merely
+	// returned adjacent garbage). Swap the args in exactly those branches so the ratio is
+	// always <= 1; the in-range branches (param_1 >= param_2) are unchanged, so the working
+	// title camera is unaffected.
 	if (param_2 >= 0.0f) {
 		if (param_1 >= 0.0f) {
 			if (param_1 >= param_2)
 				result = 0x0000 + GetAtanTable(param_1, param_2);
 			else
-				result = 0x4000 - GetAtanTable(param_2, param_1);
+				return 0x4000 - GetAtanTable(param_2, param_1);
 		} else {
 			param_1 = -param_1;
 			if (param_1 < param_2)
-				result = 0x4000 + GetAtanTable(param_2, param_1);
+				return GetAtanTable(param_2, param_1) + 0x4000;
 			else
 				result = 0x8000 - GetAtanTable(param_1, param_2);
 		}
@@ -158,13 +184,13 @@ s16 matan(f32 param_1, f32 param_2)
 
 		if (param_1 < 0.0f) {
 			param_1 = -param_1;
-			if (param_1 >= param_2)
-				result = 0x8000 + GetAtanTable(param_1, param_2);
+			if (param_1 <= param_2)
+				return GetAtanTable(param_2, param_1) + 0x8000;
 			else
 				result = 0xC000 - GetAtanTable(param_2, param_1);
 		} else {
 			if (param_1 < param_2)
-				result = 0xC000 + GetAtanTable(param_2, param_1);
+				return GetAtanTable(param_2, param_1) - 0x4000;
 			else
 				result = 0x0000 - GetAtanTable(param_1, param_2);
 		}

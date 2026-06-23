@@ -59,7 +59,8 @@ public:
 	};
 
 	/* 0x10 */ int unk10;
-	/* 0x14 */ int unk14;
+	/* 0x14 */ int mState;   // unk14 — perform() state machine (3=title wait-for-Start,
+	                         //         8=camera pan to file blocks, 0=file/score select)
 	/* 0x18 */ int unk18;
 	/* 0x1C */ TEProgress unk1C;
 	/* 0x20 */ u32 unk20;
@@ -68,7 +69,7 @@ public:
 	/* 0x2C */ J2DSetScreen* unk2C;
 	/* 0x30 */ u32 unk30;
 	/* 0x34 */ J2DSetScreen* unk34;
-	/* 0x38 */ TMarioGamePad* unk38;
+	/* 0x38 */ TMarioGamePad* mGamePad;   // unk38 — set by MarDirector setup (= mGamePads[0])
 	/* 0x3C */ char unk3C[4];
 	/* 0x40 */ TCardBookmarkInfo unk40[3];
 	/* 0xA0 */ void* unkA0;
