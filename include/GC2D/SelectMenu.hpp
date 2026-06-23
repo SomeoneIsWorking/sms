@@ -49,6 +49,7 @@ public:
 	u8                   mNumSlots;     // DOL 0x13C
 	u8                   mDisabled;     // DOL 0x14A — 1 = menu suppressed (title-ish)
 	f32                  mFrameScale;   // DOL 0x14C — 1.0 / SMSGetAnmFrameRate()
+	u8                   mEpisodeState[8]; // DOL 0x150 — per-slot mark state (0=locked,2=open,3=cleared)
 };
 
 #endif
