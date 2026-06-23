@@ -20,6 +20,7 @@
 #include <System/Application.hpp>
 #include <System/Resolution.hpp>
 #include <GC2D/SelectGrad.hpp>
+#include <GC2D/SelectMenu.hpp>
 #include <GC2D/ScrnFader.hpp>
 #include <JSystem/JKernel/JKRMemArchive.hpp>
 #include <JSystem/JDrama/JDRDStageGroup.hpp>
@@ -107,8 +108,16 @@ int TSelectDir::rsetup()
 	mSelectGrad->setStageColor(mStage);
 	groupGrad->getChildren().push_back(mSelectGrad);
 
-	// TODO(file-select port): Group 2D (TSelectMenu) + Group 3D + Group 2D Particle +
-	// TSelectShineManager + the two JPAEmitterManager particle sets.
+	// Group 2D → holds the file-slot select windows (TSelectMenu). The DOL rsetup also
+	// builds Group 3D / Group 2D Particle + TSelectShineManager + two JPAEmitterManager
+	// particle sets; those are not-yet-ported (the menu does not need them to render).
+	JDrama::TViewObjPtrListT<JDrama::TViewObj>* group2D
+	    = new JDrama::TViewObjPtrListT<JDrama::TViewObj>("Group 2D");
+	rootViewObjs->getChildren().push_back(group2D);
+
+	mSelectMenu = new TSelectMenu("<TSelectMenu>");
+	mSelectMenu->mGamePad = mGamePad; // DOL: menu->unk100 = TSelectDir gamepad
+	group2D->getChildren().push_back(mSelectMenu);
 
 	// Display + EFB-copy rect.
 	JDrama::TDStageDisp* stageDisp = new JDrama::TDStageDisp;
@@ -129,12 +138,31 @@ int TSelectDir::rsetup()
 	gradScreen->assignCamera(gradCam);
 	gradScreen->assignViewObj(groupGrad);
 	mScreenGrad = gradScreen;
-	if (sel_dbg()) std::fprintf(stderr, "[sel] rsetup DONE: grad=%p screen=%p disp=%p group=%p\n",
-	                            (void*)mSelectGrad, (void*)gradScreen, (void*)stageDisp, (void*)groupGrad);
+
+	// Screen 2D: full-frame ortho over Group 2D. TSelectMenu::perform overrides the GX
+	// projection with its own J2DOrthoGraph (built from the graphics viewport this screen
+	// establishes), so this camera only fixes the screen's viewport rect; ±100 near/far
+	// keeps any pane z in range. Added AFTER Screen Grad so the gradient draws behind it.
+	JDrama::TOrthoProj* menuCam = new JDrama::TOrthoProj(
+	    0.0f, 0.0f, (float)SMSGetTitleRenderWidth(), (float)SMSGetTitleRenderHeight());
+	menuCam->mNear = -100.0f;
+	menuCam->mFar  = 100.0f;
+	group2D->getChildren().push_back(menuCam);
+
+	JDrama::TScreen* menuScreen = new JDrama::TScreen(rect, "Screen 2D");
+	stageDisp->getUnk14()->getChildren().push_back(menuScreen);
+	menuScreen->assignCamera(menuCam);
+	menuScreen->assignViewObj(group2D);
+	mScreen2D = menuScreen;
+
+	if (sel_dbg()) std::fprintf(stderr,
+	    "[sel] rsetup DONE: grad=%p gradScr=%p menu=%p menuScr=%p disp=%p\n",
+	    (void*)mSelectGrad, (void*)gradScreen, (void*)mSelectMenu, (void*)menuScreen,
+	    (void*)stageDisp);
 
 	// TODO(file-select port): the original sets per-screen unkC draw-order masks here
-	// (changeOrder toggles the 2D vs grad screen). With only the grad screen present the
-	// default mask (0 = draw) is correct.
+	// (changeOrder toggles the 2D vs grad screen). With both screens drawn at the default
+	// mask (0 = draw) the menu composites over the gradient, which is the resting layout.
 	return 0;
 }
 
@@ -163,7 +191,13 @@ int TSelectDir::direct()
 		// Reveal the screen. (The DOL runs TSMSFader::startWipe here; a fade-in is the
 		// faithful reveal — exact wipe transition is TODO.)
 		gpApplication.mFader->startFadeinT(0.25f);
-		// TODO(file-select port): first-frame TSelectMenu::setup + startOpenWindow.
+		// First-frame: build the menu's J2DScreen from the mounted select.arc (DOL direct
+		// @0x80175ec4 calls TSelectMenu::setup then startOpenWindow). The window-open
+		// animation (startOpenWindow + perform's calc) is not-yet-ported, so the menu
+		// renders at its .blo default layout.
+		if (mSelectMenu)
+			mSelectMenu->setup(mStage, mArchive, mSelectShineMgr, this);
+		// TODO(file-select port): startOpenWindow + the open animation / input navigation.
 		return TApplication::APP_STATE_DEFAULT - 1; // 0
 	}
 
