@@ -4,6 +4,27 @@
 
 JDrama::TNameRef* TMarNameRefGen::getNameRef_NPC(const char* name) const
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// STOPGAP: register the NPC *Managers* (MonteMManager/.../KinopioManager) so
+	// these NPCs get a non-null mManager, because the NPC population needs its
+	// managers to set mManager before TBaseNPC::load -> setIndividualDifference_
+	// dereferences it (mManager->unk28). Until the managers are wired (their
+	// getNameRef cases are TODO'd below), creating the individual TBaseNPCs here
+	// yields orphan NPCs with mManager==null -> SEGV in setIndividualDifference_.
+	// The NPCs are CHARACTERS, not plaza geometry, so we exclude the whole NPC
+	// population to reach a rendering plaza first; genObject tolerates the
+	// resulting null (skips the object). Set SB_NPC_ON=1 to re-enable creation
+	// once the managers are registered.
+	{
+		static int npc_on = -1;
+		if (npc_on < 0) {
+			const char* e = getenv("SB_NPC_ON");
+			npc_on = (e && e[0] && e[0] != '0') ? 1 : 0;
+		}
+		if (!npc_on)
+			return nullptr;
+	}
+#endif
 	// NOTE: TBaseNPC's first arg here screams enum. probably worth seeing what
 	// they could mean beyond the associated strings here
 	if (strcmp(name, "NPCMonteM") == 0)

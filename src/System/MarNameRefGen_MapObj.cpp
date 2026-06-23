@@ -238,7 +238,7 @@ JDrama::TNameRef* TMarNameRefGen::getNameRef_MapObj(const char* name) const
 		return new TPool;
 
 	if (strcmp(name, "WoodBox") == 0)
-		return new TWoodBox;
+		return new TWoodBox("木箱");
 
 	if (strcmp(name, "AirportEventSink") == 0)
 		return new TAirportEventSink;
