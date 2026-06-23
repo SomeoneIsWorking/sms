@@ -493,6 +493,7 @@ void TCardLoad::perform(u32 param_1, JDrama::TGraphics* param_2)
 #ifdef SMS_NATIVE_PLATFORM
 	if (param_1 & 1) {
 		static int s_lastState = -1;
+		static int s_lastProg = -1;
 		static long s_perfCount = 0;
 		++s_perfCount;
 		static const char* s_selDbg = getenv("SB_SEL_DBG");
@@ -508,6 +509,13 @@ void TCardLoad::perform(u32 param_1, JDrama::TGraphics* param_2)
 			if (mState == 0 && getenv("SB_SEL_DUMP"))
 				sb_boot_request_dump(6);
 			s_lastState = mState;
+			s_lastProg = unk1C;
+		}
+		// Also trace the card-read progress (unk1C) advancing within mState 0.
+		if (s_selDbg && unk1C != s_lastProg) {
+			fprintf(stderr, "[cardload]   prog unk1C %d -> %d (mState=%d unk10=%d unkB1=%d)\n",
+			        s_lastProg, unk1C, mState, unk10, unkB1);
+			s_lastProg = unk1C;
 		}
 	}
 #endif
@@ -2199,6 +2207,14 @@ void TCardLoad::changeScene()
 	case PROGRESS_UNK6:
 	case PROGRESS_UNK7: {
 		int rc = gpCardManager->getLastStatus();
+#ifdef SMS_NATIVE_PLATFORM
+		if (getenv("SB_SEL_DBG")) {
+			static int s_n = 0;
+			if (s_n < 12) { ++s_n;
+				fprintf(stderr, "[cardload]   UNK6 rc=%d unk10=%d unkB7=%d\n", rc, unk10, unkB7);
+			}
+		}
+#endif
 		if (rc == CARD_RESULT_READY) {
 			waitForChoice(PROGRESS_UNK8, PROGRESS_UNK4, 1);
 			gpCardManager->probe();
