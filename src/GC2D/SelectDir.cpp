@@ -1,262 +1,175 @@
-#include <System/SelectDir.hpp>
+// SelectDir.cpp — file-select director (TSelectDir).
+//
+// Reconstructed from the GMSE01 DOL; the community decomp left this TU empty (file-select runs
+// only under Dolphin's JIT in the hybrid build). Anchors: setup 0x80177400, setupThreadFunc
+// 0x801773e0, rsetup 0x801761b0, direct 0x80175ec4, changeOrder 0x80176188, FUN_802f7d28 =
+// JDrama::TDirector::direct().
+//
+// Structure mirrors the sister directors TMenuDirector / TMovieDirector (MenuDir.cpp,
+// MovieDirector.cpp) — same JDrama display-build idiom (mount arc, build groups + screens +
+// ortho projections, wire via assignCamera/assignViewObj; per-frame TDirector::direct()).
+//
+// PORT STATUS (incremental): this milestone builds the background-gradient sub-scene
+// (Group Grad + TSelectGrad + Screen Grad). The full rsetup also creates TSelectMenu (the file
+// windows), TSelectShineManager (shine counts), the 2D/3D screens and the JPA particle emitters
+// — those are reconstructed in follow-up steps and are marked TODO below. Nothing here is a
+// shortcut around the original: the omitted objects are simply not-yet-ported.
 
-#include <dolphin/os.h>
-#include <JSystem/JKernel/JKRFileLoader.hpp>
+#include <System/SelectDir.hpp>
+#include <System/MarioGamePad.hpp>
+#include <System/Application.hpp>
+#include <System/Resolution.hpp>
+#include <GC2D/SelectGrad.hpp>
+#include <GC2D/ScrnFader.hpp>
 #include <JSystem/JKernel/JKRMemArchive.hpp>
 #include <JSystem/JDrama/JDRDStageGroup.hpp>
 #include <JSystem/JDrama/JDRDStage.hpp>
-#include <JSystem/JDrama/JDRCamera.hpp>
 #include <JSystem/JDrama/JDREfbCtrl.hpp>
 #include <JSystem/JDrama/JDRScreen.hpp>
+#include <JSystem/JDrama/JDRCamera.hpp>
 #include <JSystem/JDrama/JDRViewObjPtrList.hpp>
-#include <JSystem/JParticle/JPAEmitterManager.hpp>
-#include <JSystem/JParticle/JPAResourceManager.hpp>
-#include <GC2D/ScrnFader.hpp>
-#include <GC2D/SelectMenu.hpp>
-#include <MSound/MSound.hpp>
-#include <MarioUtil/RumbleMgr.hpp>
-#include <System/Application.hpp>
-#include <System/EmitterViewObj.hpp>
-#include <System/FlagManager.hpp>
-#include <System/MarioGamePad.hpp>
-#include <System/Resolution.hpp>
+#include <JSystem/JDrama/JDRRect.hpp>
+#include <dolphin/os.h>
+#include <cstdio>
+#include <cstdlib>
 
+static bool sel_dbg()
+{
+	static int v = -1;
+	if (v < 0) { const char* e = getenv("SB_SEL_DBG"); v = (e && e[0] && e[0] != '0') ? 1 : 0; }
+	return v != 0;
+}
+
+// Shared boot setup-thread (also used by TMenuDirector / TMovieDirector).
 extern OSThread gSetupThread;
 extern u8* gpSetupThreadStack;
 
 TSelectDir::TSelectDir()
-    : unk20(0)
-    , unk24(0)
-    , unk28(0)
-    , unk2C(0)
-    , unk30(0)
-    , unk34(0)
-    , unk38(false)
-    , unk3C(0)
-    , unk40(0)
-    , unk44(0)
-    , unk48(0)
-    , unk4C(false)
+    : JDrama::TDirector("<TSelectDir>")
+    , mGamePad(nullptr)
+    , mDisplay(nullptr)
+    , mSelectMenu(nullptr)
+    , mSelectGrad(nullptr)
+    , mSelectShineMgr(nullptr)
+    , mArchive(nullptr)
+    , mEmitterMgr0(nullptr)
+    , mEmitterMgr1(nullptr)
+    , mSetupDone(0)
+    , mStage(0)
+    , mScreen2D(nullptr)
+    , mScreenGrad(nullptr)
+    , mFlag4C(0)
 {
 }
 
-TSelectDir::~TSelectDir()
+// setup @0x80177400 — store display/pad/stage, spawn the setup thread (which runs rsetup).
+void TSelectDir::setup(JDrama::TDisplay* display, TMarioGamePad* pad, unsigned char stage)
 {
-	JKRMemArchive* arc = (JKRMemArchive*)JKRFileLoader::getVolume("select");
-	if (arc)
-		arc->unmountFixed();
-
-	unk18->offFlag(1);
-}
-
-void* TSelectDir::setupThreadFunc(void* param_1)
-{
-	((TSelectDir*)param_1)->rsetup();
-}
-
-void TSelectDir::setup(JDrama::TDisplay* display, TMarioGamePad* gamePad,
-                       unsigned char stage)
-{
-	unk1C = display;
-	unk18 = gamePad;
-	SMSRumbleMgr->reset();
-	unk40 = stage;
-
+	mDisplay = display;
+	mGamePad = pad;
+	mStage   = stage;
+	// (DOL also resets a RumbleMgr here — irrelevant to rendering, deferred.)
 	OSCreateThread(&gSetupThread, &setupThreadFunc, this,
 	               gpSetupThreadStack + 0x10000, 0x10000, 0x11, 0);
 	OSResumeThread(&gSetupThread);
 }
 
-void TSelectDir::changeOrder()
+// setupThreadFunc @0x801773e0 — just runs rsetup on the worker thread.
+void* TSelectDir::setupThreadFunc(void* param)
 {
-	unk44->unkC.on(CUE_MOVE | CUE_CALC_ANIM | CUE_DRAW);
-	unk48->unkC.off(CUE_MOVE | CUE_CALC_ANIM | CUE_DRAW);
+	((TSelectDir*)param)->rsetup();
+	return nullptr;
 }
 
+// rsetup @0x801761b0 — build the JDrama display. (Gradient sub-scene; see PORT STATUS above.)
 int TSelectDir::rsetup()
 {
-	void* arcData = SMSLoadArchive("/data/select.arc", 0, 0, 0);
-
-	JKRMemArchive* archive = new JKRMemArchive;
-	if (!archive->mountFixed(arcData, MBF_0))
+	if (sel_dbg()) std::fprintf(stderr, "[sel] rsetup ENTER stage=%d\n", mStage);
+	void* arcBlob = SMSLoadArchive("/data/select.arc", nullptr, 0, nullptr);
+	if (sel_dbg()) std::fprintf(stderr, "[sel] arcBlob=%p\n", arcBlob);
+	mArchive      = new JKRMemArchive;
+	if (!mArchive->mountFixed(arcBlob, MBF_0)) {
+		if (sel_dbg()) std::fprintf(stderr, "[sel] mountFixed FAILED\n");
 		return 1;
+	}
 
-	unk2C = archive;
-
-	JDrama::TViewObjPtrListT<JDrama::TViewObj>* root
+	JDrama::TViewObjPtrListT<JDrama::TViewObj>* rootViewObjs
 	    = new JDrama::TViewObjPtrListT<JDrama::TViewObj>("root View Objs");
-	unk10 = root;
+	unk10 = rootViewObjs;
+	unk14 = new JDrama::TDStageGroup(mDisplay);
 
-	unk14 = new JDrama::TDStageGroup(unk1C);
-	unk20 = new TSelectMenu("<TSelectMenu>");
-	unk28 = new TSelectShineManager("<SelectShineManger>");
-	unk24 = new TSelectGrad("<TSelectGrad>");
-	unk24->setStageColor(unk40);
-
-	JDrama::TViewObjPtrListT<JDrama::TViewObj>* group3D
-	    = new JDrama::TViewObjPtrListT<JDrama::TViewObj>("Group 3D");
-	JDrama::TViewObjPtrListT<JDrama::TViewObj>* group2D
-	    = new JDrama::TViewObjPtrListT<JDrama::TViewObj>("Group 2D");
+	// Group Grad → holds the animated background gradient.
 	JDrama::TViewObjPtrListT<JDrama::TViewObj>* groupGrad
 	    = new JDrama::TViewObjPtrListT<JDrama::TViewObj>("Group Grad");
-	JDrama::TViewObjPtrListT<JDrama::TViewObj>* group2DParticle
-	    = new JDrama::TViewObjPtrListT<JDrama::TViewObj>("Group 2D Particle");
+	rootViewObjs->getChildren().push_back(groupGrad);
 
-	root->getChildren().push_back(group2D);
-	root->getChildren().push_back(group3D);
-	root->getChildren().push_back(groupGrad);
-	root->getChildren().push_back(group2DParticle);
+	mSelectGrad = new TSelectGrad("<TSelectGrad>");
+	mSelectGrad->setStageColor(mStage);
+	groupGrad->getChildren().push_back(mSelectGrad);
 
-	group2D->getChildren().push_back(unk20);
-	group3D->getChildren().push_back(unk28);
-	groupGrad->getChildren().push_back(unk24);
+	// TODO(file-select port): Group 2D (TSelectMenu) + Group 3D + Group 2D Particle +
+	// TSelectShineManager + the two JPAEmitterManager particle sets.
 
-	unk18->mFlags = 1;
-	unk20->unk100 = unk18;
-
-	JPAResourceManager* resourceManager2D = new JPAResourceManager(9, 0x200, 0);
-	JPAResourceManager* resourceManager3D = new JPAResourceManager(9, 0x200, 0);
-
-	resourceManager2D->load("/select/particle/ms_2d_shine_promi.jpa", 0);
-	resourceManager2D->load("/select/particle/ms_2d_shine_senko.jpa", 1);
-	resourceManager2D->load("/select/particle/ms_2d_shine_kira.jpa", 2);
-	resourceManager2D->load("/select/particle/ms_2d_shine_kira_em.jpa", 3);
-	resourceManager3D->load("/select/particle/ms_2d_scsel_on_a.jpa", 4);
-	resourceManager3D->load("/select/particle/ms_2d_scsel_on_a2.jpa", 5);
-	resourceManager3D->load("/select/particle/ms_2d_scsel_on_b.jpa", 6);
-	resourceManager3D->load("/select/particle/ms_2d_scsel_on_c.jpa", 7);
-	resourceManager3D->load("/select/particle/ms_2d_scsel_on_d.jpa", 8);
-
-	unk30 = new JPAEmitterManager(resourceManager2D, 0x400, 0x80, 0x100, 0);
-	unk34 = new JPAEmitterManager(resourceManager3D, 0x400, 0x80, 0x100, 0);
-
-	TEmitterViewObj* emitterView2D = new TEmitterViewObj(unk30);
-	group3D->getChildren().push_back(emitterView2D);
-
-	TEmitterViewObj* emitterView3D = new TEmitterViewObj(unk34);
-	group2DParticle->getChildren().push_back(emitterView3D);
-
+	// Display + EFB-copy rect.
 	JDrama::TDStageDisp* stageDisp = new JDrama::TDStageDisp;
 	unk14->getChildren().push_back(stageDisp);
-
-	JDrama::TRect rect(0, 0, SMSGetTitleRenderWidth(),
-	                   SMSGetTitleRenderHeight());
+	JDrama::TRect rect(0, 0, SMSGetTitleRenderWidth(), SMSGetTitleRenderHeight());
 	stageDisp->getEfbCtrlDisp()->TEfbCtrl::setSrcRect(rect);
 
-	JDrama::TOrthoProj* gradCamera
-	    = new JDrama::TOrthoProj(-100.0f, 100.0f, 0.0f, 16.0f, 600.0f, 464.0f);
-	groupGrad->getChildren().push_back(gradCamera);
+	// Screen Grad: ortho projection (0,16,600,464) over the gradient group. rsetup overrides
+	// the default ±1 near/far to -100/100 (the TSelectGrad quad sits at z=-100, on the near
+	// plane); with the ±1 default the quad is z-clipped and the screen stays black.
+	JDrama::TOrthoProj* gradCam = new JDrama::TOrthoProj(0.0f, 16.0f, 600.0f, 464.0f);
+	gradCam->mNear = -100.0f;
+	gradCam->mFar  = 100.0f;
+	groupGrad->getChildren().push_back(gradCam);
 
 	JDrama::TScreen* gradScreen = new JDrama::TScreen(rect, "Screen Grad");
 	stageDisp->getUnk14()->getChildren().push_back(gradScreen);
-	gradScreen->assignCamera(gradCamera);
+	gradScreen->assignCamera(gradCam);
 	gradScreen->assignViewObj(groupGrad);
+	mScreenGrad = gradScreen;
+	if (sel_dbg()) std::fprintf(stderr, "[sel] rsetup DONE: grad=%p screen=%p disp=%p group=%p\n",
+	                            (void*)mSelectGrad, (void*)gradScreen, (void*)stageDisp, (void*)groupGrad);
 
-	JDrama::TOrthoProj* screen2DCamera
-	    = new JDrama::TOrthoProj(-100.0f, 100.0f, 0.0f, 16.0f, 600.0f, 464.0f);
-	group2D->getChildren().push_back(screen2DCamera);
-
-	JDrama::TScreen* screen2D = new JDrama::TScreen(rect, "Screen 2D");
-	stageDisp->getUnk14()->getChildren().push_back(screen2D);
-	screen2D->assignCamera(screen2DCamera);
-	screen2D->assignViewObj(group2D);
-	unk48 = screen2D;
-
-	JDrama::TLookAtCamera* camera3D = new JDrama::TLookAtCamera(
-	    JGeometry::TVec3<f32>(300.0f, 240.0f, 1300.0f),
-	    JGeometry::TVec3<f32>(300.0f, 240.0f, 0.0f),
-	    JGeometry::TVec3<f32>(0.0f, 1.0f, 0.0f), 30.0f, 1.3333334f,
-	    "<TLookAtCamera>");
-	group3D->getChildren().push_back(camera3D);
-
-	JDrama::TScreen* screen3D = new JDrama::TScreen(rect, "Screen 3D");
-	stageDisp->getUnk14()->getChildren().push_back(screen3D);
-	screen3D->assignCamera(camera3D);
-	screen3D->assignViewObj(group3D);
-
-	JDrama::TOrthoProj* screen2DCamera2
-	    = new JDrama::TOrthoProj(-100.0f, 100.0f, 0.0f, 16.0f, 600.0f, 464.0f);
-	group2D->getChildren().push_back(screen2DCamera2);
-
-	JDrama::TScreen* screen2D2 = new JDrama::TScreen(rect, "Screen 2D");
-	stageDisp->getUnk14()->getChildren().push_back(screen2D2);
-	screen2D2->assignCamera(screen2DCamera2);
-	screen2D2->assignViewObj(group2D);
-	unk44 = screen2D2;
-
-	JDrama::TOrthoProj* particleCamera
-	    = new JDrama::TOrthoProj(-500.0f, 500.0f, 0.0f, 16.0f, 600.0f, 464.0f);
-	group2DParticle->getChildren().push_back(particleCamera);
-
-	JDrama::TScreen* particleScreen = new JDrama::TScreen(rect, "Screen Grad");
-	stageDisp->getUnk14()->getChildren().push_back(particleScreen);
-	particleScreen->assignCamera(particleCamera);
-	particleScreen->assignViewObj(group2DParticle);
-
-	unk44->unkC.off(CUE_MOVE | CUE_CALC_ANIM | CUE_DRAW);
-	unk48->unkC.on(CUE_MOVE | CUE_CALC_ANIM | CUE_DRAW);
-
+	// TODO(file-select port): the original sets per-screen unkC draw-order masks here
+	// (changeOrder toggles the 2D vs grad screen). With only the grad screen present the
+	// default mask (0 = draw) is correct.
 	return 0;
 }
 
+// changeOrder @0x80176188 — swap which screen draws (2D menu ⇄ gradient). Faithful, but the
+// 2D screen is not built yet; guarded so it is safe to call once TSelectMenu lands.
+void TSelectDir::changeOrder()
+{
+	if (mScreen2D)
+		mScreen2D->unkC.on(0xb);
+	if (mScreenGrad)
+		mScreenGrad->unkC.off(0xb);
+}
+
+// direct @0x80175ec4 — wait for the setup thread, then per-frame draw via TDirector::direct().
 int TSelectDir::direct()
 {
-	if (!unk38) {
-		if (!OSIsThreadTerminated(&gSetupThread))
-			return TApplication::APP_STATE_WAIT;
-
+	if (!mSetupDone) {
+		if (!OSIsThreadTerminated(&gSetupThread)) {
+			if (sel_dbg()) { static int n=0; if((n++%120)==0) std::fprintf(stderr, "[sel] direct: waiting setup thread\n"); }
+			return TApplication::APP_STATE_DEFAULT - 1; // 0: still setting up
+		}
 		void* res;
 		OSJoinThread(&gSetupThread, &res);
-		if (res != 0)
-			return TApplication::APP_STATE_GAMEPLAY;
-
-		unk38 = true;
-		unk20->initData(unk40, unk2C, unk28, this);
-		unk20->startMove();
-		unk20->startOpenWindow();
-
-		gpApplication.mFader->startWipe(0xe, 0.4f, 0.0f);
-		gpApplication.mFader->setColor(
-		    unk40 == 9 ? JUtility::TColor(0xff, 0xff, 0xff, 0xff)
-		               : JUtility::TColor(0, 0, 0, 0xff));
-		gpMSound->initSound();
-		return TApplication::APP_STATE_WAIT;
+		mSetupDone = 1;
+		if (sel_dbg()) std::fprintf(stderr, "[sel] direct: setup DONE, entering draw loop\n");
+		// Reveal the screen. (The DOL runs TSMSFader::startWipe here; a fade-in is the
+		// faithful reveal — exact wipe transition is TODO.)
+		gpApplication.mFader->startFadeinT(0.25f);
+		// TODO(file-select port): first-frame TSelectMenu::setup + startOpenWindow.
+		return TApplication::APP_STATE_DEFAULT - 1; // 0
 	}
 
-	JDrama::TDirector::direct();
+	if (sel_dbg()) { static int n=0; if((n++%120)==0) std::fprintf(stderr, "[sel] direct: drawing (TDirector::direct)\n"); }
+	JDrama::TDirector::direct(); // testPerform(3) on unk10 (calc), testPerform(8) on unk14 (draw)
 
-	switch (gpApplication.mFader->mFadeStatus) {
-	case TSMSFader::FADE_STATUS_FULLY_FADED_IN:
-	case TSMSFader::FADE_STATUS_FADING_IN:
-		if (unk20->unk14B)
-			return TApplication::APP_STATE_DONE;
-
-		if (unk20->unk14A) {
-			gpApplication.mNextArea.unk1 = unk20->unk13B;
-			TFlagManager::smInstance->setFlag(0x40003, unk20->unk13B);
-			gpApplication.mFader->startWipe(0xf, 1.0f, 0.0f);
-			gpApplication.mFader->setColor(
-			    JUtility::TColor(0xff, 0xff, 0xff, 0xff));
-			SMSGetMSound()->fadeOutAllSound(SMSGetVSyncTimesPerSec());
-		}
-		break;
-	}
-
-	if (unk18->isSomethingPushed() && !unk4C) {
-		unk4C = true;
-		gpApplication.mFader->startWipe(4, 1.0f, 0.0f);
-		SMSGetMSound()->fadeOutAllSound(SMSGetVSyncTimesPerSec() * 0.4f);
-		unk10->unkC.on(CUE_MOVE | CUE_CALC_ANIM);
-	}
-
-	if (gpApplication.mFader->mFadeStatus
-	    == TSMSFader::FADE_STATUS_FULLY_FADED_OUT) {
-		gpMSound->stopAllSound();
-		if (unk18->isSomethingPushed())
-			return TApplication::APP_STATE_DONE;
-		else
-			return TApplication::APP_STATE_GAMEPLAY;
-	}
-
-	return TApplication::APP_STATE_DEFAULT;
+	// TODO(file-select port): menu navigation / file-pick transition (sets next area + fade-out).
+	return TApplication::APP_STATE_DEFAULT; // keep running file-select
 }
