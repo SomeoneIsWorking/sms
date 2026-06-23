@@ -1,4 +1,6 @@
 #include <GC2D/ConsoleStr.hpp>
+#include <GC2D/GCConsole2.hpp>
+#include <JSystem/JDrama/JDRNameRefGen.hpp>
 #include <GC2D/BoundPane.hpp>
 #include <GC2D/ExPane.hpp>
 #include <GC2D/MessageUtil.hpp>
@@ -102,6 +104,20 @@ void TConsoleStr::loadAfter()
 	unk2AC = 0;
 	unk2B0 = 0;
 	unk2B4 = 0;
+#ifdef SMS_NATIVE_PLATFORM
+	// Decomp gap: TGCConsole2::unk94 (the scenario-name banner TConsoleStr) is
+	// read all over TMarDirector::direct (startAppearScenario/startOpenWipe/...)
+	// but is NEVER assigned in the decompiled source -- the original wiring lives
+	// in an undecompiled function, so the native build left unk94 uninitialized
+	// -> SEGV reading a null `this` in startAppearScenario. The console object
+	// ("GCコンソール") and this TConsoleStr ("コンソール文字") are siblings in the
+	// NameRef tree (all load()ed before any loadAfter), so register ourselves
+	// with the console here. Faithful reconstruction of the missing cache, not a
+	// guard around the symptom.
+	if (TGCConsole2* console
+	    = JDrama::TNameRefGen::search<TGCConsole2>("GCコンソール"))
+		console->unk94 = this;
+#endif
 }
 
 void TConsoleStr::perform(u32 param_1, JDrama::TGraphics* param_2)
