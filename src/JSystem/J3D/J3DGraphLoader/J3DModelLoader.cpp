@@ -80,6 +80,39 @@ J3DMaterialTable* J3DModelLoaderDataBase::loadMaterialTable(const void* i_data)
 	if (!i_data)
 		return nullptr;
 
+#ifdef SMS_NATIVE_PLATFORM
+	// On-disc J3D2 .bmt material tables are big-endian (same as the BMD load()
+	// above): the magic/type/field reads below are raw struct casts, so on a
+	// little-endian host the 'J3D2'/'bmt3' check fails and this returns null -> a
+	// null J3DMaterialTable deref in J3DModelData::setMaterialTable (the
+	// TMapObjManager barrel/kibako/flower .bmt crash). Swap to a host-endian copy
+	// at load, reusing the BMD MAT3/TEX1 block swappers. FAIL FAST on an
+	// un-swappable (e.g. MAT2/v21) block rather than feeding half-swapped data.
+	{
+		const uint8_t* raw = (const uint8_t*)i_data;
+		uint32_t beMagic = (raw[0] << 24) | (raw[1] << 16) | (raw[2] << 8) | raw[3];
+		if (beMagic == 0x4A334432 /* 'J3D2' big-endian on disc */) {
+			uint32_t len = (raw[8] << 24) | (raw[9] << 16) | (raw[10] << 8)
+			               | raw[11];
+			std::vector<uint8_t> swapped;
+			smsport::assets::BmdSwapResult sr
+			    = smsport::assets::bmt_swap_to_host(raw, len, swapped);
+			if (!sr.all_covered)
+				OSPanic(__FILE__, __LINE__,
+				        "BMT swap incomplete: %u/%u blocks covered (%s)",
+				        sr.blocks_covered, sr.block_num,
+				        sr.error ? sr.error : "ok");
+			// Pad with a zeroed block-header so the loader's loop, when mBlockNum
+			// over-counts (a phantom trailing block ending at EOF), reads a zero
+			// tag/size past the real data (default case, pointer doesn't advance)
+			// instead of running off the host allocation.
+			uint8_t* host = new uint8_t[len + 16]();
+			memcpy(host, swapped.data(), len);
+			i_data = host;
+		}
+	}
+#endif
+
 	const JUTDataFileHeader* fileHeader = (const JUTDataFileHeader*)i_data;
 
 	u32 magic = fileHeader->mMagic;
