@@ -12,11 +12,14 @@
 #include <JSystem/J2D/J2DScreen.hpp>
 #include <JSystem/J2D/J2DOrthoGraph.hpp>
 #include <JSystem/J2D/J2DPicture.hpp>
+#include <JSystem/JKernel/JKRFileLoader.hpp>
+#include <JSystem/ResTIMG.hpp>
 #include <MarioUtil/DrawUtil.hpp>
 #include <MarioUtil/ReinitGX.hpp>
 #include <System/Application.hpp>
 #include <System/StageUtil.hpp>
 #include <System/FlagManager.hpp>
+#include "timg_swap.h"  // big-endian ResTIMG header -> host (standalone .bti via getGlbResource)
 #include <dolphin/gx.h>
 #include <dolphin/mtx.h>
 #include <cstdio>
@@ -292,10 +295,50 @@ void TSelectMenu::setup(u8 stage, JKRArchive* archive, TSelectShineManager* shin
 	    shineStage,mNumSlots,mCursor,mEpisodeState[0],mEpisodeState[1],mEpisodeState[2],
 	    mEpisodeState[3],mEpisodeState[4],mEpisodeState[5],mEpisodeState[6],mEpisodeState[7]); }
 
-	// TODO(file-select port, next step): score/coin digit textures (coin_number_*.bti →
-	// sc_1/sc_2/sc_3 via changeTexture), the slot-indicator i_o*/i_e* row (revealed by the
-	// open animation), the BMG stage/scenario-name strings, the sc_s score-mark, and the
-	// window-open animation / input navigation in perform's calc path.
+	// ── Score/coin count digits (DOL @0x80174xxx: the sc_1/sc_2/sc_3 picture panes). ──────
+	// The count is this stage's coin/score flag; the three digit panes get their textures
+	// swapped to coin_number_<d>.bti. <100 shows tens+ones (hundreds pane hidden); >=100
+	// shows all three. The compiler emitted the digit split as reciprocal-multiplies
+	// (0.01/0.1); the semantics are integer division — ported as such.
+	{
+		int count = TFlagManager::getInstance()->getFlag(0x20005 + (u32)shineStage);
+		if (count > 999) count = 999;
+		if (count < 0) count = 0;
+		J2DPicture* d1 = (J2DPicture*)mScreen->search(0x73635f31); // "sc_1" hundreds
+		J2DPicture* d2 = (J2DPicture*)mScreen->search(0x73635f32); // "sc_2" tens
+		J2DPicture* d3 = (J2DPicture*)mScreen->search(0x73635f33); // "sc_3" ones
+		// coin_number_<d>.bti is a standalone big-endian ResTIMG loaded directly via
+		// JKRFileLoader::getGlbResource (NOT through JUTResReference, so it is not swapped
+		// by that path); swap it here (idempotent) before binding, or the decode reads
+		// garbage dims (the 2048x2048 SEGV class).
+		auto digitTimg = [](int n) -> const ResTIMG* {
+			char nm[40];
+			std::snprintf(nm, sizeof nm, "/select/timg/coin_number_%d.bti", n);
+			void* t = JKRFileLoader::getGlbResource(nm);
+			if (t) smsport::assets::restimg_swap_to_host(t);
+			return (const ResTIMG*)t;
+		};
+		if (count < 100) {
+			int tens = count / 10;
+			int ones = count - tens * 10;
+			if (d2) d2->changeTexture(digitTimg(tens), 0);
+			if (d3) d3->changeTexture(digitTimg(ones), 0);
+			if (d1) d1->hide(); // no hundreds digit
+		} else {
+			int hundreds = count / 100;
+			int rem      = count - hundreds * 100;
+			int tens     = rem / 10;
+			int ones     = rem - tens * 10;
+			if (d1) d1->changeTexture(digitTimg(hundreds), 0);
+			if (d2) d2->changeTexture(digitTimg(tens), 0);
+			if (d3) d3->changeTexture(digitTimg(ones), 0);
+		}
+	}
+
+	// TODO(file-select port, next step): the slot-indicator i_o*/i_e* row (revealed by the
+	// open animation), the BMG stage/scenario-name strings, the sc_s score-mark (local_2e0
+	// special-shine table), and the window-open animation / input navigation in perform's
+	// calc path.
 }
 
 // perform @0x80172c90 (TViewObj vtable slot 8). calc on flag bit 0x1, draw on bit 0x8.
