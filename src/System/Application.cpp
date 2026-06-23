@@ -530,6 +530,60 @@ void TApplication::proc()
 		u8 nextState = APP_STATE_DEFAULT;
 		int iVar9    = 0;
 
+#ifdef SMS_NATIVE_PLATFORM
+		// ── PC-native plaza fastboot ────────────────────────────────────────────
+		// sms-boot runs the real attract flow with NO input, so it drifts GC logo →
+		// DONE → Entrance.thp → stage 15 (option.arc, the OPTIONS scene) and never
+		// reaches Delfino Plaza. This short-circuit (the native equivalent of the
+		// recomp binary's runtime/overrides/fastboot_native.cpp) jumps straight into
+		// real gameplay once NLOGO has finished (mAppState first hits DONE, so the
+		// stage table + mario.arc are loaded and TFlagManager::start has run): force
+		// the area to Delfino Plaza (stage 1) and the app state to GAMEPLAY. On by
+		// default for sms-boot; SB_NO_FASTBOOT=1 keeps the vanilla attract flow.
+		// SB_STAGE / SB_SCENARIO (decimal or 0x..) override the destination.
+		{
+			static bool sb_fb_done = false;
+			static int  sb_fb_on   = -1;
+			if (sb_fb_on < 0) {
+				const char* e = getenv("SB_NO_FASTBOOT");
+				sb_fb_on = (e && e[0] && e[0] != '0') ? 0 : 1;
+			}
+			if (sb_fb_on && !sb_fb_done && mAppState == APP_STATE_DONE) {
+				sb_fb_done = true;
+				TFlagManager* fm = TFlagManager::getInstance();
+				// Mark the intro/attract movies as already seen so checkAdditionalMovie
+				// skips them — we want the stage, not the THP cutscenes.
+				if (fm) {
+					fm->setBool(true, 0x30009);  // airport opening movie
+					fm->setBool(true, 0x3000B);  // plaza scenario-0 intro movie
+					fm->setBool(true, 0x3000C);  // plaza scenario-1 intro movie
+					fm->setBool(true, 0x3000D);  // shine-gate movie
+				}
+				// Destination: Delfino Plaza, episode resolved from save flags
+				// (blank save → 0). decideNextScenario(1) semantics, inlined.
+				u8 stage = 1, scenario = 0;
+				if (fm && stage == 1) {
+					if (fm->getBool(0x103AE)) scenario = 2;
+					else if (fm->getBool(0x10389)) scenario = 8;
+					else if (fm->getBool(0x10386) && fm->getBool(0x10387))
+						scenario = (fm->getFlag(0x40000) >= 10) ? 7 : 6;
+					else if (fm->getBool(0x10385)) scenario = 5;
+					else if (fm->getBool(0x10384)) scenario = 1;
+				}
+				if (const char* es = getenv("SB_STAGE"))
+					stage = (u8)strtoul(es, nullptr, 0);
+				if (const char* sc = getenv("SB_SCENARIO"))
+					scenario = (u8)strtoul(sc, nullptr, 0);
+				mCurrArea.set(stage, scenario, 0);
+				mNextArea.set(stage, scenario, 0);
+				mAppState = APP_STATE_GAMEPLAY;
+				fprintf(stderr,
+				        "[fastboot] -> stage %u scenario %u (APP_STATE_GAMEPLAY)\n",
+				        stage, scenario);
+			}
+		}
+#endif
+
 		switch (mAppState) {
 		case APP_STATE_BOOT:
 			SMSSetupGCLogoRenderingInfo(mDisplay);

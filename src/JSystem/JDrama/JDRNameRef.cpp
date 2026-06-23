@@ -2,6 +2,7 @@
 #include <JSystem/JDrama/JDRNameRefGen.hpp>
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstring>
+#include <cstdlib>
 #include <dolphin/os.h>
 #endif
 
@@ -55,8 +56,19 @@ TNameRef* TNameRef::genObject(JSUMemoryInputStream& param_1,
 				break;
 			}
 		}
+		// Survey mode (SB_GENOBJ_SKIP_ALL=1): skip+log EVERY unknown type instead
+		// of panicking, so one boot enumerates the whole missing-type set for a new
+		// scene (e.g. the plaza) rather than rediscovering them one panic per run.
+		// Diagnostic only — leave the default fail-fast on for normal runs.
+		static int skip_all = -1;
+		if (skip_all < 0) {
+			const char* e = getenv("SB_GENOBJ_SKIP_ALL");
+			skip_all = (e && e[0] && e[0] != '0') ? 1 : 0;
+		}
 		if (known) {
 			OSReport("[genObject] skipping unimplemented type \"%s\"\n", type);
+		} else if (skip_all) {
+			OSReport("[genObject-survey] MISSING type \"%s\"\n", type);
 		} else {
 			OSPanic(__FILE__, __LINE__,
 			        "TNameRef::genObject: no getNameRef case for type \"%s\"",
