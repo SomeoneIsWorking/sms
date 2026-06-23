@@ -33,13 +33,13 @@ void CPolarSubCamera::ctrlOptionCamera_()
 {
 	JGeometry::TVec3<f32> probe;
 
-	if (gpCameraOption->unkA > 0) {
-		chaseOptionCamera_(gpCameraOption->unkA);
-		gpCameraOption->unkA--;
-	} else if (gpCameraOption->unkE > 0) {
-		chaseOptionCamera_(gpCameraOption->unkE);
-		gpCameraOption->unkE--;
-	} else if (!(gpCameraOption->unk0 & 0x2)) {
+	if (gpCameraOption->mIntroChaseTimer > 0) {
+		chaseOptionCamera_(gpCameraOption->mIntroChaseTimer);
+		gpCameraOption->mIntroChaseTimer--;
+	} else if (gpCameraOption->mLoadPanTimer > 0) {
+		chaseOptionCamera_(gpCameraOption->mLoadPanTimer);
+		gpCameraOption->mLoadPanTimer--;
+	} else if (!(gpCameraOption->mFlags & 0x2)) {
 		probe = *gpMarioPos;
 		probe.y += 75.0f;
 		int cubeNo = gpCubeCamera->getInCubeNo(probe);
@@ -48,20 +48,20 @@ void CPolarSubCamera::ctrlOptionCamera_()
 			    = (TCubeCameraInfo*)&(*gpCubeCamera->unk14)[cubeNo];
 			TCameraMapTool* tool = info->unk38;
 			if (tool != nullptr && tool != unk70) {
-				gpCameraOption->unk0 ^= 0x1;
+				gpCameraOption->mFlags ^= 0x1;
 				unk70 = tool;
 				unk70->calcPosAndAt(&mCurrentTarget.mPosition,
 				                    &mCurrentTarget.mTarget);
-				gpCameraOption->unk12 = gpCameraOption->unk10;
+				gpCameraOption->mCubePanTimer = gpCameraOption->mCubePanFrames;
 			}
 		}
 
-		if (gpCameraOption->unk12 > 0) {
-			chaseOptionCamera_(gpCameraOption->unk12);
-			gpCameraOption->unk12--;
-		} else if (gpCameraOption->unk16 > 0) {
-			chaseOptionCamera_(gpCameraOption->unk16);
-			gpCameraOption->unk16--;
+		if (gpCameraOption->mCubePanTimer > 0) {
+			chaseOptionCamera_(gpCameraOption->mCubePanTimer);
+			gpCameraOption->mCubePanTimer--;
+		} else if (gpCameraOption->mUpDownPanTimer > 0) {
+			chaseOptionCamera_(gpCameraOption->mUpDownPanTimer);
+			gpCameraOption->mUpDownPanTimer--;
 		}
 	}
 
@@ -71,31 +71,31 @@ void CPolarSubCamera::ctrlOptionCamera_()
 	unk148.x = mTarget.x;
 	unk148.y = mTarget.y;
 	unk148.z = mTarget.z;
-	mFovy    = gpCameraOption->mFovY;
+	mFovy    = gpCameraOption->mFovy;
 }
 
 TCameraOption::TCameraOption(JGeometry::TVec3<f32> param1,
                              JGeometry::TVec3<f32>* param2)
 {
-	unk0  = 2;
-	mFovY = 40.0f;
-	unk8  = 300;
-	unkA  = 300;
-	unkC  = 120;
-	unkE  = 0;
-	unk10 = 80;
-	unk12 = 0;
-	unk14 = 60;
-	unk16 = 0;
-	unk18.set(0.0f, 0.0f, 0.0f);
-	unk24.set(0.0f, 0.0f, 0.0f);
-	unk30.set(0.0f, 0.0f, 0.0f);
-	unk3C = param2;
+	mFlags          = 2;
+	mFovy           = 40.0f;
+	unk8            = 300;
+	mIntroChaseTimer = 300;
+	mLoadPanFrames  = 120;
+	mLoadPanTimer   = 0;
+	mCubePanFrames  = 80;
+	mCubePanTimer   = 0;
+	mUpDownPanFrames = 60;
+	mUpDownPanTimer = 0;
+	mTitlePos.set(0.0f, 0.0f, 0.0f);
+	mLoadPos.set(0.0f, 0.0f, 0.0f);
+	mUpPos.set(0.0f, 0.0f, 0.0f);
+	mDestPos = param2;
 
 	s16 v1 = CLBRoundf<s16>(DEG2SHORTANGLE(-73.0f));
 	s16 v2 = CLBRoundf<s16>(DEG2SHORTANGLE(54.0f));
-	CLBPolarToCross(param1, &unk18, 1000.0f, v2, v1);
-	param2->set(unk18);
+	CLBPolarToCross(param1, &mTitlePos, 1000.0f, v2, v1);
+	param2->set(mTitlePos);
 
 	// TODO: inline doesn't work?!
 	TCameraMapTool* tool = (TCameraMapTool*)gpCamMapToolTable->searchF(
@@ -103,30 +103,30 @@ TCameraOption::TCameraOption(JGeometry::TVec3<f32> param1,
 
 	if (tool != nullptr) {
 		JGeometry::TVec3<f32> origin;
-		tool->calcPosAndAt(&origin, &unk24);
-		s16 a = CLBRoundf<s16>(DEG2SHORTANGLE(tool->getYaw()));
+		tool->calcPosAndAt(&origin, &mLoadPos);
+		s16 a = CLBRoundf<s16>(DEG2SHORTANGLE(tool->getThing()));
 		s16 b = CLBRoundf<s16>(DEG2SHORTANGLE(60.0f));
-		CLBPolarToCross(origin, &unk30, 1000.0f, b, a);
+		CLBPolarToCross(origin, &mUpPos, 1000.0f, b, a);
 	}
 }
 
 void TCameraOption::moveToLoadFromTitle()
 {
-	unk3C->set(unk24);
-	unkE = unkC;
-	unk0 &= ~0x2;
+	mDestPos->set(mLoadPos);
+	mLoadPanTimer = mLoadPanFrames;
+	mFlags &= ~0x2;
 }
 
 void TCameraOption::moveToTitleFromLoad() { }
 
 void TCameraOption::moveToUp()
 {
-	unk3C->set(unk30);
-	unk16 = unk14;
+	mDestPos->set(mUpPos);
+	mUpDownPanTimer = mUpDownPanFrames;
 }
 
 void TCameraOption::moveToDown()
 {
-	unk3C->set(unk24);
-	unk16 = unk14;
+	mDestPos->set(mLoadPos);
+	mUpDownPanTimer = mUpDownPanFrames;
 }
