@@ -520,7 +520,7 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 			if (unk1C == 19 || unk1C == 12 || unk1C == 13 || unk1C == 3
 			    || unk1C == 4 || unk1C == 5 || unk1C == 45 || unk1C == 16) {
 				unk284->offCollision();
-				if (!(gpCameraOption->unk0 & 1)) {
+				if (!(gpCameraOption->mFlags & 1)) {
 					if (unk10 == 2)
 						unk10 = 3;
 					if (unk10 == 5)
@@ -545,7 +545,7 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 				}
 			}
 
-			if (gpCameraOption->unk16 != 0)
+			if (gpCameraOption->mUpDownPanTimer != 0)
 				unkB8 = 0;
 
 			if (unkB8 != 0) {
@@ -604,7 +604,7 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 				if (unkB8) {
 					gpCameraOption->moveToDown();
 					unkB8 = 0;
-				} else if (gpCameraOption->unk16 == 0) {
+				} else if (gpCameraOption->mUpDownPanTimer == 0) {
 					unk14 = 0;
 					unk1C = PROGRESS_UNK2;
 					gpCardManager->getBookmarkInfos(unk40);
@@ -626,7 +626,7 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 			if (unk754->movementCard2Option()) {
 				unk38->offFlag(0x1);
 				unk14 = 2;
-			} else if (gpCameraOption->unk0 & 1) {
+			} else if (gpCameraOption->mFlags & 1) {
 				unk14 = 7;
 			}
 			break;
@@ -637,7 +637,7 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 			break;
 
 		case 7:
-			if (!(gpCameraOption->unk0 & 1)) {
+			if (!(gpCameraOption->mFlags & 1)) {
 				unk14 = 6;
 			} else {
 				if (unk754->movementOption2Card()) {
@@ -663,7 +663,7 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 			if (alpha < 0)
 				alpha = 0;
 			unk208->setAlpha(alpha);
-			if (gpCameraOption->unkE == 0) {
+			if (gpCameraOption->mLoadPanTimer == 0) {
 				MSBgm::startBGM(MSD_BGM_BOSSPAKU_DEMO);
 				unk1C = PROGRESS_UNK30;
 				unk14 = 0;
@@ -673,7 +673,7 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 		case 3:
 			titleDraw();
 			if (unk18 >= 4) {
-				if (unk18 >= 4 && unkBC >= 100 && gpCameraOption->unkA == 0
+				if (unk18 >= 4 && unkBC >= 100 && gpCameraOption->mIntroChaseTimer == 0
 				    && (unk38->checkFrameMeaning(0x20)
 				        || unk38->getTrigger() & 0x1000)) {
 					SMSGetMSound()->startSoundSystemSE(MSD_SE_SY_DECIDE, 0,
@@ -710,7 +710,7 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 			break;
 
 		case 9:
-			if (gpCameraOption->unkA == 0)
+			if (gpCameraOption->mIntroChaseTimer == 0)
 				unk14 = 3;
 
 			if (unk38->checkFrameMeaning(0x20)
