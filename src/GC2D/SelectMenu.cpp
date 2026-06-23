@@ -8,6 +8,12 @@
 // TSelectGrad anchors (DOL): ctor 0x80175a4c, setStageColor 0x8017591c, perform 0x80175560.
 
 #include <GC2D/SelectGrad.hpp>
+#include <GC2D/SelectMenu.hpp>
+#include <JSystem/J2D/J2DScreen.hpp>
+#include <JSystem/J2D/J2DOrthoGraph.hpp>
+#include <MarioUtil/DrawUtil.hpp>
+#include <MarioUtil/ReinitGX.hpp>
+#include <System/Application.hpp>
 #include <dolphin/gx.h>
 #include <dolphin/mtx.h>
 #include <cstdio>
@@ -143,5 +149,88 @@ void TSelectGrad::perform(u32 flags, JDrama::TGraphics* /*gfx*/)
 		GXPosition3f32(0.0f, 464.0f, -100.0f);
 		GXColor3u8(avg[0], avg[1], avg[2]);
 		GXEnd();
+	}
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// TSelectMenu — the file-slot select windows (scenario_select_1.blo J2DScreen).
+// ──────────────────────────────────────────────────────────────────────────────
+
+// ctor @0x801753d0 — zero-init; the window-colour indices are (re)set in setup.
+TSelectMenu::TSelectMenu(const char* name)
+    : JDrama::TViewObj(name)
+    , mState(0)
+    , mScreen(nullptr)
+    , mGamePad(nullptr)
+    , mShineMgr(nullptr)
+    , mDir(nullptr)
+    , mStage(0)
+    , mCursor(0)
+    , mNumSlots(0)
+    , mDisabled(0)
+    , mFrameScale(1.0f)
+{
+	mColorIdx[0] = 0;
+	mColorIdx[1] = 0;
+	mColorIdx[2] = 0;
+}
+
+// setup @0x8017449c — load the file-slot J2DScreen. (See PORT STATUS in the header: this
+// milestone loads the screen and lets it draw at its .blo defaults; the ~3.5 KB of
+// per-file save-data population and the window panes used by the open animation are TODO.)
+void TSelectMenu::setup(u8 stage, JKRArchive* archive, TSelectShineManager* shineMgr,
+                        TSelectDir* dir)
+{
+	mStage      = stage;
+	mShineMgr   = shineMgr;
+	mDir        = dir;
+	mFrameScale = 1.0f / SMSGetAnmFrameRate();
+
+	// Title-ish stages (the DOL's `stage == 10 || stage < 2`) get no select windows:
+	// the menu is suppressed and selection defaults to "none".
+	if (stage == 10 || stage < 2) {
+		mDisabled = 1;
+		mCursor   = 0xff;
+		return;
+	}
+
+	// Window colour indices (DOL: *(this+0x14/0x18/0x1c) = 2,0,4) — used by the
+	// not-yet-ported per-window save-data lookups.
+	mColorIdx[0] = 2;
+	mColorIdx[1] = 0;
+	mColorIdx[2] = 4;
+
+	mScreen = new J2DSetScreen("scenario_select_1.blo", archive);
+
+	// TODO(file-select port): the remainder of the DOL setup searches the screen for the
+	// per-file window/digit/mark panes (msk1/msk2, sc_number, coin_number, sc_mark, i_o*,
+	// …) and fills them from the save flags (TFlagManager). Deferred — the screen draws
+	// at its .blo default layout/visibility until those panes are reconstructed.
+}
+
+// perform @0x80172c90 (TViewObj vtable slot 8). calc on flag bit 0x1, draw on bit 0x8.
+void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
+{
+	{ static int v=-1; if(v<0){const char*e=getenv("SB_SEL_DBG");v=(e&&e[0]&&e[0]!='0')?1:0;}
+	  if(v){static int n=0; if((n++%120)==0) std::fprintf(stderr,
+	        "[sel] TSelectMenu::perform flags=0x%x state=%d screen=%p disabled=%d\n",
+	        flags, mState, (void*)mScreen, mDisabled); } }
+
+	if (flags & 0x1) {
+		// TODO(file-select port): the DOL calc path (perform cases 1-9) runs the
+		// window-open animation and the input/navigation state machine. It dereferences
+		// the per-file panes that setup is not yet populating, so it is deferred; with
+		// the screen drawn at its .blo defaults the menu is static for this milestone.
+	}
+
+	// Draw path (DOL: bit 0x8, state in [0,10)). ReInitializeGX + SMS_DrawInit, then draw
+	// the screen through a J2DOrthoGraph built from the graphics viewport.
+	if ((flags & 0x8) && mScreen != nullptr && mState >= 0 && mState < 10) {
+		ReInitializeGX();
+		SMS_DrawInit();
+		J2DOrthoGraph graph(gfx->getViewport());
+		graph.setup2D();
+		graph.setup2D();
+		mScreen->draw(0, 0, &graph);
 	}
 }
