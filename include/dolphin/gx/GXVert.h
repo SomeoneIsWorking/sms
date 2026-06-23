@@ -99,7 +99,15 @@ FUNC_1PARAM(GXParam, u16)
 FUNC_1PARAM(GXParam, u32)
 FUNC_1PARAM(GXParam, s8)
 FUNC_1PARAM(GXParam, s16)
+#ifdef SMS_NATIVE_PLATFORM
+// J2DWindow::Texture::draw writes each vertex's DIRECT CLR0 colour with GXParam1s32(-1)
+// (== 0xFFFFFFFF white) rather than GXColor1u32 — same 32-bit FIFO word on real HW. Route
+// it to the colour-capture seam when inside a GXBegin (else it's a raw FIFO/DL word → sink).
+extern void sb_gx_imm_param_color_s32(int v);
+static inline void GXParam1s32(s32 x) { sb_gx_imm_param_color_s32(x); }
+#else
 FUNC_1PARAM(GXParam, s32)
+#endif
 FUNC_1PARAM(GXParam, f32)
 FUNC_3PARAM(GXParam, f32)
 FUNC_4PARAM(GXParam, f32)
@@ -147,17 +155,23 @@ static inline void GXColor1u16(u16 c) {
 FUNC_INDEX16(GXColor)
 FUNC_INDEX8(GXColor)
 
-// GXTexCoord — captured-but-unused by the 2D path (no textured immediate draw yet).
-static inline void GXTexCoord2f32(f32, f32) {}
-static inline void GXTexCoord2s16(s16, s16) {}
-static inline void GXTexCoord2u16(u16, u16) {}
-static inline void GXTexCoord2s8(s8, s8) {}
-static inline void GXTexCoord2u8(u8, u8) {}
-static inline void GXTexCoord1f32(f32) {}
-static inline void GXTexCoord1s16(s16) {}
-static inline void GXTexCoord1u16(u16) {}
-static inline void GXTexCoord1s8(s8) {}
-static inline void GXTexCoord1u8(u8) {}
+// GXTexCoord — captured into the gx_imm seam for textured 2D (J2D windows/pictures/text).
+// Float forms arrive pre-normalized (0..1); integer forms push raw bits the seam dequants
+// via the bound TEX0 vtx-attr fmt (imm_texcoord_scale). 1-component forms pair S then T.
+extern void sb_gx_imm_texcoord_f2(float s, float t);
+extern void sb_gx_imm_texcoord_f1(float v);
+extern void sb_gx_imm_texcoord_i2(unsigned s, unsigned t);
+extern void sb_gx_imm_texcoord_i1(unsigned v);
+static inline void GXTexCoord2f32(f32 s, f32 t) { sb_gx_imm_texcoord_f2(s, t); }
+static inline void GXTexCoord2s16(s16 s, s16 t) { sb_gx_imm_texcoord_i2((u16)s, (u16)t); }
+static inline void GXTexCoord2u16(u16 s, u16 t) { sb_gx_imm_texcoord_i2(s, t); }
+static inline void GXTexCoord2s8(s8 s, s8 t)    { sb_gx_imm_texcoord_i2((u8)s, (u8)t); }
+static inline void GXTexCoord2u8(u8 s, u8 t)    { sb_gx_imm_texcoord_i2(s, t); }
+static inline void GXTexCoord1f32(f32 v)        { sb_gx_imm_texcoord_f1(v); }
+static inline void GXTexCoord1s16(s16 v)        { sb_gx_imm_texcoord_i1((u16)v); }
+static inline void GXTexCoord1u16(u16 v)        { sb_gx_imm_texcoord_i1(v); }
+static inline void GXTexCoord1s8(s8 v)          { sb_gx_imm_texcoord_i1((u8)v); }
+static inline void GXTexCoord1u8(u8 v)          { sb_gx_imm_texcoord_i1(v); }
 FUNC_INDEX16(GXTexCoord)
 FUNC_INDEX8(GXTexCoord)
 
