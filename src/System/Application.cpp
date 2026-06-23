@@ -548,7 +548,21 @@ void TApplication::proc()
 				const char* e = getenv("SB_NO_FASTBOOT");
 				sb_fb_on = (e && e[0] && e[0] != '0') ? 0 : 1;
 			}
-			if (sb_fb_on && !sb_fb_done && mAppState == APP_STATE_DONE) {
+			// SB_FILESELECT=1: short-circuit to the file-select screen (APP_STATE_TITLE
+			// -> TSelectDir) instead of gameplay. File-select is a constrained, easily
+			// verifiable scene (a J2D menu over a small 3D backdrop) and the CLAUDE.md
+			// fidelity work-order targets title/file-select before Delfino gameplay.
+			static int sb_fs = -1;
+			if (sb_fs < 0) {
+				const char* e = getenv("SB_FILESELECT");
+				sb_fs = (e && e[0] && e[0] != '0') ? 1 : 0;
+			}
+			if (sb_fb_on && sb_fs && !sb_fb_done && mAppState == APP_STATE_DONE) {
+				sb_fb_done = true;
+				mCurrArea.set(1, 0, 0);
+				mAppState = APP_STATE_TITLE;
+				fprintf(stderr, "[fastboot] -> file-select (APP_STATE_TITLE)\n");
+			} else if (sb_fb_on && !sb_fb_done && mAppState == APP_STATE_DONE) {
 				sb_fb_done = true;
 				TFlagManager* fm = TFlagManager::getInstance();
 				// Mark the intro/attract movies as already seen so checkAdditionalMovie
