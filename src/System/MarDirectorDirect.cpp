@@ -530,6 +530,15 @@ int TMarDirector::changeState()
 	}
 
 	if (nextState != mState) {
+#ifdef SMS_NATIVE_PLATFORM
+		if (sb_dir_dbg())
+			fprintf(stderr,
+			        "[dir-state] %d -> %d  area=(%d,%d) unk4E=0x%x unk50=0x%x "
+			        "unkD0=%d unkD1=%d unkE4=%u\n",
+			        mState, nextState, gpApplication.mCurrArea.unk0,
+			        gpApplication.mCurrArea.unk1, unk4E, unk50, unkD0, unkD1,
+			        unkE4);
+#endif
 		currentStateFinalize(nextState);
 		nextStateInitialize(nextState);
 		mState = nextState;
@@ -616,6 +625,16 @@ void TMarDirector::setMario()
 
 	TMarioPositionObj* marioSetPosition
 	    = JDrama::TNameRefGen::search<TMarioPositionObj>("マリオセット位置");
+#ifdef SMS_NATIVE_PLATFORM
+	if (sb_dir_dbg())
+		fprintf(stderr,
+		        "[dir-setMario] unkD0=%d unkD1=%d marioSetPos=%p posCount=%d "
+		        "marioPos=(%.1f,%.1f,%.1f)\n",
+		        unkD0, unkD1, (void*)marioSetPosition,
+		        marioSetPosition ? marioSetPosition->unkD0 : -1,
+		        gpMarioOriginal->mPosition.x, gpMarioOriginal->mPosition.y,
+		        gpMarioOriginal->mPosition.z);
+#endif
 	if (!marioSetPosition || marioSetPosition->unkD0 == 0)
 		uVar10 = 0;
 
@@ -723,6 +742,13 @@ void TMarDirector::nextStateInitialize(u8 next_state)
 				}
 			}
 		}
+#ifdef SMS_NATIVE_PLATFORM
+		if (sb_dir_dbg())
+			fprintf(stderr,
+			        "[dir-demo] startDemoCamera('%s')  startcamera.bck=%p\n",
+			        pcVar8,
+			        JKRGetResource("/scene/map/camera/startcamera.bck"));
+#endif
 		gpCamera->startDemoCamera(pcVar8, nullptr, -1, 0.0f, true);
 		if (unk50 & 4) {
 			mConsole->unk94->startAppearScenario();

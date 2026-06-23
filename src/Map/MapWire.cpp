@@ -2,6 +2,7 @@
 
 #include <dolphin/mtx.h>
 #include <dolphin/gx.h>
+#include <dolphin/os.h>
 #include <fake_tgmath.h>
 #include <types.h>
 
@@ -317,9 +318,13 @@ void TMapWire::move()
 			}
 			bounceFinished = false;
 
-			mHangOrBouncePoint.y = mBounceAmplitude
-			                       * JMASCos(mMoveTimer * 32768.0f)
-			                       * mBounceRemainingPower;
+			// mMoveTimer in [0,2) -> *32768 in [0,65536), overflowing s16 for the
+			// upper half: same f32->s16 UB as getPointPosDefault. Force the defined
+			// f32->s32->s16 wrap (matches the GC angle-mod-65536 behaviour).
+			mHangOrBouncePoint.y
+			    = mBounceAmplitude
+			      * JMASCos((s16)(s32)(mMoveTimer * 32768.0f))
+			      * mBounceRemainingPower;
 		}
 
 		if (bounceFinished) {
@@ -398,7 +403,14 @@ void TMapWire::getPointPosDefault(f32 pos, JGeometry::TVec3<f32>* out) const
 	JGeometry::TVec3<f32> basePoint;
 	getPointPosOnLine(pos, &basePoint);
 
-	out->set(basePoint.x, basePoint.y - mWireSag * JMASSin(pos * 32768.0f),
+	// pos reaches exactly 1.0 on the last wire point, so pos*32768 == 32768.0 which
+	// OVERFLOWS s16 — the implicit f32->s16 conversion the JMASSin(s16) call relies
+	// on is then UB, and x86 lowers it to a signed extraction (cvttss2si+cwtl+sar) →
+	// a negative jmaSinTable index → OOB read / SEGV. The GameCube wraps the angle
+	// mod 65536. Force a defined f32->s32->s16 truncation (= that hardware wrap) so
+	// the value can't propagate into JMASSin's table index as a float.
+	out->set(basePoint.x,
+	         basePoint.y - mWireSag * JMASSin((s16)(s32)(pos * 32768.0f)),
 	         basePoint.z);
 }
 
@@ -430,6 +442,16 @@ void TMapWire::init(const TCubeGeneralInfo* cubeInfo)
 {
 	mNumMapWirePoints = (s32)((cubeInfo->getUnk24().z / 50.0f + 1.0f) - 2.0f);
 	mNumActiveMapWirePoints = mNumMapWirePoints;
+
+#ifdef SMS_NATIVE_PLATFORM
+	// Fail fast on a mis-parsed wire cube (a byteswapped/garbage unk24.z would make
+	// this wild, then the per-point loop indexes the sine table out of bounds).
+	if (mNumMapWirePoints < 0 || mNumMapWirePoints > 4096)
+		OSPanic(__FILE__, __LINE__,
+		        "TMapWire::init: bogus mNumMapWirePoints=%d (unk24.z=%.3f) -- "
+		        "wire cube info likely mis-parsed", mNumMapWirePoints,
+		        cubeInfo->getUnk24().z);
+#endif
 
 	mMapWirePoints = new TMapWirePoint[mNumMapWirePoints];
 
