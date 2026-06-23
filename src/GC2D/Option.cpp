@@ -833,7 +833,7 @@ void TOptionControl::draw(J2DOrthoGraph* graph) { mScreen->draw(0, 0, graph); }
 // mario walks from the card select screen to the options screen
 bool TOptionControl::movementCard2Option()
 {
-	if (gpCameraOption->unk12 == 0) {
+	if (gpCameraOption->mCubePanTimer == 0) {
 		mRumbleOption->mShouldRumble = false;
 		mScreen->search('oya0')->show();
 		mScreen->search('oya1')->show();
@@ -855,7 +855,7 @@ bool TOptionControl::movementOption()
 	checkInput();
 	writeValue();
 
-	if (gpCameraOption->unk0 & 1) {
+	if (gpCameraOption->mFlags & 1) {
 		mSoundOption->stopSound();
 		return true;
 	}
@@ -868,7 +868,7 @@ static inline void fake(TOptionSoundUnit* unit) { int v = unit->getValue(); }
 // mario walks back from the options screen to the card select screen
 bool TOptionControl::movementOption2Card()
 {
-	if (gpCameraOption->unk12 == 0) {
+	if (gpCameraOption->mCubePanTimer == 0) {
 		mScreen->search('oya0')->hide();
 		mScreen->search('oya1')->hide();
 		mScreen->search('oya2')->hide();
