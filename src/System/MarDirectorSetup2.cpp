@@ -87,7 +87,7 @@ void TMarDirector::setup2()
 		        (void*)unkB0);
 #endif
 
-	unk70->unk38 = unk18[0];
+	unk70->mGamePad = unk18[0];
 	unk78->unkC0 = unk18[0];
 
 	unk18[0]->mFlags = 0;
