@@ -47,9 +47,42 @@ TNameRef* TNameRef::genObject(JSUMemoryInputStream& param_1,
 		// the getNameRef tables). The object is skipped; tolerated rather than
 		// panicked so boot proceeds, but logged so it's never invisible. Any
 		// OTHER null type is a real bug (missing getNameRef case) -> fail fast.
-		static const char* const kUnimplemented[] = { "MapObjFlagManager" };
+		static const char* const kUnimplemented[] = {
+			"MapObjFlagManager",
+			// STOPGAP: the CHARACTER/CREATURE population (NPCs, animals, boats,
+			// seals, gatekeepers) and their managers are not yet wired -- the
+			// individual NPCs need their *Manager registered to set mManager
+			// before TBaseNPC::load (see MarNameRefGen_NPC.cpp). These are
+			// characters, not plaza GEOMETRY, so we exclude them to reach a
+			// rendering plaza first. PROPER FIX: register the managers (their
+			// getNameRef cases are TODO'd) and wire NPC<->manager. The "NPC"
+			// prefix below covers every individual NPC name (all nulled in
+			// getNameRef_NPC under SB_NPC_ON); these are the non-"NPC" creatures
+			// and the manager type names referenced by the Delfino Plaza scene.
+			"AnimalBird", "AnimalBirdManager",
+			"BoardNpcManager",
+			"FishoidA", "FishoidB", "FishoidManager",
+			"FruitsBoat", "FruitsBoatManager",
+			"GateKeeper", "GateKeeperManager",
+			"OrangeSeal", "SealManager",
+			"KinojiiManager", "KinopioManager", "PeachManager",
+			"MonteMManager", "MonteMAManager", "MonteMBManager", "MonteMCManager",
+			"MonteMDManager", "MonteMEManager", "MonteMFManager", "MonteMGManager",
+			"MonteMHManager", "MonteWManager", "MonteWAManager", "MonteWBManager",
+			"MonteWCManager", "MareMManager", "MareMAManager", "MareMBManager",
+			"MareMCManager", "MareMDManager", "MareWManager", "MareWAManager",
+			"MareWBManager", "RaccoonDogManager", "SunflowerLManager",
+			"SunflowerSManager", "MareJellyFish",
+			// Decorative plaza flag -- TMapObjFlag class is not decompiled.
+			"MapObjFlag",
+		};
 		bool known = false;
-		for (unsigned i = 0; i < sizeof(kUnimplemented) / sizeof(*kUnimplemented);
+		// All individual NPC actor names (NPC*) are deliberately nulled in
+		// getNameRef_NPC while the NPC population is excluded -> tolerate by prefix.
+		if (strncmp(type, "NPC", 3) == 0)
+			known = true;
+		for (unsigned i = 0; !known
+		     && i < sizeof(kUnimplemented) / sizeof(*kUnimplemented);
 		     ++i) {
 			if (strcmp(type, kUnimplemented[i]) == 0) {
 				known = true;
