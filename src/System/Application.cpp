@@ -559,9 +559,16 @@ void TApplication::proc()
 			}
 			if (sb_fb_on && sb_fs && !sb_fb_done && mAppState == APP_STATE_DONE) {
 				sb_fb_done = true;
-				mCurrArea.set(1, 0, 0);
+				// The stage id passed to TSelectDir selects the file/scenario-select
+				// variant: stages 0/1/10 suppress the file-slot windows (gradient only),
+				// stages >=2 build them. SB_STAGE overrides so the menu is testable.
+				u8 fsStage = 1;
+				if (const char* es = getenv("SB_STAGE"))
+					fsStage = (u8)strtoul(es, nullptr, 0);
+				mCurrArea.set(fsStage, 0, 0);
 				mAppState = APP_STATE_TITLE;
-				fprintf(stderr, "[fastboot] -> file-select (APP_STATE_TITLE)\n");
+				fprintf(stderr, "[fastboot] -> file-select (APP_STATE_TITLE) stage %u\n",
+				        fsStage);
 			} else if (sb_fb_on && !sb_fb_done && mAppState == APP_STATE_DONE) {
 				sb_fb_done = true;
 				TFlagManager* fm = TFlagManager::getInstance();
