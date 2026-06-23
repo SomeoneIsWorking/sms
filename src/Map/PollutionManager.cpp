@@ -2,6 +2,9 @@
 #include <Map/PollutionLayer.hpp>
 #include <Map/MapEventSink.hpp>
 #include <System/MarDirector.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <dolphin/os.h>
+#endif
 
 // rogue includes needed for matching sinit & bss
 #include <MSound/MSSetSound.hpp>
@@ -156,25 +159,50 @@ void TPollutionManager::initPollutionInfo()
 		mJointModelNum = info->mLayerCount;
 		setDataAddress(info);
 
-		if (gpMarDirector->getCurrentMap() == 0x9
-		    && gpMarDirector->getCurrentStage() != 0x7) {
-			static const char* mare_name_table[] = {
-				"pollution00", "pollution01", "pollution02", "pollution03",
-				"pollution04", "pollution05", "pollution06", "pollutionA",
-				"pollutionB",  nullptr,
-			};
-			initJointModel("scene/map/pollution", mare_name_table);
-		} else {
-			static const char* name_table[] = {
-				"pollution00", "pollution01", "pollution02", "pollution03",
-				"pollution04", "pollution05", "pollution06", "pollution07",
-				"pollution08", "pollution09", "pollution10", "pollution11",
-				"pollution12", "pollution13", "pollution14", "pollution15",
-				"pollution16", "pollution17", "pollution18", "pollution19",
-				nullptr,
-			};
-			initJointModel("scene/map/pollution", name_table);
-		}
+	if (!info)
+		return;
+
+#ifdef SMS_NATIVE_PLATFORM
+	// STOPGAP: skip the pollution (落書き) data setup because the ymap.ymp file
+	// overlay is not yet ported for the host. ymap.ymp is a packed GameCube
+	// big-endian blob overlaid directly as TPollutionInfo / TPollutionLayerInfo:
+	// (1) every numeric field needs a BE->host swap (unswapped, info->unk0 reads
+	//     byteswapped -> mJointModelNum huge -> name_table[] OOB -> SEGV in
+	//     initJointModel, the crash this guards), and (2) the embedded 32-bit
+	//     offsets (TPollutionInfo::unk4, TPollutionLayerInfo::unk28) are typed as
+	//     native pointers, so on LP64 the struct layout and setDataAddress's
+	//     offset+base patching are wrong (the native-bmd-load-lp64-overlay class).
+	// PROPER FIX: an sb_ymp_swap_to_host pass (mirroring bmd_swap / the .col swap)
+	// plus narrowing unk4/unk28 to u32 offsets with accessors. Pollution is the
+	// PARKED subsystem; the plaza geometry is the current target and TPollution
+	// Manager::load fully guards everything on mJointModelNum != 0, so leaving it
+	// 0 is a clean no-op (no pollution layers) rather than a hidden hack.
+	OSReport("[pollution] STOPGAP: ymap.ymp overlay not ported for host -> "
+	         "skipping pollution setup (no goo). mJointModelNum=0.\n");
+	mJointModelNum = 0;
+	return;
+#endif
+
+	mJointModelNum = info->unk0;
+	setDataAddress(info);
+
+	if (gpMarDirector->mMap == 0x9 && gpMarDirector->unk7D != 0x7) {
+		static const char* mare_name_table[] = {
+			"pollution00", "pollution01", "pollution02", "pollution03",
+			"pollution04", "pollution05", "pollution06", "pollutionA",
+			"pollutionB",  nullptr,
+		};
+		initJointModel("scene/map/pollution", mare_name_table);
+	} else {
+		static const char* name_table[] = {
+			"pollution00", "pollution01", "pollution02", "pollution03",
+			"pollution04", "pollution05", "pollution06", "pollution07",
+			"pollution08", "pollution09", "pollution10", "pollution11",
+			"pollution12", "pollution13", "pollution14", "pollution15",
+			"pollution16", "pollution17", "pollution18", "pollution19",
+			nullptr,
+		};
+		initJointModel("scene/map/pollution", name_table);
 	}
 }
 
