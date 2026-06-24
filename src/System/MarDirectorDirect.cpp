@@ -121,9 +121,9 @@ int TMarDirector::direct()
 			        sb_pl_count(mShinePfLstAnm));
 		}
 		static long dc = 0;
-		if ((++dc % 200) == 0)
-			fprintf(stderr, "[dir] direct() call %ld entry-state unk4C=0x%x mState=%d\n",
-			        dc, unk4C, mState);
+		if ((++dc % 200) == 0 || (unk4C & 0x000f))
+			fprintf(stderr, "[dir] direct() call %ld entry-state unk4C=0x%x mState=%d unk124=%d\n",
+			        dc, unk4C, mState, (int)unk124);
 	}
 #endif
 
@@ -1105,6 +1105,13 @@ u8 TMarDirector::updateGameMode()
 
 void TMarDirector::moveStage()
 {
+#ifdef SMS_NATIVE_PLATFORM
+	if (sb_dir_dbg())
+		fprintf(stderr, "[movestage] FIRED next=stage%d/scn%d curr=stage%d\n",
+		        (int)gpApplication.mNextArea.getStage(),
+		        (int)gpApplication.mNextArea.getScenario(),
+		        (int)gpApplication.mCurrArea.getStage());
+#endif
 	unkB4 = TApplication::APP_STATE_GAMEPLAY;
 	unkE4 = 15;
 	gpApplication.mFader->setColor(JUtility::TColor(0, 0, 0, 0xff));

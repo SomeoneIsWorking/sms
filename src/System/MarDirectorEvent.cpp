@@ -170,7 +170,47 @@ void TMarDirector::movement()
 #pragma dont_inline on
 void TMarDirector::setNextStage(u16 param_1, JDrama::TActor* param_2)
 {
-	// TODO: wtf is happening in this function it's cursed
+	// Ported from GMSE01 setNextStage__12TMarDirector (0x8029a31c) — was an empty
+	// decomp stub, so file-select's PROGRESS_UNK29 (and every other scene
+	// transition) requested a stage change that never happened. Decodes the
+	// requested stage id into gpApplication.mNextArea and raises the pending-
+	// transition bit in unk4C that TMarDirector::direct() consumes (-> moveStage).
+	if (unk4C & 0x2)
+		return; // a transition is already pending
+
+	u8 stage, scenario;
+	if ((param_1 & 0xffff) < 0x100) {
+		// low form: id IS the stage; scenario 0xFF = "use the saved scenario".
+		stage    = (u8)param_1;
+		scenario = 0xff;
+	} else {
+		// packed form: high byte = stage+1, low byte = explicit scenario.
+		stage    = (u8)(param_1 >> 8) - 1;
+		scenario = (u8)param_1;
+	}
+
+	gpApplication.mNextArea.set(stage, scenario, 0);
+
+	if (param_2 == nullptr) {
+		// Stage 1 (Delfino Plaza) -> a gate stage (Pinna 5 / Sirena 6 / Pianta
+		// 8) takes the gate-in demo-camera path (bit 0x8); everything else is a
+		// plain stage move (bit 0x2).
+		if (gpApplication.mCurrArea.getStage() == 1
+		    && (stage == 5 || stage == 6 || stage == 8))
+			unk4C |= 0x8;
+		else
+			unk4C |= 0x2;
+	} else {
+		// Transition driven by a specific actor (warp object): demo-camera path.
+		unk4C |= 0x4;
+		unk250 = param_2;
+	}
+
+	if (stage == 0x37) {
+		// Stage 55 is a movie/credits trigger.
+		unk4C |= 0x100;
+		gpApplication.mMovie = 6;
+	}
 }
 #pragma dont_inline off
 
