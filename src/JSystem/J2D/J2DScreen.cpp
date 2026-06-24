@@ -206,6 +206,29 @@ J2DPane* J2DScreen::search(u32 tag)
 #ifdef SMS_NATIVE_PLATFORM
 	if (J2DPane* p = J2DPane::search(tag))
 		return p;
+	// FAIL-LOUD (not silent): the dummy-pane fallback masks ANY missing pane, so a
+	// genuine bug (wrong archive, parse error, wrong tag) looks identical to a real
+	// US-region absence. We can't hard-crash (US archives legitimately lack panes),
+	// but a tolerated sentinel must be LOUD — log each missing tag ONCE so masked
+	// root causes are visible. SB_PANE_DBG escalates to a panic to pin a specific tag.
+	{
+		char t[5] = { (char)(tag >> 24), (char)(tag >> 16), (char)(tag >> 8),
+		              (char)tag, 0 };
+		static u32 s_seen[256];
+		static int s_n = 0;
+		bool known = false;
+		for (int i = 0; i < s_n; ++i)
+			if (s_seen[i] == tag) { known = true; break; }
+		if (!known) {
+			if (s_n < 256)
+				s_seen[s_n++] = tag;
+			OSReport("[j2d] J2DScreen::search MISSING pane tag '%s' (0x%08x) -> "
+			         "region-tolerant dummy\n", t, tag);
+			if (getenv("SB_PANE_DBG"))
+				OSPanic(__FILE__, __LINE__,
+				        "J2DScreen::search: pane '%s' (0x%08x) absent - SB_PANE_DBG", t, tag);
+		}
+	}
 	return getRegionTolerantDummyPane(); // pane absent in a US (GMSE01) UI archive
 #else
 	return J2DPane::search(tag);
