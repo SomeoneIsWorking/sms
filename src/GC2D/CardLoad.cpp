@@ -517,8 +517,10 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 			        s_lastProg, unk1C, mState, unk10, unkB1);
 			// Dump once the file-block select screen (PROGRESS_UNK13 == 19) is reached —
 			// its blocks animate in a few frames after this, so dump a window then.
-			if (unk1C == PROGRESS_UNK13 && getenv("SB_SEL_DUMP"))
-				sb_boot_request_dump(40);
+			if (unk1C == PROGRESS_UNK13 && getenv("SB_SEL_DUMP")) {
+				const char* n = getenv("SB_SEL_DUMP_N");
+				sb_boot_request_dump(n && *n ? atoi(n) : 40);
+			}
 			s_lastProg = unk1C;
 		}
 	}
