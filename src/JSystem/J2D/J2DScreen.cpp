@@ -251,6 +251,20 @@ J2DSetScreen::J2DSetScreen(const char* name, JKRArchive* arch)
 		JSUMemoryInputStream stream(res, sz);
 		makeHiearachyPanes(this, &stream, false, true, false, nullptr);
 	}
+#ifdef SMS_NATIVE_PLATFORM
+	if (::getenv("SB_BLO_DBG")) {
+		// Count panes reachable from the screen root + max tree depth, to detect
+		// a truncated/broken hierarchy (created panes that search can't reach).
+		struct C { static void walk(J2DPane* p, int d, int& n, int& md) {
+			++n; if (d > md) md = d;
+			for (JSUTreeIterator<J2DPane> it = p->mPaneTree.getFirstChild();
+			     it != p->mPaneTree.getEndChild(); ++it)
+				walk(it.getObject(), d + 1, n, md);
+		}};
+		int n = 0, md = 0; C::walk(this, 0, n, md);
+		OSReport("[blo] '%s' reachable panes=%d maxDepth=%d\n", name, n, md);
+	}
+#endif
 	mbClipToParent = false;
 }
 
