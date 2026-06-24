@@ -515,6 +515,10 @@ void TCardLoad::perform(u32 param_1, JDrama::TGraphics* param_2)
 		if (s_selDbg && unk1C != s_lastProg) {
 			fprintf(stderr, "[cardload]   prog unk1C %d -> %d (mState=%d unk10=%d unkB1=%d)\n",
 			        s_lastProg, unk1C, mState, unk10, unkB1);
+			// Dump once the file-block select screen (PROGRESS_UNK13 == 19) is reached —
+			// its blocks animate in a few frames after this, so dump a window then.
+			if (unk1C == PROGRESS_UNK13 && getenv("SB_SEL_DUMP"))
+				sb_boot_request_dump(40);
 			s_lastProg = unk1C;
 		}
 	}
@@ -557,6 +561,13 @@ void TCardLoad::perform(u32 param_1, JDrama::TGraphics* param_2)
 			int alpha = unk25C->getAlpha();
 			if (unk1C == 19 || unk1C == 12 || unk1C == 13 || unk1C == 3
 			    || unk1C == 4 || unk1C == 5 || unk1C == 45 || unk1C == 16) {
+#ifdef SMS_NATIVE_PLATFORM
+				// Region-tolerant: the option-wall collision object
+				// ("オプション用壁") is absent in the US (GMSE01) file-select
+				// scene, so TNameRefGen::search left unk284 null. Skip its
+				// cosmetic collision toggle instead of null-deref'ing this->unk68.
+				if (unk284)
+#endif
 				unk284->offCollision();
 				if (!(gpCameraOption->mFlags & 1)) {
 					if (unk10 == 2)
@@ -679,6 +690,9 @@ void TCardLoad::perform(u32 param_1, JDrama::TGraphics* param_2)
 				mState = 6;
 			} else {
 				if (unk754->movementOption2Card()) {
+#ifdef SMS_NATIVE_PLATFORM
+					if (unk284) // region-tolerant: option-wall absent in US scene
+#endif
 					unk284->onCollision();
 					mState = 0;
 					mGamePad->onFlag(0x1);
@@ -1015,8 +1029,28 @@ TEProgress TCardLoad::changeMode(s32 param_1)
 
 void TCardLoad::setMessage(J2DTextBox* text_box, s32 param_2, int param_3)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// Region-tolerant: in the US (GMSE01) build the loadmessage.bmg may be absent or
+	// lack the index the GMSJ01/PAL decomp expects, so SMSGetMessageData returns null;
+	// the textbox itself may be a region-tolerant dummy pane with a null buffer. Either
+	// way, skip the copy (the space-filled makeBuffer() text stays) instead of
+	// strncpy-ing from/into a null pointer.
+	char* dst = text_box ? text_box->getStringPtr() : nullptr;
+	const char* src = SMSGetMessageData(unkA0, param_3);
+	if (!dst || !src) {
+		static int once = 0;
+		if (once < 8) {
+			fprintf(stderr, "[cardload] setMessage skip: dst=%p src=%p id=0x%x unkA0=%p\n",
+			        (void*)dst, (const void*)src, param_3, unkA0);
+			++once;
+		}
+		return;
+	}
+	strncpy(dst, src, param_2);
+#else
 	strncpy(text_box->getStringPtr(), SMSGetMessageData(unkA0, param_3),
 	        param_2);
+#endif
 }
 
 s8 TCardLoad::waitForChoice(TEProgress param_1, TEProgress param_2, int param_3)
@@ -1091,8 +1125,16 @@ s8 TCardLoad::waitForChoice(TEProgress param_1, TEProgress param_2, int param_3)
 			gpEmitterManager4D2->createEmitter(local_108, 0x1FA, nullptr,
 			                                   nullptr);
 			unkAC = gpEmitterManager4D2->unkC8[0][0];
-			unkAC->setRotation(0, 0, DEG2SHORTANGLE(12));
-			unkAC->setUnk190(0.9f, 1.0f, 0.1f);
+#ifdef SMS_NATIVE_PLATFORM
+			// Region/resource-tolerant: the cursor-sparkle particle (0x1FA) may not be
+			// resident in this scene's JPA bank, so createEmitter populates no slot and
+			// unkC8[0][0] is null. Skip the cosmetic setup instead of null-deref.
+			if (unkAC)
+#endif
+			{
+				unkAC->setRotation(0, 0, DEG2SHORTANGLE(12));
+				unkAC->setUnk190(0.9f, 1.0f, 0.1f);
+			}
 		} else if (unkC4 == 44) {
 			unk484[unkB7]->setCenteredSize(20, unk48C[unkB7].getWidth(),
 			                               unk48C[unkB7].getHeight(),
@@ -1271,8 +1313,16 @@ s8 TCardLoad::waitForChoiceBM(TEProgress param_1, TEProgress param_2,
 			gpEmitterManager4D2->createEmitter(local_108, 0x1FA, nullptr,
 			                                   nullptr);
 			unkAC = gpEmitterManager4D2->unkC8[0][0];
-			unkAC->setRotation(0, 0, DEG2SHORTANGLE(12));
-			unkAC->setUnk190(0.9f, 1.0f, 0.1f);
+#ifdef SMS_NATIVE_PLATFORM
+			// Region/resource-tolerant: the cursor-sparkle particle (0x1FA) may not be
+			// resident in this scene's JPA bank, so createEmitter populates no slot and
+			// unkC8[0][0] is null. Skip the cosmetic setup instead of null-deref.
+			if (unkAC)
+#endif
+			{
+				unkAC->setRotation(0, 0, DEG2SHORTANGLE(12));
+				unkAC->setUnk190(0.9f, 1.0f, 0.1f);
+			}
 		} else if (unkC4 == 44) {
 			unk4D8[unkB7]->setCenteredSize(40, unk4E0[unkB7].getWidth(),
 			                               unk4E0[unkB7].getHeight(),
@@ -2209,9 +2259,10 @@ void TCardLoad::changeScene()
 		int rc = gpCardManager->getLastStatus();
 #ifdef SMS_NATIVE_PLATFORM
 		if (getenv("SB_SEL_DBG")) {
-			static int s_n = 0;
-			if (s_n < 12) { ++s_n;
+			static int s_lu = -99, s_lb = -99;
+			if (unk10 != s_lu || unkB7 != s_lb) {
 				fprintf(stderr, "[cardload]   UNK6 rc=%d unk10=%d unkB7=%d\n", rc, unk10, unkB7);
+				s_lu = unk10; s_lb = unkB7;
 			}
 		}
 #endif
@@ -2230,6 +2281,15 @@ void TCardLoad::changeScene()
 		int rc = gpCardManager->getLastStatus();
 		if (rc == CARD_RESULT_READY) {
 			s8 choice = waitForChoice(PROGRESS_UNK9, PROGRESS_UNK4, 1);
+#ifdef SMS_NATIVE_PLATFORM
+			if (getenv("SB_SEL_DBG")) {
+				static int s_lc = -99;
+				if (choice != s_lc) {
+					fprintf(stderr, "[cardload]   UNK8 choice=%d (0=>format)\n", choice);
+					s_lc = choice;
+				}
+			}
+#endif
 			if (choice == 0)
 				gpCardManager->format();
 			if (choice == -1)
@@ -2630,6 +2690,9 @@ void TCardLoad::changeScene()
 		unk10 = 0;
 		switch (prevUnk1C) {
 		case PROGRESS_UNK1C:
+#ifdef SMS_NATIVE_PLATFORM
+			if (unk284) // region-tolerant: option-wall absent in US scene
+#endif
 			unk284->offCollision();
 
 		case PROGRESS_UNK13:
@@ -2647,6 +2710,9 @@ void TCardLoad::changeScene()
 
 		switch (unk1C) {
 		case PROGRESS_UNK1C:
+#ifdef SMS_NATIVE_PLATFORM
+			if (unk284) // region-tolerant: option-wall absent in US scene
+#endif
 			unk284->onCollision();
 			unk275 = 0;
 			mGamePad->offFlag(0x1);
