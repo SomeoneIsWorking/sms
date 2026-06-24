@@ -47,7 +47,7 @@ TMarDirector::TMarDirector()
     , unk128(0)
     , unk24C(0)
     , unk24D(0)
-    , unk250(0)
+    , mTransitionActor(0)
     , unk25C(nullptr)
     , unk260(0)
 {

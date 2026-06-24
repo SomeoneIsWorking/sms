@@ -203,7 +203,7 @@ void TMarDirector::setNextStage(u16 param_1, JDrama::TActor* param_2)
 	} else {
 		// Transition driven by a specific actor (warp object): demo-camera path.
 		unk4C |= 0x4;
-		unk250 = param_2;
+		mTransitionActor = param_2;
 	}
 
 	if (stage == 0x37) {

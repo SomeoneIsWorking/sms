@@ -63,7 +63,7 @@ public:
 	/* 0x10 */ TInfo* unk10[214];
 	/* 0x368 */ TInfo* unk368[19];
 	/* 0x3B4 */ int unk3B4;
-	/* 0x3B8 */ JPAEmitterManager* unk3B8;
+	/* 0x3B8 */ JPAEmitterManager* mEmitterManager;
 };
 
 class TEmitterViewObj : public JDrama::TViewObj {

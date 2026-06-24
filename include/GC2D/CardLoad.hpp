@@ -75,12 +75,12 @@ public:
 	/* 0xA0 */ void* unkA0;
 	/* 0xA4 */ u32 unkA4;
 	/* 0xA8 */ f32 unkA8;
-	/* 0xAC */ JPABaseEmitter* unkAC;
-	/* 0xB0 */ s8 unkB0;
+	/* 0xAC */ JPABaseEmitter* mCursorSparkle;
+	/* 0xB0 */ s8 mSelectedFile;       // selected file/bookmark index (0-2), set by setSelected
 	/* 0xB1 */ s8 unkB1;
 	/* 0xB2 */ s8 unkB2;
 	/* 0xB4 */ s16 unkB4;
-	/* 0xB6 */ s8 unkB6;
+	/* 0xB6 */ s8 mFunctionCursor;     // function-menu (Start/Copy/Erase) cursor
 	/* 0xB7 */ s8 unkB7;
 	/* 0xB8 */ u8 unkB8;
 	/* 0xBC */ int unkBC;
@@ -109,8 +109,8 @@ public:
 	/* 0x270 */ J2DPane* unk270;
 	/* 0x274 */ u8 unk274;
 	/* 0x275 */ u8 unk275;
-	/* 0x278 */ TFileLoadBlock* unk278[3];
-	/* 0x284 */ TMapObjOptionWall* unk284;
+	/* 0x278 */ TFileLoadBlock* mFileBlocks[3];
+	/* 0x284 */ TMapObjOptionWall* mOptionWall;
 	/* 0x288 */ TExPane* unk288;
 	/* 0x28C */ JUTRect unk28C;
 	/* 0x29C */ J2DTextBox* unk29C;

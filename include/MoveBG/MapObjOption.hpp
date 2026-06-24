@@ -17,10 +17,10 @@ public:
 	TFileLoadBlock(const char* name = "ファイル読み込みブロック");
 
 public:
-	/* 0x138 */ u8 unk138;
-	/* 0x13C */ TFileLoadBlock* unk13C;
-	/* 0x140 */ TFileLoadBlock* unk140;
-	/* 0x144 */ JGeometry::TVec3<f32> unk144;
+	/* 0x138 */ u8 mBlockIndex;           // 0/1/2 = FileLoadBlockA/B/C
+	/* 0x13C */ TFileLoadBlock* mSiblingBlock0; // the other two file blocks
+	/* 0x140 */ TFileLoadBlock* mSiblingBlock1;
+	/* 0x144 */ JGeometry::TVec3<f32> mBlockPosition; // = mPosition (set in initMapObj)
 };
 
 class TMapObjOptionWall : public THitActor {
@@ -31,7 +31,7 @@ public:
 	TMapObjOptionWall(const char*);
 
 public:
-	/* 0x68 */ TMapCollisionWarp* unk68;
+	/* 0x68 */ TMapCollisionWarp* mWarpCollision;
 };
 
 #endif
