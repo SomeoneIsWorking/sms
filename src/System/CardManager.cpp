@@ -499,8 +499,29 @@ void TCardManager::buildHeader_(HeaderData* header)
 		snprintf(header->mComment, 0x20, comments[iVar8], auStack_54.mday,
 		         auStack_54.mon + 1);
 	}
+#ifdef SMS_NATIVE_PLATFORM
+	// mBanner/mIcons point at /card/mario{bnr_jpn,_icon}.bti resources loaded during
+	// the nlogoAfter boot-init (TApplication, ~Application.cpp:414). A direct stage jump
+	// (SB_STAGE) into the file-select skips that init, leaving them null — and the JPN
+	// banner name also differs on the US (GMSE01) disc. The banner/icon are cosmetic GC
+	// BIOS file-manager metadata, irrelevant to gameplay; write a blank one instead of
+	// memcpy-ing from a null source. (Proper fix: run the .bti resource load before this.)
+	if (mBanner)
+		memcpy(header->mBanner, mBanner, sizeof(header->mBanner));
+	else {
+		memset(header->mBanner, 0, sizeof(header->mBanner));
+		static bool once = false;
+		if (!once) { once = true;
+			fprintf(stderr, "[cardmgr] buildHeader_: mBanner null (boot-init skipped) -- blank banner\n"); }
+	}
+	if (mIcons)
+		memcpy(header->mIcons, mIcons, sizeof(header->mIcons));
+	else
+		memset(header->mIcons, 0, sizeof(header->mIcons));
+#else
 	memcpy(header->mBanner, mBanner, sizeof(header->mBanner));
 	memcpy(header->mIcons, mIcons, sizeof(header->mIcons));
+#endif
 }
 
 s32 TCardManager::open_(CARDFileInfo* file)
