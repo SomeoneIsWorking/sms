@@ -91,7 +91,7 @@ TMarioParticleManager::TInfo::TInfo()
 
 TMarioParticleManager::TMarioParticleManager(const char* name)
     : JDrama::TViewObj(name)
-    , unk3B8(nullptr)
+    , mEmitterManager(nullptr)
 {
 }
 
@@ -108,7 +108,7 @@ void TMarioParticleManager::perform(u32 cue, JDrama::TGraphics* graphics)
 {
 	if (cue & CUE_CALC_ANIM) {
 		for (int i = SMSGetAnmFrameRate(); i > 0; --i)
-			unk3B8->calc();
+			mEmitterManager->calc();
 
 		for (int i = 486; i < 505; ++i) {
 			for (int j = 0; j < unk3B4; ++j) {
@@ -175,14 +175,14 @@ void TMarioParticleManager::perform(u32 cue, JDrama::TGraphics* graphics)
 			JPADrawInfo drawInfo(graphics->getViewMtx());
 			drawInfo.setFovy(gpCamera->getFovy());
 			drawInfo.setAspect(gpCamera->getAspect());
-			unk3B8->draw(&drawInfo, 2);
-			unk3B8->draw(&drawInfo, 3);
+			mEmitterManager->draw(&drawInfo, 2);
+			mEmitterManager->draw(&drawInfo, 3);
 		}
 
-		if (cue & CUE_UNK80000000) {
-			JPADrawInfo drawInfo(graphics->getViewMtx());
-			unk3B8->draw(&drawInfo, 0);
-			unk3B8->draw(&drawInfo, 1);
+		if (param_1 & 0x80000000) {
+			JPADrawInfo drawInfo(param_2->getUnkB4());
+			mEmitterManager->draw(&drawInfo, 0);
+			mEmitterManager->draw(&drawInfo, 1);
 		}
 	}
 }
@@ -192,12 +192,12 @@ TMarioParticleManager::emit(s32 param_1, const JGeometry::TVec3<f32>* param_2,
                             u8 param_3, const void* param_4)
 {
 	if (param_3 == 0)
-		if (JPABaseEmitter* emitter = unk3B8->createSimpleEmitterID(
+		if (JPABaseEmitter* emitter = mEmitterManager->createSimpleEmitterID(
 		        *param_2, param_1, param_3, 0, nullptr, nullptr))
 			return emitter;
 
 	if (param_3 == 2)
-		if (JPABaseEmitter* emitter = unk3B8->createSimpleEmitterID(
+		if (JPABaseEmitter* emitter = mEmitterManager->createSimpleEmitterID(
 		        *param_2, param_1, param_3, 0, nullptr, nullptr)) {
 			emitter->mDraw.swapImage(
 			    gpScreenTexture->getTexture()->getTexInfo(),
@@ -246,14 +246,14 @@ JPABaseEmitter* TMarioParticleManager::emitWithRotate(
 {
 
 	if (param_6 == 0)
-		if (JPABaseEmitter* emitter = unk3B8->createSimpleEmitterID(
+		if (JPABaseEmitter* emitter = mEmitterManager->createSimpleEmitterID(
 		        *param_2, param_1, param_6, 0, nullptr, nullptr)) {
 			emitter->setRotation(param_3, param_4, param_5);
 			return emitter;
 		}
 
 	if (param_6 == 2)
-		if (JPABaseEmitter* emitter = unk3B8->createSimpleEmitterID(
+		if (JPABaseEmitter* emitter = mEmitterManager->createSimpleEmitterID(
 		        *param_2, param_1, param_6, 0, nullptr, nullptr)) {
 			emitter->setRotation(param_3, param_4, param_5);
 			emitter->mDraw.swapImage(
@@ -271,7 +271,7 @@ TMarioParticleManager::emitAndBindToPosPtr(s32 param_1,
                                            u8 param_3, const void* param_4)
 {
 	if (param_3 == 0)
-		if (JPABaseEmitter* emitter = unk3B8->createSimpleEmitterID(
+		if (JPABaseEmitter* emitter = mEmitterManager->createSimpleEmitterID(
 		        *param_2, param_1, param_3, 0, nullptr, nullptr)) {
 			emitter->unk120 = (void*)param_2;
 			emitter->unk110 = &emitterCallBackBindToPosPtr;
@@ -279,7 +279,7 @@ TMarioParticleManager::emitAndBindToPosPtr(s32 param_1,
 		}
 
 	if (param_3 == 2)
-		if (JPABaseEmitter* emitter = unk3B8->createSimpleEmitterID(
+		if (JPABaseEmitter* emitter = mEmitterManager->createSimpleEmitterID(
 		        *param_2, param_1, param_3, 0, nullptr, nullptr)) {
 			emitter->unk120 = (void*)param_2;
 			emitter->unk110 = &emitterCallBackBindToPosPtr;
@@ -335,7 +335,7 @@ JPABaseEmitter* TMarioParticleManager::emitAndBindToMtxPtr(s32 param_1,
 	local_24.z = param_2[2][3];
 
 	if (param_3 == 0)
-		if (JPABaseEmitter* emitter = unk3B8->createSimpleEmitterID(
+		if (JPABaseEmitter* emitter = mEmitterManager->createSimpleEmitterID(
 		        local_24, param_1, param_3, 0, nullptr, nullptr)) {
 			emitter->unk120 = (void*)param_2;
 			emitter->unk110 = &emitterCallBackBindToMtxPtr;
@@ -343,7 +343,7 @@ JPABaseEmitter* TMarioParticleManager::emitAndBindToMtxPtr(s32 param_1,
 		}
 
 	if (param_3 == 2)
-		if (JPABaseEmitter* emitter = unk3B8->createSimpleEmitterID(
+		if (JPABaseEmitter* emitter = mEmitterManager->createSimpleEmitterID(
 		        local_24, param_1, param_3, 0, nullptr, nullptr)) {
 			emitter->unk120 = (void*)param_2;
 			emitter->unk110 = &emitterCallBackBindToMtxPtr;
@@ -398,7 +398,7 @@ TMarioParticleManager::emitAndBindToSRTMtxPtr(s32 param_1, MtxPtr param_2,
 	local_24.z = param_2[2][3];
 
 	if (param_3 == 0)
-		if (JPABaseEmitter* emitter = unk3B8->createSimpleEmitterID(
+		if (JPABaseEmitter* emitter = mEmitterManager->createSimpleEmitterID(
 		        local_24, param_1, param_3, 0, nullptr, nullptr)) {
 			emitter->unk120 = (void*)param_2;
 			emitter->unk110 = &emitterCallBackBindToSRTMtxPtr;
@@ -406,7 +406,7 @@ TMarioParticleManager::emitAndBindToSRTMtxPtr(s32 param_1, MtxPtr param_2,
 		}
 
 	if (param_3 == 2)
-		if (JPABaseEmitter* emitter = unk3B8->createSimpleEmitterID(
+		if (JPABaseEmitter* emitter = mEmitterManager->createSimpleEmitterID(
 		        local_24, param_1, param_3, 0, nullptr, nullptr)) {
 			emitter->unk120 = (void*)param_2;
 			emitter->unk110 = &emitterCallBackBindToSRTMtxPtr;
@@ -462,14 +462,14 @@ JPABaseEmitter* TMarioParticleManager::emitAndBindToMtx(s32 param_1,
 	local_24.z = param_2[2][3];
 
 	if (param_3 == 0)
-		if (JPABaseEmitter* emitter = unk3B8->createSimpleEmitterID(
+		if (JPABaseEmitter* emitter = mEmitterManager->createSimpleEmitterID(
 		        local_24, param_1, param_3, 0, nullptr, nullptr)) {
 			emitter->setGlobalRTMatrix(param_2);
 			return emitter;
 		}
 
 	if (param_3 == 2)
-		if (JPABaseEmitter* emitter = unk3B8->createSimpleEmitterID(
+		if (JPABaseEmitter* emitter = mEmitterManager->createSimpleEmitterID(
 		        local_24, param_1, param_3, 0, nullptr, nullptr)) {
 			emitter->setGlobalRTMatrix(param_2);
 			emitter->mDraw.swapImage(
@@ -530,7 +530,7 @@ void TMarioParticleManager::emitTry(s32 param_1,
                                     u8 param_3)
 {
 	if (param_2->checkFlag(INFO_FLAG_BIND_TO_POS)) {
-		param_2->mEmitter = unk3B8->createSimpleEmitterID(
+		param_2->mEmitter = mEmitterManager->createSimpleEmitterID(
 		    *(const JGeometry::TVec3<f32>*)param_2->unk4, param_1, param_3, 0,
 		    nullptr, nullptr);
 
@@ -546,7 +546,7 @@ void TMarioParticleManager::emitTry(s32 param_1,
 			local_14.y = ((MtxPtr)param_2->unk4)[1][3];
 			local_14.z = ((MtxPtr)param_2->unk4)[2][3];
 
-			param_2->mEmitter = unk3B8->createSimpleEmitterID(
+			param_2->mEmitter = mEmitterManager->createSimpleEmitterID(
 			    local_14, param_1, param_3, 0, nullptr, nullptr);
 
 			if (param_2->mEmitter != nullptr) {
@@ -557,7 +557,7 @@ void TMarioParticleManager::emitTry(s32 param_1,
 					param_2->mEmitter->unk110 = &emitterCallBackBindToMtxPtr;
 			}
 		} else {
-			param_2->mEmitter = unk3B8->createSimpleEmitterID(
+			param_2->mEmitter = mEmitterManager->createSimpleEmitterID(
 			    *(const JGeometry::TVec3<f32>*)param_2->unk4, param_1, param_3,
 			    0, nullptr, nullptr);
 		}
