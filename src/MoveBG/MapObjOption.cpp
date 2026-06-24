@@ -12,6 +12,12 @@
 #include <MSound/MSoundBGM.hpp>
 #include <M3DUtil/InfectiousStrings.hpp>
 
+#ifdef SMS_NATIVE_PLATFORM
+// stdio/stdlib LAST: an SMS header above shadows the stdio names (EOF-macro shim).
+#include <stdio.h>
+#include <stdlib.h>
+#endif
+
 static void dummy(Vec* v)
 {
 	*v = (Vec) { 0.0f, 0.0f, 0.0f };
@@ -36,6 +42,10 @@ static int sRumbleTime = 8;
 
 void TFileLoadBlock::pushed()
 {
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_SEL_DBG"))
+		fprintf(stderr, "[fileblock] pushed() block=%d -> setSelected\n", unk138);
+#endif
 	startBck("fileloadblock");
 	gpCardLoad->setSelected(unk138);
 	SMSRumbleMgr->start(0x15, sRumbleTime, (float*)nullptr);
@@ -48,7 +58,16 @@ void TFileLoadBlock::pushed()
 
 void TFileLoadBlock::touchPlayer(THitActor* param_1)
 {
-	if (isState(STATE_NORMAL) && marioHeadAttack() && !isStateTimerEngaged())
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_SEL_DBG")) {
+		static int s_once[3] = {0,0,0};
+		int b = unk138 & 3;
+		if (b < 3 && !s_once[b]) { s_once[b] = 1;
+			fprintf(stderr, "[fileblock] touchPlayer block=%d state1=%d headAtk=%d waiting=%d\n",
+			        unk138, (int)isState(1), (int)marioHeadAttack(), (int)isWaitingToAppear()); }
+	}
+#endif
+	if (isState(1) && marioHeadAttack() && !isWaitingToAppear()) {
 		pushed();
 }
 
