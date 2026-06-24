@@ -44,16 +44,16 @@ void TFileLoadBlock::pushed()
 {
 #ifdef SMS_NATIVE_PLATFORM
 	if (getenv("SB_SEL_DBG"))
-		fprintf(stderr, "[fileblock] pushed() block=%d -> setSelected\n", unk138);
+		fprintf(stderr, "[fileblock] pushed() block=%d -> setSelected\n", mBlockIndex);
 #endif
 	startBck("fileloadblock");
-	gpCardLoad->setSelected(unk138);
+	gpCardLoad->setSelected(mBlockIndex);
 	SMSRumbleMgr->start(0x15, sRumbleTime, (float*)nullptr);
-	gpMarioParticleManager->emit(0x6E, &unk144, 0, nullptr);
-	gpMarioParticleManager->emit(PARTICLE_MS_M_AMIATTACK, &unk144, 0, nullptr);
-	mStateTimer         = 120;
-	unk13C->mStateTimer = 120;
-	unk140->mStateTimer = 120;
+	gpMarioParticleManager->emit(0x6E, &mBlockPosition, 0, nullptr);
+	gpMarioParticleManager->emit(0x39, &mBlockPosition, 0, nullptr);
+	mTimeTilAppear         = 0x78;
+	mSiblingBlock0->mTimeTilAppear = 0x78;
+	mSiblingBlock1->mTimeTilAppear = 0x78;
 }
 
 void TFileLoadBlock::touchPlayer(THitActor* param_1)
@@ -61,10 +61,10 @@ void TFileLoadBlock::touchPlayer(THitActor* param_1)
 #ifdef SMS_NATIVE_PLATFORM
 	if (getenv("SB_SEL_DBG")) {
 		static int s_once[3] = {0,0,0};
-		int b = unk138 & 3;
+		int b = mBlockIndex & 3;
 		if (b < 3 && !s_once[b]) { s_once[b] = 1;
 			fprintf(stderr, "[fileblock] touchPlayer block=%d state1=%d headAtk=%d waiting=%d\n",
-			        unk138, (int)isState(1), (int)marioHeadAttack(), (int)isWaitingToAppear()); }
+			        mBlockIndex, (int)isState(1), (int)marioHeadAttack(), (int)isWaitingToAppear()); }
 	}
 #endif
 	if (isState(1) && marioHeadAttack() && !isWaitingToAppear()) {
@@ -86,20 +86,20 @@ void TFileLoadBlock::loadAfter()
 {
 	TMapObjBase::loadAfter();
 
-	if (unk138 == 0) {
-		unk13C
+	if (mBlockIndex == 0) {
+		mSiblingBlock0
 		    = JDrama::TNameRefGen::search<TFileLoadBlock>("ロードブロックＢ");
-		unk140
+		mSiblingBlock1
 		    = JDrama::TNameRefGen::search<TFileLoadBlock>("ロードブロックＣ");
-	} else if (unk138 == 1) {
-		unk13C
+	} else if (mBlockIndex == 1) {
+		mSiblingBlock0
 		    = JDrama::TNameRefGen::search<TFileLoadBlock>("ロードブロックＡ");
-		unk140
+		mSiblingBlock1
 		    = JDrama::TNameRefGen::search<TFileLoadBlock>("ロードブロックＣ");
 	} else {
-		unk13C
+		mSiblingBlock0
 		    = JDrama::TNameRefGen::search<TFileLoadBlock>("ロードブロックＡ");
-		unk140
+		mSiblingBlock1
 		    = JDrama::TNameRefGen::search<TFileLoadBlock>("ロードブロックＢ");
 	}
 }
@@ -108,38 +108,38 @@ void TFileLoadBlock::initMapObj()
 {
 	TMapObjBase::initMapObj();
 	if (strcmp("FileLoadBlockA", getUnkF4()) == 0)
-		unk138 = 0;
+		mBlockIndex = 0;
 	else if (strcmp("FileLoadBlockB", getUnkF4()) == 0)
-		unk138 = 1;
+		mBlockIndex = 1;
 	else if (strcmp("FileLoadBlockC", getUnkF4()) == 0)
-		unk138 = 2;
+		mBlockIndex = 2;
 
 	SMS_LoadParticle("/scene/map/map/ms_m_fileblock.jpa", 0x6E);
 
-	unk144.set(mPosition.x, mPosition.y, mPosition.z);
+	mBlockPosition.set(mPosition.x, mPosition.y, mPosition.z);
 }
 
 TFileLoadBlock::TFileLoadBlock(const char* name)
     : TMapObjBase(name)
-    , unk138(0)
-    , unk13C(nullptr)
-    , unk140(nullptr)
+    , mBlockIndex(0)
+    , mSiblingBlock0(nullptr)
+    , mSiblingBlock1(nullptr)
 {
-	unk144.x = unk144.y = unk144.z = 0.0f;
+	mBlockPosition.x = mBlockPosition.y = mBlockPosition.z = 0.0f;
 }
 
-void TMapObjOptionWall::onCollision() { unk68->setUp(); }
+void TMapObjOptionWall::onCollision() { mWarpCollision->setUp(); }
 
-void TMapObjOptionWall::offCollision() { unk68->remove(); }
+void TMapObjOptionWall::offCollision() { mWarpCollision->remove(); }
 
 void TMapObjOptionWall::init()
 {
-	unk68 = new TMapCollisionWarp;
-	unk68->init("/scene/map/map/option_wall.col", 0, nullptr);
+	mWarpCollision = new TMapCollisionWarp;
+	mWarpCollision->init("/scene/map/map/option_wall.col", 0, nullptr);
 }
 
 TMapObjOptionWall::TMapObjOptionWall(const char* name)
     : THitActor(name)
-    , unk68(nullptr)
+    , mWarpCollision(nullptr)
 {
 }
