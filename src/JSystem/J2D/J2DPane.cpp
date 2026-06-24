@@ -4,6 +4,18 @@
 #include <JSystem/JUtility/JUTResource.hpp>
 #include <dolphin/gx/GXGeometry.h>
 #include <math.h>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+static void sb_blo_pane_log(u32 tag)
+{
+	if (!getenv("SB_BLO_DBG"))
+		return;
+	char t[5] = { (char)(tag >> 24), (char)(tag >> 16), (char)(tag >> 8),
+	              (char)tag, 0 };
+	fprintf(stderr, "[blo] pane created tag '%s' (0x%08x)\n", t, tag);
+}
+#endif
 
 J2DPane::J2DPane()
     : mBounds()
@@ -89,6 +101,9 @@ J2DPane::J2DPane(J2DPane* p_parent, JSURandomInputStream* p_stream, bool isEx)
 		p_stream->read(&mVisible, sizeof(mVisible));
 		p_stream->skip(2);
 		mUserInfoTag = p_stream->readU32();
+#ifdef SMS_NATIVE_PLATFORM
+		sb_blo_pane_log(mUserInfoTag);
+#endif
 		mBounds.x1   = p_stream->readS16();
 		mBounds.y1   = p_stream->readS16();
 		mBounds.x2   = mBounds.x1 + p_stream->readS16();
@@ -127,6 +142,9 @@ J2DPane::J2DPane(J2DPane* p_parent, JSURandomInputStream* p_stream, bool isEx)
 		p_stream->read(&mVisible, sizeof(mVisible));
 		p_stream->skip(1);
 		mUserInfoTag = p_stream->readU32();
+#ifdef SMS_NATIVE_PLATFORM
+		sb_blo_pane_log(mUserInfoTag);
+#endif
 		mBounds.x1   = p_stream->readS16();
 		mBounds.y1   = p_stream->readS16();
 		mBounds.x2   = mBounds.x1 + p_stream->readS16();
