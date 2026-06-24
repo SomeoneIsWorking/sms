@@ -1,4 +1,8 @@
 #include <Player/MarioCap.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 #include <JSystem/JKernel/JKRFileLoader.hpp>
 #include <JSystem/J3D/J3DGraphLoader/J3DModelLoader.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DTexture.hpp>
@@ -213,6 +217,21 @@ void TMarioCap::perform(u32 param_1, JDrama::TGraphics* param_2)
 	}
 
 	if ((param_1 & 0x200) != 0) {
+#ifdef SMS_NATIVE_PLATFORM
+		// SB_MARIO_DBG: which cap model is entered (active hat/helmet/glasses bitfield).
+		// Pairs with the [mario] base-mtx trace in MarioDraw / the [mario-perf] flag trace in
+		// MarioMain to localize whether a cap-render anomaly is selection (this) or pose.
+		if (::getenv("SB_MARIO_DBG")) {
+			static long s_n = 0;
+			if (s_n < 10) { ++s_n;
+				int act2 = isModelActive(2) ? 1 : 0, act4 = isModelActive(4) ? 1 : 0;
+				int which = -1;
+				for (int i = 0; i < 4; ++i) if (unk10[i] == unkC) { which = i; break; }
+				fprintf(stderr, "[mario] cap-entry unkC=unk10[%d] active(helmet=%d glasses=%d) unk4=0x%x\n",
+				        which, act2, act4, (unsigned)unk4);
+			}
+		}
+#endif
 		unkC->entry();
 		if (isModelActive(2)) {
 			unk10[2]->entry();
