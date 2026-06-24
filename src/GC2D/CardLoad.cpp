@@ -74,14 +74,14 @@ TCardLoad::TCardLoad(const char* name)
     , unkA0(nullptr)
     , unkA4(0)
     , unkA8(60.0f)
-    , unkAC(nullptr)
+    , mCursorSparkle(nullptr)
     , unkB8(0)
     , unkBC(0)
     , unk25C(nullptr)
     , unk270(nullptr)
     , unk274(0)
     , unk275(0)
-    , unk284(0)
+    , mOptionWall(0)
     , unk288(nullptr)
     , unk524(nullptr)
     , unk538(nullptr)
@@ -483,10 +483,10 @@ void TCardLoad::setupScoreScreen()
 void TCardLoad::loadAfter()
 {
 	JDrama::TNameRef::loadAfter();
-	unk278[0] = JDrama::TNameRefGen::search<TFileLoadBlock>("ロードブロックＡ");
-	unk278[1] = JDrama::TNameRefGen::search<TFileLoadBlock>("ロードブロックＢ");
-	unk278[2] = JDrama::TNameRefGen::search<TFileLoadBlock>("ロードブロックＣ");
-	unk284 = JDrama::TNameRefGen::search<TMapObjOptionWall>("オプション用壁");
+	mFileBlocks[0] = JDrama::TNameRefGen::search<TFileLoadBlock>("ロードブロックＡ");
+	mFileBlocks[1] = JDrama::TNameRefGen::search<TFileLoadBlock>("ロードブロックＢ");
+	mFileBlocks[2] = JDrama::TNameRefGen::search<TFileLoadBlock>("ロードブロックＣ");
+	mOptionWall = JDrama::TNameRefGen::search<TMapObjOptionWall>("オプション用壁");
 }
 
 void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
@@ -523,12 +523,12 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 				        (unsigned)gpMarioOriginal->mStatus);
 			}
 			for (int i = 0; i < 3; ++i) {
-				TFileLoadBlock* b = unk278[i];
+				TFileLoadBlock* b = mFileBlocks[i];
 				if (!b)
 					continue;
 				const JGeometry::TVec3<f32>& bp = b->getPosition();
-				fprintf(stderr, "[selpos]   block%d(%.1f %.1f %.1f) unk144(%.1f %.1f %.1f) state=%d ttl=%d\n",
-				        i, bp.x, bp.y, bp.z, b->unk144.x, b->unk144.y, b->unk144.z,
+				fprintf(stderr, "[selpos]   block%d(%.1f %.1f %.1f) mBlockPosition(%.1f %.1f %.1f) state=%d ttl=%d\n",
+				        i, bp.x, bp.y, bp.z, b->mBlockPosition.x, b->mBlockPosition.y, b->mBlockPosition.z,
 				        (int)b->mState, (int)b->mTimeTilAppear);
 			}
 		}
@@ -544,11 +544,11 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 		// firstStart/readBlock -> setNextArea game path.
 		static const char* s_selPick = getenv("SB_SEL_PICK");
 		if (s_selPick && mState == 0 && unk1C == PROGRESS_UNK13 && unk10 == 2
-		    && unkB0 == (s8)-1) {
+		    && mSelectedFile == (s8)-1) {
 			int idx = atoi(s_selPick);
-			if (idx >= 0 && idx < 3 && unk278[idx]) {
+			if (idx >= 0 && idx < 3 && mFileBlocks[idx]) {
 				fprintf(stderr, "[selpick] injecting head-butt on block %d\n", idx);
-				unk278[idx]->pushed();
+				mFileBlocks[idx]->pushed();
 			}
 		}
 		// Also trace the card-read progress (unk1C) advancing within mState 0.
@@ -606,11 +606,11 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 #ifdef SMS_NATIVE_PLATFORM
 				// Region-tolerant: the option-wall collision object
 				// ("オプション用壁") is absent in the US (GMSE01) file-select
-				// scene, so TNameRefGen::search left unk284 null. Skip its
+				// scene, so TNameRefGen::search left mOptionWall null. Skip its
 				// cosmetic collision toggle instead of null-deref'ing this->unk68.
-				if (unk284)
+				if (mOptionWall)
 #endif
-				unk284->offCollision();
+				mOptionWall->offCollision();
 				if (!(gpCameraOption->mFlags & 1)) {
 					if (unk10 == 2)
 						unk10 = 3;
@@ -733,9 +733,9 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 			} else {
 				if (unk754->movementOption2Card()) {
 #ifdef SMS_NATIVE_PLATFORM
-					if (unk284) // region-tolerant: option-wall absent in US scene
+					if (mOptionWall) // region-tolerant: option-wall absent in US scene
 #endif
-					unk284->onCollision();
+					mOptionWall->onCollision();
 					mState = 0;
 					mGamePad->onFlag(0x1);
 					if (unk754->isChangedSetting()) {
@@ -1166,20 +1166,20 @@ s8 TCardLoad::waitForChoice(TEProgress param_1, TEProgress param_2, int param_3)
 			local_108.z = 0.0f;
 			gpEmitterManager4D2->createEmitter(local_108, 0x1FA, nullptr,
 			                                   nullptr);
-			unkAC = gpEmitterManager4D2->unkC8[0][0];
+			mCursorSparkle = gpEmitterManager4D2->unkC8[0][0];
 #ifdef SMS_NATIVE_PLATFORM
 			// FAIL FAST: the cursor-sparkle emitter (0x1FA) MUST be created here
 			// (the original has no null guard, so it always succeeds on HW). A
 			// null slot means a real wiring failure — gpEmitterManager4D2 has no
 			// resource 0x1FA (it must share gpResourceManager; see
 			// MarDirectorLoadResource) — not a tolerable cosmetic skip.
-			if (!unkAC)
+			if (!mCursorSparkle)
 				OSPanic(__FILE__, __LINE__,
 				        "TCardLoad: cursor-sparkle emitter 0x1FA not created "
 				        "(gpEmitterManager4D2 missing resource 0x1FA)");
 #endif
-			unkAC->setRotation(0, 0, DEG2SHORTANGLE(12));
-			unkAC->setUnk190(0.9f, 1.0f, 0.1f);
+			mCursorSparkle->setRotation(0, 0, DEG2SHORTANGLE(12));
+			mCursorSparkle->setUnk190(0.9f, 1.0f, 0.1f);
 		} else if (unkC4 == 44) {
 			unk484[unkB7]->setCenteredSize(20, unk48C[unkB7].getWidth(),
 			                               unk48C[unkB7].getHeight(),
@@ -1196,8 +1196,8 @@ s8 TCardLoad::waitForChoice(TEProgress param_1, TEProgress param_2, int param_3)
 		if (unkC4 > 80)
 			unkC4 = 0;
 		if (old != unkB7) {
-			if (unkAC != nullptr)
-				gpEmitterManager4D2->forceDeleteEmitter(unkAC);
+			if (mCursorSparkle != nullptr)
+				gpEmitterManager4D2->forceDeleteEmitter(mCursorSparkle);
 
 			unkC4 = 0;
 
@@ -1285,8 +1285,8 @@ s8 TCardLoad::waitForChoiceBM(TEProgress param_1, TEProgress param_2,
 			unk4D8[0]->getPane()->show();
 			unk4D8[1]->getPane()->show();
 			unk4C8->show();
-			unk4CC[unkB0]->show();
-			TCardBookmarkInfo& info = unk40[unkB0];
+			unk4CC[mSelectedFile]->show();
+			TCardBookmarkInfo& info = unk40[mSelectedFile];
 			if (info.unk0 == 1) {
 				strncpy(unk51C->getStringPtr(), "こわれています", 0x14);
 				strncpy(unk520->getStringPtr(), "こわれています", 0x14);
@@ -1301,7 +1301,7 @@ s8 TCardLoad::waitForChoiceBM(TEProgress param_1, TEProgress param_2,
 				unk510->hide();
 			} else {
 				unk520->hide();
-				u16 score = unk40[unkB0].unk1C;
+				u16 score = unk40[mSelectedFile].unk1C;
 				if (score > 999)
 					score = 999;
 				if (score < 100) {
@@ -1357,19 +1357,19 @@ s8 TCardLoad::waitForChoiceBM(TEProgress param_1, TEProgress param_2,
 			local_108.z = 0.0f;
 			gpEmitterManager4D2->createEmitter(local_108, 0x1FA, nullptr,
 			                                   nullptr);
-			unkAC = gpEmitterManager4D2->unkC8[0][0];
+			mCursorSparkle = gpEmitterManager4D2->unkC8[0][0];
 #ifdef SMS_NATIVE_PLATFORM
 			// FAIL FAST: see the matching site above — a null cursor-sparkle
 			// emitter slot is a real wiring failure (no resource 0x1FA), not a
 			// tolerable cosmetic skip; the original has no null guard.
-			if (!unkAC)
+			if (!mCursorSparkle)
 				OSPanic(__FILE__, __LINE__,
 				        "TCardLoad: cursor-sparkle emitter 0x1FA not created "
 				        "(gpEmitterManager4D2 missing resource 0x1FA)");
 #endif
 			{
-				unkAC->setRotation(0, 0, DEG2SHORTANGLE(12));
-				unkAC->setUnk190(0.9f, 1.0f, 0.1f);
+				mCursorSparkle->setRotation(0, 0, DEG2SHORTANGLE(12));
+				mCursorSparkle->setUnk190(0.9f, 1.0f, 0.1f);
 			}
 		} else if (unkC4 == 44) {
 			unk4D8[unkB7]->setCenteredSize(40, unk4E0[unkB7].getWidth(),
@@ -1387,8 +1387,8 @@ s8 TCardLoad::waitForChoiceBM(TEProgress param_1, TEProgress param_2,
 		if (unkC4 > 80)
 			unkC4 = 0;
 		if (old != unkB7) {
-			if (unkAC != nullptr)
-				gpEmitterManager4D2->forceDeleteEmitter(unkAC);
+			if (mCursorSparkle != nullptr)
+				gpEmitterManager4D2->forceDeleteEmitter(mCursorSparkle);
 
 			unkC4 = 0;
 
@@ -1520,10 +1520,10 @@ s8 TCardLoad::waitForAnyKeyBM(TEProgress param_1)
 		if (unk4AC->update()) {
 			unk4C4->show();
 			unk4C8->show();
-			unk4CC[unkB0]->show();
+			unk4CC[mSelectedFile]->show();
 			if (unk1C == PROGRESS_UNK27)
-				unkB0 = unkB1;
-			TCardBookmarkInfo& info = unk40[unkB0];
+				mSelectedFile = unkB1;
+			TCardBookmarkInfo& info = unk40[mSelectedFile];
 			if (info.unk0 == 1) {
 				strncpy(unk51C->getStringPtr(), "こわれています", 0x14);
 				strncpy(unk520->getStringPtr(), "こわれています", 0x14);
@@ -1539,7 +1539,7 @@ s8 TCardLoad::waitForAnyKeyBM(TEProgress param_1)
 			} else {
 				unk500->show();
 				unk520->hide();
-				u16 score = unk40[unkB0].unk1C;
+				u16 score = unk40[mSelectedFile].unk1C;
 				if (score > 999)
 					score = 999;
 				if (score < 100) {
@@ -1638,12 +1638,12 @@ s8 TCardLoad::waitForStart(TEProgress param_1)
 			unk564->show();
 			for (int i = 0; i < 3; ++i)
 				unk540[i]->show();
-			unkB0 = -1;
+			mSelectedFile = -1;
 		}
 	} break;
 
 	case 2:
-		if (mGamePad->checkFrameMeaning(0x20) || unkB0 != -1)
+		if (mGamePad->checkFrameMeaning(0x20) || mSelectedFile != -1)
 			unk10 = 3;
 		break;
 
@@ -1754,8 +1754,8 @@ s8 TCardLoad::drawMessageBM(TEProgress param_1)
 		if (unk4AC->update()) {
 			unk4C4->show();
 			unk4C8->show();
-			unk4CC[unkB0]->show();
-			TCardBookmarkInfo* bm = &unk40[unkB0];
+			unk4CC[mSelectedFile]->show();
+			TCardBookmarkInfo* bm = &unk40[mSelectedFile];
 			if (bm->unk0 == 1) {
 				strncpy(unk51C->getStringPtr(), "こわれています", 20);
 				strncpy(unk520->getStringPtr(), "こわれています", 20);
@@ -1768,7 +1768,7 @@ s8 TCardLoad::drawMessageBM(TEProgress param_1)
 				unk500->hide();
 			} else {
 				unk520->hide();
-				TCardBookmarkInfo* bm2 = &unk40[unkB0];
+				TCardBookmarkInfo* bm2 = &unk40[mSelectedFile];
 				u16 score              = bm2->unk1C;
 				(void)score; // TODO: hack, regswap
 				if (score > 999)
@@ -1842,7 +1842,7 @@ s8 TCardLoad::selectBookmark(TEProgress param_1, TEProgress param_2,
 		unk288->setCenteredSize(30, unk28C.getWidth(), unk28C.getHeight(), 0,
 		                        0);
 		if (unk1C == PROGRESS_UNK1C) {
-			unk278[unkB1]->makeBlockRock();
+			mFileBlocks[unkB1]->makeBlockRock();
 			setMessage(unk29C, 30, 0x1B);
 			setMessage(unk2A0, 30, 0x1B);
 		} else {
@@ -1911,7 +1911,7 @@ s8 TCardLoad::selectBookmark(TEProgress param_1, TEProgress param_2,
 					}
 				}
 			}
-			unkB0 = -1;
+			mSelectedFile = -1;
 			unk10 = 2;
 		}
 	} break;
@@ -1919,7 +1919,7 @@ s8 TCardLoad::selectBookmark(TEProgress param_1, TEProgress param_2,
 	case 2:
 		if (param_2 != 0 && mGamePad->getTrigger() & 0x200)
 			unk10 = 3;
-		if (unkB0 != -1)
+		if (mSelectedFile != -1)
 			unk10 = 3;
 		break;
 
@@ -1931,8 +1931,8 @@ s8 TCardLoad::selectBookmark(TEProgress param_1, TEProgress param_2,
 		for (int i = 0; i < 3; ++i)
 			unk32C[i]->hide();
 		for (int i = 0; i < 3; ++i) {
-			if (i != unkB0 || unk1C == PROGRESS_UNK1C
-			    || unk40[unkB0].unk0 == 1) {
+			if (i != mSelectedFile || unk1C == PROGRESS_UNK1C
+			    || unk40[mSelectedFile].unk0 == 1) {
 				unk2CC[i]->hide();
 				unk2D8[i]->hide();
 				unk2FC[i]->hide();
@@ -1952,7 +1952,7 @@ s8 TCardLoad::selectBookmark(TEProgress param_1, TEProgress param_2,
 			unk288->getPane()->hide();
 			if (param_3) {
 				for (int i = 0; i < 3; ++i)
-					if (i != unkB0 || unk1C == PROGRESS_UNK1C
+					if (i != mSelectedFile || unk1C == PROGRESS_UNK1C
 					    || unk40[i].unk0 == 1)
 						unk2A4[i]->getPane()->hide();
 			}
@@ -1962,11 +1962,11 @@ s8 TCardLoad::selectBookmark(TEProgress param_1, TEProgress param_2,
 
 	case 5:
 		if (unk1C == PROGRESS_UNK1C)
-			unk278[unkB1]->makeBlockNormal();
-		result = unkB0;
+			mFileBlocks[unkB1]->makeBlockNormal();
+		result = mSelectedFile;
 		if (mState == 0)
 			mGamePad->offFlag(0x1);
-		if (unkB0 != -1)
+		if (mSelectedFile != -1)
 			unk1C = param_1;
 		else
 			unk1C = param_2;
@@ -1998,21 +1998,21 @@ s8 TCardLoad::selectBookmark(TEProgress param_1, TEProgress param_2,
 s8 TCardLoad::selectFunction()
 {
 	s8 result = -1;
-	s8 bVar1  = unkB6;
+	s8 bVar1  = mFunctionCursor;
 
 	switch (unk10) {
 	case 0: {
-		unk33C[unkB0]->getPane()->show();
+		unk33C[mSelectedFile]->getPane()->show();
 		for (int i = 0; i < 4; ++i)
-			unk378[unkB0][i]->getPane()->hide();
-		JUTRect rect = unk348[unkB0];
-		unk33C[unkB0]->setPaneSize(30, rect.getWidth(), rect.getHeight(),
+			unk378[mSelectedFile][i]->getPane()->hide();
+		JUTRect rect = unk348[mSelectedFile];
+		unk33C[mSelectedFile]->setPaneSize(30, rect.getWidth(), rect.getHeight(),
 		                           rect.getWidth(), 0);
-		unk33C[unkB0]->setPaneOffset(30, 0, 0, 0, rect.getHeight());
+		unk33C[mSelectedFile]->setPaneOffset(30, 0, 0, 0, rect.getHeight());
 
 		if (!unk2A4[0]->getPane()->isVisible()) {
 			for (int i = 0; i < 3; ++i)
-				if (i == unkB0 && !unk2A4[i]->getPane()->isVisible()) {
+				if (i == mSelectedFile && !unk2A4[i]->getPane()->isVisible()) {
 					unk2CC[i]->hide();
 					unk2D8[i]->hide();
 					unk2FC[i]->hide();
@@ -2035,27 +2035,27 @@ s8 TCardLoad::selectFunction()
 		// LP64-weaponized OOB class fixed earlier in titleDraw (i<13 over [11]).
 		for (int i = 0; i < 3; ++i)
 			done &= unk2A4[i]->update();
-		done &= unk33C[unkB0]->update();
+		done &= unk33C[mSelectedFile]->update();
 		if (done) {
 			for (int i = 0; i < 4; ++i) {
-				unk378[unkB0][i]->getPane()->show();
+				unk378[mSelectedFile][i]->getPane()->show();
 
-				unk378[unkB0][i]->updateCenteredSize(
-				    1, unk3A8[unkB0][i].getWidth(),
-				    unk3A8[unkB0][i].getHeight());
+				unk378[mSelectedFile][i]->updateCenteredSize(
+				    1, unk3A8[mSelectedFile][i].getWidth(),
+				    unk3A8[mSelectedFile][i].getHeight());
 
-				unk378[unkB0][i]->update();
-				if (unk40[unkB0].unk18 == 0) {
+				unk378[mSelectedFile][i]->update();
+				if (unk40[mSelectedFile].unk18 == 0) {
 					if (i > 0)
-						((J2DPicture*)unk378[unkB0][i]->getPane())->mWhite
+						((J2DPicture*)unk378[mSelectedFile][i]->getPane())->mWhite
 						    = 0xFFFFFF7F;
 				} else {
-					((J2DPicture*)unk378[unkB0][i]->getPane())->mWhite
+					((J2DPicture*)unk378[mSelectedFile][i]->getPane())->mWhite
 					    = 0xFFFFFFFF;
 				}
 			}
 
-			((J2DPicture*)unk378[unkB0][unkB6]->getPane())->mWhite = 0x00FF00FF;
+			((J2DPicture*)unk378[mSelectedFile][mFunctionCursor]->getPane())->mWhite = 0x00FF00FF;
 			for (int i = 0; i < 3; ++i) {
 				if (unk40[i].unk0 == 1) {
 					strncpy(unk2C0[i]->getStringPtr(), "こわれています", 20);
@@ -2099,90 +2099,90 @@ s8 TCardLoad::selectFunction()
 				                                   nullptr, 0);
 			unk10 = 3;
 		} else if (mGamePad->checkFrameMeaning(0x4)) {
-			TCardBookmarkInfo* bm = &unk40[unkB0];
+			TCardBookmarkInfo* bm = &unk40[mSelectedFile];
 			if (bm->unk18 == 0)
-				unkB6 = 0;
+				mFunctionCursor = 0;
 			else
-				unkB6 = bVar1 + 1;
-			if (unkB6 > 3)
-				unkB6 = 0;
+				mFunctionCursor = bVar1 + 1;
+			if (mFunctionCursor > 3)
+				mFunctionCursor = 0;
 		} else if (mGamePad->checkFrameMeaning(0x2)) {
-			TCardBookmarkInfo* bm = &unk40[unkB0];
+			TCardBookmarkInfo* bm = &unk40[mSelectedFile];
 			if (bm->unk18 == 0)
-				unkB6 = 0;
+				mFunctionCursor = 0;
 			else
-				unkB6 = bVar1 - 1;
-			if (unkB6 < 0)
-				unkB6 = 3;
+				mFunctionCursor = bVar1 - 1;
+			if (mFunctionCursor < 0)
+				mFunctionCursor = 3;
 		} else if (mGamePad->checkFrameMeaning(0x40)) {
-			unkB6 = -1;
+			mFunctionCursor = -1;
 			SMSGetMSound()->startSoundSystemSE(MSD_SE_SY_CANCEL_COMMON, 0,
 			                                   nullptr, 0);
 			unk10 = 3;
 		}
 
-		if (unkB6 != -1) {
+		if (mFunctionCursor != -1) {
 			if (unkC4 == 4) {
-				unk378[unkB0][unkB6]->setCenteredSize(
-				    40, unk3A8[unkB0][unkB6].getWidth() * 1.5f,
-				    unk3A8[unkB0][unkB6].getHeight() * 1.5f,
-				    unk3A8[unkB0][unkB6].getWidth(),
-				    unk3A8[unkB0][unkB6].getHeight());
+				unk378[mSelectedFile][mFunctionCursor]->setCenteredSize(
+				    40, unk3A8[mSelectedFile][mFunctionCursor].getWidth() * 1.5f,
+				    unk3A8[mSelectedFile][mFunctionCursor].getHeight() * 1.5f,
+				    unk3A8[mSelectedFile][mFunctionCursor].getWidth(),
+				    unk3A8[mSelectedFile][mFunctionCursor].getHeight());
 
 				JUTRect rect
-				    = unk378[unkB0][unkB6]->getPane()->getGlobalBounds();
+				    = unk378[mSelectedFile][mFunctionCursor]->getPane()->getGlobalBounds();
 				JGeometry::TVec3<f32> pos(rect.x1 + rect.getWidth() / 2.0f,
 				                          rect.y1 + rect.getHeight() / 2.0f,
 				                          0.0f);
 				gpEmitterManager4D2->createEmitter(pos, 0x1FA, nullptr,
 				                                   nullptr);
-				unkAC = gpEmitterManager4D2->unkC8[0][0];
-				unkAC->setRotation(0, 0, DEG2SHORTANGLE(12));
-				unkAC->setUnk190(0.9f, 1.0f, 0.1f);
+				mCursorSparkle = gpEmitterManager4D2->unkC8[0][0];
+				mCursorSparkle->setRotation(0, 0, DEG2SHORTANGLE(12));
+				mCursorSparkle->setUnk190(0.9f, 1.0f, 0.1f);
 			} else if (unkC4 == 44) {
-				unk378[unkB0][unkB6]->setCenteredSize(
-				    20, unk3A8[unkB0][unkB6].getWidth(),
-				    unk3A8[unkB0][unkB6].getHeight(),
-				    unk3A8[unkB0][unkB6].getWidth() * 1.5f,
-				    unk3A8[unkB0][unkB6].getHeight() * 1.5f);
+				unk378[mSelectedFile][mFunctionCursor]->setCenteredSize(
+				    20, unk3A8[mSelectedFile][mFunctionCursor].getWidth(),
+				    unk3A8[mSelectedFile][mFunctionCursor].getHeight(),
+				    unk3A8[mSelectedFile][mFunctionCursor].getWidth() * 1.5f,
+				    unk3A8[mSelectedFile][mFunctionCursor].getHeight() * 1.5f);
 			}
 
 			int r = unkC4;
 			r     = r < 40 ? r : 80 - r;
 			r     = (r * 255.0f) / 40.0f;
-			((J2DPicture*)unk378[unkB0][unkB6]->getPane())->mWhite
+			((J2DPicture*)unk378[mSelectedFile][mFunctionCursor]->getPane())->mWhite
 			    = (r << 24) + 0xFF00FF;
-			unk378[unkB0][unkB6]->update();
+			unk378[mSelectedFile][mFunctionCursor]->update();
 			unkC4 += 1;
 			if (unkC4 > 80)
 				unkC4 = 0;
 		}
 
-		if (unkB6 != bVar1 && unkB6 != -1) {
-			if (unkAC != nullptr)
-				gpEmitterManager4D2->forceDeleteEmitter(unkAC);
+		if (mFunctionCursor != bVar1 && mFunctionCursor != -1) {
+			if (mCursorSparkle != nullptr)
+				gpEmitterManager4D2->forceDeleteEmitter(mCursorSparkle);
 			SMSGetMSound()->startSoundSystemSE(MSD_SE_SY_E3_MENU_CURSOR, 0,
 			                                   nullptr, 0);
 
 			unkC4 = 0;
 
-			unk378[unkB0][bVar1]->getPane()->setBounds(unk3A8[unkB0][bVar1]);
+			unk378[mSelectedFile][bVar1]->getPane()->setBounds(unk3A8[mSelectedFile][bVar1]);
 
-			((J2DPicture*)unk378[unkB0][bVar1]->getPane())->mWhite = 0xFFFFFFFF;
-			((J2DPicture*)unk378[unkB0][unkB6]->getPane())->mWhite = 0x00FF00FF;
+			((J2DPicture*)unk378[mSelectedFile][bVar1]->getPane())->mWhite = 0xFFFFFFFF;
+			((J2DPicture*)unk378[mSelectedFile][mFunctionCursor]->getPane())->mWhite = 0x00FF00FF;
 		}
 		break;
 
 	case 3: {
 		for (int i = 0; i < 4; ++i)
-			unk378[unkB0][i]->getPane()->hide();
-		JUTRect rect = unk348[unkB0];
-		unk33C[unkB0]->updatePaneSize(30, rect.getWidth(), 0);
-		unk33C[unkB0]->updatePaneOffset(30, 0, rect.getHeight());
+			unk378[mSelectedFile][i]->getPane()->hide();
+		JUTRect rect = unk348[mSelectedFile];
+		unk33C[mSelectedFile]->updatePaneSize(30, rect.getWidth(), 0);
+		unk33C[mSelectedFile]->updatePaneOffset(30, 0, rect.getHeight());
 
 		unk10 = 4;
 		for (int i = 0; i < 3; ++i) {
-			if (i == unkB0 && unkB6 != -1 && unkB6 != 1) {
+			if (i == mSelectedFile && mFunctionCursor != -1 && mFunctionCursor != 1) {
 				unk2CC[i]->hide();
 				unk2D8[i]->hide();
 				unk2FC[i]->hide();
@@ -2194,15 +2194,15 @@ s8 TCardLoad::selectFunction()
 
 	case 4: {
 		bool done = true;
-		done &= unk33C[unkB0]->update();
+		done &= unk33C[mSelectedFile]->update();
 		// Same unk2A4[3] OOB as case 1 above (decomp i<4 over a [3] array) —
 		// bound to the 3 real file-slot panes.
 		for (int i = 0; i < 3; ++i)
 			done &= unk2A4[i]->update();
 		if (done) {
-			unk33C[unkB0]->getPane()->hide();
+			unk33C[mSelectedFile]->getPane()->hide();
 			for (int i = 0; i < 3; ++i)
-				if (unkB0 == i && unkB6 != -1 && unkB6 != 1)
+				if (mSelectedFile == i && mFunctionCursor != -1 && mFunctionCursor != 1)
 					unk2A4[i]->getPane()->hide();
 			unk10 = 5;
 		}
@@ -2226,7 +2226,7 @@ void TCardLoad::setSelected(u8 param_1)
 	if (mState == 0) {
 		SMSGetMSound()->startSoundSystemSE(MSD_SE_SY_COIN_APPEAR, 0, nullptr,
 		                                   0);
-		unkB0 = param_1;
+		mSelectedFile = param_1;
 		setupScoreScreen();
 	}
 }
@@ -2443,7 +2443,7 @@ void TCardLoad::changeScene()
 			selectBookmark(PROGRESS_UNK2, changeMode(unk24), true);
 		int rc = gpCardManager->probe();
 		if (rc == CARD_RESULT_READY) {
-			unkB6 = 0;
+			mFunctionCursor = 0;
 			s8 bm = selectBookmark(PROGRESS_UNK1B, PROGRESS_UNK0, true);
 			if (bm != -1 && unk40[bm].unk0 == 1)
 				unk1C = PROGRESS_UNK1E;
@@ -2482,19 +2482,19 @@ void TCardLoad::changeScene()
 			gpCardManager->probe();
 			switch (c) {
 			case 0: {
-				gpApplication.mSaveFile = unkB0;
-				TCardBookmarkInfo* bm   = &unk40[unkB0];
+				gpApplication.mSaveFile = mSelectedFile;
+				TCardBookmarkInfo* bm   = &unk40[mSelectedFile];
 				if (bm->unk18 == 0) {
 					TFlagManager::getInstance()->firstStart();
 					unk1C = PROGRESS_UNK29;
 				} else {
-					gpCardManager->readBlock(unkB0);
+					gpCardManager->readBlock(mSelectedFile);
 					unk1C = PROGRESS_UNK28;
 				}
 			} break;
 
 			case 1:
-				unkB1 = unkB0;
+				unkB1 = mSelectedFile;
 				unk1C = PROGRESS_UNK1C;
 				break;
 
@@ -2504,24 +2504,24 @@ void TCardLoad::changeScene()
 
 			case 3:
 				for (int i = 0; i < 3; ++i)
-					if (unkB0 == i)
+					if (mSelectedFile == i)
 						unk728[i]->show();
 					else
 						unk728[i]->hide();
 				unk2C->search('ROOT')->setAlpha(0);
 				gpCameraOption->moveToUp();
-				gpCardManager->readBlock(unkB0);
+				gpCardManager->readBlock(mSelectedFile);
 				mState = 4;
 				unkB8 = 0;
 				break;
 			}
 		} else if (rc != CARD_RESULT_BUSY) {
-			if (unk378[unkB0][0]->getPane()->isVisible()) {
+			if (unk378[mSelectedFile][0]->getPane()->isVisible()) {
 				for (int i = 0; i < 4; ++i)
-					unk378[unkB0][i]->getPane()->hide();
-				JUTRect local_6c = unk348[unkB0];
-				unk33C[unkB0]->updatePaneSize(30, local_6c.getWidth(), 0);
-				unk33C[unkB0]->updatePaneOffset(30, local_6c.getWidth(), 0);
+					unk378[mSelectedFile][i]->getPane()->hide();
+				JUTRect local_6c = unk348[mSelectedFile];
+				unk33C[mSelectedFile]->updatePaneSize(30, local_6c.getWidth(), 0);
+				unk33C[mSelectedFile]->updatePaneOffset(30, local_6c.getWidth(), 0);
 				unk10 = 4;
 			}
 
@@ -2536,7 +2536,7 @@ void TCardLoad::changeScene()
 			s8 choice = waitForChoiceBM(PROGRESS_UNK1F, PROGRESS_UNK2, 1);
 			gpCardManager->probe();
 			if (choice == 0) {
-				clearBookmark(unkB0);
+				clearBookmark(mSelectedFile);
 			} else if (choice == 1) {
 				gpCardManager->getBookmarkInfos(unk40);
 				unk1C = PROGRESS_UNK2;
@@ -2582,7 +2582,7 @@ void TCardLoad::changeScene()
 			s8 choice = waitForChoiceBM(PROGRESS_UNK1F, PROGRESS_UNK2, 1);
 			gpCardManager->probe();
 			if (choice == 0) {
-				clearBookmark(unkB0);
+				clearBookmark(mSelectedFile);
 			} else if (choice == 1) {
 				gpCardManager->getBookmarkInfos(unk40);
 			}
@@ -2747,9 +2747,9 @@ void TCardLoad::changeScene()
 		switch (prevUnk1C) {
 		case PROGRESS_UNK1C:
 #ifdef SMS_NATIVE_PLATFORM
-			if (unk284) // region-tolerant: option-wall absent in US scene
+			if (mOptionWall) // region-tolerant: option-wall absent in US scene
 #endif
-			unk284->offCollision();
+			mOptionWall->offCollision();
 
 		case PROGRESS_UNK13:
 		case PROGRESS_UNK3:
@@ -2767,9 +2767,9 @@ void TCardLoad::changeScene()
 		switch (unk1C) {
 		case PROGRESS_UNK1C:
 #ifdef SMS_NATIVE_PLATFORM
-			if (unk284) // region-tolerant: option-wall absent in US scene
+			if (mOptionWall) // region-tolerant: option-wall absent in US scene
 #endif
-			unk284->onCollision();
+			mOptionWall->onCollision();
 			unk275 = 0;
 			mGamePad->offFlag(0x1);
 			break;
@@ -2789,7 +2789,7 @@ void TCardLoad::changeScene()
 
 		if (unk1C == PROGRESS_UNK13) {
 			for (int i = 0; i < 3; ++i)
-				unk278[i]->makeBlockNormal();
+				mFileBlocks[i]->makeBlockNormal();
 		}
 	}
 

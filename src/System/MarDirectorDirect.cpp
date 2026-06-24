@@ -968,7 +968,7 @@ u8 TMarDirector::updateGameMode()
 				unk4C |= 0x2;
 				unk126 = 3;
 				fireStartDemoCamera(nullptr, nullptr, -1, 0.0f, false, nullptr,
-				                    0, unk250, 0);
+				                    0, mTransitionActor, 0);
 				break;
 			}
 

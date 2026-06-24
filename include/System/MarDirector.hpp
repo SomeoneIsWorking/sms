@@ -244,7 +244,7 @@ public:
 	/* 0x12C */ TDemoInfo unk12C[8];
 	/* 0x24C */ u8 unk24C;
 	/* 0x24D */ u8 unk24D;
-	/* 0x250 */ JDrama::TActor* unk250;
+	/* 0x250 */ JDrama::TActor* mTransitionActor;
 	/* 0x254 */ TDemoCannon* unk254;
 	/* 0x258 */ MSStage* unk258;
 	/* 0x25C */ TShine* unk25C;
