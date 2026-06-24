@@ -9,6 +9,7 @@
 #ifdef SMS_NATIVE_PLATFORM
 #include <dolphin/os.h>
 #include <cstdlib>
+#include <cstdio>
 #endif
 
 JPAEmitterManager::JPAEmitterManager(JPAResourceManager* param_1, s32 param_2,
@@ -249,10 +250,15 @@ JPABaseEmitter* JPAEmitterManager::createEmitterBase(
 	if (param_2 >= 8)
 		return nullptr;
 
-	if (getResourceManager(param_3)) {
+	if (unkA4[param_3]) {
+#ifdef SMS_NATIVE_PLATFORM
+		if (getenv("SB_JPA_DBG"))
+			fprintf(stderr, "[jpa] createEmitterBase id=%d grp=%d res=%p res->unk4=%p\n",
+			        (int)param_1, (int)param_3, (void*)unkA4[param_3],
+			        (void*)unkA4[param_3]->unk4);
+#endif
 		JPAEmitterData* emitterData
-		    = getResourceManager(param_3)->getEmitterResource()->getByUserIndex(
-		        param_1);
+		    = unkA4[param_3]->getEmitterResource()->getByUserIndex(param_1);
 		if (!emitterData)
 			return nullptr;
 
