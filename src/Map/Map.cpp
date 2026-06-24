@@ -450,9 +450,32 @@ void TMap::load(JSUMemoryInputStream& stream)
 				f32 cy = (t.mPoint1.y + t.mPoint2.y + t.mPoint3.y) / 3.0f;
 				const TBGCheckData* r = nullptr;
 				f32 gy = checkGround(cx, cy + 200.0f, cz, &r);
-				fprintf(stderr, "[mapcol] GROUND tri%d centroid(%.0f %.0f %.0f) "
-				        "-> checkGround=%.1f found=%s\n", i, cx, cy, cz, gy,
-				        (gy < 9000000.0f) ? "YES" : "NO");
+				// Walk the centroid cell's ground list directly to see if tri is linked.
+				int gridX = (int)((cx + mCollisionData->mGridExtentX) * (1.0f / 1024));
+				int gridZ = (int)((cz + mCollisionData->mGridExtentY) * (1.0f / 1024));
+				const TBGCheckList* h =
+				    mCollisionData->getGridRoot14(gridX, gridZ).getGroundList();
+				int nlist = 0;
+				for (const TBGCheckList* p = h; p && nlist < 9999; p = p->getNext())
+					++nlist;
+				fprintf(stderr, "[mapcol] GROUND tri%d centroid(%.0f %.0f %.0f) cell(x%d z%d) "
+				        "-> checkGround=%.1f found=%s | groundListLen=%d\n", i, cx, cy, cz,
+				        gridX, gridZ, gy, (gy < 9000000.0f) ? "YES" : "NO", nlist);
+				// Dump each linked triangle + which point-in-tri edge test fails for the centroid.
+				for (const TBGCheckList* p = h; p; p = p->getNext()) {
+					const TBGCheckData* d = p->unk8;
+					f32 e1 = (d->mPoint1.z - cz) * (d->mPoint2.x - d->mPoint1.x)
+					         - (d->mPoint1.x - cx) * (d->mPoint2.z - d->mPoint1.z);
+					f32 e2 = (d->mPoint2.z - cz) * (d->mPoint3.x - d->mPoint2.x)
+					         - (d->mPoint2.x - cx) * (d->mPoint3.z - d->mPoint2.z);
+					f32 e3 = (d->mPoint3.z - cz) * (d->mPoint1.x - d->mPoint3.x)
+					         - (d->mPoint3.x - cx) * (d->mPoint1.z - d->mPoint3.z);
+					fprintf(stderr, "[mapcol]    listTri p1(%.0f %.0f)p2(%.0f %.0f)p3(%.0f %.0f) "
+					        "minY=%.0f e1=%.0f e2=%.0f e3=%.0f inside=%d\n",
+					        d->mPoint1.x, d->mPoint1.z, d->mPoint2.x, d->mPoint2.z,
+					        d->mPoint3.x, d->mPoint3.z, d->mMinY, e1, e2, e3,
+					        (e1 >= -1 && e2 >= -1 && e3 >= -1));
+				}
 				break;
 			}
 		}
