@@ -9,6 +9,7 @@ static const char* SMS_NO_MEMORY_MESSAGE   = "メモリが足りません\n";
 #include <JSystem/JKernel/JKRFileLoader.hpp>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #ifdef SMS_NATIVE_PLATFORM
 // Explicit big-endian reads + in-place host swaps for the BE .col asset (see
 // TMapCollisionBase::init). Never struct-overlay; portable across host endianness.
@@ -151,6 +152,30 @@ void TMapCollisionBase::init(const char* param_1, u16 param_2,
 		}
 		unk1C = arr;
 
+#ifdef SMS_NATIVE_PLATFORM
+		if (getenv("SB_COL_DBG")) {
+			fprintf(stderr, "[col] vertCount=%u vecOff=0x%x groupCount=%u groupOff=0x%x\n",
+			        vertCount, vecOff, groupCount, groupOff);
+			u32 maxIdx = 0, badIdx = 0;
+			for (u32 i = 0; i < groupCount; ++i) {
+				s32 n = arr[i].unk2;
+				const s16* idx = arr[i].unk8;
+				s32 lo = 0x7fff, hi = -1;
+				for (s32 j = 0; j < n * 3; ++j) {
+					s16 v = idx[j];
+					if (v > hi) hi = v;
+					if (v < lo) lo = v;
+					if ((u32)v >= vertCount || v < 0) ++badIdx;
+				}
+				if ((u32)hi > maxIdx) maxIdx = hi;
+				if (i < 4)
+					fprintf(stderr, "[col]  group%u n=%d off8=0x%x idxRange[%d..%d]\n",
+					        i, n, (u32)((const u8*)idx - host), lo, hi);
+			}
+			fprintf(stderr, "[col] groups=%u maxIdxUsed=%u (vertCount=%u) outOfRangeIdx=%u\n",
+			        groupCount, maxIdx, vertCount, badIdx);
+		}
+#endif
 		if (param_2 & 0x8000)
 			unk5C |= 0x8000;
 		return;

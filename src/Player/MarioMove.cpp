@@ -2067,6 +2067,16 @@ void TMario::thinkSituation()
 		} else
 #endif
 		{
+#ifdef SMS_NATIVE_PLATFORM
+			if (getenv("SB_DEATH_DBG")) {
+				static bool once = false;
+				if (!once) { once = true;
+					fprintf(stderr, "[optparams] mZ=%.1f mXMin=%.1f mXMax=%.1f (Mario pre-clamp x=%.1f z=%.1f)\n",
+					        mOptionParams.mZ.get(), mOptionParams.mXMin.get(),
+					        mOptionParams.mXMax.get(), mPosition.x, mPosition.z);
+				}
+			}
+#endif
 			mPosition.z = mOptionParams.mZ.get();
 			if (mPosition.x < mOptionParams.mXMin.get())
 				mPosition.x = mOptionParams.mXMin.get();
