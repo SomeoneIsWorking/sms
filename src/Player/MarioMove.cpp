@@ -6,6 +6,10 @@
 #include <System/StageUtil.hpp>
 #include <System/EmitterViewObj.hpp>
 #include <MarioUtil/MtxUtil.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 #include <MarioUtil/MathUtil.hpp>
 #include <MarioUtil/EffectUtil.hpp>
 #include <M3DUtil/M3UModelMario.hpp>
@@ -1923,6 +1927,16 @@ void TMario::calcGroundMtx(const JGeometry::TVec3<f32>& param_1)
 
 void TMario::thinkSituation()
 {
+#ifdef SMS_NATIVE_PLATFORM
+	if (isMario() && getenv("SB_DEATH_DBG")) {
+		static int s_h = -999;
+		if ((int)mHealth != s_h) {
+			fprintf(stderr, "[hp] thinkSituation entry: health=%d status=0x%x gameover=%d\n",
+			        (int)mHealth, (unsigned)mStatus, checkFlag(MARIO_FLAG_GAME_OVER) ? 1 : 0);
+			s_h = mHealth;
+		}
+	}
+#endif
 	mPrevFlag = mFlag;
 	if (unkBC < 0.0f)
 		unkBC += mJumpParams.mTrampolineDec.get();
@@ -1941,6 +1955,18 @@ void TMario::thinkSituation()
 	if (mGroundPlane->isUnderground())
 		onFlag(MARIO_FLAG_VISIBLE);
 
+#ifdef SMS_NATIVE_PLATFORM
+	if (isMario() && getenv("SB_DEATH_DBG")) {
+		static int s_once = 0;
+		if (!s_once) {
+			s_once = 1;
+			fprintf(stderr, "[oobkill] touch4cm=%d gpBGType=%d illegal=%d oob=%d status=0x%x optionMap=%d\n",
+			        (int)isTouchGround4cm(), (int)mGroundPlane->mBGType,
+			        (int)mGroundPlane->isIllegalData(), (int)mGroundPlane->isOob(),
+			        (unsigned)mStatus, (int)SMS_isOptionMap());
+		}
+	}
+#endif
 	if (isMario() && isTouchGround4cm() && mStatus != MARIO_STATUS_DISAPPEAR
 	    && (mGroundPlane->isIllegalData() || mGroundPlane->isOob())) {
 		mOobKillTimer += mDeParams.mIllegalPlaneCtInc.get();
@@ -1966,6 +1992,21 @@ void TMario::thinkSituation()
 	f32 dVar7 = gpMap->checkGround(mPosition.x, mPosition.y - mVel.y,
 	                               mPosition.z, &ground);
 
+#ifdef SMS_NATIVE_PLATFORM
+	if (isMario() && getenv("SB_DEATH_DBG")) {
+		static int s_n = 0;
+		if (s_n < 8 || ground->isDeathPlane()) {
+			++s_n;
+			fprintf(stderr,
+			    "[death] mario(%.1f %.1f %.1f) groundY=%.1f bgType=%d "
+			    "death=%d -> %s\n",
+			    mPosition.x, mPosition.y, mPosition.z, dVar7,
+			    (int)ground->mBGType, (int)ground->isDeathPlane(),
+			    (ground->isDeathPlane() && dVar7 > mPosition.y) ? "GAME_OVER"
+			                                                    : "ok");
+		}
+	}
+#endif
 	if (ground->isDeathPlane() && dVar7 > mPosition.y) {
 		onFlag(MARIO_FLAG_GAME_OVER);
 		mHealth = 0;
@@ -2011,11 +2052,27 @@ void TMario::thinkSituation()
 	}
 
 	if (SMS_isOptionMap()) {
-		mPosition.z = mOptionParams.mZ.get();
-		if (mPosition.x < mOptionParams.mXMin.get())
-			mPosition.x = mOptionParams.mXMin.get();
-		if (mPosition.x > mOptionParams.mXMax.get())
-			mPosition.x = mOptionParams.mXMax.get();
+#ifdef SMS_NATIVE_PLATFORM
+		// SB_OPT_FIX: DIAGNOSTIC ONLY — the loaded option beach collision sits at
+		// x~3622-5484/z~-1848..107 but mOptionParams (Option.prm) come up as the
+		// placeholder defaults (846/2000/-1000), so Mario stands off the floor and
+		// the oob-kill timer GAME_OVERs him (blocking moveStage). Force him onto the
+		// real collision to confirm the chain. The REAL fix is loading Option.prm.
+		if (getenv("SB_OPT_FIX")) {
+			mPosition.z = -800.0f;
+			if (mPosition.x < 4000.0f)
+				mPosition.x = 4000.0f;
+			if (mPosition.x > 5000.0f)
+				mPosition.x = 5000.0f;
+		} else
+#endif
+		{
+			mPosition.z = mOptionParams.mZ.get();
+			if (mPosition.x < mOptionParams.mXMin.get())
+				mPosition.x = mOptionParams.mXMin.get();
+			if (mPosition.x > mOptionParams.mXMax.get())
+				mPosition.x = mOptionParams.mXMax.get();
+		}
 	}
 
 	if (!checkStatusType(MARIO_STATUS_FLAG_JUMPING))

@@ -50,6 +50,9 @@ public:
 	// fabricated
 	const TBGCheckList* getWallList() const { return unk0[2].getNext(); }
 	const TBGCheckList* getRoofList() const { return unk0[1].getNext(); }
+	// Ground triangles are linked into unk0[0] (planeType 0; see getListRoot /
+	// addCheckDataToGrid). The real checkGround reads root+4 = unk0[0].getNext().
+	const TBGCheckList* getGroundList() const { return unk0[0].getNext(); }
 
 public:
 	/* 0x0 */ TBGCheckList unk0[3];
