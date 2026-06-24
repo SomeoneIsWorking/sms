@@ -4,7 +4,10 @@
 #include <JSystem/J3D/J3DGraphAnimator/J3DAnimation.hpp>
 #ifdef SMS_NATIVE_PLATFORM
 #include <cmath>
+#include <cstdio>
 #include <dolphin/os.h>
+#include <JSystem/JUtility/JUTNameTab.hpp>
+#include <JSystem/J3D/J3DGraphBase/J3DTransform.hpp>
 #endif
 
 J3DMtxCalc* M3UModelCommon::getMtxCalc(const M3UMtxCalcSetInfo& param_1)
@@ -145,16 +148,65 @@ void M3UModel::perform(u32 param_1, JDrama::TGraphics* param_2)
 						for (int c = 0; c < 3; ++c)
 							if (!std::isfinite(m[r][c])) { nan_r = 1; break; }
 					if (nan_t || nan_r) {
+						const char* jname = "?";
+						const J3DTransformInfo* ti = nullptr;
+						J3DMtxCalc* mc = nullptr;
+						if (unk8->mModelData) {
+							if (JUTNameTab* nt = unk8->mModelData->getJointName())
+								if (const char* nm = nt->getName(j)) jname = nm;
+							if (J3DJoint* jp = unk8->mModelData->getJointNodePointer(j)) {
+								ti = &jp->getTransformInfo();
+								mc = jp->getMtxCalc();
+							}
+						}
+						// Dump every joint's matrix to find the first joint whose output
+						// is NaN — that's the source (later joints' NaN is propagated via
+						// MTXConcat from a NaN parent). Skip 0 to keep noise low.
+						fprintf(stderr, "  --- joint-mtx walk ---\n");
+						JUTNameTab* nt2 = unk8->mModelData ? unk8->mModelData->getJointName() : nullptr;
+						for (u16 k = 0; k < nj; ++k) {
+							MtxPtr mk = unk8->getAnmMtx(k);
+							bool nt_k = !std::isfinite(mk[0][3]) || !std::isfinite(mk[1][3]) || !std::isfinite(mk[2][3]);
+							bool nr_k = false;
+							for (int rr = 0; rr < 3 && !nr_k; ++rr)
+								for (int cc = 0; cc < 3; ++cc)
+									if (!std::isfinite(mk[rr][cc])) { nr_k = true; break; }
+							const char* nm = "?";
+							if (nt2) if (const char* x = nt2->getName(k)) nm = x;
+							const J3DTransformInfo* ti2 = nullptr;
+							J3DMtxCalc* mc2 = nullptr;
+							if (J3DJoint* jp2 = unk8->mModelData->getJointNodePointer(k)) {
+								ti2 = &jp2->getTransformInfo();
+								mc2 = jp2->getMtxCalc();
+							}
+							fprintf(stderr, "  j%2u %-16s nan(t=%d r=%d) t=(%.2f,%.2f,%.2f) "
+							        "diag=(%.3f,%.3f,%.3f) mc=%p | BMD s=(%.2f,%.2f,%.2f) "
+							        "r=(%d,%d,%d) t=(%.2f,%.2f,%.2f)\n",
+							        (unsigned)k, nm, nt_k?1:0, nr_k?1:0,
+							        mk[0][3], mk[1][3], mk[2][3],
+							        mk[0][0], mk[1][1], mk[2][2], (void*)mc2,
+							        ti2?ti2->mScale.x:0, ti2?ti2->mScale.y:0, ti2?ti2->mScale.z:0,
+							        ti2?(int)ti2->mRotation.x:0, ti2?(int)ti2->mRotation.y:0, ti2?(int)ti2->mRotation.z:0,
+							        ti2?ti2->mTranslate.x:0, ti2?ti2->mTranslate.y:0, ti2?ti2->mTranslate.z:0);
+						}
+						fprintf(stderr, "  --- end walk ---\n");
+						fflush(stderr);
 						OSPanic(__FILE__, __LINE__,
 						        "M3UModel::perform(2): NaN joint matrix at joint %u/%u "
-						        "(nan_t=%d nan_r=%d) - anim/skeleton calc produced "
-						        "invalid matrices. m=[r0(%f,%f,%f,%f) r1(%f,%f,%f,%f) "
-						        "r2(%f,%f,%f,%f)] this=%p model=%p",
-						        (unsigned)j, (unsigned)nj, nan_t, nan_r,
+						        "name='%s' (nan_t=%d nan_r=%d) anim/skeleton calc produced "
+						        "invalid matrices.\n"
+						        "  matrix m=[r0(%f,%f,%f,%f) r1(%f,%f,%f,%f) r2(%f,%f,%f,%f)]\n"
+						        "  BMD-TRS scale=(%f,%f,%f) rot=(%d,%d,%d) translate=(%f,%f,%f) mtxCalc=%p\n"
+						        "  this=%p model=%p modelData=%p",
+						        (unsigned)j, (unsigned)nj, jname, nan_t, nan_r,
 						        m[0][0],m[0][1],m[0][2],m[0][3],
 						        m[1][0],m[1][1],m[1][2],m[1][3],
 						        m[2][0],m[2][1],m[2][2],m[2][3],
-						        (void*)this, (void*)unk8);
+						        ti ? ti->mScale.x : 0, ti ? ti->mScale.y : 0, ti ? ti->mScale.z : 0,
+						        ti ? (int)ti->mRotation.x : 0, ti ? (int)ti->mRotation.y : 0, ti ? (int)ti->mRotation.z : 0,
+						        ti ? ti->mTranslate.x : 0, ti ? ti->mTranslate.y : 0, ti ? ti->mTranslate.z : 0,
+						        (void*)mc,
+						        (void*)this, (void*)unk8, (void*)unk8->mModelData);
 					}
 				}
 			}
