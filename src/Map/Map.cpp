@@ -203,9 +203,26 @@ void TMap::load(JSUMemoryInputStream& stream)
 #ifdef SMS_NATIVE_PLATFORM
 	if (getenv("SB_DEATH_DBG")) {
 		const TBGCheckData* g = nullptr;
-		fprintf(stderr, "[mapcol] gridExtent(%.0f,%.0f) numTri=%u added=%u\n",
+		fprintf(stderr, "[mapcol] gridExtent(%.0f,%.0f) numTri=%u added=%u numList=%u listUsed=%u\n",
 		        mCollisionData->mGridExtentX, mCollisionData->mGridExtentY,
-		        mCollisionData->unk1C, mCollisionData->unk34);
+		        mCollisionData->unk1C, mCollisionData->unk34,
+		        mCollisionData->unk20, mCollisionData->unk38);
+		// Mario's option rail is x846-1800/z-1000; the disc map.col has a flat y=100
+		// floor there. Probe it directly + walk the cell's ground list.
+		for (int xi = 0; xi < 2; ++xi) {
+			f32 rx = xi ? 1400.0f : 846.0f, rz = -1000.0f;
+			const TBGCheckData* rr = nullptr;
+			f32 ry = checkGround(rx, 500.0f, rz, &rr);
+			int cgx = (int)((rx + mCollisionData->mGridExtentX) * (1.0f / 1024));
+			int cgz = (int)((rz + mCollisionData->mGridExtentY) * (1.0f / 1024));
+			int ln = 0;
+			for (const TBGCheckList* p =
+			         mCollisionData->getGridRoot14(cgx, cgz).getGroundList();
+			     p && ln < 9999; p = p->getNext())
+				++ln;
+			fprintf(stderr, "[mapcol] RAIL checkGround(%.0f,%.0f)=%.1f cell(x%d z%d) groundListLen=%d\n",
+			        rx, rz, ry, cgx, cgz, ln);
+		}
 		{
 			TMapCollisionBase* cb = mModelManager->mCollision;
 			fprintf(stderr, "[mapcol] static vtxCount=%u (>=350:%d skips MTX xform) "
