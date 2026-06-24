@@ -1,5 +1,9 @@
 #include <Player/Mario.hpp>
 
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 #include <M3DUtil/M3UModelMario.hpp>
 #include <MarioUtil/RumbleMgr.hpp>
 #include <MarioUtil/MathUtil.hpp>
@@ -205,6 +209,12 @@ void TMario::normalizeNozzle()
 
 void TMario::loserExec()
 {
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_DEATH_DBG"))
+		fprintf(stderr, "[loserExec] status=0x%x health=%d hpMax=%d air=%.1f pos(%.1f %.1f %.1f)\n",
+		        (unsigned)mStatus, (int)mHealth, (int)mDeParams.mHpMax.get(), mAir,
+		        mPosition.x, mPosition.y, mPosition.z);
+#endif
 	// volatile u32 padding[2];
 	if (mStatus != MARIO_STATUS_SWIM_DOWN && mStatus != MARIO_STATUS_ELEC_DOWN
 	    && mStatus != MARIO_STATUS_SWIM_P_DOWN

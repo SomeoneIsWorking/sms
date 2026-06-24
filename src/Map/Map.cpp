@@ -1,5 +1,10 @@
 #include <Map/Map.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 #include <Map/MapCollisionData.hpp>
+#include <Map/MapData.hpp>
 #include <Map/MapModel.hpp>
 #include <Map/MapWarp.hpp>
 #include <Map/MapXlu.hpp>
@@ -195,6 +200,52 @@ void TMap::load(JSUMemoryInputStream& stream)
 	mWarp->initModel();
 	mWarp->init(stream);
 	mModelManager->mCollision->setUp();
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_DEATH_DBG")) {
+		const TBGCheckData* g = nullptr;
+		fprintf(stderr, "[mapcol] gridExtent(%.0f,%.0f) numTri=%u added=%u\n",
+		        mCollisionData->mGridExtentX, mCollisionData->mGridExtentY,
+		        mCollisionData->unk1C, mCollisionData->unk34);
+		{
+			TMapCollisionBase* cb = mModelManager->mCollision;
+			fprintf(stderr, "[mapcol] static vtxCount=%u (>=350:%d skips MTX xform) "
+			        "unk20 trans(%.1f %.1f %.1f) raw vtx0(%.1f %.1f %.1f)\n",
+			        cb->unk10, (int)(cb->unk10 >= 0x15E),
+			        cb->unk20[0][3], cb->unk20[1][3], cb->unk20[2][3],
+			        cb->unk14 ? cb->unk14[0].x : -1, cb->unk14 ? cb->unk14[0].y : -1,
+			        cb->unk14 ? cb->unk14[0].z : -1);
+		}
+		// Find a GROUND triangle (normal.y>0.9) and test checkGround at its
+		// centroid — settles whether checkGround can find linked triangles.
+		const TBGCheckData* tg = mCollisionData->unk28;
+		for (int i = 0; i < (int)mCollisionData->unk34; ++i) {
+			const TBGCheckData& t = tg[i];
+			if (t.mNormal.y > 0.9f) {
+				f32 cx = (t.mPoint1.x + t.mPoint2.x + t.mPoint3.x) / 3.0f;
+				f32 cz = (t.mPoint1.z + t.mPoint2.z + t.mPoint3.z) / 3.0f;
+				f32 cy = (t.mPoint1.y + t.mPoint2.y + t.mPoint3.y) / 3.0f;
+				const TBGCheckData* r = nullptr;
+				f32 gy = checkGround(cx, cy + 200.0f, cz, &r);
+				fprintf(stderr, "[mapcol] GROUND tri%d centroid(%.0f %.0f %.0f) "
+				        "-> checkGround=%.1f found=%s\n", i, cx, cy, cz, gy,
+				        (gy < 9000000.0f) ? "YES" : "NO");
+				break;
+			}
+		}
+		(void)g;
+		const TBGCheckData* tris = mCollisionData->unk28;
+		for (int i = 0; i < 6 && i < (int)mCollisionData->unk34; ++i) {
+			const TBGCheckData& t = tris[i];
+			fprintf(stderr, "[mapcol]   tri%d bg=%d minY=%.0f maxY=%.0f "
+			        "p1(%.0f %.0f %.0f) p2(%.0f %.0f %.0f) p3(%.0f %.0f %.0f) n(%.2f %.2f %.2f)\n",
+			        i, (int)t.mBGType, t.mMinY, t.mMaxY,
+			        t.mPoint1.x, t.mPoint1.y, t.mPoint1.z,
+			        t.mPoint2.x, t.mPoint2.y, t.mPoint2.z,
+			        t.mPoint3.x, t.mPoint3.y, t.mPoint3.z,
+			        t.mNormal.x, t.mNormal.y, t.mNormal.z);
+		}
+	}
+#endif
 }
 
 TMap::TMap(const char* name)

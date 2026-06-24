@@ -873,6 +873,17 @@ u8 TMarDirector::updateGameMode()
 
 	switch (unk124) {
 	case 0:
+#ifdef SMS_NATIVE_PLATFORM
+		if (sb_dir_dbg()) {
+			static int s_go = -1;
+			int go = SMS_CheckMarioFlag(MARIO_FLAG_GAME_OVER) ? 1 : 0;
+			if (go != s_go) {
+				fprintf(stderr, "[gamemode] unk124=0 unk4C=0x%x GAME_OVER=%d mState=%d\n",
+				        unk4C, go, (int)mState);
+				s_go = go;
+			}
+		}
+#endif
 		if (!(unk4C & 0x1FFF)) {
 			if (SMS_CheckMarioFlag(MARIO_FLAG_GAME_OVER)) {
 				unk4C |= 0x20;

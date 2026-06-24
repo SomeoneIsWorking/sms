@@ -1,6 +1,10 @@
 #include <Map/MapCollisionData.hpp>
 #include <Map/MapData.hpp>
 #include <types.h>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 
 TBGCheckData* TMapCollisionData::allocCheckData(u32 count)
 {
@@ -203,8 +207,20 @@ void TMapCollisionData::addCheckDataToGrid(TBGCheckData* param_1, int param_2)
 	int local_b4;
 	int local_b0;
 	int local_b8;
-	if (getGridArea(param_1, iVar7, &local_ac, &local_b4, &local_b0,
-	                &local_b8)) {
+	bool gga = getGridArea(param_1, iVar7, &local_ac, &local_b4, &local_b0,
+	                       &local_b8);
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_DEATH_DBG")) {
+		static int s_calls = 0, s_inGrid = 0;
+		++s_calls;
+		if (gga)
+			++s_inGrid;
+		if (s_calls % 200 == 0 || s_calls < 4)
+			fprintf(stderr, "[addgrid] call#%d (inGrid=%d) planeType=%d param2=%d gga=%d cells[z%d..%d,x%d..%d]\n",
+			        s_calls, s_inGrid, iVar7, param_2, (int)gga, local_b4, local_b8, local_ac, local_b0);
+	}
+#endif
+	if (gga) {
 		for (int i = local_b4; i <= local_b8; ++i) {
 			for (int j = local_ac; j <= local_b0; ++j) {
 				if (param_2 == 1) {
@@ -230,7 +246,18 @@ void TMapCollisionData::addCheckDataToGrid(TBGCheckData* param_1, int param_2)
 					int iVar2 = (i * 1024.0f) - mGridExtentY;
 					int iVar3 = (j + 1) * 1024.0f - mGridExtentX;
 					int iVar4 = j * 1024.0f - mGridExtentX;
-					if (polygonIsInGrid(iVar4, iVar2, iVar3, iVar1, param_1)) {
+					bool pin = polygonIsInGrid(iVar4, iVar2, iVar3, iVar1, param_1);
+#ifdef SMS_NATIVE_PLATFORM
+					if (iVar7 == 0 && getenv("SB_DEATH_DBG")) {
+						static int gl = 0, gtot = 0;
+						++gtot; if (pin) ++gl;
+						if (gtot % 500 == 0 || gtot < 3)
+							fprintf(stderr, "[gndlink] tests=%d linked=%d (cell z%d x%d cellX[%d..%d] triX[%.0f..%.0f])\n",
+							        gtot, gl, i, j, iVar4, iVar3,
+							        param_1->mPoint1.x, param_1->mPoint3.x);
+					}
+#endif
+					if (pin) {
 						TBGCheckList* list = getListRoot(i, j, param_2, iVar7);
 						TBGCheckList* list2;
 						switch (iVar7) {
