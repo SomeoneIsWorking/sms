@@ -1,5 +1,11 @@
 #include <System/Params.hpp>
 #include <JSystem/JSupport/JSUMemoryInputStream.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+const char* g_sb_prm_dbg_name = nullptr; // set by load(filename) so load(stream) can name entries
+#endif
 
 static const char SceneParamsDir[] = "/map/params";
 
@@ -18,6 +24,19 @@ void TParams::load(JSUMemoryInputStream& stream)
 			TBaseParam* param;
 			for (param = mHead; param != nullptr; param = param->next) {
 				if (keyCode == param->keyCode && !strcmp(buffer, param->name)) {
+#ifdef SMS_NATIVE_PLATFORM
+					if (g_sb_prm_dbg_name && getenv("SB_PRM_DBG")
+					    && strstr(g_sb_prm_dbg_name, "Option")) {
+						s32 pos = stream.getPosition();
+						stream.skip(4);
+						u32 bits = stream.read32b();
+						f32 v;
+						__builtin_memcpy(&v, &bits, 4);
+						stream.seekPos(pos, JSUStreamSeekFrom_SET);
+						fprintf(stderr, "[prm] %s: '%s' key=0x%x val=%.2f (0x%08x)\n",
+						        g_sb_prm_dbg_name, buffer, keyCode, v, bits);
+					}
+#endif
 					param->load(stream);
 					break;
 				}
@@ -48,6 +67,9 @@ bool TParams::load(const char* filename)
 	if (filename[0] == '/') {
 		filename++;
 	}
+#ifdef SMS_NATIVE_PLATFORM
+	g_sb_prm_dbg_name = filename;
+#endif
 
 	void* resource = nullptr;
 	if (mSceneArc != nullptr && mSceneArc->becomeCurrent(SceneParamsDir)) {
