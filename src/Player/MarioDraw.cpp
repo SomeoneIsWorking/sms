@@ -2,6 +2,10 @@
 #include <Player/MarioAnimeData.hpp>
 #include <Player/MarioCap.hpp>
 #include <Player/WaterGun.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 
 #include <MarioUtil/MathUtil.hpp>
 #include <MarioUtil/PacketUtil.hpp>
@@ -2097,6 +2101,19 @@ void TMario::calcAnim(u32 param_1, JDrama::TGraphics* graphics)
 	calcBaseMtx(baseMtx);
 	considerWaist();
 	MTXCopy(baseMtx, mModel->unk8->getBaseTRMtx());
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_MARIO_DBG: Mario base-TR matrix into the J3DModel — sanity-check before
+	// mModel->perform(2) (which runs M3UModel::perform → unk8->calc, the skeleton).
+	if (::getenv("SB_MARIO_DBG")) {
+		static long s_n = 0;
+		if (s_n < 6) { ++s_n;
+			fprintf(stderr, "[mario] calcAnim baseMtx.t=(%.1f,%.1f,%.1f) "
+			        "r0=(%.3f,%.3f,%.3f) anim=%d\n",
+			        baseMtx[0][3], baseMtx[1][3], baseMtx[2][3],
+			        baseMtx[0][0], baseMtx[0][1], baseMtx[0][2], (int)mAnimationId);
+		}
+	}
+#endif
 	mModel->perform(param_1, graphics);
 	gpMarioForCallBack = nullptr;
 
@@ -2123,10 +2140,28 @@ void TMario::calcAnim(u32 param_1, JDrama::TGraphics* graphics)
 	}
 
 	if (mCap != nullptr) {
-		mCap->unkC->setBaseTRMtx(mModel->unk8->getAnmMtx(mJointIdMHead));
+		MtxPtr m = mModel->unk8->getAnmMtx(mJointIdMHead);
+		mCap->unkC->setBaseTRMtx(m);
 		mCap->unk10[2]->setBaseTRMtx(mModel->unk8->getAnmMtx(mJointIdHead));
-		mCap->unk10[3]->setBaseTRMtx(mModel->unk8->getAnmMtx(mJointIdMHead));
+		mCap->unk10[3]->setBaseTRMtx(m);
 		mCap->perform(2, graphics);
+#ifdef SMS_NATIVE_PLATFORM
+		// SB_MARIO_DBG: head-joint matrix translation + anim id. NaN here = the J3D
+		// anim/skeleton calc (mModel->unk8->calc() inside M3UModel::perform(2)) is broken
+		// even though Mario's baseMtx is correct — the cap inherits NaN and renders at
+		// garbage NDC. Pairs with the [mario] base-mtx trace below in calcAnim.
+		if (::getenv("SB_MARIO_DBG")) {
+			static long s_n = 0;
+			if (s_n < 6) { ++s_n;
+				fprintf(stderr, "[mario] cap-pose pos=(%.0f,%.0f,%.0f) joints(mhead=%d head=%d) "
+				        "headMtx.t=(%.1f,%.1f,%.1f) anim=%d freeze=%d\n",
+				        mPosition.x, mPosition.y, mPosition.z,
+				        (int)mJointIdMHead, (int)mJointIdHead,
+				        m[0][3], m[1][3], m[2][3],
+				        (int)mAnimationId, (int)mFreezeTimer);
+			}
+		}
+#endif
 	}
 
 	if (checkStatusType(MARIO_STATUS_FLAG_UNK10000)) {

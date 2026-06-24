@@ -1,5 +1,9 @@
 #include <Player/Mario.hpp>
 #include <Player/MarioCap.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 #include <Player/WaterGun.hpp>
 #include <Player/Yoshi.hpp>
 #include <System/Resolution.hpp>
@@ -67,6 +71,23 @@ void TMario::thinkAloha()
 
 void TMario::perform(u32 param_1, JDrama::TGraphics* graphics)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_MARIO_DBG: log each perform() invocation's bit flags + the gating state
+	// (FLAG_IS_PERFORMING / mFreezeTimer). The perform list normally drives Mario with
+	// bits 0x1 (update/calcAnim → mCap perform(2)), 0x4 (calcView), 0x200 (entry); in
+	// sms-boot we get 0x3001/0x204/0x20C/0x10000000/0x08000000. Use this to confirm Mario
+	// is being driven before chasing a downstream render anomaly.
+	if (::getenv("SB_MARIO_DBG")) {
+		static long s_n = 0;
+		if (s_n < 200) { ++s_n;
+			fprintf(stderr, "[mario] perform #%ld flags=0x%08x is_performing=%d "
+			        "freezeTimer=%d pos=(%.0f,%.0f,%.0f)\n",
+			        s_n, param_1, checkFlag(MARIO_FLAG_IS_PERFORMING) ? 1 : 0,
+			        (int)mFreezeTimer, mPosition.x, mPosition.y, mPosition.z);
+		}
+	}
+#endif
+
 	if (unk114 & UNK114_FLAG_PROFILE)
 		TTimeRec::startTimer(0xff, 0x00, 0x00, 0x80);
 
