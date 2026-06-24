@@ -156,7 +156,13 @@ MActor* TMActorKeeper::createMActor(const char* model_data_name, u32 flags)
 		index = keeper->getIndex(model_data_name);
 	}
 
-	return createMActorFromNthData(index, flags);
+	MActor* a = createMActorFromNthData(index, flags);
+	// SB_MODEL_TRACE: name → MActor/J3DModel pointer, to identify captured geometry
+	// by its creating model (cross-ref with the renderer's per-batch model pointer).
+	if (getenv("SB_MODEL_TRACE"))
+		fprintf(stderr, "[modeltrace] createMActor '%s' -> actor=%p model=%p\n",
+		        model_data_name, (void*)a, a ? (void*)a->getModel() : nullptr);
+	return a;
 }
 
 MActor* TMActorKeeper::createMActorFromAllBmd(u32 flags)
