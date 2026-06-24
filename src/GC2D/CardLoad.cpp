@@ -2,6 +2,7 @@
 #include <stdio.h>
 #ifdef SMS_NATIVE_PLATFORM
 #include <stdlib.h>  // getenv (SB_SEL_DBG trace)
+#include <dolphin/os.h>  // OSPanic (fail-fast)
 extern "C" void sb_boot_request_dump(int);  // native present: event-triggered frame dump
 #endif
 #include <JSystem/JKernel/JKRFileLoader.hpp>
@@ -510,6 +511,45 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 				sb_boot_request_dump(6);
 			s_lastState = mState;
 			s_lastProg = unk1C;
+		}
+		// SB_SEL_POS: per-frame world-position telemetry for driving file
+		// selection — Mario must head-butt one of the 3 floating file blocks.
+		static const char* s_selPos = getenv("SB_SEL_POS");
+		if (s_selPos && (s_perfCount % 6) == 0) {
+			if (gpMarioOriginal) {
+				const JGeometry::TVec3<f32>& mp = gpMarioOriginal->mPosition;
+				fprintf(stderr, "[selpos] frame~%ld mario(%.1f %.1f %.1f) status=0x%x\n",
+				        s_perfCount, mp.x, mp.y, mp.z,
+				        (unsigned)gpMarioOriginal->mStatus);
+			}
+			for (int i = 0; i < 3; ++i) {
+				TFileLoadBlock* b = unk278[i];
+				if (!b)
+					continue;
+				const JGeometry::TVec3<f32>& bp = b->getPosition();
+				fprintf(stderr, "[selpos]   block%d(%.1f %.1f %.1f) unk144(%.1f %.1f %.1f) state=%d ttl=%d\n",
+				        i, bp.x, bp.y, bp.z, b->unk144.x, b->unk144.y, b->unk144.z,
+				        (int)b->mState, (int)b->mTimeTilAppear);
+			}
+		}
+		// SB_SEL_PICK=<0|1|2>: deterministic faithful file selection for headless
+		// driving. The player normally selects a file by head-butting a floating
+		// file block (collision -> touchPlayer -> marioHeadAttack -> pushed ->
+		// setSelected). Mario is in a scripted waitingStart state here and is not
+		// freely controllable headless, so once the file-block select screen
+		// (PROGRESS_UNK13) is waiting for a pick (selectBookmark sub-state
+		// unk10 == 2), invoke the chosen block's pushed() exactly as the head-butt
+		// would. This is an input-injection harness (like SB_PAD_SCRIPT), NOT a
+		// logic bandaid: it drives the genuine selectBookmark -> selectFunction ->
+		// firstStart/readBlock -> setNextArea game path.
+		static const char* s_selPick = getenv("SB_SEL_PICK");
+		if (s_selPick && mState == 0 && unk1C == PROGRESS_UNK13 && unk10 == 2
+		    && unkB0 == (s8)-1) {
+			int idx = atoi(s_selPick);
+			if (idx >= 0 && idx < 3 && unk278[idx]) {
+				fprintf(stderr, "[selpick] injecting head-butt on block %d\n", idx);
+				unk278[idx]->pushed();
+			}
 		}
 		// Also trace the card-read progress (unk1C) advancing within mState 0.
 		if (s_selDbg && unk1C != s_lastProg) {
@@ -1128,15 +1168,18 @@ s8 TCardLoad::waitForChoice(TEProgress param_1, TEProgress param_2, int param_3)
 			                                   nullptr);
 			unkAC = gpEmitterManager4D2->unkC8[0][0];
 #ifdef SMS_NATIVE_PLATFORM
-			// Region/resource-tolerant: the cursor-sparkle particle (0x1FA) may not be
-			// resident in this scene's JPA bank, so createEmitter populates no slot and
-			// unkC8[0][0] is null. Skip the cosmetic setup instead of null-deref.
-			if (unkAC)
+			// FAIL FAST: the cursor-sparkle emitter (0x1FA) MUST be created here
+			// (the original has no null guard, so it always succeeds on HW). A
+			// null slot means a real wiring failure — gpEmitterManager4D2 has no
+			// resource 0x1FA (it must share gpResourceManager; see
+			// MarDirectorLoadResource) — not a tolerable cosmetic skip.
+			if (!unkAC)
+				OSPanic(__FILE__, __LINE__,
+				        "TCardLoad: cursor-sparkle emitter 0x1FA not created "
+				        "(gpEmitterManager4D2 missing resource 0x1FA)");
 #endif
-			{
-				unkAC->setRotation(0, 0, DEG2SHORTANGLE(12));
-				unkAC->setUnk190(0.9f, 1.0f, 0.1f);
-			}
+			unkAC->setRotation(0, 0, DEG2SHORTANGLE(12));
+			unkAC->setUnk190(0.9f, 1.0f, 0.1f);
 		} else if (unkC4 == 44) {
 			unk484[unkB7]->setCenteredSize(20, unk48C[unkB7].getWidth(),
 			                               unk48C[unkB7].getHeight(),
@@ -1316,10 +1359,13 @@ s8 TCardLoad::waitForChoiceBM(TEProgress param_1, TEProgress param_2,
 			                                   nullptr);
 			unkAC = gpEmitterManager4D2->unkC8[0][0];
 #ifdef SMS_NATIVE_PLATFORM
-			// Region/resource-tolerant: the cursor-sparkle particle (0x1FA) may not be
-			// resident in this scene's JPA bank, so createEmitter populates no slot and
-			// unkC8[0][0] is null. Skip the cosmetic setup instead of null-deref.
-			if (unkAC)
+			// FAIL FAST: see the matching site above — a null cursor-sparkle
+			// emitter slot is a real wiring failure (no resource 0x1FA), not a
+			// tolerable cosmetic skip; the original has no null guard.
+			if (!unkAC)
+				OSPanic(__FILE__, __LINE__,
+				        "TCardLoad: cursor-sparkle emitter 0x1FA not created "
+				        "(gpEmitterManager4D2 missing resource 0x1FA)");
 #endif
 			{
 				unkAC->setRotation(0, 0, DEG2SHORTANGLE(12));
@@ -1981,7 +2027,13 @@ s8 TCardLoad::selectFunction()
 
 	case 1: {
 		bool done = true;
-		for (int i = 0; i < 4; ++i)
+		// unk2A4 is the 3 file-slot panes (TExPane* unk2A4[3]). The decomp's
+		// `i < 4` here reads unk2A4[3] = &unk2B0 (a JUTRect) reinterpreted as a
+		// TExPane* and calls ->update() on it — that would fault on real GC
+		// hardware too, so it is a decomp transcription error, not faithful
+		// code. The parallel loop in case 0 correctly uses i < 3. Same
+		// LP64-weaponized OOB class fixed earlier in titleDraw (i<13 over [11]).
+		for (int i = 0; i < 3; ++i)
 			done &= unk2A4[i]->update();
 		done &= unk33C[unkB0]->update();
 		if (done) {
@@ -2143,7 +2195,9 @@ s8 TCardLoad::selectFunction()
 	case 4: {
 		bool done = true;
 		done &= unk33C[unkB0]->update();
-		for (int i = 0; i < 4; ++i)
+		// Same unk2A4[3] OOB as case 1 above (decomp i<4 over a [3] array) —
+		// bound to the 3 real file-slot panes.
+		for (int i = 0; i < 3; ++i)
 			done &= unk2A4[i]->update();
 		if (done) {
 			unk33C[unkB0]->getPane()->hide();
