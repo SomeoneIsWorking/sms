@@ -6,11 +6,6 @@
 #include <JSystem/J3D/J3DGraphBase/J3DMaterial.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DDrawBuffer.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DShape.hpp>
-#ifdef SMS_NATIVE_PLATFORM
-#include <JSystem/JMath.hpp>
-#include <cstdio>
-#include <cstdlib>
-#endif
 #include <JSystem/J3D/J3DGraphAnimator/J3DMaterialAnm.hpp>
 
 // TODO: what is this? This isn't part of mtx.h =/
@@ -107,24 +102,6 @@ void J3DMtxCalcBasic::recursiveEntry(J3DNode* node)
 
 void J3DMtxCalcBasic::calcTransform(u16 param_0, const J3DTransformInfo& info)
 {
-#ifdef SMS_NATIVE_PLATFORM
-	if (::getenv("SB_J3D_CALC")) {
-		J3DModel* mdl = j3dSys.getModel();
-		u16 nj = (mdl && mdl->mModelData) ? mdl->mModelData->getJointNum() : 0;
-		if (nj == 29) {
-			static int seen[32] = {0};
-			if (param_0 < 32 && !seen[param_0]) {
-				seen[param_0] = 1;
-				fprintf(stderr, "[j3dcalc-basic] mario j%u rot=(%d,%d,%d) s=(%f,%f,%f) t=(%f,%f,%f) info_ptr=%p\n",
-				        (unsigned)param_0,
-				        (int)info.mRotation.x, (int)info.mRotation.y, (int)info.mRotation.z,
-				        info.mScale.x, info.mScale.y, info.mScale.z,
-				        info.mTranslate.x, info.mTranslate.y, info.mTranslate.z,
-				        (const void*)&info);
-			}
-		}
-	}
-#endif
 	J3DSys::mCurrentS.x *= info.mScale.x;
 	J3DSys::mCurrentS.y *= info.mScale.y;
 	J3DSys::mCurrentS.z *= info.mScale.z;
@@ -166,24 +143,6 @@ void J3DMtxCalcBasic::calc(u16 param_0)
 void J3DMtxCalcSoftimage::calcTransform(u16 param_0,
                                         const J3DTransformInfo& info)
 {
-#ifdef SMS_NATIVE_PLATFORM
-	if (::getenv("SB_J3D_CALC")) {
-		J3DModel* mdl = j3dSys.getModel();
-		u16 nj = (mdl && mdl->mModelData) ? mdl->mModelData->getJointNum() : 0;
-		if (nj == 29) {   // Mario body
-			static int seen[32] = {0};
-			if (param_0 < 32 && !seen[param_0]) {
-				seen[param_0] = 1;
-				fprintf(stderr, "[j3dcalc-soft] mario j%u rot=(%d,%d,%d) s=(%f,%f,%f) t=(%f,%f,%f) info_ptr=%p\n",
-				        (unsigned)param_0,
-				        (int)info.mRotation.x, (int)info.mRotation.y, (int)info.mRotation.z,
-				        info.mScale.x, info.mScale.y, info.mScale.z,
-				        info.mTranslate.x, info.mTranslate.y, info.mTranslate.z,
-				        (const void*)&info);
-			}
-		}
-	}
-#endif
 	Mtx mtx;
 	J3DGetTranslateRotateMtx(info.mRotation.x, info.mRotation.y,
 	                         info.mRotation.z,
@@ -231,24 +190,6 @@ void J3DMtxCalcSoftimage::calcTransform(u16 param_0,
 
 void J3DMtxCalcMaya::calcTransform(u16 param_1, const J3DTransformInfo& param_2)
 {
-#ifdef SMS_NATIVE_PLATFORM
-	if (::getenv("SB_J3D_CALC")) {
-		J3DModel* mdl = j3dSys.getModel();
-		u16 nj = (mdl && mdl->mModelData) ? mdl->mModelData->getJointNum() : 0;
-		if (nj == 29) {
-			static int seen[32] = {0};
-			if (param_1 < 32 && !seen[param_1]) {
-				seen[param_1] = 1;
-				fprintf(stderr, "[j3dcalc-maya] mario j%u rot=(%d,%d,%d) s=(%f,%f,%f) t=(%f,%f,%f) info_ptr=%p\n",
-				        (unsigned)param_1,
-				        (int)param_2.mRotation.x, (int)param_2.mRotation.y, (int)param_2.mRotation.z,
-				        param_2.mScale.x, param_2.mScale.y, param_2.mScale.z,
-				        param_2.mTranslate.x, param_2.mTranslate.y, param_2.mTranslate.z,
-				        (const void*)&param_2);
-			}
-		}
-	}
-#endif
 	J3DModel* model    = j3dSys.getModel();
 	u8 scaleCompensate = model->getModelData()
 	                         ->getJointNodePointer(param_1)
