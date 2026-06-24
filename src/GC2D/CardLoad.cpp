@@ -517,8 +517,13 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 			    gpCameraOption ? gpCameraOption->mLoadPanTimer : -1,
 			    gpCameraOption ? gpCameraOption->mUpDownPanTimer : -1);
 			// When asked, dump frames as soon as the file/score select state is entered.
-			if (mState == 0 && getenv("SB_SEL_DUMP"))
-				sb_boot_request_dump(6);
+			// SB_SEL_DUMP_N controls the window (default 6) — a large value gives a
+			// continuous run covering later-appearing geometry (e.g. the option-camera
+			// intro pan bringing the title letters into view ~frame 70).
+			if (mState == 0 && getenv("SB_SEL_DUMP")) {
+				const char* nstr = getenv("SB_SEL_DUMP_N");
+				sb_boot_request_dump(nstr ? atoi(nstr) : 6);
+			}
 			s_lastState = mState;
 			s_lastProg = unk1C;
 		}

@@ -12,6 +12,8 @@
 #include <JSystem/JKernel/JKRHeap.hpp>
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstring>
+#include <cstdio>
+#include <cstdlib>
 #include <vector>
 #include <dolphin/os.h>
 #include "bmd_swap.h"
@@ -62,17 +64,25 @@ J3DModelData* J3DModelLoaderDataBase::load(const void* i_data, u32 i_flags)
 		return nullptr;
 	}
 
+	J3DModelData* result = nullptr;
 	if (magic == 'J3D2' && fileHeader->mType == 'bmd2') {
 		J3DModelLoader_v21 loader;
-		return loader.load(i_data, i_flags);
-	}
-
-	if (magic == 'J3D2' && fileHeader->mType == 'bmd3') {
+		result = loader.load(i_data, i_flags);
+	} else if (magic == 'J3D2' && fileHeader->mType == 'bmd3') {
 		J3DModelLoader_v26 loader;
-		return loader.load(i_data, i_flags);
+		result = loader.load(i_data, i_flags);
 	}
-
-	return nullptr;
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_MODEL_TRACE: log each BMD load's resulting J3DModelData + the caller's return
+	// address (addr2line -f -e sms-boot <caller> names the creating function). Used to
+	// identify captured geometry by which engine code built it.
+	if (result && ::getenv("SB_MODEL_TRACE")) {
+		static long s_n = 0;
+		std::fprintf(stderr, "[modeltrace] BMDLOAD #%ld modelData=%p caller=%p\n",
+		        s_n++, (void*)result, __builtin_return_address(0));
+	}
+#endif
+	return result;
 }
 
 J3DMaterialTable* J3DModelLoaderDataBase::loadMaterialTable(const void* i_data)
