@@ -45,10 +45,10 @@ int TMarDirector::loadResource()
 	this_00->createEffectInfoAry(iVar9);
 	gpResourceManager = new JPAResourceManager(0x201, 0x800, nullptr);
 	// The decomp left this assignment commented out (transcription gap): the
-	// constructed JPAEmitterManager must be stored in unk3B8 or every
+	// constructed JPAEmitterManager must be stored in mEmitterManager or every
 	// gpMarioParticleManager->emit() (e.g. the file-select head-butt sparkle)
 	// dereferences a null emitter manager. Restore the original assignment.
-	gpMarioParticleManager->unk3B8
+	gpMarioParticleManager->mEmitterManager
 	    = new JPAEmitterManager(gpResourceManager, lVar10, 0x100, 0x200, nullptr);
 	// gpEmitterManager4D2 is the small emitter pool for 2D menu sparkles (e.g.
 	// the file-select cursor glow, particle 0x1FA "ms_2d_pause_sel.jpa"). That
@@ -56,7 +56,7 @@ int TMarDirector::loadResource()
 	// must share it — the decomp's `nullptr` left it with no resource bank, so
 	// createEmitter(0x1FA) always failed and the consumers (CardLoad cursor
 	// sparkle) dereferenced an unpopulated unkC8 slot. Same transcription gap as
-	// the unk3B8 line above.
+	// the mEmitterManager line above.
 	gpEmitterManager4D2
 	    = new JPAEmitterManager(gpResourceManager, 200, 0x20, 0x40, nullptr);
 	loadParticle();
