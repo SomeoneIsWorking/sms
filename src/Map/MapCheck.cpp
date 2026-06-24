@@ -283,7 +283,12 @@ f32 TMapCollisionData::checkGroundList(f32 x, f32 y, f32 z, u8 flags,
 	}
 
 	*result = &mIllegalCheckData;
-	return 9999999.0f;
+	// NOT-FOUND must be a LOW sentinel: checkGround() takes the MAX of the unk18
+	// and unk14 grid-list results, so "not found" has to lose the MAX to a real
+	// (lower) ground Y. The decomp returned 9999999 (the ROOF sentinel), which
+	// always WON the max so every ground query missed. The DOL returns the same
+	// -32767 the out-of-grid path uses (checkGroundList 0x8018c334 -> *(r2-0x4428)).
+	return -32767.0f;
 }
 
 f32 TMapCollisionData::checkGround(f32 x, f32 y, f32 z, u8 flags,
