@@ -735,6 +735,39 @@ bool TMapObjBase::marioIsOn() const
 
 bool TMapObjBase::marioHeadAttack() const
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// Ported from GMSE01 marioHeadAttack__11TMapObjBaseCFv (0x801b8df8) — the
+	// decomp left this an empty stub (returned garbage). Mario is head-butting
+	// this block when he is below its bottom edge, in a jump, and moving upward.
+	f32 blockBottom = mPosition.y - mYOffset;
+	if (!(gpMarioPos->y < blockBottom))
+		return false;
+	if (!SMS_IsMarioStatusTypeJumping())
+		return false;
+	return *gpMarioSpeedY > 0.0f;
+#endif
+}
+
+bool TMapObjBase::marioHipAttack() const
+{
+#ifdef SMS_NATIVE_PLATFORM
+	// Ported from GMSE01 marioHipAttack__11TMapObjBaseCFv (0x801b8d88) — empty
+	// stub in the decomp. Mario is hip-dropping onto this block.
+	if (SMS_GetMarioGrPlane()->getActor() != this)
+		return false;
+	if (!SMS_IsMarioStatusHipDrop())
+		return false;
+	return (gpMarioPos->y + *gpMarioSpeedY) < SMS_GetMarioGrLevel();
+#endif
+}
+
+void TMapObjBase::emitColumnWater() { }
+
+JPABaseEmitter* TMapObjBase::emitAndSRT(s32 param_1, u8 param_2,
+                                        const JGeometry::TVec3<f32>* param_3,
+                                        const JGeometry::TVec3<f32>& param_4,
+                                        const JGeometry::TVec3<f32>& param_5)
+{
 	if (gpMarioPos->y < (mPosition.y - mYOffset)
 	    && SMS_IsMarioStatusTypeJumping() && *gpMarioSpeedY > 0.0f)
 		return true;
