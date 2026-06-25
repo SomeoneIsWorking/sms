@@ -1,4 +1,8 @@
 #include <Strategic/LiveActor.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 #include <Strategic/ObjModel.hpp>
 #include <Strategic/question.hpp>
 #include <Strategic/Spine.hpp>
@@ -248,6 +252,14 @@ void TLiveActor::control()
 
 void TLiveActor::calcRootMatrix()
 {
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_ROOTMTX_DBG")) {
+		static long n = 0;
+		if ((++n % 200) == 1)
+			fprintf(stderr, "[rootmtx] calcRootMatrix #%ld '%s' pos=%.1f,%.1f,%.1f\n",
+			        n, getName(), mPosition.x, mPosition.y, mPosition.z);
+	}
+#endif
 	J3DModel* model = mMActor->getModel();
 	MsMtxSetXYZRPH(model->getBaseTRMtx(), mPosition.x, mPosition.y, mPosition.z,
 	               mRotation.x, mRotation.y, mRotation.z);
