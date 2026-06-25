@@ -1,4 +1,39 @@
-# Own the GX perform-list draw path (retire hand-driving) — 2026-06-25
+# GX perform-list vs hand-driven scene_drive — measurements — 2026-06-25
+
+## ⛔ DIRECTION CORRECTION (user, 2026-06-25): DO NOT FLIP / DO NOT retire hand-driving
+The user explicitly rejected the "make the GX-list capture the default / retire the hand-driving"
+plan ("we are making a PC port of this game, don't flip anything"). The chosen direction is
+**EXTEND scene_drive (the PC-native walk)** to draw more of the scene — NOT capture/replay the GC
+perform-list dispatch. `SB_OWN_GXLIST` (committed f64dbeb / reference f67feb2) stays only as an
+OPT-IN DIAGNOSTIC that MEASURES what the real perform-list flow draws (it never changes the
+default). The measurements below are still valid; the "own the GX list / flip" framing is dead.
+
+## Why naive scene_drive extension (drive the priority/reflection map buffers) adds NOTHING (measured)
+Tried adding drive_group("マップ", 0x4000200 / 0x2000200) for the Map 半透明優先 / 優先2 buffers and
+drive_group1("落書きグループ", Graffito): groups FOUND, but 0 extra batches (still 57). Root cause:
+those priority/reflection buffers are populated by the real list's **マップグループ→DrawBuf MapOpa**
+entry path (preEntry: マップグループ@0x204 → MapOpa, THEN マップ@0x4000200 → 優先). The hand-driven
+scene_drive draws the map via a DIFFERENT path — **scene->perform(0x8)** (ストラテジ→マップグループ into
+the SCENE's own buffers) — so マップ's priority entry has no base to build on and yields nothing.
+The two map-draw mechanisms are mutually exclusive: an earlier session ADDED drive_map
+(マップグループ→MapOpa) and it Z-FOUGHT the scene->perform(0x8) map (duplicate opaque surfaces), so
+it was removed. To faithfully get the priority/reflection layers, scene_drive would have to SWITCH
+the map base from scene->perform(0x8) to the マップグループ→MapOpa path (+ mirror/indirect/priority),
+i.e. a larger refactor — not a naive add. (Reverted the dead drive_map_layers; 0 measured benefit.)
+
+## The 57→130 gap is mostly redundant passes + minor UI, NOT missing visible scene
+Per-material-key diff (frame 236): GX-list (130 scene batches) vs hand-driven (57): 16/16 shared
+keys, GX-list has ~2× verts on them (= same map materials drawn AGAIN in MapOpa + reflection
+buffers — overdraw, not new pixels). Only 3 keys are genuinely GX-list-only (69ebca44 / da39a890 /
+85b2f9ca): small on-screen textured elements upper-centre (clipX~[-90,40] clipY~[130,350]) + an
+off-screen [-8600] duplicate each — minor file-select UI (sun icons / labels class), not the map.
+
+## DOMINANT visible problem = the scene renders OVERBRIGHT-WHITE (xfb bright 138-193)
+All frame dumps are white; eyeballing is invalid (parity rules already say so). This — not missing
+geometry — is what blocks "runs fine". The plaza materials are NOT GX-lit (chanCtrl lighting bit
+off, cc0=0x0700) so they draw matColor(white)×texture unshaded. Deferred per the "more porting
+before parity debugging" directive, but it is the real gate to visual verification.
+
 
 ## Correction to the LATE-5 handoff premise
 The handoff said the GX-list-only path (`SB_NO_DRIVE_SCENE=1`) "draws 130 batches but bbox is
