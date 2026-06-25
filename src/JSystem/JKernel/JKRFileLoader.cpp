@@ -1,6 +1,10 @@
 #include <JSystem/JKernel/JKRFileLoader.hpp>
 #include <ctype.h>
 #include <macros.h>
+#ifdef SMS_NATIVE_PLATFORM
+#include <string.h>
+#include "timg_swap.h"
+#endif
 
 JSUList<JKRFileLoader> JKRFileLoader::sVolumeList;
 JKRFileLoader* JKRFileLoader::sCurrentVolume;
@@ -49,7 +53,24 @@ void JKRFileLoader::changeDirectory(const char* dir)
 void* JKRFileLoader::getGlbResource(const char* path)
 {
 	JKRFileLoader* loader = findVolume(&path);
-	return (loader == nullptr) ? nullptr : loader->getResource(path);
+	void* res = (loader == nullptr) ? nullptr : loader->getResource(path);
+#ifdef SMS_NATIVE_PLATFORM
+	// A `.bti` file IS a standalone big-endian ResTIMG. Game code loads these by path
+	// — e.g. (ResTIMG*)JKRGetResource("/scene/.../foo.bti") for NPC pollution decals
+	// and shared textures injected via J3DTexture::setResTIMG — bypassing the archive
+	// 'TIMG'-resType swap in JUTResReference::getResource. Without a swap the header's
+	// width/height read as the byteswap of the real value (a 128 reads 0x8000=32768),
+	// the texel offset goes wild, and the native renderer rejects the texmap to white
+	// (the SB_NPC_ON white-NPC bug). Swap the header here, the natural by-path chokepoint;
+	// idempotent per pointer so a shared resource swaps exactly once. Header scalars only
+	// (the texel/palette pixel data stays GC-native for the format decoder).
+	if (res) {
+		size_t n = strlen(path);
+		if (n >= 4 && strcasecmp(path + n - 4, ".bti") == 0)
+			smsport::assets::restimg_swap_to_host(res);
+	}
+#endif
+	return res;
 }
 
 void* JKRFileLoader::getGlbResource(const char* name, JKRFileLoader* fileLoader)
