@@ -682,151 +682,45 @@ void J3DModel::setSkinDeform(J3DSkinDeform* pSkinDeform,
 	}
 }
 
-static f32 J3DUnit01[] = { 0.0f, 1.0f };
-
-#define qr0 0
-
+#pragma dont_inline on
 void J3DModel::calcWeightEnvelopeMtx()
 {
-	register MtxPtr weightAnmMtx;
-	register Mtx* worldMtx;
-	register MtxPtr invMtx;
-	register f32 weight;
-	int idx;
-	int j;
-	int mixNum;
-	int i;
-	int max;
-	u8* pScale;
-	u16* indices;
-	f32* weights;
-
-	register f32 var_f0;
-	register f32 var_f1;
-	register f32 var_f2;
-	register f32 var_f3;
-	register f32 var_f4;
-	register f32 var_f5;
-	register f32 var_f6;
-	register f32 var_f7;
-	register f32 var_f8;
-	register f32 var_f9;
-	register f32 var_f10;
-	register f32 var_f11;
-	register f32 var_f12;
-	register f32 var_f13;
-	register f32 var_f31;
-	register f32 var_f30;
-	register f32 var_f29;
-	register f32 var_f28;
-	register f32 var_f27;
-	register f32* var_r7 = J3DUnit01;
-
-	i       = -1;
-	max     = mModelData->getWEvlpMtxNum();
-	indices = mModelData->getWEvlpMixMtxIndex() - 1;
-	weights = mModelData->getWEvlpMixWeight() - 1;
-
-#ifdef __MWERKS__ // clang-format off
-	asm {
-		psq_l var_f27, 0x0(var_r7), 0, qr0
-		ps_merge00 var_f10, var_f27, var_f27
-		ps_merge00 var_f12, var_f27, var_f27
-		ps_merge00 var_f31, var_f27, var_f27
-	}
-#endif // clang-format on
-
-	while (++i < max)
-	{
-		pScale       = &mEvlpScaleFlagArr[i];
-		*pScale      = 1;
-		weightAnmMtx = mWeightEvlpMatrices[i];
-
-#ifdef __MWERKS__ // clang-format off
-		asm {
-			ps_merge00 var_f9, var_f27, var_f27
-			ps_merge00 var_f11, var_f27, var_f27
-			ps_merge00 var_f13, var_f27, var_f27
+#ifdef SMS_NATIVE_PLATFORM
+	// PORT (decomp coverage): the retail/base body is empty and no other TU writes the weighted
+	// envelope matrices (unk5C) — so envelope-skinned joints stayed at stale/world matrices and a
+	// per-vertex-skinned mesh (Mario's body/FLUDD mount) smeared. The EVP1 data IS loaded by
+	// J3DModelLoader::readEnvelop (unk88=influence count, unk8C=joint index, unk90=weight,
+	// unk94=inverse-bind / mpInvJointMtx). Compute the canonical J3D envelope blend at the existing,
+	// already-wired call site (calc() runs this before viewCalc reads unk5C):
+	//   unk5C[e] = Σ_k weight_k · ( mNodeMatrices[idx_k] · invBind[idx_k] )
+	// (joint world pose × inverse-bind = the skin matrix; the weighted sum is the envelope matrix).
+	if (!mModelData)
+		return;
+	const u16 evlpNum = mModelData->getWEvlpMtxNum();
+	if (evlpNum == 0 || !mModelData->unk88 || !mModelData->unk8C || !mModelData->unk90
+	    || !mModelData->unk94 || !unk5C)
+		return;
+	u32 k = 0;   // running index into the flattened index/weight arrays
+	for (u16 e = 0; e < evlpNum; ++e) {
+		const u8 num = mModelData->unk88[e];
+		Mtx acc;
+		for (int r = 0; r < 3; ++r)
+			for (int c = 0; c < 4; ++c)
+				acc[r][c] = 0.0f;
+		for (u8 j = 0; j < num; ++j, ++k) {
+			const u16 mtxIdx = mModelData->unk8C[k];
+			const f32 w      = mModelData->unk90[k];
+			Mtx skin;
+			MTXConcat(getAnmMtx(mtxIdx), mModelData->unk94[mtxIdx], skin);
+			for (int r = 0; r < 3; ++r)
+				for (int c = 0; c < 4; ++c)
+					acc[r][c] += w * skin[r][c];
 		}
-#endif // clang-format on
-
-		j      = 0;
-		mixNum = mModelData->getWEvlpMixMtxNum(i);
-
-		do {
-			idx      = *++indices;
-			invMtx   = mModelData->getInvJointMtx((u16)idx);
-			worldMtx = &mNodeMatrices[idx];
-
-#ifdef __MWERKS__ // clang-format off
-			asm {
-				psq_l var_f0, 0x0(invMtx), 0, qr0
-				psq_l var_f1, 0x0(worldMtx), 0, qr0
-				psq_l var_f3, 0x10(worldMtx), 0, qr0
-				psq_l var_f5, 0x20(worldMtx), 0, qr0
-				ps_muls0 var_f8, var_f0, var_f1
-				psq_l var_f6, 0x10(invMtx), 0, qr0
-				ps_muls0 var_f30, var_f0, var_f3
-				ps_muls0 var_f29, var_f0, var_f5
-				psq_l var_f7, 0x20(invMtx), 0, qr0
-				ps_madds1 var_f8, var_f6, var_f1, var_f8
-				psq_l var_f2, 0x8(worldMtx), 0, qr0
-				ps_madds1 var_f30, var_f6, var_f3, var_f30
-				psq_l var_f4, 0x18(worldMtx), 0, qr0
-				ps_madds1 var_f29, var_f6, var_f5, var_f29
-				psq_l var_f6, 0x28(worldMtx), 0, qr0
-				ps_madds0 var_f8, var_f7, var_f2, var_f8
-			}
-#endif // clang-format on
-
-			weight = *++weights;
-
-#ifdef __MWERKS__ // clang-format off
-			asm {
-				ps_madds0 var_f30, var_f7, var_f4, var_f30
-				ps_madds0 var_f29, var_f7, var_f6, var_f29
-				psq_l var_f7, 0x8(invMtx), 0, qr0
-				ps_madds0 var_f9, var_f8, weight, var_f9
-				ps_madds0 var_f11, var_f30, weight, var_f11
-				ps_madds0 var_f13, var_f29, weight, var_f13
-				psq_l var_f8, 0x18(invMtx), 0, qr0
-				ps_muls0 var_f30, var_f7, var_f1
-				ps_muls0 var_f29, var_f7, var_f3
-				ps_muls0 var_f28, var_f7, var_f5
-				psq_l var_f7, 0x28(invMtx), 0, qr0
-				psq_st var_f9, 0x0(weightAnmMtx), 0, qr0
-				ps_madds1 var_f30, var_f8, var_f1, var_f30
-				ps_madds1 var_f29, var_f8, var_f3, var_f29
-				ps_madds1 var_f28, var_f8, var_f5, var_f28
-				ps_madds0 var_f30, var_f7, var_f2, var_f30
-				ps_madds0 var_f29, var_f7, var_f4, var_f29
-				ps_madds0 var_f28, var_f7, var_f6, var_f28
-				psq_st var_f11, 0x10(weightAnmMtx), 0, qr0
-				psq_st var_f13, 0x20(weightAnmMtx), 0, qr0
-				ps_madd var_f30, var_f27, var_f2, var_f30
-				ps_madd var_f29, var_f27, var_f4, var_f29
-				ps_madd var_f28, var_f27, var_f6, var_f28
-				ps_madds0 var_f10, var_f30, weight, var_f10
-				ps_madds0 var_f12, var_f29, weight, var_f12
-				ps_madds0 var_f31, var_f28, weight, var_f31
-			}
-#endif // clang-format on
-
-			*pScale &= mScaleFlagArr[idx];
-		} while (++j < mixNum);
-
-#ifdef __MWERKS__ // clang-format off
-		asm {
-			psq_st var_f10, 0x8(weightAnmMtx), 0, qr0
-			ps_merge00 var_f10, var_f27, var_f27
-			psq_st var_f12, 0x18(weightAnmMtx), 0, qr0
-			ps_merge00 var_f12, var_f27, var_f27
-			psq_st var_f31, 0x28(weightAnmMtx), 0, qr0
-			ps_merge00 var_f31, var_f27, var_f27
-		}
-#endif // clang-format on
+		MTXCopy(acc, unk5C[e]);
 	}
+#endif
 }
+#pragma dont_inline off
 
 void J3DModel::update()
 {
