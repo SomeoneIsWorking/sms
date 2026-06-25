@@ -115,11 +115,27 @@ void TDrawSyncManager::setCallback(u32 param_1, u16 param_2, u16 param_3,
 	mCallbacks[param_1] = TDrawSyncTokenRange(param_2, param_3, param_4);
 }
 
+#ifdef SMS_NATIVE_PLATFORM
+// On the native platform the renderer captures J3D shapes SYNCHRONOUSLY — there is no GP FIFO
+// and no asynchronous GPU, so GXEnableBreakPt/GXDisableBreakPt are no-ops (native/platform/
+// gx_fb_impl.cpp) and the whole CPU↔GPU breakpoint-pacing protocol this manager implements is
+// vestigial. Feeding the threadFunc message queue / "fabricated" FIFO with real GX breakpoint
+// traffic (which the corrected big-endian perform-list filters now generate) crashed it: its
+// 32-bit token classification + FIFO indexing are LP64-incompatible (SIGSEGV at threadFunc+0xea,
+// a near-null deref from the corrupted FIFO). sunbright already replaced this manager natively for
+// the same reason (sms_drawsync_lossproof.cpp). Here we suppress the pacing message sends so the
+// threadFunc stays idle; the registered drawSyncCallback dispatch (the real retire work) still
+// runs. This is faithful to the platform, not a workaround for a logic bug.
+#define SMS_NATIVE_DRAWSYNC_PACE_OFF 1
+#endif
+
 void TDrawSyncManager::drawSyncCallbackSub(u16 param_1)
 {
 	if (param_1 == 0) {
+#ifndef SMS_NATIVE_DRAWSYNC_PACE_OFF
 		if (!(mFlags & 2))
 			OSSendMessage(&mMessageQueue, (void*)(size_t)param_1, 1);
+#endif
 		return;
 	}
 
@@ -128,8 +144,10 @@ void TDrawSyncManager::drawSyncCallbackSub(u16 param_1)
 		if (it->mCallback != nullptr && it->mRangeStart <= param_1
 		    && param_1 <= it->mRangeEnd) {
 			it->mCallback->drawSyncCallback(param_1);
+#ifndef SMS_NATIVE_DRAWSYNC_PACE_OFF
 			if (!(mFlags & 2))
 				OSSendMessage(&mMessageQueue, (void*)(size_t)param_1, 1);
+#endif
 			return;
 		}
 }
@@ -140,8 +158,10 @@ void TDrawSyncManager::pushBreakPoint()
 		return;
 
 	GXFlush();
+#ifndef SMS_NATIVE_DRAWSYNC_PACE_OFF
 	void* readPtr;
 	void* writePtr;
 	GXGetFifoPtrs(GXGetCPUFifo(), &readPtr, &writePtr);
 	OSSendMessage(&mMessageQueue, writePtr, 1);
+#endif
 }
