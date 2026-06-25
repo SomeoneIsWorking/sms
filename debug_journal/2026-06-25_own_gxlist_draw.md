@@ -36,6 +36,34 @@ capture per VI present (begin_scene returns 1 only on the first call after a pre
 presents). SB_NO_DRIVE_SCENE bypasses scene_drive entirely so g_locked never locks → the real path is
 captured (accumulating, but ~stable at 140).
 
+## What blocks flipping the default to GX-list (precise, measured)
+sms-boot runs the REAL boot (no fastboot) → the scene it shows is the FILE-SELECT screen (the
+Delfino plaza as backdrop + the 3 file-block cubes + a display Mario), NOT gameplay. So the
+hand-driven vs GX-list comparison above IS on the file-select scene (the scene many prior sessions
+tuned). Diffing per-material-key clip-AABB between the two paths at the same frame (236):
+- ALL 16 hand-driven material keys are present in the GX-list dump (0 lost) + 3 new. GX-list draws
+  a faithful SUPERSET; most shared keys have ~2× the verts (multi-pass: opa+xlu+reflection) with
+  IDENTICAL clip extents.
+- EXCEPT two keys where the hand-driving does work the real perform list does NOT:
+  1. **Mario** (key c539bdd263592117): hand-driven clip x=[-57,93] (centered, in view) →
+     GX-list x=[-11764,-8498] (off-screen left). drive_chr runs gpMarioOriginal->calcAnim(2)+
+     calcView+entryModels (poses + positions the display Mario); the real perform list draws Mario
+     via プレーヤーグループ but without that pose → wrong place.
+  2. **Sky sphere backdrop** (key 89d26a8259998b13): hand-driven x=[-159357,159357] → GX-list
+     COLLAPSED x=[-8,8]. drive_sky draws it with flag 0x20E (=0x204 | 0x2 setBaseTRMtx | 0x8
+     GXDrawSphere); the real perform list pushes 空グループ with only 0x204 → no GXDrawSphere
+     backdrop. (RE open: how real HW draws the sky backdrop — drive_sky's 0x8 may be a hand-driven
+     enhancement, not the faithful mechanism.)
+  3. (likely also) the file-block CUBE calc — drive_chr runs calcRootMatrix + setBaseScale(1) per
+     cube because TMapObjBase::perform is an empty stub, so the real calc pass leaves them
+     degenerate. (Cube key not yet isolated; verify at the settled choice state.)
+
+→ SAFE FLIP PATH: under SB_OWN_GXLIST, let the real perform list draw the MAP, but still drive the
+sky-sphere backdrop + Mario pose + cube calc INSIDE the same once-per-present capture window (these
+are decomp-stub gaps the real list can't cover). Requires moving those specific drives into the
+render-branch capture bracket (scene_drive currently runs after the loop, outside the lock). Then
+the GX-list path is a strict superset of the hand-driven scene and the flip is safe.
+
 ## Plan (this session)
 `SB_OWN_GXLIST=1` (opt-in first, verify, then flip default):
 - scene_drive runs SETUP only (camera/projection latch/lights/option-camera/settle), skips the
