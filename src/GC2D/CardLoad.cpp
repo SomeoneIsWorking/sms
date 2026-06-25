@@ -566,6 +566,22 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 				mFileBlocks[idx]->pushed();
 			}
 		}
+		// SB_SEL_DUMP_SETTLED: dump a SMALL window only ONCE the file-block select screen
+		// is fully SETTLED (selectBookmark sub-state unk10==2: the window-open animation has
+		// finished, so the "Select data" banner + per-slot Corrupt/New labels are shown).
+		// Dumping at mState-0 ENTRY (SB_SEL_DUMP) catches the pre-animation frame (blank
+		// banner) AND rendering the heavy scene for hundreds of frames wedges the GPU; a
+		// small late window avoids both and captures the actual banner text.
+		static bool s_settledDumped = false;
+		if (!s_settledDumped && mState == 0 && unk1C == PROGRESS_UNK13 && unk10 == 2) {
+			if (const char* e = getenv("SB_SEL_DUMP_SETTLED")) {
+				int n = atoi(e);
+				sb_boot_request_dump(n > 0 ? n : 4);
+				s_settledDumped = true;
+				fprintf(stderr, "[cardload] SETTLED dump requested (unk10==2, %d frames)\n",
+				        n > 0 ? n : 4);
+			}
+		}
 		// Also trace the card-read progress (unk1C) advancing within mState 0.
 		if (s_selDbg && unk1C != s_lastProg) {
 			fprintf(stderr, "[cardload]   prog unk1C %d -> %d (mState=%d unk10=%d unkB1=%d)\n",
