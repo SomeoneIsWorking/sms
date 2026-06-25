@@ -1,6 +1,10 @@
 #include <Strategic/Strategy.hpp>
 #include <Strategic/ObjHitCheck.hpp>
 #include <macros.h>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 
 TStrategy* gpStrategy;
 
@@ -96,7 +100,28 @@ void TStrategy::perform(u32 cue, JDrama::TGraphics* graphics)
 			unk10[9]->testPerform(cue, graphics);
 	}
 
-	if ((cue & CUE_DRAW) != 0) {
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_STRAT_DUMP=1: one-shot — list each walked group's index, child count, and child names,
+	// to see whether NPC actors are entered into the scene buffer via the strategy group walk.
+	if ((param_1 & 8) && getenv("SB_STRAT_DUMP")) {
+		static int once = 0;
+		if (once < 1) { ++once;
+			static const int gi[] = { 0, 3, 4, 5, 0xb, 6, 9 };
+			for (int g : gi) {
+				TIdxGroupObj* grp = unk10[g];
+				if (!grp) { std::fprintf(stderr, "[strat] group[%d] = null\n", g); continue; }
+				long n = 0;
+				for (auto it = grp->getChildren().begin(); it != grp->getChildren().end(); ++it) ++n;
+				std::fprintf(stderr, "[strat] group[%d] '%s' children=%ld\n", g, grp->getName(), n);
+				long k = 0;
+				for (auto it = grp->getChildren().begin(); it != grp->getChildren().end() && k < 40; ++it, ++k)
+					std::fprintf(stderr, "[strat]    child[%ld] %s\n", k, it->getName());
+			}
+		}
+	}
+#endif
+
+	if ((param_1 & 8) != 0) {
 		if (unk10[0] != (TIdxGroupObj*)0x0)
 			unk10[0]->testPerform(cue, graphics);
 
@@ -115,6 +140,23 @@ void TStrategy::perform(u32 cue, JDrama::TGraphics* graphics)
 		if (unk10[6] != (TIdxGroupObj*)0x0)
 			unk10[6]->testPerform(cue, graphics);
 
+#ifdef SMS_NATIVE_PLATFORM
+		// FAITHFUL FIX (map-gone-with-NPCs root cause): do NOT draw the NPC group (unk10[9],
+		// "ＮＰＣグループ") here. On real hardware the draw is dispatched by the master GX perform
+		// list (MarDirectorPreEntry::preEntry), which NEVER pushes ストラテジ — it draws the NPCs
+		// exclusively through "コンダクター" (0x204) into the dedicated ChrOpa/ChrXlu buffers. The
+		// NPC actors are scene-tree children of ＮＰＣグループ AND register to their TLiveManager
+		// (drawn by the conductor), so sms-boot's hand-driven scene->perform(0x8) — which walks the
+		// WHOLE scene tree (both ストラテジ and コンダクター) into one shared draw buffer — entered
+		// every NPC's J3DMatPacket TWICE per frame. A J3DMatPacket has a single `next` pointer:
+		// the conductor's re-entry calls drawClear() (nulls next) and entryMatSort's isSame-dedup
+		// returns without re-linking, truncating the shared chain at the (head-most) NPC packets and
+		// orphaning the entire map (collapsed to ~16 shapes, Mario+sky only). Drawing the NPCs only
+		// via the conductor (the real-HW path) restores single-entry, so the map AND NPCs render.
+		// The map itself stays drawn via ストラテジ's マップグループ (unk10[0]); only group[9] —
+		// which the perform list never draws via ストラテジ — is suppressed here.
+		if (false)
+#endif
 		if (unk10[9] != (TIdxGroupObj*)0x0)
 			unk10[9]->testPerform(cue, graphics);
 	}

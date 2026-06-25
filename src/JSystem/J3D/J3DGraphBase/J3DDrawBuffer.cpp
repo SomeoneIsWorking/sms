@@ -40,8 +40,32 @@ J3DDrawBuffer::J3DDrawBuffer(u32 size)
 	frameInit();
 }
 
+#ifdef SMS_NATIVE_PLATFORM
+// SB_FI_TRACE: scene_drive registers the scene's two draw buffers here; frameInit() then
+// backtraces whenever EITHER is reset, so we can find what clears the map mid-conductor-walk.
+extern "C" { J3DDrawBuffer* g_sb_fi_watch[2] = { nullptr, nullptr }; }
+extern "C" void sb_fi_watch_register(J3DDrawBuffer* opa, J3DDrawBuffer* xlu)
+{
+	g_sb_fi_watch[0] = opa;
+	g_sb_fi_watch[1] = xlu;
+}
+#include <execinfo.h>
+#include <cstdlib>
+#include <cstdio>
+#endif
+
 void J3DDrawBuffer::frameInit()
 {
+#ifdef SMS_NATIVE_PLATFORM
+	if ((this == g_sb_fi_watch[0] || this == g_sb_fi_watch[1]) && getenv("SB_FI_TRACE")) {
+		static int s_fi = 0;
+		if (s_fi < 12) { ++s_fi;
+			std::fprintf(stderr, "[fi-trace] frameInit on WATCHED scene buf %p:\n", this);
+			void* frames[24]; int nf = backtrace(frames, 24);
+			backtrace_symbols_fd(frames, nf, 2);
+		}
+	}
+#endif
 	for (int i = 0; i < mSize; ++i)
 		mBuffer[i] = nullptr;
 
