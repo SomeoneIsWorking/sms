@@ -263,6 +263,25 @@ static thread_local int g_sb_host_alloc_gate = 0;
 extern "C" void sb_host_alloc_push(void) { ++g_sb_host_alloc_gate; }
 extern "C" void sb_host_alloc_pop(void)  { if (g_sb_host_alloc_gate > 0) --g_sb_host_alloc_gate; }
 
+// Game-thread identity gate (thread-local, default FALSE).
+//
+// The JKR heap is NOT thread-safe; the engine's cooperative single-baton scheduler
+// (os_impl.cpp) guarantees only ONE game thread touches it at a time. But once a real
+// GL driver (Mesa/radeonsi) is in the process — the GX->raylib switch (gx_raylib.cpp) —
+// it spawns its OWN background worker threads (LLVM shader compile) that run CONCURRENTLY
+// and allocate C++ objects through the GLOBAL operator new. Routing those onto the JKR
+// heap corrupted it (radeonsi SIGSEGV in LLVMCreateTargetMachine) AND leaked into the
+// solid heap until "SolidHeap OUT OF MEMORY". A FOREIGN thread has no business on the
+// game heap, so a plain `new` from a thread we did NOT register as a game thread goes
+// straight to host malloc. Game threads are marked at their entry point: the main fiber
+// (boot_heap_bringup, before any game alloc) and every OSCreateThread carrier
+// (os_impl thread_trampoline). Synchronous driver allocs that land on a game thread
+// DURING a GL call are handled separately by the host-alloc gate above (raised around
+// the raylib entry points), so Mesa/LLVM/raylib never reach the JKR heap.
+static thread_local bool g_sb_is_game_thread = false;
+extern "C" void sb_mark_game_thread(void) { g_sb_is_game_thread = true; }
+extern "C" int  sb_is_game_thread(void)   { return g_sb_is_game_thread ? 1 : 0; }
+
 // --- Host-malloc overflow accounting + hard cap -------------------------------------------
 // Every host fallback used to LEAK: operator delete -> JKRHeap::free no-ops a pointer that
 // is outside every JKR arena, so it was never freed. That is fine for one-time bookkeeping,
@@ -362,9 +381,11 @@ extern "C" bool sb_host_free_if_tagged(void* p)
 extern "C" void* sb_jkr_host_alloc(size_t n, int alignment) { return sb_host_malloc(n, alignment); }
 static inline void* sb_plain_new(size_t n, int alignment)
 {
-	// Host-isolation gate raised -> straight to malloc (skip the JKR heap entirely),
-	// so host-runtime state never lives on a heap the game later wipes.
-	if (g_sb_host_alloc_gate) return sb_host_malloc(n, alignment);
+	// Host-isolation gate raised, OR the caller is NOT a registered game thread
+	// (a Mesa/LLVM/driver worker spawned by the GL backend) -> straight to malloc,
+	// skipping the non-thread-safe JKR heap entirely. Both keep host-runtime / driver
+	// state off a heap the game wipes AND off a heap a foreign thread must never race.
+	if (g_sb_host_alloc_gate || !g_sb_is_game_thread) return sb_host_malloc(n, alignment);
 	void* p = JKRHeap::alloc(n, alignment, nullptr);
 	return p ? p : sb_host_malloc(n, alignment);
 }
