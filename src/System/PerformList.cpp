@@ -1,5 +1,6 @@
 #include <System/PerformList.hpp>
 #include <JSystem/JDrama/JDRNameRefGen.hpp>
+#include <JSystem/JSupport/JSUInputStream.hpp>   // JSU_BE32
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
 #include <cstdlib>
@@ -38,7 +39,14 @@ void TPerformList::load(JSUMemoryInputStream& stream)
 		JDrama::TViewObj* obj
 		    = JDrama::TNameRefGen::search<JDrama::TViewObj>(acStack_6c);
 		u32 value;
-		stream >> value;
+		stream.read(&value, 4);
+		// The perform-list data file stores each entry's filter as a big-endian dword;
+		// JSUInputStream::read is a raw readData (no byteswap — see the JSU_BE16 usage in
+		// readString). On a little-endian host the raw read yields a byteswapped filter
+		// (e.g. the calc op bit 0x2 read as 0x2000000, movement 0x1 as 0x1000000), which
+		// no actor/manager acts on → the whole movement/calc perform pass was inert and
+		// NPC calcRootMatrix never ran. JSU_BE32 is a no-op on big-endian, bswap on LE.
+		value = JSU_BE32(value);
 		u32 uVar5 = value;
 		if (value & 1)
 			uVar5 = value | 0x3000;
