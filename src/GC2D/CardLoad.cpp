@@ -582,6 +582,87 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 				        n > 0 ? n : 4);
 			}
 		}
+		// SB_LOAD_PANE_DBG: ONE-SHOT pane-tree dump of the load.blo screen (unk28) once the
+		// file-block select is fully SETTLED (unk10==2). Prints every pane's FourCC tag,
+		// visibility, alpha, bounds — and for J2DTextBox ('TBX1') panes the BMG-resolved
+		// string. This is to SEE whether m_0a holds "Select data" and is visible (or whether
+		// its pane is hidden / off-screen), instead of guessing from the rendered frame.
+		// Mirrors SelectMenu.cpp's SB_SEL_DBG dump.
+		static bool s_paneDumped = false;
+		if (!s_paneDumped && mState == 0 && unk1C == PROGRESS_UNK13 && unk10 == 2
+		    && getenv("SB_LOAD_PANE_DBG") && unk28) {
+			s_paneDumped = true;
+			fprintf(stderr, "[loadpane] === load.blo pane tree (unk10==2 settled) ===\n");
+			struct W {
+				static void rec(J2DPane* p, int d) {
+					if (!p)
+						return;
+					char fc[5] = { 0 }, kc[5] = { 0 };
+					u32 ui = (u32)p->mUserInfoTag;  // FourCC name search() matches
+					u32 kk = p->getKind();
+					fc[0] = (char)(ui >> 24); fc[1] = (char)(ui >> 16); fc[2] = (char)(ui >> 8); fc[3] = (char)ui;
+					kc[0] = (char)(kk >> 24); kc[1] = (char)(kk >> 16); kc[2] = (char)(kk >> 8); kc[3] = (char)kk;
+					for (int i = 0; i < 4; ++i) {
+						if (fc[i] < 32 || fc[i] > 126) fc[i] = '.';
+						if (kc[i] < 32 || kc[i] > 126) kc[i] = '.';
+					}
+					const JUTRect& b = p->getBounds();
+					if (kk == 'TBX1') {
+						char* s = ((J2DTextBox*)p)->getStringPtr();
+						fprintf(stderr, "[loadpane] %*s'%s' kind=%s vis=%d alpha=%d bounds=(%d,%d,%d,%d) str=\"%s\"\n",
+						        d * 2, "", fc, kc, (int)p->isVisible(), (int)p->getAlpha(),
+						        b.x1, b.y1, b.x2, b.y2, s ? s : "(null)");
+					} else {
+						fprintf(stderr, "[loadpane] %*s'%s' kind=%s vis=%d alpha=%d bounds=(%d,%d,%d,%d)\n",
+						        d * 2, "", fc, kc, (int)p->isVisible(), (int)p->getAlpha(),
+						        b.x1, b.y1, b.x2, b.y2);
+					}
+					for (JSUTreeIterator<J2DPane> it = p->getFirstChild(); it != p->getEndChild(); ++it)
+						rec(it.getObject(), d + 1);
+				}
+			};
+			W::rec(unk28, 0);
+			// Also print the resolved banner / slot-label text-box pointers directly.
+			fprintf(stderr, "[loadpane] --- known textboxes ---\n");
+			J2DTextBox* boxes[] = { unk29C, unk2A0 };
+			const char* names[] = { "m_0a(banner)", "m_0b(banner)" };
+			for (int i = 0; i < 2; ++i) {
+				J2DTextBox* tb = boxes[i];
+				if (!tb) { fprintf(stderr, "[loadpane] %s = NULL\n", names[i]); continue; }
+				char* s = tb->getStringPtr();
+				const JUTRect& b = tb->getBounds();
+				fprintf(stderr, "[loadpane] %s vis=%d alpha=%d bounds=(%d,%d,%d,%d) str=\"%s\"\n",
+				        names[i], (int)tb->isVisible(), (int)tb->getAlpha(),
+				        b.x1, b.y1, b.x2, b.y2, s ? s : "(null)");
+			}
+			for (int i = 0; i < 3; ++i) {
+				J2DTextBox* a = unk2C0[i];
+				J2DTextBox* bb = unk2CC[i];
+				if (a) {
+					char* s = a->getStringPtr();
+					fprintf(stderr, "[loadpane] m_1a[%d] vis=%d str=\"%s\"\n", i, (int)a->isVisible(), s ? s : "(null)");
+				}
+				if (bb) {
+					char* s = bb->getStringPtr();
+					fprintf(stderr, "[loadpane] m_1b[%d] vis=%d str=\"%s\"\n", i, (int)bb->isVisible(), s ? s : "(null)");
+				}
+			}
+			// Dump the ENTIRE loadmessage.bmg message table so we can see which id
+			// actually holds "Select data" (the banner uses id 0x1A; the oracle shows
+			// "Select data" there but we render "Formatting file..." -> indexing suspect).
+			fprintf(stderr, "[loadpane] --- full BMG message table (unkA0=%p) ---\n", unkA0);
+			for (u32 id = 0; id < 40; ++id) {
+				const char* s = SMSGetMessageData(unkA0, id);
+				char buf[48] = { 0 };
+				if (s) {
+					for (int k = 0; k < 47 && s[k]; ++k)
+						buf[k] = (s[k] >= 32 && (unsigned char)s[k] < 127) ? s[k] : '.';
+				}
+				fprintf(stderr, "[loadpane] bmg id 0x%02x -> %s \"%s\"\n",
+				        id, s ? "OK" : "NULL", s ? buf : "");
+			}
+			fprintf(stderr, "[loadpane] === end ===\n");
+		}
 		// Also trace the card-read progress (unk1C) advancing within mState 0.
 		if (s_selDbg && unk1C != s_lastProg) {
 			fprintf(stderr, "[cardload]   prog unk1C %d -> %d (mState=%d unk10=%d unkB1=%d)\n",
@@ -1100,9 +1181,38 @@ TEProgress TCardLoad::changeMode(s32 param_1)
 	return result;
 }
 
+#ifdef SMS_NATIVE_PLATFORM
+// JP/PAL-decomp loadmessage.bmg id -> US (GMSE01) disc id.
+//
+// This decompilation (doldecomp/sms) targets GMSJ01 (JP) / GMSP01 (PAL); we run it against
+// the US disc (the loaded /option/loadmessage.bmg = GMSE01 asset). SMS resolves messages by
+// POSITIONAL index (SMSGetMessageData walks INF1 to entry[id]), so a region whose bmg orders
+// its strings differently changes the id of each string. The system-message block (ids
+// 0x00..0x19 — "Memory Card in Slot A...", "Erasing file...", etc.) is ordered IDENTICALLY in
+// JP and US (verified: literal id 12 -> "Erasing file..." matches the US bmg exactly). Only the
+// SMS-specific banner block (0x1A+) is reordered between regions.
+//
+// VERIFIED against the live US bmg dump (SB_LOAD_PANE_DBG) + the GX oracle:
+//   the file-select banner string "Select data." is JP id 0x1A but US id 0x1D
+//   (US id 0x1A is "Formatting file..." — what the unremapped JP literal was wrongly showing).
+// Mapping the rest of the 0x1A+ block (the cMessageID copy/erase/format/save DIALOG strings,
+// and the erase-mode banner JP 0x1B) requires driving those operations against a card WITH data
+// to read them off the oracle — not reachable from the blank-card file-select repro — so they
+// are left unmapped (TODO) until that oracle exists. They do not appear on the normal select
+// screen, so this is the complete fix for the visible divergence.
+static int sb_loadmsg_jp_to_us(int jp_id)
+{
+	switch (jp_id) {
+	case 0x1A: return 0x1D;  // "Select data." (select-screen banner) — VERIFIED
+	default:   return jp_id; // system block (<0x1A) is region-identical; rest unmapped (TODO)
+	}
+}
+#endif
+
 void TCardLoad::setMessage(J2DTextBox* text_box, s32 param_2, int param_3)
 {
 #ifdef SMS_NATIVE_PLATFORM
+	param_3 = sb_loadmsg_jp_to_us(param_3);
 	// Region-tolerant: in the US (GMSE01) build the loadmessage.bmg may be absent or
 	// lack the index the GMSJ01/PAL decomp expects, so SMSGetMessageData returns null;
 	// the textbox itself may be a region-tolerant dummy pane with a null buffer. Either
