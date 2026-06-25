@@ -4,6 +4,7 @@
 #include <stdlib.h>  // getenv (SB_SEL_DBG trace)
 #include <dolphin/os.h>  // OSPanic (fail-fast)
 extern "C" void sb_boot_request_dump(int);  // native present: event-triggered frame dump
+extern "C" int sb_camera_view_settled();    // scene_drive: option-camera pan finished
 #endif
 #include <JSystem/JKernel/JKRFileLoader.hpp>
 #include <JSystem/JDrama/JDRNameRefGen.hpp>
@@ -572,13 +573,18 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 		// Dumping at mState-0 ENTRY (SB_SEL_DUMP) catches the pre-animation frame (blank
 		// banner) AND rendering the heavy scene for hundreds of frames wedges the GPU; a
 		// small late window avoids both and captures the actual banner text.
+		// The choice state (unk10==2) is reached ~130 present frames BEFORE the option camera
+		// finishes its smooth pan into place — capturing AT unk10==2 catches a pitched, mid-pan
+		// scene (cubes shoved to the top), which read as bogus render bugs. Gate the dump on the
+		// camera having actually SETTLED (view matrix stationary for several frames).
 		static bool s_settledDumped = false;
-		if (!s_settledDumped && mState == 0 && unk1C == PROGRESS_UNK13 && unk10 == 2) {
+		if (!s_settledDumped && mState == 0 && unk1C == PROGRESS_UNK13 && unk10 == 2
+		    && sb_camera_view_settled()) {
 			if (const char* e = getenv("SB_SEL_DUMP_SETTLED")) {
 				int n = atoi(e);
 				sb_boot_request_dump(n > 0 ? n : 4);
 				s_settledDumped = true;
-				fprintf(stderr, "[cardload] SETTLED dump requested (unk10==2, %d frames)\n",
+				fprintf(stderr, "[cardload] SETTLED dump requested (unk10==2 + camera settled, %d frames)\n",
 				        n > 0 ? n : 4);
 			}
 		}
