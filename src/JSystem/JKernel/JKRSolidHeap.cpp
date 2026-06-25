@@ -5,6 +5,7 @@
 #include <dolphin/os.h>
 #include <cstdlib>
 #include <cstddef>
+#include <execinfo.h>
 extern "C" void* sb_jkr_host_alloc(size_t, int);  // host-memory overflow (JKRHeap.cpp)
 extern "C" bool  sb_host_free_if_tagged(void*);   // truly free a host-overflow ptr (JKRHeap.cpp)
 #endif
@@ -97,6 +98,18 @@ void* JKRSolidHeap::allocFromHead(u32 size, int align)
 		         "mFreeSize=0x%x short=0x%x span mStart=%p mEnd=%p\n",
 		         this, requiredSize, size, align, mFreeSize,
 		         requiredSize - mFreeSize, mStart, mEnd);
+		// SB_JKR_BT=1: one-shot caller backtrace for the per-frame leak hunt. The NPC-on scene
+		// heap OOMs ~860k times on a fixed ~592 B (0x250) alloc per frame; this names the leaking
+		// allocation site so the next session starts from the culprit, not a re-derivation.
+		if (getenv("SB_JKR_BT")) {
+			static int s_bt = 0;
+			if (s_bt < 6) { ++s_bt;
+				void* frames[24];
+				int nf = backtrace(frames, 24);
+				OSReport("[jkr-bt] OOM size=0x%x backtrace (%d frames):\n", size, nf);
+				backtrace_symbols_fd(frames, nf, 2 /*stderr*/);
+			}
+		}
 #endif
 		JUTWarningConsole_f("allocFromHead: cannot alloc memory (0x%x byte).\n",
 		                    requiredSize);
