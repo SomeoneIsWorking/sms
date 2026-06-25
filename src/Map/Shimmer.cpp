@@ -27,6 +27,19 @@ void TShimmer::far() { }
 
 void TShimmer::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	{
+		static int dbg = -1;
+		if (dbg < 0) { const char* e = getenv("SB_SHIMMER_DBG"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
+		static long n = 0;
+		if (dbg && n < 16) { ++n;
+			fprintf(stderr, "[shimmer] perform flag=0x%x entryBranch=%d updateBranch=%d mMap=%d camUp.y=%f fludd=%d\n",
+			        param_1, (int)!!(param_1 & 4), (int)!!(param_1 & 0x200),
+			        (int)gpMarDirector->mMap, gpCamera ? gpCamera->unk124.y : -999.0f,
+			        (int)gpMarioOriginal->checkFlag(MARIO_FLAG_FLUDD_EMITTING));
+		}
+	}
+#endif
 	if (gpMarioOriginal->checkFlag(MARIO_FLAG_FLUDD_EMITTING))
 		return;
 

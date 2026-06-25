@@ -3,6 +3,10 @@
 #include <System/RenderModeObj.hpp>
 #include <JSystem/JDrama/JDRNameRefGen.hpp>
 #include <JSystem/JDrama/JDRViewport.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 
 // TODO: which headers are these infections strings from?
 // See InfectiousStrings.hpp also
@@ -54,6 +58,11 @@ void TMarDirector::preEntry(TPerformList* list)
 
 	JDrama::TViewObj* indirectSheen
 	    = JDrama::TNameRefGen::search<JDrama::TViewObj>("インダイレクトシーン");
+#ifdef SMS_NATIVE_PLATFORM
+	if (const char* e = getenv("SB_J3D_DBG"); e && e[0] && e[0] != '0')
+		fprintf(stderr, "[preEntry] indirectSheen(インダイレクトシーン)=%p -> Indirect entries %s\n",
+		        (void*)indirectSheen, indirectSheen ? "PUSHED" : "SKIPPED");
+#endif
 	if (indirectSheen) {
 		list->push_back("DrawBuf Indirect", 0x480);
 		list->push_back(indirectSheen, 0x40000204);

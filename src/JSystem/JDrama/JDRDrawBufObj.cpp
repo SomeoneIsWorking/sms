@@ -4,6 +4,7 @@
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #endif
 
 using namespace JDrama;
@@ -38,6 +39,23 @@ void TDrawBufObj::load(JSUMemoryInputStream& stream)
 
 void TDrawBufObj::perform(u32 param_1, TGraphics* param_2)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	{
+		static int dbg = -1;
+		if (dbg < 0) { const char* e = getenv("SB_INDIRECT_DBG"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
+		if (dbg) {
+			const char* nm = getName();
+			if (nm && std::strstr(nm, "Indirect")) {
+				static long n = 0;
+				if (n < 40) { ++n;
+					fprintf(stderr, "[indirect] %s perform flag=0x%x (frameInit=%d setBuf=%d draw=%d) buf=%p\n",
+					        nm, param_1, (int)!!(param_1 & 0x80), (int)!!(param_1 & 0x400),
+					        (int)!!(param_1 & 8), (void*)mDrawBuffer);
+				}
+			}
+		}
+	}
+#endif
 	if (param_1 & 0x80)
 		mDrawBuffer->frameInit();
 

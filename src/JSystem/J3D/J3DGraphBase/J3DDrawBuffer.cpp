@@ -63,6 +63,22 @@ bool J3DDrawBuffer::entryMatSort(J3DMatPacket* packet)
 	}
 
 	if (packet->unk3C & 0x80000000) {
+#ifdef SMS_NATIVE_PLATFORM
+		// PC-engine draw-list invariant: this is the "no-merge, always prepend to
+		// slot 0" path for unsorted/indirect materials (unk3C bit31). Unlike the
+		// hashed branch below (which dedups via isSame), it does NOT guard against
+		// re-entering the SAME packet. When one object enters a model via both
+		// entry() and update() in one frameInit window (e.g. TShimmer::perform does
+		// unk48->entry() for flag bit 0x4 AND unk48->update() for bit 0x200, and the
+		// indirect-scene flag 0x40000204 sets both), the second entry would self-link
+		// (next = mBuffer[0] = packet) and drawHead()'s walk would spin forever.
+		// Re-prepending a packet that is ALREADY the slot head is a pure no-op (it is
+		// already entered, at the head) — so skip it. This keeps the model entered
+		// exactly once and can never form a self-referential cycle. See
+		// debug_journal/2026-06-25_delfino_indirect_drawbuf_selfloop.md.
+		if (mBuffer[0] == packet)
+			return true;
+#endif
 		packet->setNextPacket(mBuffer[0]);
 		mBuffer[0] = packet;
 		return true;
@@ -200,17 +216,35 @@ void J3DDrawBuffer::draw() const
 void J3DDrawBuffer::drawHead() const
 {
 #ifdef SMS_NATIVE_PLATFORM
+	// SB_DRAWBUF_CHECK=1: opt-in defensive cycle detector. A packet entered twice
+	// into the same slot via a no-merge prepend self-links (pkt->next = mBuffer[slot]
+	// = pkt), making this walk spin forever. entryMatSort now guards against that
+	// (the real fix), so this is OFF by default and kept only as a tripwire for any
+	// future no-merge entry path that re-introduces a self-link. Floyd tortoise/hare
+	// per slot; names the offending packet + buffer, then aborts.
 	{
-		static int dbg = -1;
-		if (dbg < 0) { const char* e = getenv("SB_J3D_DBG"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
-		static long s_calls = 0, s_pkts = 0;
-		long pk = 0;
-		for (u32 i = 0; i < mSize; i++)
-			for (J3DPacket* p = mBuffer[i]; p; p = p->getNextPacket()) ++pk;
-		s_pkts += pk; ++s_calls;
-		if (dbg && (s_calls % 2000) == 0)
-			fprintf(stderr, "[drawbuf] drawHead calls=%ld mSize=%u pkts_this=%ld total_pkts=%ld\n",
-			        s_calls, mSize, pk, s_pkts);
+		static int chk = -1;
+		if (chk < 0) { const char* e = getenv("SB_DRAWBUF_CHECK"); chk = (e && e[0] && e[0] != '0') ? 1 : 0; }
+		if (chk) {
+			for (u32 i = 0; i < mSize; i++) {
+				J3DPacket* slow = mBuffer[i];
+				J3DPacket* fast = mBuffer[i];
+				while (fast && fast->getNextPacket()) {
+					slow = slow->getNextPacket();
+					fast = fast->getNextPacket()->getNextPacket();
+					if (slow == fast) {
+						fprintf(stderr,
+						        "[drawbuf] CYCLE buf=%p mBuffer[%u]: packet=%p vtable=%p "
+						        "selfloop=%d sortType=%d\n",
+						        (const void*)this, i, (void*)slow,
+						        slow ? *(void**)slow : nullptr,
+						        (int)(mBuffer[i] == mBuffer[i]->getNextPacket()),
+						        (int)mSortType);
+						abort();
+					}
+				}
+			}
+		}
 	}
 #endif
 	for (u32 i = 0; i < mSize; i++) {
