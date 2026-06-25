@@ -355,6 +355,130 @@ TMareWBaseManager::TMareWBaseManager(const char* name)
 	                                &mStaticCommonKeeper);
 }
 
+// Concrete per-family manager constructors. The community decomp left these out (only the
+// *BaseManager / *SpecialManager ctors and the per-family createModelData/createAnmData/load
+// virtuals were recovered). Each concrete manager's ctor only chains to its base ctor: the base
+// builds the shared common-parts model-data keeper, while the per-variant model/anim assets are
+// loaded lazily by the virtual createModelData() (called from TEnemyManager::load /
+// getModelDataKeeper) and the variant load() override. The name passed here is a placeholder —
+// TObjManager::load -> TViewObj::load -> TNameRef::load overwrites mName from the scene data, which
+// is what TSpineEnemy::load searches for to bind each NPC to its manager. Reconstructed (faithful
+// chain-to-base; no per-ctor side effects exist beyond the base setup the virtuals depend on).
+TMonteMSpecialManager::TMonteMSpecialManager()
+    : TMonteMBaseManager("MonteMSpecialManager")
+{
+}
+
+TMonteWSpecialManager::TMonteWSpecialManager()
+    : TMonteWBaseManager("MonteWSpecialManager")
+{
+}
+
+TMonteMManager::TMonteMManager()
+    : TMonteMBaseManager("MonteMManager")
+{
+}
+
+TMonteMAManager::TMonteMAManager()
+    : TMonteMBaseManager("MonteMAManager")
+{
+}
+
+TMonteMBManager::TMonteMBManager()
+    : TMonteMBaseManager("MonteMBManager")
+{
+}
+
+TMonteMCManager::TMonteMCManager()
+    : TMonteMBaseManager("MonteMCManager")
+{
+}
+
+TMonteMDManager::TMonteMDManager()
+    : TMonteMBaseManager("MonteMDManager")
+{
+}
+
+TMonteMEManager::TMonteMEManager()
+    : TMonteMSpecialManager()
+{
+}
+
+TMonteWManager::TMonteWManager()
+    : TMonteWBaseManager("MonteWManager")
+{
+}
+
+TMonteWAManager::TMonteWAManager()
+    : TMonteWBaseManager("MonteWAManager")
+{
+}
+
+TMonteWBManager::TMonteWBManager()
+    : TMonteWBaseManager("MonteWBManager")
+{
+}
+
+TMareMAManager::TMareMAManager()
+    : TMareMBaseManager("MareMAManager")
+{
+}
+
+TMareMBManager::TMareMBManager()
+    : TMareMBaseManager("MareMBManager")
+{
+}
+
+TMareMCManager::TMareMCManager()
+    : TMareMBaseManager("MareMCManager")
+{
+}
+
+TMareMDManager::TMareMDManager()
+    : TMareMBaseManager("MareMDManager")
+{
+}
+
+TMareWAManager::TMareWAManager()
+    : TMareWBaseManager("MareWAManager")
+{
+}
+
+TMareWBManager::TMareWBManager()
+    : TMareWBaseManager("MareWBManager")
+{
+}
+
+TKinopioManager::TKinopioManager()
+    : TNPCManager("KinopioManager")
+{
+}
+
+TKinojiiManager::TKinojiiManager()
+    : TNPCManager("KinojiiManager")
+{
+}
+
+TPeachManager::TPeachManager()
+    : TNPCManager("PeachManager")
+{
+}
+
+TRaccoonDogManager::TRaccoonDogManager()
+    : TNPCManager("RaccoonDogManager")
+{
+}
+
+TSunflowerLManager::TSunflowerLManager()
+    : TNPCManager("SunflowerLManager")
+{
+}
+
+TSunflowerSManager::TSunflowerSManager()
+    : TNPCManager("SunflowerSManager")
+{
+}
+
 J3DMaterialTable* TMareBaseManager::getBmt_(bool pollution)
 {
 	if (pollution)

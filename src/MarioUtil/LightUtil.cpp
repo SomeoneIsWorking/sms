@@ -46,6 +46,24 @@ void TLightWithDBSet::changeLightDrawBuffer(int param_1)
 	if (param_1 > unk1C)
 		param_1 = 0;
 
+#ifdef SMS_NATIVE_PLATFORM
+	// STOPGAP: the per-light draw-buffer set (unk10) is NOT built — makeDrawBuffer() is a
+	// no-op stub across the whole TLightWithDBSet hierarchy (LightUtil.cpp:69-75), and the
+	// TLightDrawBuffer::perform that would actually render those buffers is not wired into any
+	// perform list. So redirecting an actor's draw into unk10[param_1] (the original behavior
+	// below) would (a) deref a null unk10 and (b), even if built, send the actor into an
+	// UNRENDERED buffer -> the actor would vanish. When the set is absent, leaving unk14/unk18
+	// null makes entry() draw into the CURRENT (normal Chr) buffer and resetLightDrawBuffer() a
+	// no-op (its own !unk14/!unk18 guards) — the correct degenerate result when no per-light
+	// shadow volumes exist, which is exactly this stub's state. This is what lets NPCs (whose
+	// MActor::setLightData assigns a real unk3C on shadow ground) render at all.
+	// PROPER FIX: port the light-with-DB-set subsystem — TLightWithDBSet::makeDrawBuffer building
+	// unk10 (TLightDrawBuffer opa/xlu pairs), wire their perform into PerformList GX, and
+	// implement TLightCommon::setLight — then restore the redirect below.
+	if (!unk10)
+		return;
+#endif
+
 	unk14 = j3dSys.getDrawBuffer(0);
 	unk18 = j3dSys.getDrawBuffer(1);
 
