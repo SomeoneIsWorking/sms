@@ -4,6 +4,10 @@
 #include <JSystem/JUtility/JUTResource.hpp>
 #include <JSystem/JSupport/JSURandomInputStream.hpp>
 #include <dolphin/gx.h>
+#ifdef SMS_NATIVE_PLATFORM
+#include <stdio.h>
+#include <stdlib.h>
+#endif
 
 J2DTextBox::J2DTextBox(const ResFONT* font, const char* str)
     : J2DPane()
@@ -234,6 +238,22 @@ void J2DTextBox::drawSelf(int x, int y)
 
 void J2DTextBox::drawSelf(int x, int y, Mtx* mtx)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_TBX_DBG: trace textbox glyph-draw path for the file-select banner. Filtered to
+	// non-empty strings so the per-frame spam stays readable; tells us whether drawSelf is
+	// even reached, mFont is valid, and the size/color/visibility are sane for the banner.
+	if (getenv("SB_TBX_DBG") && mText && mText[0]) {
+		static int once = 0;
+		if (once < 24) {
+			fprintf(stderr, "[tbx] drawSelf x=%d y=%d vis=%d font=%p text=\"%.20s\" "
+			        "szX=%d szY=%d charCol=0x%08x alpha=%d bnd=(%d,%d %dx%d)\n",
+			        x, y, (int)mVisible, (void*)mFont, mText, mFontSizeX, mFontSizeY,
+			        (unsigned)mCharColor, (int)mColorAlpha, mBounds.x1, mBounds.y1,
+			        mBounds.getWidth(), mBounds.getHeight());
+			++once;
+		}
+	}
+#endif
 	J2DPrint print(mFont, mCharSpace, mLineSpace, mCharColor, mGradColor);
 	print.setFontSize(mFontSizeX, mFontSizeY);
 	print.setSomeColors(mBlack, mWhite);
