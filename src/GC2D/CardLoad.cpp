@@ -204,7 +204,13 @@ void TCardLoad::load(JSUMemoryInputStream& stream)
 		unk32C[i] = (J2DPicture*)unk28->search('cra1' + i * 0x100);
 
 		unk32C[i]->insert(pJVar5, unk32C[i]->mTextureNum, 0.0f);
-		unk28->search('cra2' + i)->hide();
+		// Per-slot corrupt/sun marker '2' variants are cra2/crb2/crc2 — the slot index
+		// strides the 3rd FourCC byte (a/b/c), i.e. + i * 0x100, exactly like the cra1/
+		// crb1/crc1 lookup two lines up. The original '+ i' (cra2/cra3/cra4) only hides
+		// slot A's marker; cra3/cra4 don't exist, so crb2/crc2 stayed at their .blo-default
+		// VISIBLE state and rendered as two stray sun icons over the file-select (the real
+		// game hides all three — the GX oracle shows none). Decomp transcription typo.
+		unk28->search('cra2' + i * 0x100)->hide();
 	}
 
 	unk2B0 = unk2A4[0]->getPane()->getBounds();
