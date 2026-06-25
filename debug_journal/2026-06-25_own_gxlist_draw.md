@@ -99,6 +99,33 @@ are decomp-stub gaps the real list can't cover). Requires moving those specific 
 render-branch capture bracket (scene_drive currently runs after the loop, outside the lock). Then
 the GX-list path is a strict superset of the hand-driven scene and the flip is safe.
 
+## ⭐ OVERBRIGHT-WHITE ROOT-CAUSE LOCALIZATION (the real "runs fine" blocker)
+The scene renders overbright-WHITE (scene-band mean 254.5/255). Localized it step by step with new
+default-off diagnostics in native/render/sms_boot_present.cpp (SB_SKIP_IMM, SB_OPAQUE_ONLY,
+SB_TEXTURED_ONLY) + the existing SB_TEV_SOLID + SUNBRIGHT_NGX_TEVDBG=tex:
+- NOT a 2D overlay/fader: `SB_SKIP_IMM=1` (drop all 2D imm batches) → 3D scene STILL white.
+- NOT blend/additive accumulation: `SB_OPAQUE_ONLY=1` (opaque scene batches only) → STILL white.
+- NOT the combiner structure: the dominant map material (224004d9, ×28) has fogType=0, nstg=1,
+  matC0 white, combiner color_env=0x08f8af = **RASC×TEXC** (raster × texture) — correct GX_MODULATE.
+- Textures DECODE fine: the 71 dumped scene-batch textures span brightness 16–245 (real content),
+  and nvk uploads them (makeTexture + sampler, nvk.cpp ~L1007).
+- DECISIVE: `SB_TEV_SOLID` (raster-only) == normal == `SUNBRIGHT_NGX_TEVDBG=tex` (raw
+  `texture(tex[0],vUV[0])`) == `SB_TEXTURED_ONLY=1`+TEVDBG=tex == 254.5 white. If the texture were
+  reaching the shader the textured render would be DARKER than raster-only. It isn't.
+→ ROOT CAUSE (localized, not yet fixed): **scene-batch texture sampling returns WHITE.** Even the
+  hardcoded simple sampler `o = texture(tex[0], vUV[0])` (TEVDBG=tex, same shader the WORKING 2D imm
+  textured batches use) returns white for textured 3D scene batches. So the geometry+raster+combiner
+  are fine; the texture is not reaching the fragment for scene batches. Suspects to chase NEXT:
+  (a) the scene vertex's vUV[0] in the shader ≠ the v.uv[0] the capture wrote (make_v DOES write
+      tv.uv via sb_texgen_uv — capture L645-648 — so check the vertex-attribute binding / tev.vert
+      reads uv for scene verts; imm verts work, so compare the two vertex layouts/bindings), OR
+  (b) the per-batch sampler/descriptor binding in renderTevFrame isn't actually wiring scene
+      b.tex[0] to sampler unit 0 for these batches (vs imm), OR
+  (c) the texgen UVs are real-valued (b6 uv[-3.71,12.77;0,1]) but sample a uniform/white region.
+  Repro: `SUNBRIGHT_NGX_TEVDBG=tex SB_SKIP_IMM=1 SB_TEXTURED_ONLY=1 SB_FRAME_DUMP=1
+  SB_FRAME_DUMP_START=240 SB_FRAME_DUMP_MAX=1 ... ./build-native/sms-boot` → boot_0240 is white;
+  oracle (pure Dolphin) shows a normal-bright plaza. This is THE thing to fix to match the oracle.
+
 ## Plan (this session)
 `SB_OWN_GXLIST=1` (opt-in first, verify, then flip default):
 - scene_drive runs SETUP only (camera/projection latch/lights/option-camera/settle), skips the
