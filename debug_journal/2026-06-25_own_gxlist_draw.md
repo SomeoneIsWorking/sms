@@ -126,6 +126,34 @@ SB_TEXTURED_ONLY) + the existing SB_TEV_SOLID + SUNBRIGHT_NGX_TEVDBG=tex:
   SB_FRAME_DUMP_START=240 SB_FRAME_DUMP_MAX=1 ... ./build-native/sms-boot` → boot_0240 is white;
   oracle (pure Dolphin) shows a normal-bright plaza. This is THE thing to fix to match the oracle.
 
+## ⚠️ CORRECTION on the overbright cause — it is NOT a lighting bug, NOT a texture-sample bug
+Dug deeper and FALSIFIED two earlier leads:
+- **"texture samples white" was a misread.** The textured-only render DOES show the buildings (faint
+  roof/window edges) — the wall/floor/sky textures are just genuinely BRIGHT. Dumped map textures are
+  real cream stucco (e.g. (254,253,228)) + some dark (16). Textures decode + sample fine.
+- **"lighting mis-decoded (me->lit wrong)" is FALSE.** J3DColorChan bit layout (verified in
+  include/.../Components/J3DColorChan.hpp): `getMatSrc()=mChanCtrl>>0&1`, **`getEnable()=mChanCtrl>>1&1`**.
+  The dominant map material chanCtrl=0x701 → bit1(enable)=0 → lighting genuinely DISABLED;
+  bit0(matSrc)=1 → raster sources from the VERTEX colour. So `me->lit=false` / `do_light=0` are
+  CORRECT — these materials are not GX-lit. Do NOT "fix lighting" for them.
+So the map raster = vertex CLR0 (0x701 materials; the capture DOES read it with real variance —
+batchdbg b6 rgb 0.81 cvar 0.22, b7 0.44/0.76/0.79 cvar 0.24) or white matColor (0x700) — then ×
+the (bright) texture. The remaining overbright question is therefore one (or more) of:
+  1. The SKY/upper area renders WHITE not blue — the sky batch raster is blue (bbox b0 0,0.07,0.93)
+     but the sky uses SCREEN/additive blend (CLAUDE.md: sky ti=11 src=ONE dst=INVSRCCLR); additive
+     layers with no fog stack toward white. FOG IS UNIMPLEMENTED (sms_boot_material.cpp L123-127) —
+     the game fogs distant/additive layers down; sms-boot leaves them full-bright. Strong suspect.
+  2. The plaza floor/walls render brighter than the oracle — compare sms-boot pixels to the
+     oracle xfb grid (oracle.jsonl has it) region-by-region to QUANTIFY where the excess is, instead
+     of "it's white". Build that compare (oracle xfb grid vs sms-boot frame downsampled to 4x4).
+  3. Vertex CLR0 values: confirm the 0x701 baked vertex colours match the oracle (a baked-AO/shading
+     channel read too bright → unshaded buildings). batchdbg shows variance, so they're read, but
+     verify magnitude vs oracle.
+NEXT CONCRETE STEP: implement GX FOG (the one clearly-missing pipeline stage, L123-127) — it is the
+most likely single cause of additive/distant layers blowing white — then re-measure brightness vs
+the oracle xfb grid. If fog doesn't close it, do the region-by-region oracle-xfb vs sms-boot compare
+to localize the excess before touching anything else.
+
 ## Plan (this session)
 `SB_OWN_GXLIST=1` (opt-in first, verify, then flip default):
 - scene_drive runs SETUP only (camera/projection latch/lights/option-camera/settle), skips the
