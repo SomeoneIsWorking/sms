@@ -250,6 +250,11 @@ void J2DTextBox::drawSelf(int x, int y, Mtx* mtx)
 			        x, y, (int)mVisible, (void*)mFont, mText, mFontSizeX, mFontSizeY,
 			        (unsigned)mCharColor, (int)mColorAlpha, mBounds.x1, mBounds.y1,
 			        mBounds.getWidth(), mBounds.getHeight());
+			fprintf(stderr, "[tbx]   mGlobalMtx [%.3f %.3f %.3f %.3f][%.3f %.3f %.3f %.3f]"
+			        "[%.3f %.3f %.3f %.3f]\n",
+			        mGlobalMtx[0][0], mGlobalMtx[0][1], mGlobalMtx[0][2], mGlobalMtx[0][3],
+			        mGlobalMtx[1][0], mGlobalMtx[1][1], mGlobalMtx[1][2], mGlobalMtx[1][3],
+			        mGlobalMtx[2][0], mGlobalMtx[2][1], mGlobalMtx[2][2], mGlobalMtx[2][3]);
 			++once;
 		}
 	}
