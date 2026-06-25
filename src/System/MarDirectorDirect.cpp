@@ -36,6 +36,9 @@
 #include <cstdio>
 #include <cstdlib>
 extern "C" bool sb_boot_drive_scene();   // native/src/scene_drive.cpp
+extern "C" int  sb_own_gxlist();                 // scene_drive.cpp — SB_OWN_GXLIST
+extern "C" int  sb_boot_capture_begin_scene();   // sms_boot_j3d_capture.cpp — once-per-present lock
+extern "C" void sb_boot_capture_end_scene();
 static bool sb_dir_dbg() {
 	static int v = -1;
 	if (v < 0) { const char* e = getenv("SB_J3D_DBG"); v = (e && e[0] && e[0] != '0') ? 1 : 0; }
@@ -264,16 +267,28 @@ int TMarDirector::direct()
 			}
 #endif
 			local_140.unk2 = 0;
-			unk40->perform(CUE_ALL, &local_140);
-			unk38->perform(CUE_ALL, &local_140);
-			unk3C->perform(CUE_ALL, &local_140);
-			mPerformListGX->perform(CUE_ALL, &local_140);
+#ifdef SMS_NATIVE_PLATFORM
+			// SB_OWN_GXLIST: this real master GX perform-list render IS the owned native draw
+			// path. Bracket it with the capture's once-per-present lock so the J3DShape::draw taps
+			// land in the present buffer exactly once per VI present (begin_scene returns 1 only on
+			// the first render after the present consumed the prior frame). The hand-driving in
+			// scene_drive is then setup-only. See debug_journal/2026-06-25_own_gxlist_draw.md.
+			const bool sb_own = sb_own_gxlist() != 0;
+			const bool sb_capture_now = sb_own && sb_boot_capture_begin_scene() != 0;
+#endif
+			unk40->perform(0xffffffff, &local_140);
+			unk38->perform(0xffffffff, &local_140);
+			unk3C->perform(0xffffffff, &local_140);
+			mPerformListGX->perform(0xffffffff, &local_140);
 			if ((gpSilhouetteManager->unk48 > 0.0f ? true : false)
 			    || gpCamera->unk2C8 != -1) {
 				mPerformListSilhouette->perform(CUE_ALL, &local_140);
 			}
 			mPerformListGXPost->perform(CUE_ALL, &local_140);
 			GXInvalidateTexAll();
+#ifdef SMS_NATIVE_PLATFORM
+			if (sb_capture_now) sb_boot_capture_end_scene();
+#endif
 		}
 		desiredAppState = changeState();
 		unk4C &= ~0x6000;
