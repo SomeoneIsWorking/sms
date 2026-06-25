@@ -67,17 +67,26 @@ bool J3DDrawBuffer::entryMatSort(J3DMatPacket* packet)
 		// PC-engine draw-list invariant: this is the "no-merge, always prepend to
 		// slot 0" path for unsorted/indirect materials (unk3C bit31). Unlike the
 		// hashed branch below (which dedups via isSame), it does NOT guard against
-		// re-entering the SAME packet. When one object enters a model via both
+		// re-entering the SAME packet. When an object enters a model via both
 		// entry() and update() in one frameInit window (e.g. TShimmer::perform does
 		// unk48->entry() for flag bit 0x4 AND unk48->update() for bit 0x200, and the
-		// indirect-scene flag 0x40000204 sets both), the second entry would self-link
-		// (next = mBuffer[0] = packet) and drawHead()'s walk would spin forever.
-		// Re-prepending a packet that is ALREADY the slot head is a pure no-op (it is
-		// already entered, at the head) — so skip it. This keeps the model entered
-		// exactly once and can never form a self-referential cycle. See
-		// debug_journal/2026-06-25_delfino_indirect_drawbuf_selfloop.md.
-		if (mBuffer[0] == packet)
-			return true;
+		// indirect-scene flag 0x40000204 sets both), the packet gets prepended twice.
+		//
+		// The original eeccde1 fix only checked the SLOT HEAD (mBuffer[0] == packet),
+		// which catches a packet entered twice CONSECUTIVELY (the TShimmer self-loop).
+		// But with the NPC population MANY objects enter twice and interleave: enter P
+		// (head=P), enter Q (head=Q, Q->next=P), enter P AGAIN — P is no longer the
+		// head, so the head-check misses it, P->next=Q and head=P → P->next=Q,
+		// Q->next=P = a MULTI-node cycle → drawHead()'s walk spins forever (the
+		// SB_NPC_ON gameplay hang; SB_DRAWBUF_CHECK reports "CYCLE ... selfloop=0").
+		// The correct invariant is "enter each packet at most once per frameInit
+		// window": skip the prepend if the packet is ALREADY anywhere in the slot
+		// chain (re-entering an entered packet is a pure no-op). The chain is the
+		// unsorted/indirect set (small), so the walk is cheap and can never form any
+		// cycle. See debug_journal/2026-06-25_delfino_indirect_drawbuf_selfloop.md.
+		for (J3DPacket* p = mBuffer[0]; p; p = p->getNextPacket())
+			if (p == packet)
+				return true;
 #endif
 		packet->setNextPacket(mBuffer[0]);
 		mBuffer[0] = packet;
