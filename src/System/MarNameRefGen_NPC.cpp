@@ -1,4 +1,5 @@
 #include "NPC/NpcBase.hpp"
+#include "NPC/NpcManager.hpp"
 #include "Strategic/LiveManager.hpp"
 #include <System/MarNameRefGen.hpp>
 
@@ -114,121 +115,69 @@ JDrama::TNameRef* TMarNameRefGen::getNameRef_NPC(const char* name) const
 	if (strcmp(name, "NPCBoard") == 0)
 		return new TBaseNPC(0x0400001DU);
 
-	// TODO:
-	// if ( strcmp(name, "MonteMManager") == 0 )
-	//     return new TMonteMBaseManager("?");
+	// NPC managers (townspeople / creature managers). Each concrete subclass owns its
+	// createModelData/createAnmData (the right bmd + anm set per NPC family) and self-registers
+	// into gpConductor via its TEnemyManager/TLiveManager ctor. The instance NAME comes from the
+	// scene data (TNameRef::load overwrites the ctor placeholder), so a static NPC's
+	// TSpineEnemy::load (enemy.cpp: search<TLiveManager>(managerNameFromStream) -> init(mgr))
+	// finds its manager by name and sets mManager before setIndividualDifference_ runs. The
+	// managers are only created when the scene references them, so a stage never builds a manager
+	// whose assets it lacks. This is the proper fix for the SB_NPC_ON gate's "managers TODO".
+	if (strcmp(name, "MonteMManager") == 0)
+		return new TMonteMManager();
+	if (strcmp(name, "MonteMAManager") == 0)
+		return new TMonteMAManager();
+	if (strcmp(name, "MonteMBManager") == 0)
+		return new TMonteMBManager();
+	if (strcmp(name, "MonteMCManager") == 0)
+		return new TMonteMCManager();
+	if (strcmp(name, "MonteMDManager") == 0)
+		return new TMonteMDManager();
+	if (strcmp(name, "MonteMEManager") == 0)
+		return new TMonteMEManager();
+	if (strcmp(name, "MonteMFManager") == 0)
+		return new TMonteMFManager();
+	if (strcmp(name, "MonteMGManager") == 0)
+		return new TMonteMGManager();
+	if (strcmp(name, "MonteMHManager") == 0)
+		return new TMonteMHManager();
+	if (strcmp(name, "MonteWManager") == 0)
+		return new TMonteWManager();
+	if (strcmp(name, "MonteWAManager") == 0)
+		return new TMonteWAManager();
+	if (strcmp(name, "MonteWBManager") == 0)
+		return new TMonteWBManager();
+	if (strcmp(name, "MonteWCManager") == 0)
+		return new TMonteWCManager();
+	if (strcmp(name, "MareMAManager") == 0)
+		return new TMareMAManager();
+	if (strcmp(name, "MareMBManager") == 0)
+		return new TMareMBManager();
+	if (strcmp(name, "MareMCManager") == 0)
+		return new TMareMCManager();
+	if (strcmp(name, "MareMDManager") == 0)
+		return new TMareMDManager();
+	if (strcmp(name, "MareWAManager") == 0)
+		return new TMareWAManager();
+	if (strcmp(name, "MareWBManager") == 0)
+		return new TMareWBManager();
+	if (strcmp(name, "KinopioManager") == 0)
+		return new TKinopioManager();
+	if (strcmp(name, "KinojiiManager") == 0)
+		return new TKinojiiManager();
+	if (strcmp(name, "PeachManager") == 0)
+		return new TPeachManager();
+	if (strcmp(name, "RaccoonDogManager") == 0)
+		return new TRaccoonDogManager();
+	if (strcmp(name, "SunflowerLManager") == 0)
+		return new TSunflowerLManager();
+	if (strcmp(name, "SunflowerSManager") == 0)
+		return new TSunflowerSManager();
+	if (strcmp(name, "MareJellyFish") == 0)
+		return new TMareJellyFishManager("?");
 
-	// TODO:
-	// if ( strcmp(name, "MonteMAManager") == 0 )
-	//     return new TMonteMBaseManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "MonteMBManager") == 0 )
-	//     return new TMonteMBaseManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "MonteMCManager") == 0 )
-	//     return new TMonteMBaseManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "MonteMDManager") == 0 )
-	//     return new TMonteMBaseManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "MonteMEManager") == 0 )
-	//     return new TMonteMBaseManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "MonteMFManager") == 0 )
-	//     return new TMonteMBaseManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "MonteMGManager") == 0 )
-	//     return new TMonteMBaseManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "MonteMHManager") == 0 )
-	//     return new TMonteMBaseManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "MonteWManager") == 0 )
-	//     return new TMonteWBaseManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "MonteWAManager") == 0 )
-	//     return new TMonteWBaseManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "MonteWBManager") == 0 )
-	//     return new TMonteWBaseManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "MonteWCManager") == 0 )
-	//     return new TMonteWBaseManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "MareMManager") == 0 )
-	//     return new TMareMBaseManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "MareMAManager") == 0 )
-	//     return new TMareMBaseManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "MareMBManager") == 0 )
-	//     return new TMareMBaseManager( "?");
-
-	// TODO:
-	// if ( strcmp(name, "MareMCManager") == 0 )
-	//     return new TMareMBaseManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "MareMDManager") == 0 )
-	//     return new TMareMBaseManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "MareWManager") == 0 )
-	//     return new TMareMBaseManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "MareWAManager") == 0 )
-	//     return new TMareWBaseManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "MareWBManager") == 0 )
-	//     return new TMareWBaseManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "KinopioManager") == 0 )
-	//     return new TNPCManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "KinojiiManager") == 0 )
-	//     return new TNPCManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "PeachManager") == 0 )
-	//     return new TNPCManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "RaccoonDogManager") == 0 )
-	//     return new TNPCManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "SunflowerLManager") == 0 )
-	//     return new TNPCManager("?");
-
-	// TODO:
-	// if ( strcmp(name, "SunflowerSManager") == 0 )
-	//     return new TNPCManager  ("?");
-
-	// TODO:
-	// if ( strcmp(name, "MareJellyFish") == 0 )
-	//     return new TMareJellyFishManager("?");
-
-	// TODO:
-	// if (strcmp(name, "BoardNpcManager") == 0)
-	// 	return new TBoardNpcManager("?");
+	// Still TODO (no concrete manager subclass decompiled yet): MareMManager / MareWManager
+	// (only the lettered A/B/C/D variants have classes) and BoardNpcManager (no default ctor).
 
 	return nullptr;
 }

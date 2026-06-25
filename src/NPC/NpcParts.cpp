@@ -37,8 +37,11 @@ TNpcParts::TNpcParts(u32 param_1, const J3DGXColorS10* param_2,
 	const TNpcInitInfo* initInfo
 	    = SMSGetNpcInitData(unk60->getActorType() - 0x4000001);
 
-	for (int i = 0; i < 2; ++i)
-		for (int j = 0; j < 12; ++j)
+	// Clear all 12x2 slots. (Matches the array's real [12][2] shape and the main loop below;
+	// the decomp had [i<2][j<12] here, the transposed bounds that paired with the wrong
+	// [2][12] declaration.)
+	for (int i = 0; i < 12; ++i)
+		for (int j = 0; j < 2; ++j)
 			unk0[i][j] = nullptr;
 
 	for (int i = 0; i < 12; ++i) {
@@ -60,6 +63,24 @@ TNpcParts::TNpcParts(u32 param_1, const J3DGXColorS10* param_2,
 			const char* puVar3          = puVar6->unk8[0];
 			if (puVar3 == nullptr)
 				continue;
+
+#ifdef SMS_NATIVE_PLATFORM
+			if (const char* e = getenv("SB_NPCPARTS_DBG"); e && e[0] && e[0] != '0') {
+				static int dn = 0;
+				if (dn < 60) { ++dn;
+					SDLModelData* pmd =
+					    ((TNPCManager*)unk60->getManager())->getPartsSDLModelData(puVar3);
+					fprintf(stderr,
+					    "[npcparts] npc=%p name='%s' actorType=0x%x i=%d j=%d unk28=%d root=%d puVar3='%s' "
+					    "partsSDL=%p%s\n",
+					    (void*)unk60, unk60->getName() ? unk60->getName() : "?",
+					    unk60->getActorType(), i, j, unk60->getManager()->unk28,
+					    strcmp(puVar6->unk0, cNpcPartsNameRootJoint) == 0, puVar3,
+					    (void*)pmd, pmd ? "" : "  <-- NULL parts model (would crash TSharedParts)");
+					fflush(stderr);
+				}
+			}
+#endif
 
 			int iVar6 = strcmp(puVar6->unk0, cNpcPartsNameRootJoint) == 0
 			                ? -1
