@@ -1,4 +1,8 @@
 #include <Enemy/Conductor.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 #include <NPC/NpcSave.hpp>
 #include <Enemy/EnemyManager.hpp>
 #include <Enemy/Graph.hpp>
@@ -364,6 +368,19 @@ JDrama::TNameRef* TConductor::searchF(u16 key, const char* name)
 
 void TConductor::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_COND_DBG: one-shot per distinct param_1 — what flags does the conductor actually
+	// receive (and from which driver), so we can see whether the director's calc pass ever
+	// delivers the calc op bit (0x2) to the NPC managers.
+	if (getenv("SB_COND_DBG")) {
+		static u32 seen[32]; static int ns = 0;
+		bool found = false; for (int i = 0; i < ns; ++i) if (seen[i] == param_1) { found = true; break; }
+		if (!found && ns < 32) { seen[ns++] = param_1;
+			fprintf(stderr, "[cond] perform param_1=0x%x  (b1mov=%d b2calc=%d b4vc=%d b200entry=%d)\n",
+			        param_1, (param_1&1)!=0, (param_1&2)!=0, (param_1&4)!=0, (param_1&0x200)!=0);
+		}
+	}
+#endif
 	if ((param_1 & 1) && gpMarDirector->unk124 == 0)
 		genEnemyFromPollution();
 

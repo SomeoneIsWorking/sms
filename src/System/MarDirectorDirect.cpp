@@ -205,21 +205,42 @@ int TMarDirector::direct()
 				uVar4 &= ~0x100;
 			if (unk58 & 2)
 				uVar4 &= 0x200;
+			// Verified against the original DOL (0x80299b2c-0x80299b6c): the unk4E&1
+			// branch selects the SHINE-stage movement list; the else branch (normal
+			// stages, incl. Delfino Plaza) drives mPerformListMovement. The prior decomp
+			// called mShinePfLstMov in BOTH branches (a misdecompilation that left the
+			// normal-stage movement/calc pass dead → NPC calcRootMatrix never ran).
 			if (unk4E & 1)
 				mShinePfLstMov->perform(uVar4, &local_140);
 			else
-				mShinePfLstMov->perform(uVar4, &local_140);
+				mPerformListMovement->perform(uVar4, &local_140);
 
 			u32 uVar44 = 0;
 			if (!(unk4C & 0x4000))
 				uVar44 |= 2;
 			unk30->perform(~uVar44, &local_140);
 			movement();
+#ifdef SMS_NATIVE_PLATFORM
+			if (getenv("SB_CALCPASS_DBG")) {
+				static int n = 0;
+				if (n < 6) { ++n;
+					fprintf(stderr, "[calcpass] uVar8=0x%x uVar11=0x%x unk4E=0x%x skip(uVar8&2)=%d "
+					        "list=%s CalcAnim&uVar11&0x2000000=0x%x\n",
+					        uVar8, uVar11, unk4E, (uVar8 & 2) != 0,
+					        (unk4E & 1) ? "CalcAnim" : "ShinePfLstAnm",
+					        uVar11 & 0x2000000);
+				}
+			}
+#endif
 			if (!(uVar8 & 2)) {
+				// Verified against the original DOL (0x80299bac-0x80299bf4): unk4E&1 →
+				// SHINE-stage anim list; else (normal stages) → mPerformListCalcAnim
+				// (the list holding コンダクター/NPC managers, マップグループ, etc.). The
+				// decomp had these two SWAPPED.
 				if (unk4E & 1)
-					mPerformListCalcAnim->perform(uVar11, &local_140);
-				else
 					mShinePfLstAnm->perform(uVar11, &local_140);
+				else
+					mPerformListCalcAnim->perform(uVar11, &local_140);
 			}
 
 			if (unk4C & 0x4000) {
