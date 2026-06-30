@@ -8,6 +8,7 @@
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
 #include <cstdlib>
+extern "C" int sb_boot_capture_phase();   // SB_DBHEAD_DBG: which pass this drawHead flush is in
 #endif
 
 J3DDrawBuffer::sortFunc J3DDrawBuffer::sortFuncTable[6] = {
@@ -278,6 +279,18 @@ void J3DDrawBuffer::drawHead() const
 				}
 			}
 		}
+	}
+#endif
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_DBHEAD_DBG: trace each drawHead flush — buffer ptr + phase + packet count. Cross-ref the
+	// buffer ptr with SB_DRAWBUF_INV to see WHICH named buffer (e.g. MapXlu) is flushed in WHICH pass.
+	// This nails the MapXlu-mask pass-routing divergence (native flushes it in ph1+ph6; GC in main).
+	if (const char* e = std::getenv("SB_DBHEAD_DBG"); e && e[0] && e[0] != '0') {
+		long np = 0; for (u32 i = 0; i < mSize; i++)
+			for (J3DPacket* p = mBuffer[i]; p; p = p->getNextPacket()) ++np;
+		if (np > 0)
+			std::fprintf(stderr, "[dbhead] phase=%d buf=%p packets=%ld\n",
+			             sb_boot_capture_phase(), (const void*)this, np);
 	}
 #endif
 	for (u32 i = 0; i < mSize; i++) {
