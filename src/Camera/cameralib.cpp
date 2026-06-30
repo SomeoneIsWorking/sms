@@ -340,6 +340,16 @@ void CLBCalcNearNinePos(JGeometry::TVec3<f32>* out_grid, S16Vec* out_euler,
 	JGeometry::TVec3<f32> local_74;
 	JGeometry::TVec3<f32> local_68;
 
+	// The euler angles are a SCRATCH used only to build the near-plane rotation below — neither
+	// caller reads them back (CameraBGCheck uses only the grid; TLensFlare::perform passes
+	// out_euler=nullptr). The decomp materialised this scratch as the caller's *out_euler and wrote
+	// it unconditionally (line `eul.x = -matan(...)`), which NULL-derefs on the lensflare path and
+	// crashes the title/option scene. Alias *out_euler to a local when null: byte-identical for the
+	// non-null caller, crash-free for the null one. (Faithful — the real game keeps the euler in a
+	// register/stack temp regardless; the pointer is just where the decomp parked it.)
+	S16Vec  eul_scratch;
+	S16Vec& eul = out_euler ? *out_euler : eul_scratch;
+
 	local_a8.sub(lookat, origin);
 	normalizeInner2(local_a8);
 
@@ -348,9 +358,9 @@ void CLBCalcNearNinePos(JGeometry::TVec3<f32>* out_grid, S16Vec* out_euler,
 
 	f32 xzDistance = MsSqrtf(((origin.x - lookat.x) * (origin.x - lookat.x)
 	                          + (origin.z - lookat.z) * (origin.z - lookat.z)));
-	out_euler->x   = -matan(xzDistance, origin.y - lookat.y);
-	out_euler->y   = matan(origin.z - lookat.z, origin.x - lookat.x);
-	out_euler->z   = roll;
+	eul.x   = -matan(xzDistance, origin.y - lookat.y);
+	eul.y   = matan(origin.z - lookat.z, origin.x - lookat.x);
+	eul.z   = roll;
 
 	local_68.set(0.0f, 1.0f, 0.0f);
 	local_74.set(1.0f, 0.0f, 0.0f);
@@ -359,16 +369,16 @@ void CLBCalcNearNinePos(JGeometry::TVec3<f32>* out_grid, S16Vec* out_euler,
 	local_80.sub(lookat, origin);
 	normalizeInner1(local_80);
 
-	fVar16.z = out_euler->z * SHORTANGLE_TO_DEGREES * DEGREES_TO_RADIANS;
+	fVar16.z = eul.z * SHORTANGLE_TO_DEGREES * DEGREES_TO_RADIANS;
 
 	// Basically transform the up/right vectors from cam space into world space.
 	// TODO: Definitely inlines...
 
 	{
-		f32 sinX = JMASSin(out_euler->x);
-		f32 cosX = JMASCos(out_euler->x);
-		f32 sinY = JMASSin(out_euler->y);
-		f32 cosY = JMASCos(out_euler->y);
+		f32 sinX = JMASSin(eul.x);
+		f32 cosX = JMASCos(eul.x);
+		f32 sinY = JMASSin(eul.y);
+		f32 cosY = JMASCos(eul.y);
 
 		// This transformation appears to be the following:
 		// [ cosY, 0, sinY]   [1,   0,     0 ]
@@ -387,10 +397,10 @@ void CLBCalcNearNinePos(JGeometry::TVec3<f32>* out_grid, S16Vec* out_euler,
 	}
 
 	{
-		f32 sinX = JMASSin(out_euler->x);
-		f32 cosX = JMASCos(out_euler->x);
-		f32 sinY = JMASSin(out_euler->y);
-		f32 cosY = JMASCos(out_euler->y);
+		f32 sinX = JMASSin(eul.x);
+		f32 cosX = JMASCos(eul.x);
+		f32 sinY = JMASSin(eul.y);
+		f32 cosY = JMASCos(eul.y);
 
 		local_74.set(local_74.x * cosY
 		                 + (local_74.y * sinX + local_74.z * cosX) * sinY,
