@@ -17,6 +17,7 @@
 #include <JSystem/J2D/J2DPicture.hpp>
 #include <JSystem/J2D/J2DPrint.hpp>
 #include <JSystem/J2D/J2DScreen.hpp>
+#include <JSystem/J2D/J2DOrthoGraph.hpp>
 #include <JSystem/JParticle/JPAEmitter.hpp>
 #include <JSystem/JUtility/JUTResFont.hpp>
 #include <stdio.h>
@@ -744,4 +745,27 @@ void TGCConsole2::stopMoveTimer()
 
 int TGCConsole2::getFinishedTime() { return unk4FC; }
 
-void TGCConsole2::perform(u32 cue, JDrama::TGraphics* graphics) { }
+// Faithful port of the real DOL TGCConsole2::perform @ 0x8014083c (vtable 0x803c0304
+// slot 8 = TViewObj::perform). The community decomp shipped this as an empty stub, so
+// sms-boot drew NO in-game HUD at all. RE'd from the DOL via Ghidra (scratch/decomp/
+// 8014083c.c). Two halves: param_1 & 1 = the per-frame counter/animation state machine
+// (coin/shine/timer/life/water-gauge); param_1 & 8 = the J2D draw.
+//
+// STAGE 1 (this commit): the &8 DRAW branch core — the visible reason the HUD was
+// missing. Mirrors the sibling TConsoleStr::perform (ConsoleStr.cpp:238-285) idiom:
+// build a J2DOrthoGraph from the viewport, setup2D, and draw the main HUD screen unkB0
+// (the J2DSetScreen built from "standard_1.blo": coin/shine/timer/life/FLUDD panes).
+// In the DOL the draw branch also calls three gated auxiliary overlays — FUN_801492a4
+// (gated on unk45/unk46), the water-gauge scissored sub-draw (gated on unk44 && !unk43
+// && !unk42 && te_w visible), FUN_80144840 (gated on MarDirector demo state 8), and
+// FUN_801441e0 (gated on the juice ExPane visible). Those are off in free-roam plaza.
+// STAGE 2 (TODO): the &1 update state machine + the gated sub-draws + the still-stubbed
+// process* methods, for counter-animation fidelity.
+void TGCConsole2::perform(u32 param_1, JDrama::TGraphics* param_2)
+{
+	if (param_1 & 0x8) {
+		J2DOrthoGraph graph(param_2->getViewport());
+		graph.setup2D();
+		unkB0->draw(0, 0, &graph);
+	}
+}
