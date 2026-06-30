@@ -8,7 +8,9 @@
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
 #include <cstdlib>
+#include <execinfo.h>   // SB_ENTRY_MAT entry backtrace
 extern "C" int sb_boot_capture_phase();   // SB_DBHEAD_DBG: which pass this drawHead flush is in
+extern "C" void* sb_b76_material();       // SB_ENTRY_MAT: the b76 mask material ptr (published by capture)
 #endif
 
 J3DDrawBuffer::sortFunc J3DDrawBuffer::sortFuncTable[6] = {
@@ -77,6 +79,23 @@ bool J3DDrawBuffer::entryMatSort(J3DMatPacket* packet)
 {
 	packet->drawClear();
 	packet->getShapePacket()->drawClear();
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_ENTRY_MAT=1: backtrace the entry of the b76 mask material's packet → names the scene object
+	// that enters it into THIS buffer (and which buffer = `this`). The target material ptr comes from
+	// the capture (sb_b76_material, published once b76 is seen), so it tracks the per-run heap address.
+	if (const char* e = std::getenv("SB_ENTRY_MAT"); e && e[0] && e[0] != '0') {
+		void* want = sb_b76_material();
+		if (want && (void*)packet->getMaterial() == want) {
+			static int n = 0;
+			if (n < 3) { ++n;
+				std::fprintf(stderr, "[entry-mat] mat=%p packet=%p buf(this)=%p phase=%d backtrace:\n",
+				             (void*)packet->getMaterial(), (void*)packet, (const void*)this,
+				             sb_boot_capture_phase());
+				void* fr[40]; int nf = ::backtrace(fr, 40); ::backtrace_symbols_fd(fr, nf, 2);
+			}
+		}
+	}
+#endif
 
 	J3DTexture* texture = j3dSys.getTexture();
 	u32 hash;
