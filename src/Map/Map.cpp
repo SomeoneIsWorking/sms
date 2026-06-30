@@ -9,24 +9,9 @@
 #include <Map/MapWarp.hpp>
 #include <Map/MapXlu.hpp>
 #include <Map/MapCollisionEntry.hpp>
-#include <Map/MapStaticObject.hpp>
-#include <Map/MapEventMare.hpp>
-#include <M3DUtil/MActor.hpp>
-#include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
-#include <MoveBG/MapObjBase.hpp>
-#include <MoveBG/MapObjManager.hpp>
-#include <MoveBG/MapObjOption.hpp>
-#include <MoveBG/MapObjWater.hpp>
-#include <MoveBG/MapObjWave.hpp>
-#include <System/MarDirector.hpp>
-#include <System/Particles.hpp>
-#include <System/EmitterViewObj.hpp>
-#include <Camera/Camera.hpp>
-#include <Camera/CubeManagerBase.hpp>
-#include <Player/MarioAccess.hpp>
-#include <MSound/MSound.hpp>
-#include <JSystem/JDrama/JDRNameRefGen.hpp>
-#include <JSystem/JDrama/JDRViewObjPtrList.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+extern "C" int sb_boot_capture_phase();
+#endif
 
 // rogue includes needed for matching sinit & bss
 #include <MSound/MSSetSound.hpp>
@@ -391,8 +376,18 @@ void TMap::perform(u32 cue, JDrama::TGraphics* graphics)
 		mWarp->watchToWarp();
 	}
 
-	if (cue & CUE_ENTRY) {
-		if ((cue & CUE_SEMITRANSPARENT_PRIO_2)) {
+	if (param_1 & 0x200) {
+#ifdef SMS_NATIVE_PLATFORM
+		if (const char* e = std::getenv("SB_MAPXLU_DBG"); e && e[0] && e[0] != '0') {
+			static int n = 0; if (n < 12) { ++n;
+				std::fprintf(stderr, "[mapxlu] TMap::perform flag=0x%x branch=%s xluCount=%d phase=%d\n",
+				             param_1,
+				             (param_1 & 0x2000000) ? "changeXluJoint(1)"
+				             : (param_1 & 0x4000000) ? "changeXluJoint(0)" : "changeNormalJoint",
+				             mXlu ? mXlu->unk0 : -1, sb_boot_capture_phase()); }
+		}
+#endif
+		if ((param_1 & 0x2000000)) {
 			if (!mXlu->changeXluJoint(1))
 				return;
 		} else if ((cue & CUE_SEMITRANSPARENT_PRIO_1)) {
