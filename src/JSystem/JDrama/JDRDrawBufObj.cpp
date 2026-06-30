@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+extern "C" void sb_boot_capture_set_drawbuf(const char*);  // overbright harness: name the active buffer
 #endif
 
 using namespace JDrama;
@@ -69,6 +70,10 @@ void TDrawBufObj::perform(u32 cue, TGraphics* graphics)
 
 	if (cue & CUE_DRAW) {
 		j3dSys.unk4C = unk18;
+#ifdef SMS_NATIVE_PLATFORM
+		// Attribute the shapes this flush captures to THIS draw buffer by name (overbright harness).
+		sb_boot_capture_set_drawbuf(getName());
+#endif
 #ifdef SMS_NATIVE_PLATFORM
 		{
 			static int dbg = -1;
