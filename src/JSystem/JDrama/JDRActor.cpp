@@ -2,6 +2,10 @@
 #include <JSystem/JDrama/JDRActor.hpp>
 #include <JSystem/JDrama/JDRLighting.hpp>
 #include <JSystem/JDrama/JDRCharacter.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 
 void JDrama::TActor::load(JSUMemoryInputStream& stream)
 {
@@ -27,6 +31,24 @@ void JDrama::TActor::load(JSUMemoryInputStream& stream)
 
 void JDrama::TActor::issueGXLight(u32 param_1, JDrama::TGraphics* param_2)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// DIAG (SB_ACTOR_LIGHT_DBG): which actors carry a populated per-actor TLightMap, and how
+	// many lights does it select? This is the faithful GX-light source the value oracle sees.
+	static const char* dbg = std::getenv("SB_ACTOR_LIGHT_DBG");
+	if (dbg && dbg[0] && dbg[0] != '0' && unk40) {
+		static int shown = 0;
+		if (shown < 40) {
+			++shown;
+			TLightMap* lm = (TLightMap*)unk40;
+			std::fprintf(stderr, "[actor-light] actor='%s' lightMap=%p count=%d\n",
+			             getName() ? getName() : "?", (void*)lm, lm->mLightInfoCount);
+			for (int i = 0; i < lm->mLightInfoCount && i < 8; ++i)
+				std::fprintf(stderr, "    info[%d] slot=%u obj=%p name='%s'\n",
+				             i, lm->mLightInfos[i].unk0, (void*)lm->mLightInfos[i].unk4,
+				             lm->mLightInfos[i].unk4 ? lm->mLightInfos[i].unk4->getName() : "?");
+		}
+	}
+#endif
 	if (unk40 != nullptr)
 		unk40->perform(param_1 | 0x20, param_2);
 }
