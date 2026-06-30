@@ -39,22 +39,23 @@ bool TMapXlu::changeXluJoint(int prio)
 
 void TMapXlu::init(JSUMemoryInputStream& stream)
 {
-	s32 tmp;
-	stream >> tmp;
-	mPrioGroupNum = tmp;
-	if (mPrioGroupNum != 0) {
-		mPrioGroups = new TXluPrioGroup[mPrioGroupNum];
-		for (int i = 0; i < mPrioGroupNum; ++i) {
-			TXluPrioGroup& entry = mPrioGroups[i];
-			stream >> tmp;
-			entry.mObjectNum     = tmp;
-			entry.mChildIdx      = new u32[entry.mObjectNum];
-			entry.mGrandchildIdx = new u32[entry.mObjectNum];
-			for (int j = 0; j < entry.mObjectNum; ++j) {
-				stream >> tmp;
-				entry.mChildIdx[j] = tmp;
-				stream >> tmp;
-				entry.mGrandchildIdx[j] = tmp;
+	// The on-disc stream is BIG-ENDIAN; these are u32 scalars. The original decomp used the raw
+	// read() (correct only on the GC's BE CPU); on an LE host that byteswaps the sit-joint table to
+	// garbage (e.g. a count of 1 → 0x01000000) — so TMapXlu::changeNormalJoint/changeXluJoint sit the
+	// WRONG (or no) map joints, leaving the translucent-priority / shine-shadow mask joints VISIBLE in
+	// the normal map draw → the file-select overbright white volume. readU32() is BE on the GC (no-op
+	// swap) and bswaps on LE — correct on both. Same fix pattern as TDrawBufObj::load / PerformList.
+	unk0 = (int)stream.readU32();
+	if (unk0 != 0) {
+		unk4 = new Entry[unk0];
+		for (int i = 0; i < unk0; ++i) {
+			Entry& entry = unk4[i];
+			entry.unk0 = (int)stream.readU32();
+			entry.unk4 = new u32[entry.unk0];
+			entry.unk8 = new u32[entry.unk0];
+			for (int j = 0; j < entry.unk0; ++j) {
+				entry.unk4[j] = stream.readU32();
+				entry.unk8[j] = stream.readU32();
 			}
 		}
 	}
