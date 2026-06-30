@@ -280,6 +280,11 @@ extern "C" void sb_host_alloc_pop(void)  { if (g_sb_host_alloc_gate > 0) --g_sb_
 // the raylib entry points), so Mesa/LLVM/raylib never reach the JKR heap.
 static thread_local bool g_sb_is_game_thread = false;
 extern "C" void sb_mark_game_thread(void) { g_sb_is_game_thread = true; }
+// Clear the game-thread flag for the calling host thread. The process-main thread is marked
+// by the static-init heap bringup, but once the game runs on its own thread, process-main only
+// drives the SDL present loop and must NOT touch the non-thread-safe JKR heap — its `new` has to
+// fall back to host malloc. (boot.cpp unmarks process-main right after spawning the game thread.)
+extern "C" void sb_unmark_game_thread(void) { g_sb_is_game_thread = false; }
 extern "C" int  sb_is_game_thread(void)   { return g_sb_is_game_thread ? 1 : 0; }
 
 // --- Host-malloc overflow accounting + hard cap -------------------------------------------
