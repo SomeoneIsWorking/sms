@@ -9,6 +9,9 @@
 #include <Map/MapWarp.hpp>
 #include <Map/MapXlu.hpp>
 #include <Map/MapCollisionEntry.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+extern "C" int sb_boot_capture_phase();
+#endif
 
 // rogue includes needed for matching sinit & bss
 #include <MSound/MSSetSound.hpp>
@@ -168,6 +171,16 @@ void TMap::perform(u32 param_1, JDrama::TGraphics* param_2)
 	}
 
 	if (param_1 & 0x200) {
+#ifdef SMS_NATIVE_PLATFORM
+		if (const char* e = std::getenv("SB_MAPXLU_DBG"); e && e[0] && e[0] != '0') {
+			static int n = 0; if (n < 12) { ++n;
+				std::fprintf(stderr, "[mapxlu] TMap::perform flag=0x%x branch=%s xluCount=%d phase=%d\n",
+				             param_1,
+				             (param_1 & 0x2000000) ? "changeXluJoint(1)"
+				             : (param_1 & 0x4000000) ? "changeXluJoint(0)" : "changeNormalJoint",
+				             mXlu ? mXlu->unk0 : -1, sb_boot_capture_phase()); }
+		}
+#endif
 		if ((param_1 & 0x2000000)) {
 			if (!mXlu->changeXluJoint(1))
 				return;
