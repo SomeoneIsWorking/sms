@@ -3,7 +3,11 @@
 #include <M3DUtil/MActor.hpp>
 #include <MSound/MSound.hpp>
 #include <JSystem/J3D/J3DGraphAnimator/J3DAnimation.hpp>
+#include <System/FlagManager.hpp>
+#include <System/MarDirector.hpp>
+#include <System/StageUtil.hpp>
 #include "sms_boot_door.h"
+#include "sms_boot_redcoinswitch.h"
 
 // Native port of TDamageObj::perform (@0x801c1570). RE: scratch/decomp_next3/801c1570.c.
 // A ダメージオブジェ ("damage object") is any passive world hazard that hurts everything it
@@ -77,5 +81,35 @@ void TMapObjSwitch::control()
 	TMapObjBase::control();
 	if (mTimeTilAppear > 0) {
 		gpMSound->playTimer(mTimeTilAppear);
+	}
+}
+
+// Native port of TRedCoinSwitch::load (@0x801c088c). RE via scratch/disasm.py.
+// 赤コインスイッチ — the red-coin-mission trigger switch (Delfino/Ricco/etc). ::load extends
+// TMapObjBase::load; reads a serialized s32 duration, applies the piecewise "≤0 → 1200, else
+// ×10" (spec unit-tested in red_coin_switch_test), then — if the CURRENT stage's shine has
+// already been collected in this save — kills the switch object at load time so the mission
+// isn't re-offered.
+//
+// SDA scan (tools/dol_sda.py 0x801c088c):
+//   SDA1[-0x6048] = gpMarDirector  (mMap at +0x7c → current stage id)
+//   SDA1[-0x6060] = gpFlagManager  (== TFlagManager::getInstance() → getShineFlag)
+//
+// vtable slot 0x104 = TMapObjBase::makeObjDead (resolved in the TCoverFruit::loadAfter port,
+// same base vtable). TRedCoinSwitch does not override makeObjDead, so bare makeObjDead()
+// dispatches via TCoverFruit-equivalent slot to 0x801b0738.
+void TRedCoinSwitch::load(JSUMemoryInputStream& stream)
+{
+	TMapObjBase::load(stream);
+
+	const s32 serialized = static_cast<s32>(stream.readS32());
+	mTimerDuration = sb::red_coin_switch_timer_from_serialized(serialized);
+
+	const u8 stage_id = gpMarDirector ? gpMarDirector->mMap : 0;
+	const u8 shine_id = SMS_getShineIDofExStage(stage_id);
+	if (shine_id != sb::kNoShineForStage) {
+		if (TFlagManager::getInstance()->getShineFlag(shine_id)) {
+			makeObjDead();
+		}
 	}
 }
