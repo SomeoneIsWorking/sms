@@ -83,11 +83,23 @@ public:
 
 	J3DMaterialAnm* getMaterialAnm()
 	{
+#ifdef SMS_NATIVE_PLATFORM
+		// The GC guard below (`< 0xC0000000`) is a GameCube pointer-range sanity check: valid GC
+		// RAM lives at 0x8xxxxxxx (< 0xC0000000), so a real anm pointer passes and any larger/garbage
+		// value reads as "no anm". On the 64-bit host EVERY valid pointer is 0x7fff_xxxx_xxxx, which
+		// is GREATER than 0xC0000000, so the original guard nulls out every anm set by setMaterialAnm
+		// -> all material animations (e.g. the file-select sun_mirror reflective-sea projective texgen)
+		// silently vanish and updateMatAnm NULL-derefs. The J3DMaterial ctor inits unk38 = nullptr and
+		// setMaterialAnm only ever stores null or a real pointer, so the sanity filter is unnecessary
+		// here: return the field directly.
+		return unk38;
+#else
 		if ((uintptr_t)unk38 < 0xC0000000) {
 			return unk38;
 		} else {
 			return nullptr;
 		}
+#endif
 	}
 
 	GXBool isDrawModeOpaTexEdge() { return (unk8 & 3) ? GX_TRUE : GX_FALSE; }
