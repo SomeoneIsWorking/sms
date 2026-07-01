@@ -186,6 +186,12 @@ TMapWireManager::TMapWireManager(const char* name)
     : JDrama::TViewObj(name)
 {
 	gpMapWireManager = this;
+	// unk1C is the running insert index into the unk24[] TMapWireActorManager array
+	// (loadAfter does `unk24[unk1C++] = new TMapWireActorManager(...)`). load() populates
+	// unk14/unk18/unk20/unk24 but not unk1C, and the decomp ctor omitted it, so on a
+	// non-zeroed heap allocation loadAfter indexed unk24[] with garbage -> wild store ->
+	// crash. A freshly built manager holds zero actor managers.
+	unk1C = 0;
 	mUpperSurface.r  = 0x78;
 	mUpperSurface.g  = 0x78;
 	mUpperSurface.b  = 0x78;
