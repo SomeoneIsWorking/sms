@@ -12,8 +12,12 @@
 #include <cstdio>
 #include <cstdlib>
 #include <execinfo.h>   // SB_ENTRY_MAT entry backtrace
-extern "C" int sb_boot_capture_phase();   // SB_DBHEAD_DBG: which pass this drawHead flush is in
-extern "C" void* sb_b76_material();       // SB_ENTRY_MAT: the b76 mask material ptr (published by capture)
+// WEAK: only defined inside the sms-boot executable (native/render/sms_boot_j3d_capture.cpp),
+// not in any linkable library — a debug-only build target that links game logic without the
+// render-capture pipeline (e.g. sms-j3dload_test) must still link cleanly. Safe because every
+// call site below is gated behind a getenv() debug flag, never hit in a normal test run.
+extern "C" int sb_boot_capture_phase() __attribute__((weak));   // SB_DBHEAD_DBG: which pass this drawHead flush is in
+extern "C" void* sb_b76_material() __attribute__((weak));       // SB_ENTRY_MAT: the b76 mask material ptr (published by capture)
 extern "C" void sb_gx_get_color_alpha_update(int*, int*);  // SB_DBHEAD_PKT: live cU/aU at flush
 #endif
 

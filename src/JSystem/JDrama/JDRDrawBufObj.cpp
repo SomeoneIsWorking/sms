@@ -5,8 +5,11 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-extern "C" void sb_boot_capture_set_drawbuf(const char*);  // overbright harness: name the active buffer
-extern "C" int  sb_boot_capture_phase();                   // which perform-list phase (6 = GXPost/display)
+// WEAK: only defined inside the sms-boot executable (native/render/sms_boot_j3d_capture.cpp), not
+// in any linkable library — a test target that links this file without the render-capture
+// pipeline (e.g. sms-j3dload_test) must still link cleanly. Call sites below null-check first.
+extern "C" void sb_boot_capture_set_drawbuf(const char*) __attribute__((weak));  // overbright harness: name the active buffer
+extern "C" int  sb_boot_capture_phase() __attribute__((weak));                   // which perform-list phase (6 = GXPost/display)
 #endif
 
 using namespace JDrama;
@@ -86,7 +89,7 @@ void TDrawBufObj::perform(u32 cue, TGraphics* graphics)
 		// reflective-water re-entry is ported, drop native's stale phase-6 MapXlu redraw so the display
 		// matches GC (the correct phase-1 sea shows through). PROPER FIX: port the water-reflection
 		// MapXlu re-entry (TModelWaterManager / the pass2→pass3 EFB composite). A/B: SB_KEEP_PH6_MAPXLU=1.
-		if (sb_boot_capture_phase() == 6) {
+		if (&sb_boot_capture_phase && sb_boot_capture_phase() == 6) {
 			const char* nm = getName();
 			if (nm && std::strcmp(nm, "DrawBuf MapXlu") == 0) {
 				static int keep = -1;
@@ -95,14 +98,14 @@ void TDrawBufObj::perform(u32 cue, TGraphics* graphics)
 			}
 		}
 		// Attribute the shapes this flush captures to THIS draw buffer by name (overbright harness).
-		sb_boot_capture_set_drawbuf(getName());
+		if (&sb_boot_capture_set_drawbuf) sb_boot_capture_set_drawbuf(getName());
 		// SB_DRAWFLAG_DBG: which phase actually sets the draw bit (0x8) for each named buffer —
 		// settles whether ph1 and ph4 both genuinely draw() (double-buffer handoff, correct) or one
 		// of them is a phase-mislabeling artifact.
 		if (const char* e = std::getenv("SB_DRAWFLAG_DBG"); e && e[0] && e[0] != '0') {
 			static long n = 0; if (n < 400) { ++n;
 				std::fprintf(stderr, "[drawflag] phase=%d name='%s' flag=0x%x\n",
-				             sb_boot_capture_phase(), getName() ? getName() : "?", param_1);
+				             &sb_boot_capture_phase ? sb_boot_capture_phase() : -1, getName() ? getName() : "?", param_1);
 			}
 		}
 #endif
