@@ -15,6 +15,10 @@
 #include <JSystem/J3D/J3DGraphBase/J3DTransform.hpp>
 #include <dolphin/gx.h>
 #include <dolphin/mtx.h>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 
 TSilhouette* gpSilhouetteManager;
 
@@ -459,6 +463,24 @@ void SMS_DrawHorzCircle(const JGeometry::TVec3<f32>&, f32, int, const _GXColor&)
 void SMS_CalcMatAnmAndMakeDL(J3DModel* param_1, u16 param_2)
 {
 	J3DMaterial* mat = param_1->getModelData()->getMaterialNodePointer(param_2);
+#ifdef SMS_NATIVE_PLATFORM
+	// Defensive fail-safe: updateMatAnm only reaches here for materials it believes have a live
+	// J3DMaterialAnm, so a null here means a material-anm-setup bug upstream. The real cause of the
+	// once-pervasive null was J3DMaterial::getMaterialAnm()'s GC pointer-range guard (< 0xC0000000)
+	// nulling every valid 64-bit host pointer — now fixed there. This guard remains only so a future
+	// regression logs + draws-without-anm instead of NULL-derefing three frames deep.
+	if (mat->getMaterialAnm() == nullptr) {
+		static int warned = 0;
+		if (!warned) { warned = 1;
+			fprintf(stderr, "[matanm] WARN: null J3DMaterialAnm for model=%p mat=%u -- drawing "
+			        "without anm (material-anm setup bug upstream)\n",
+			        (void*)param_1, param_2);
+		}
+		j3dSys.setMatPacket(param_1->getMatPacket(param_2));
+		mat->makeDisplayList();
+		return;
+	}
+#endif
 	mat->getMaterialAnm()->calc(mat);
 	j3dSys.setMatPacket(param_1->getMatPacket(param_2));
 	mat->makeDisplayList();

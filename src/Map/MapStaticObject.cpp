@@ -29,6 +29,7 @@
 #include <JSystem/J3D/J3DGraphBase/J3DTexture.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DSys.hpp>
 #include <JSystem/JParticle/JPAResourceManager.hpp>
+#include <dolphin/os.h>
 #include <stdio.h>
 
 // rogue includes needed for matching sinit & bss
@@ -319,9 +320,22 @@ void TMapStaticObj::init(const char* name)
 {
 	unk6C = name;
 	const ActorDataTableEntry* entry;
+	// Name→config lookup: advance until this entry's key MATCHES `name`. The original loops
+	// `while (strcmp(name, table[i].unk0) != 0) ++i;` — the decomp transcribed the exit test with
+	// the sense INVERTED (`if (strcmp(...)) break` = break on the first MISMATCH), which made every
+	// static object resolve to table[0] ("SeaIndirect", unk40=0x41). Proven: the option map's
+	// `sun_mirror` (real unk40=0x62: model-load + entryMirrorDrawBufferAlways) came back unk40=0x41,
+	// so its sun/water reflection never set up. Break on MATCH; fail fast on the nullptr terminator
+	// (an unknown name is a data-contract violation, not something to silently mis-resolve).
 	for (int i = 0;; ++i) {
 		entry = &actor_data_table[i];
-		if (strcmp(name, actor_data_table[i].unk0))
+#ifdef SMS_NATIVE_PLATFORM
+		if (entry->unk0 == nullptr) {
+			OSPanic(__FILE__, __LINE__,
+			        "TMapStaticObj::init: name '%s' not in actor_data_table", name);
+		}
+#endif
+		if (strcmp(name, entry->unk0) == 0)
 			break;
 	}
 	unk68 = entry;
@@ -353,7 +367,18 @@ void TMapStaticObj::init(const char* name)
 		    = JDrama::TNameRefGen::getInstance()->getRootNameRef()->search(
 		        unk68->unk1C);
 		// TODO: insert into some list?
+#ifdef SMS_NATIVE_PLATFORM
+		if (const char* e = getenv("SB_STATICOBJ_DBG"); e && e[0] && e[0] != '0')
+			fprintf(stderr, "[staticobj] LIST-INSERT-TODO name='%s' listName='%s' ref=%p unk40=0x%x\n",
+			             unk6C ? unk6C : "?", unk68->unk1C, (void*)ref, unk68->unk40);
+#endif
 	}
+#ifdef SMS_NATIVE_PLATFORM
+	if (const char* e = getenv("SB_STATICOBJ_DBG"); e && e[0] && e[0] != '0')
+		fprintf(stderr, "[staticobj] created name='%s' unk40=0x%x model=%p unk1C='%s'\n",
+		             unk6C ? unk6C : "?", unk68->unk40, (void*)unk70,
+		             unk68->unk1C ? unk68->unk1C : "(null)");
+#endif
 
 	if (unk68->unk40 & 1) {
 		TScreenTexture* ref = JDrama::TNameRefGen::search<TScreenTexture>(
