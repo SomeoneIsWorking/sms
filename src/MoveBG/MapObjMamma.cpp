@@ -1,6 +1,7 @@
 #include <MoveBG/MapObjMamma.hpp>
 #include <M3DUtil/MActor.hpp>
 #include <M3DUtil/MActorUtil.hpp>
+#include <Map/Map.hpp>
 #include <Map/MapMirror.hpp>
 #include <Map/MapStaticObject.hpp>
 #include <MarioUtil/DrawUtil.hpp>
@@ -247,4 +248,21 @@ void TMammaMirrorMapOperator::perform(u32 param_1, JDrama::TGraphics* /*graphics
 			}
 		}
 	}
+}
+
+// Native port of TSandLeaf::control (@0x801d358c). RE: scratch/decomp_next5/801d358c.c.
+// すなやまの芽 — Sirena Beach's sandcastle leaves. Per-tick: the leaf's world Y is
+// re-snapped to the ground beneath its current XZ, so it stays visually attached even as
+// the sand terrain shifts (a manor of sand shifting during Mecha-Bowser fight). The check
+// starts 200 units above the current y to avoid a spurious "already below ground" reading.
+//
+// SDA scan (tools/dol_sda.py 0x801d358c):
+//   SDA2[-0x2758] = 200.0f  (upward start offset for the ground raycast)
+//   SDA1[-0x6328] = gpMap   (checkGround target)
+void TSandLeaf::control()
+{
+	TMapObjBase::control();
+	mGroundHeight = gpMap->checkGround(mPosition.x, mPosition.y + 200.0f,
+	                                    mPosition.z, &mGroundPlane);
+	mPosition.y = mGroundHeight;
 }
