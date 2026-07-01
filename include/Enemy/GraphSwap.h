@@ -61,18 +61,34 @@ inline void swap_rail_node(uint8_t* n)
 
 } // namespace ral_detail
 
-// Remember buffers we've already swapped so a stage reload that hands back the same
-// cached resource pointer is a no-op (the .ral has no magic to test idempotency).
+// Idempotency by CONTENT, not by pointer. A pointer cache is UNSOUND across scene
+// reloads: the JKR heap frees a stage's scene.ral and the next stage's is allocated at
+// the SAME address, so a cached pointer wrongly reports "already swapped" and the fresh
+// big-endian buffer is read raw (mNodeNum 18 -> 0x12000000 -> ~2.9 GB `new TGraphNode[]`
+// -> SolidHeap OOM). Instead, inspect the first GraphDesc's mNodeNum: a real rail graph
+// has a small node count. If the HOST-order (little-endian) read is already a sane small
+// value, the buffer is already swapped; if only the BIG-endian read is sane, it still
+// needs swapping. This is self-describing and immune to address reuse.
+namespace ral_detail {
+inline uint32_t le32(const uint8_t* p)
+{
+	return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16)
+	     | ((uint32_t)p[3] << 24);
+}
+} // namespace ral_detail
+
+// A plausible rail-graph node count is well under this bound; anything larger read as a
+// count is a byte-order artefact. (Real SMS stages top out at a few hundred nodes.)
+constexpr uint32_t kRalMaxSaneNodeNum = 0x10000;
+
 inline bool ral_already_swapped(void* data)
 {
-	static void* seen[64] = { nullptr };
-	static int count       = 0;
-	for (int i = 0; i < count; ++i)
-		if (seen[i] == data)
-			return true;
-	if (count < 64)
-		seen[count++] = data;
-	return false;
+	using namespace ral_detail;
+	const uint8_t* d = (const uint8_t*)data;
+	uint32_t hostNodeNum = le32(d + 0x0);   // desc[0].mNodeNum as the host would read it
+	// 0 = empty graph (terminator first) -> nothing to swap either way. A small nonzero
+	// host-order count means the header is already in host order (already swapped).
+	return hostNodeNum != 0 && hostNodeNum < kRalMaxSaneNodeNum;
 }
 
 // Returns true if it swapped (or the buffer was already host-side / empty).
