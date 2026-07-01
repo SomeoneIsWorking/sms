@@ -10,7 +10,10 @@
 #include <Map/MapXlu.hpp>
 #include <Map/MapCollisionEntry.hpp>
 #ifdef SMS_NATIVE_PLATFORM
-extern "C" int sb_boot_capture_phase();
+// WEAK: only defined inside sms-boot (native/render/sms_boot_j3d_capture.cpp) — a test target
+// linking this file without the render-capture pipeline (e.g. sms-j3dload_test) must still link.
+// The sole call site below is already gated behind a getenv() debug flag.
+extern "C" int sb_boot_capture_phase() __attribute__((weak));
 #endif
 
 // rogue includes needed for matching sinit & bss
