@@ -1,8 +1,11 @@
 #include <MoveBG/MapObjMamma.hpp>
 #include <M3DUtil/MActor.hpp>
 #include <M3DUtil/MActorUtil.hpp>
+#include <Map/MapMirror.hpp>
 #include <Map/MapStaticObject.hpp>
+#include <MarioUtil/DrawUtil.hpp>
 #include <MoveBG/MapObjManager.hpp>
+#include <cmath>
 #include <Strategic/MirrorActor.hpp>
 #include <System/EmitterViewObj.hpp>
 #include <System/Particles.hpp>
@@ -166,5 +169,82 @@ void TMammaMirrorMapOperator::loadAfter()
 		mNodeRadius[i]   = sb::mamma_node_threshold(mn.x, mx.x, mn.z, mx.z);
 
 		joint = static_cast<J3DJoint*>(joint->getYounger());
+	}
+}
+
+// Native port of TMammaMirrorMapOperator::perform (@0x801cf46c). RE:
+// scratch/decomp_mamma_mirror/801cf46c.c. Called on every gameplay tick (mask bit 2). Each
+// tick: if no mirror is currently active (gpMirrorModelManager->unk18 == -1) hide all 8
+// interior-terrain joints; otherwise show each joint that lies OUTSIDE the LOD radius OR
+// is farther from the camera than the active mirror is. Cache the show/hide state to only
+// call SMS_ShowJoint on transitions.
+//
+// SDA scan (tools/dol_sda.py 0x801cf46c):
+//   SDA2[-0x2868] = 0.0   (guard: only Newton-refine sqrt when dsq > 0)
+//   SDA2[-0x284c] = 0.5   (Newton refinement)
+//   SDA2[-0x2840] = 3.0   (Newton refinement)
+//   SDA1[-0x6318] = gpMirrorModelManager (unk18 = current mirror index, unk24 = TMirrorCamera)
+// The refined-sqrt sequence in the RE is `frsqrte + one Newton step` and converges to
+// sqrt(dsq); we use `sqrtf` directly (more accurate, sub-ULP difference is irrelevant for a
+// coarse-radius visibility gate).
+void TMammaMirrorMapOperator::perform(u32 param_1, JDrama::TGraphics* /*graphics*/)
+{
+	if ((param_1 & 2) == 0) return;
+
+	TMirrorModelManager* mgr = gpMirrorModelManager;
+	if (!mgr) return;   // scenes without a mirror manager: nothing to gate
+
+	// No mirror is currently active → hide all interior-terrain joints.
+	if (mgr->unk18 == -1) {
+		for (int i = 0; i < 8; ++i) {
+			if (mNodeVisible[i] == 0 && mNodes[i] != nullptr) {
+				SMS_ShowJoint(mNodes[i]->getMesh(), false);
+				mNodeVisible[i] = 1;
+			}
+		}
+		return;
+	}
+
+	TMirrorCamera* cam = mgr->unk24;
+	const int idx = mgr->unk18;
+	if (cam == nullptr) return;
+
+	// Select the active mirror's cached position. The RE indexes `param_1 + idx*0xc + 0xb8`
+	// which is `(&mMirrorSPos)[idx]` byte-wise; we spell the three cases out for clarity
+	// and to avoid undefined pointer arithmetic across separately-declared fields.
+	const JGeometry::TVec3<f32>* mirror_pos;
+	switch (idx) {
+		case 0:  mirror_pos = &mMirrorSPos; break;
+		case 1:  mirror_pos = &mMirrorMPos; break;
+		case 2:  mirror_pos = &mMirrorLPos; break;
+		default: return;  // defensive: unk18 outside [-1,2] would be a game-state bug
+	}
+
+	const float mdx = cam->unk98.x - mirror_pos->x;
+	const float mdy = cam->unk98.y - mirror_pos->y;
+	const float mdz = cam->unk98.z - mirror_pos->z;
+	const float dist_mirror_sq = mdx*mdx + mdy*mdy + mdz*mdz;
+	const float dist_mirror = (dist_mirror_sq > 0.0f) ? std::sqrt(dist_mirror_sq) : 0.0f;
+
+	for (int i = 0; i < 8; ++i) {
+		if (mNodes[i] == nullptr) continue;
+
+		const float ndx = cam->unk98.x - mNodeCenter[i].x;
+		const float ndy = cam->unk98.y - mNodeCenter[i].y;
+		const float ndz = cam->unk98.z - mNodeCenter[i].z;
+		const float dist_node_sq = ndx*ndx + ndy*ndy + ndz*ndz;
+		const float dist_node = (dist_node_sq > 0.0f) ? std::sqrt(dist_node_sq) : 0.0f;
+
+		if (sb::mamma_node_should_be_hidden(dist_node, mNodeRadius[i], dist_mirror)) {
+			if (mNodeVisible[i] == 0) {
+				SMS_ShowJoint(mNodes[i]->getMesh(), false);
+				mNodeVisible[i] = 1;
+			}
+		} else {
+			if (mNodeVisible[i] != 0) {
+				SMS_ShowJoint(mNodes[i]->getMesh(), true);
+				mNodeVisible[i] = 0;
+			}
+		}
 	}
 }
