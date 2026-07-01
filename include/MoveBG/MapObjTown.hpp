@@ -126,6 +126,14 @@ public:
 	void loadAfter();
 	void load(JSUMemoryInputStream&);
 	TRedCoinSwitch(const char* name = "赤コインスイッチ");
+
+public:
+	// Countdown budget (frame-ish units) for the red-coin mission the switch triggers.
+	// Populated by ::load from the scene stream: non-positive seed → 1200 default (~20 s
+	// @ 60 fps), else seed × 10. Field offset observed as this+0x138 in the RE disasm of
+	// 0x801c088c (`stw r0, 0x138(r30)`) — TMapObjBase runs through 0x134, so this is the
+	// first TRedCoinSwitch-owned field.
+	/* 0x138 */ s32 mTimerDuration;
 };
 
 class TBasketReverse : public TMapObjBase {
