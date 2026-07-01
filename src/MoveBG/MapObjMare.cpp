@@ -25,3 +25,16 @@ void TMareEventPoint::load(JSUMemoryInputStream& stream)
 	             sb::kMareEventPointDamageRadius,
 	             sb::kMareEventPointDamageHeight);
 }
+
+// Native port of TMapObjGrowTree::loadAfter (@0x801d942c). RE: scratch/decomp_next5/801d942c.c.
+// もやしの木 ("bean-sprout tree") — the grow-from-water trees dotted around Noki Bay. loadAfter
+// extends the base loadAfter then removes the tree's static map-collision registration so
+// the tree can grow/shrink dynamically at runtime without a stale collision volume left over
+// from its initial (fully-grown) placement.
+//
+// SDA scan (tools/dol_sda.py 0x801d942c): no SDA references — pure engine-call sequence.
+void TMapObjGrowTree::loadAfter()
+{
+	TMapObjBase::loadAfter();
+	removeMapCollision();
+}
