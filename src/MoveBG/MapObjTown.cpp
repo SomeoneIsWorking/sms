@@ -1,4 +1,6 @@
 #include <MoveBG/MapObjTown.hpp>
+#include <JSystem/JSupport/JSUInputStream.hpp>
+#include "sms_boot_door.h"
 
 // Native port of TDamageObj::perform (@0x801c1570). RE: scratch/decomp_next3/801c1570.c.
 // A ダメージオブジェ ("damage object") is any passive world hazard that hurts everything it
@@ -21,5 +23,23 @@ void TDamageObj::perform(u32 param_1, JDrama::TGraphics* graphics)
 	THitActor::perform(param_1, graphics);
 	if (mColCount != 0) {
 		mCollisions[0]->receiveMessage(this, HIT_MESSAGE_ATTACK);
+	}
+}
+
+// Native port of TDoor::load (@0x801c24cc). RE: scratch/decomp_door/801c24cc.c.
+// Extends TMapObjBase::load; reads a single serialized u32 from the scene stream and
+// interprets it as a boolean: nonzero → door is "locked" (specific gameplay gate depends on
+// the individual door — key, stage-flag, or story trigger). The predicate lives in
+// sms_boot_door.h so a wrong operator regression (`> 0` mishandling 0xFFFFFFFF, `== 1`
+// mishandling any other nonzero value) fails a specific unit test.
+//
+// SDA scan (tools/dol_sda.py 0x801c24cc): no SDA references.
+void TDoor::load(JSUMemoryInputStream& stream)
+{
+	TMapObjBase::load(stream);
+	u32 serialized = 0;
+	stream.read(&serialized, sizeof(serialized));
+	if (sb::door_locked_from_serialized(serialized)) {
+		mLocked = 1;
 	}
 }
