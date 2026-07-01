@@ -12,31 +12,7 @@
 #include <JSystem/J3D/J3DGraphBase/J3DTexture.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DSys.hpp>
 #include <JSystem/JParticle/JPAResourceManager.hpp>
-#include <System/MarDirector.hpp>
-#include <System/Particles.hpp>
-#include <System/EmitterViewObj.hpp>
-#include <Strategic/MirrorActor.hpp>
-#include <Strategic/Strategy.hpp>
-#include <MarioUtil/MathUtil.hpp>
-#include <MarioUtil/TexUtil.hpp>
-#include <MarioUtil/ScreenUtil.hpp>
-#include <MarioUtil/MtxUtil.hpp>
-#include <M3DUtil/MActor.hpp>
-#include <M3DUtil/MActorUtil.hpp>
-#include <Map/MapCollisionManager.hpp>
-#include <Map/MapCollisionEntry.hpp>
-#include <Map/MapModel.hpp>
-#include <Map/MapMirror.hpp>
-#include <Map/Map.hpp>
-#include <Map/Sky.hpp>
-#include <MoveBG/MapObjManager.hpp>
-#include <MoveBG/MapObjBase.hpp>
-#include <Camera/Camera.hpp>
-#include <Enemy/Conductor.hpp>
-#include <Enemy/Graph.hpp>
-#include <MSound/MSoundScene.hpp>
-#include <MSound/MSound.hpp>
-#include <MSound/MSoundSE.hpp>
+#include <dolphin/os.h>
 #include <stdio.h>
 
 // Common J3DModelLoaderFlag combinations used by the actor data table below.
@@ -349,29 +325,24 @@ void TMapStaticObj::initModel(const char* name)
 
 void TMapStaticObj::init(const char* name)
 {
-	mActorName = name;
-
-	int i = 0;
-	while (strcmp(name, actor_data_table[i].mActorName) != 0)
-		++i;
-
-	mActorData = &actor_data_table[i];
-
-	initHitActor(mActorData->mActorType, 5, mActorData->mHitFlags,
-	             mActorData->mAttackRadius, mActorData->mAttackHeight,
-	             mActorData->mDamageRadius, mActorData->mDamageHeight);
-
-	if (mActorData->mModelFileName != nullptr)
-		initModel(mActorData->mModelFileName);
-
-	if (mActorData->mColFileName != nullptr)
-		initMapCollision(mActorData->mColFileName);
-
-	mSoundId = mActorData->mSoundId;
-
-	if (mActorData->mParticlePath != nullptr) {
-		switch (mActorData->mParticleType) {
-		case 0:
+	unk6C = name;
+	const ActorDataTableEntry* entry;
+	// Name→config lookup: advance until this entry's key MATCHES `name`. The original loops
+	// `while (strcmp(name, table[i].unk0) != 0) ++i;` — the decomp transcribed the exit test with
+	// the sense INVERTED (`if (strcmp(...)) break` = break on the first MISMATCH), which made every
+	// static object resolve to table[0] ("SeaIndirect", unk40=0x41). Proven: the option map's
+	// `sun_mirror` (real unk40=0x62: model-load + entryMirrorDrawBufferAlways) came back unk40=0x41,
+	// so its sun/water reflection never set up. Break on MATCH; fail fast on the nullptr terminator
+	// (an unknown name is a data-contract violation, not something to silently mis-resolve).
+	for (int i = 0;; ++i) {
+		entry = &actor_data_table[i];
+#ifdef SMS_NATIVE_PLATFORM
+		if (entry->unk0 == nullptr) {
+			OSPanic(__FILE__, __LINE__,
+			        "TMapStaticObj::init: name '%s' not in actor_data_table", name);
+		}
+#endif
+		if (strcmp(name, entry->unk0) == 0)
 			break;
 		case 1:
 			SMS_LoadParticle(mActorData->mParticlePath,
@@ -386,12 +357,23 @@ void TMapStaticObj::init(const char* name)
 		}
 	}
 
-	if (mActorData->mIdxGroupName != nullptr) {
-		TIdxGroupObj* group
-		    = JDrama::TNameRefGen::getInstance()->search<TIdxGroupObj>(
-		        mActorData->mIdxGroupName);
-		group->getChildren().push_back(this);
+	if (unk68->unk1C != nullptr) {
+		JDrama::TNameRef* ref
+		    = JDrama::TNameRefGen::getInstance()->getRootNameRef()->search(
+		        unk68->unk1C);
+		// TODO: insert into some list?
+#ifdef SMS_NATIVE_PLATFORM
+		if (const char* e = getenv("SB_STATICOBJ_DBG"); e && e[0] && e[0] != '0')
+			fprintf(stderr, "[staticobj] LIST-INSERT-TODO name='%s' listName='%s' ref=%p unk40=0x%x\n",
+			             unk6C ? unk6C : "?", unk68->unk1C, (void*)ref, unk68->unk40);
+#endif
 	}
+#ifdef SMS_NATIVE_PLATFORM
+	if (const char* e = getenv("SB_STATICOBJ_DBG"); e && e[0] && e[0] != '0')
+		fprintf(stderr, "[staticobj] created name='%s' unk40=0x%x model=%p unk1C='%s'\n",
+		             unk6C ? unk6C : "?", unk68->unk40, (void*)unk70,
+		             unk68->unk1C ? unk68->unk1C : "(null)");
+#endif
 
 	if (mActorData->mFlags & TActorData::FLAG_IS_INDIRECT) {
 		TScreenTexture* ref = JDrama::TNameRefGen::search<TScreenTexture>(
