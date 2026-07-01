@@ -7,6 +7,12 @@
 #include <cmath>
 #include <cstdlib>
 
+// Pure-logic unit shared with the unit test (spec-derived expected values live there).
+// See sms_boot_shadow_gate.h for the semantics comments. The port BELOW calls into these
+// helpers rather than duplicating the logic — that's what makes the test validate the
+// SHIPPING function, not a fork. Header is pure C++ (<cmath>, <cstdint> only), portable.
+#include "sms_boot_shadow_gate.h"
+
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
 static bool sShadowDbg()
@@ -101,15 +107,12 @@ void TMBindShadowManager::forceRequest(const TCircleShadowRequest& req, u32 /*fl
 
 void TMBindShadowManager::request(const TCircleShadowRequest& req, u32 /*flags*/)
 {
-	// Faithful gates from 8022ecec.c (simplified where equivalent):
-	//   - reject NaN/Inf x,z (the exponent-bit-twiddle in the decompile is a plain isfinite).
-	//   - reject if outside the current map's XZ bounds.
-	// Skipped-with-note: the distance-to-camera LOD cutoff (needs a camera-position global not
-	// exposed by native/src/camera_latch.cpp; file-select has few actors so it's a non-issue —
-	// documented, not silent).
-	if (!std::isfinite(req.unk0.x) || !std::isfinite(req.unk0.z)) return;
-	if (gpMap && !gpMap->isInArea(req.unk0.x, req.unk0.z)) return;
-
+	// Gates ported from 8022ecec.c live in the pure sb::shadow_gate_accept helper (unit-tested
+	// against hand-derived expected values in native/platform/tests/shadow_gate_test.cpp — the
+	// port SHIPS through this call so the test validates the real function, not a fork).
+	sb::ShadowReq pr{ req.unk0.x, req.unk0.y, req.unk0.z, req.unkC, req.unk10, req.unk1D };
+	const bool in_area = !gpMap || gpMap->isInArea(req.unk0.x, req.unk0.z);
+	if (!sb::shadow_gate_accept(pr, in_area)) return;
 	if (mRequestCount < kMaxRequests) {
 		mRequests[mRequestCount++] = req;
 	}
@@ -123,36 +126,26 @@ void TMBindShadowManager::calcVtx()
 	for (int i = 0; i < mRequestCount; ++i) {
 		const TCircleShadowRequest& r = mRequests[i];
 
-		f32 groundY = r.unk0.y;
+		// Raycast the ground if the request is not-grounded (unk1D != 0). +50 upward raycast
+		// start offset matches the RE (SDA2[-0x24b0]) and MapObjWave::getHeight's convention.
+		f32 probe = r.unk0.y;
 		if (r.unk1D != 0) {
-			// Not grounded: raycast down. +50 upward start offset (SDA2[-0x24b0] in the RE, a
-			// common "start slightly above the reported position" convention — see MapObjWave's
-			// getHeight for the same 50.0f value). The extra `campos[+0x60]` offset from the
-			// decompile is not chased (camera-frame-of-reference tweak; kept as a documented
-			// approximation, not a hidden fudge).
 			const TBGCheckData* result = nullptr;
-			f32 y = gpMap->checkGround(r.unk0.x, r.unk0.y + 50.0f, r.unk0.z, &result);
-			if (y > -30000.0f) {
-				groundY = y;
-			} else {
-				// No ground under this actor — hide the shadow rather than pinning it at the
-				// -32767 sentinel Y (that would draw the disc at infinite depth = 1 wasted decal).
-				continue;
-			}
+			probe = gpMap->checkGround(r.unk0.x, r.unk0.y + 50.0f, r.unk0.z, &result);
 		}
+		sb::ShadowReq pr{ r.unk0.x, r.unk0.y, r.unk0.z, r.unkC, r.unk10, r.unk1D };
+		sb::Footprint fpp = sb::shadow_project(pr, probe);
+		if (!fpp.visible) continue; // no ground under this actor — hide (documented)
 
 		if (mFootprintCount >= kMaxRequests) break;
 
 		TFootprint& fp  = mFootprints[mFootprintCount++];
-		fp.mPos.x       = r.unk0.x;
-		fp.mPos.y       = groundY + 0.1f; // tiny lift to avoid z-fighting with the ground poly
-		fp.mPos.z       = r.unk0.z;
-		fp.mRadiusX     = r.unkC;
-		fp.mRadiusZ     = r.unk10;
-		// Alpha: faithful intent = per-request 8-bit alpha stored at offset +0x1D (0..255). The
-		// GC original modulates by a distance-based fade + a per-frame global; we use a fixed
-		// intensity (documented — refine against oracle if needed).
-		fp.mAlpha       = 180;
+		fp.mPos.x       = fpp.x;
+		fp.mPos.y       = fpp.y;
+		fp.mPos.z       = fpp.z;
+		fp.mRadiusX     = fpp.radX;
+		fp.mRadiusZ     = fpp.radZ;
+		fp.mAlpha       = fpp.alpha;
 	}
 
 	SHADOW_LOG("[shadow] calcVtx: %d requests -> %d footprints\n",
@@ -276,16 +269,28 @@ void TMBindShadowBody::entryDrawShadow()
 {
 	if (!gpBindShadowManager || !mActor) return;
 
-	TCircleShadowRequest req;
-	req.unk0     = mActor->getPosition();
-	// Approximate radius: mScale * a constant. The 40.0f is a tunable eyeball (starts around
-	// Mario's body radius at scale=1.0). Refine against the oracle screenshot rather than baking
-	// a magic number in silently — this is the same "approximate but named" gap the .hpp comment
-	// flags for TMBindShadowBody as a whole.
-	const f32 kRadius = 40.0f * mScale;
-	req.unkC     = kRadius;
-	req.unk10    = kRadius;
-	req.unk1D    = 1; // treat as not-grounded → let calcVtx raycast down to the true ground.
+#ifdef SMS_NATIVE_PLATFORM
+	// One-shot log per session: proves whether the display-Mario's TMBindShadowBody is one
+	// of the 1 footprint/frame observed at settled file-select, or whether Mario's shadow
+	// path is NOT walked here (see the handoff's independent follow-up).
+	if (sShadowDbg()) {
+		static int sLogged = 0;
+		if (sLogged < 5) { ++sLogged;
+			auto p = mActor->getPosition();
+			std::fprintf(stderr, "[shadow] entryDrawShadow actor=%p pos=(%.0f,%.0f,%.0f) scale=%.2f\n",
+			             (void*)mActor, p.x, p.y, p.z, mScale);
+		}
+	}
+#endif
 
+	const auto& p = mActor->getPosition();
+	sb::ShadowReq built = sb::shadow_body_make_request(p.x, p.y, p.z, mScale);
+	TCircleShadowRequest req;
+	req.unk0.x   = built.x;
+	req.unk0.y   = built.y;
+	req.unk0.z   = built.z;
+	req.unkC     = built.radX;
+	req.unk10    = built.radZ;
+	req.unk1D    = built.unk1D;
 	gpBindShadowManager->request(req, 0);
 }
