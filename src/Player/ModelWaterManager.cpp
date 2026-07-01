@@ -1558,9 +1558,14 @@ void TModelWaterManager::perform(u32 cue, JDrama::TGraphics* graphics)
 	if (const char* e = getenv("SB_WATER_DBG"); e && e[0] && e[0] != '0') {
 		static int wn = 0;
 		if (wn < 40) { ++wn;
-			fprintf(stderr, "[water] perform(0x%x) unk5D60=0x%x quad=%p quadN=%d tex0=%p tex1=%p tex2=%p\n",
-			        param_1, unk5D60, (void*)unk5D30, unk5D30 ? (int)unk5D30->unk8 : -1,
-			        (void*)unk5D34, (void*)unk5D38, (void*)unk5D3C);
+			int t1 = 0, t2 = 0, t3 = 0;
+			for (int i = 0; i < (int)mParticleCount; ++i) {
+				int f = mParticleFlagSOA[i] & 0xf;
+				if (f == 1) ++t1; else if (f == 2) ++t2; else if (f == 3) ++t3;
+			}
+			fprintf(stderr, "[water] perform(0x%x) unk5D60=0x%x quadN=%d nParticle=%d (type1=%d type2=%d type3=%d)\n",
+			        param_1, unk5D60, unk5D30 ? (int)unk5D30->unk8 : -1,
+			        (int)mParticleCount, t1, t2, t3);
 		}
 	}
 #endif
