@@ -88,11 +88,11 @@ MActor::MActor(MActorAnmData* param_1)
 		unk28[1] = unk24;
 	}
 
-	if (param_1->getUnk0() > 0) {
-		unk10 = new MActorAnmBck*[param_1->getUnk0()];
+	if (param_1->getIncidentalAnmNum() > 0) {
+		unk10 = new MActorAnmBck*[param_1->getIncidentalAnmNum()];
 
-		JGadget::TList<MActorSubAnmInfo>::iterator it = unk0->unk1C.begin();
-		JGadget::TList<MActorSubAnmInfo>::iterator e  = unk0->unk1C.end();
+		JGadget::TList<MActorSubAnmInfo>::iterator it = unk0->mIncidentalAnmList.begin();
+		JGadget::TList<MActorSubAnmInfo>::iterator e  = unk0->mIncidentalAnmList.end();
 
 		for (int i = 0; it != e; ++it, ++i) {
 			unk10[i] = new MActorAnmBck;
@@ -131,9 +131,9 @@ void MActor::setModel(J3DModel* param_1, u32 param_2)
 		}
 	}
 
-	if (unk0->getUnk0() > 0) {
-		JGadget::TList<MActorSubAnmInfo>::iterator it = unk0->unk1C.begin();
-		JGadget::TList<MActorSubAnmInfo>::iterator e  = unk0->unk1C.end();
+	if (unk0->getIncidentalAnmNum() > 0) {
+		JGadget::TList<MActorSubAnmInfo>::iterator it = unk0->mIncidentalAnmList.begin();
+		JGadget::TList<MActorSubAnmInfo>::iterator e  = unk0->mIncidentalAnmList.end();
 		for (int i = 0; it != e; ++it, ++i) {
 			unk10[i]->setModel(unk4);
 		}
@@ -280,7 +280,7 @@ void MActor::updateInSubBck()
 	if (!unk10)
 		return;
 
-	for (int i = 0; i < unk0->getUnk0(); ++i)
+	for (int i = 0; i < unk0->getIncidentalAnmNum(); ++i)
 		if (unk10[i]->getUnk0() >= 0)
 			unk10[i]->updateIn();
 }
@@ -290,7 +290,7 @@ void MActor::updateOutSubBck()
 	if (!unk10)
 		return;
 
-	for (int i = 0; i < unk0->getUnk0(); ++i)
+	for (int i = 0; i < unk0->getIncidentalAnmNum(); ++i)
 		if (unk10[i]->getUnk0() >= 0)
 			unk10[i]->updateOut();
 }
@@ -382,7 +382,7 @@ void MActor::frameUpdate()
 			unk28[i]->getFrameCtrl()->update();
 
 	if (unk10)
-		for (int i = 0; i < unk0->getUnk0(); ++i)
+		for (int i = 0; i < unk0->getIncidentalAnmNum(); ++i)
 			if (unk10[i]->getUnk0() >= 0)
 				unk10[i]->getFrameCtrl()->update();
 }
