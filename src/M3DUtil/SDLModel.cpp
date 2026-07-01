@@ -230,7 +230,7 @@ void SDLModel::entryModelDataSDL(SDLModelData* param_1, u32 param_2,
 			J3DNBTScale* nbtScale = mat->getTexGenBlock()->getNBTScale();
 			if (nbtScale->mbHasScale == 1) {
 				mBumpMtxArr[i][matsWithBumpMtxs] = new Mtx33*[param_3];
-				mat->getShape()->unk5C           = matsWithBumpMtxs;
+				mat->getShape()->mBumpMtxOffset  = matsWithBumpMtxs;
 				++matsWithBumpMtxs;
 			}
 		}

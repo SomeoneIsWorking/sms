@@ -125,44 +125,50 @@ public:
 	void onFlag(u32 flag) { unk8 |= flag; }
 	void offFlag(u32 flag) { unk8 &= ~flag; }
 
-	u32 getIndex() const { return unk4; }
-	GXVtxDescList* getVtxDesc() const { return unk2C; }
+	u32 getIndex() const { return mIndex; }
+	GXVtxDescList* getVtxDesc() const { return mVtxDescList; }
 	u32 getMtxGroupNum() const { return mElementCount; }
 	J3DShapeMtx* getShapeMtx(u16 idx) const { return mMatrices[idx]; }
 	J3DShapeDraw* getShapeDraw(u16 idx) const { return mDraws[idx]; }
-	u32 getBumpMtxOffset() const { return unk5C; }
+	u32 getBumpMtxOffset() const { return mBumpMtxOffset; }
 
-	void setScaleFlagArray(u8* pScaleFlagArray) { unk4C = pScaleFlagArray; }
+	void setScaleFlagArray(u8* pScaleFlagArray) { mScaleFlagArray = pScaleFlagArray; }
 
-	void setDrawMtxDataPointer(J3DDrawMtxData* pMtxData) { unk48 = pMtxData; }
+	void setDrawMtxDataPointer(J3DDrawMtxData* pMtxData) { mDrawMtxData = pMtxData; }
 
-	void setVertexDataPointer(J3DVertexData* pVtxData) { unk44 = pVtxData; }
+	void setVertexDataPointer(J3DVertexData* pVtxData) { mVertexData = pVtxData; }
 
 	// fabricated
 	void* getDrawList() { return mGDCommands; }
 
 public:
 	/* 0x0 */ u32 unk0;
-	/* 0x4 */ u16 unk4;
+	/* 0x4 */ u16 mIndex;
 	/* 0x6 */ u16 mElementCount;
 	/* 0x8 */ u32 unk8;
 	/* 0xC */ float unkC;
 	/* 0x10 */ Vec unk10;
 	/* 0x1C */ Vec unk1C;
 	/* 0x28 */ void* mGDCommands;
-	/* 0x2C */ GXVtxDescList* unk2C;
+	/* 0x2C */ GXVtxDescList* mVtxDescList;
 	/* 0x30 */ bool unk30;
 	/* 0x31 */ char unk31[3];
 	/* 0x34 */ J3DShapeMtx** mMatrices; // mElementCount entries
 	/* 0x38 */ J3DShapeDraw** mDraws;   // mElementCount entries
 	/* 0x3C */ u8 unk3C[8];
-	/* 0x44 */ J3DVertexData* unk44;
-	/* 0x48 */ J3DDrawMtxData* unk48;
-	/* 0x4C */ u8* unk4C;
+	/* 0x44 */ J3DVertexData* mVertexData;
+	// mDrawMtxData: this shape's OWN pointer to its owning model's draw-matrix-table descriptor
+	// (mEntryNum = draw-matrix table size), bound ONCE at model-init via setDrawMtxDataPointer.
+	// Always correct for THIS shape regardless of which model j3dSys.getModel() currently points
+	// at — see native/render/sms_boot_j3d_capture.cpp's skin-matrix bounds-check fix (2026-07-01,
+	// commit 32a03fa): using j3dSys.getModel()'s table size instead of this field's is what
+	// produced the mangled file-select Mario.
+	/* 0x48 */ J3DDrawMtxData* mDrawMtxData;
+	/* 0x4C */ u8* mScaleFlagArray;
 	/* 0x50 */ Mtx** mDrawMatrices;
 	/* 0x54 */ Mtx33** mNormMatrices;
 	/* 0x58 */ u32* mCurrentViewNo;
-	/* 0x5C */ u32 unk5C;
+	/* 0x5C */ u32 mBumpMtxOffset;
 };
 
 #endif
