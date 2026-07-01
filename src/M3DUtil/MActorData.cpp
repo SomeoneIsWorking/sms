@@ -81,6 +81,15 @@ MActorAnmData::MActorAnmData()
 	unk44 = 0;
 	unk48 = nullptr;
 
+	// unk0 is the count of INCIDENTAL sub-BCK anims (the unk1C list length); MActor's ctor
+	// sizes `unk10 = new MActorAnmBck*[getUnk0()]` by it and fills it by iterating unk1C.
+	// The list is only populated by addIncidentalAnm (an unimplemented decomp stub here), so
+	// with no incidental anims it must read 0. The decomp ctor omitted this initializer, so
+	// on a non-zeroed heap allocation unk0 held garbage -> a huge/garbage unk10[] whose
+	// unaligned tail entries were never assigned -> MActor::updateInSubBck dereferenced an
+	// uninitialized MActorAnmBck* and crashed (intermittently, per heap contents). An empty
+	// incidental-anm list is exactly 0.
+	unk0  = 0;
 	unk4  = 0;
 	unk8  = 0;
 	unkC  = 0;

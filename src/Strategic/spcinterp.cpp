@@ -1,9 +1,9 @@
 #include <Strategic/spcinterp.hpp>
 #include <macros.h>
 #ifdef SMS_NATIVE_PLATFORM
-#include <set>
 #include <cstring>
 #include <dolphin/os.h>
+#include <JSystem/sb_host_swapset.h>
 
 // On-disc SPC ("SPCB") script binaries are big-endian; TSpcBinary reads every
 // header/symbol/data-offset u32 by raw struct cast (and the interpreter reads
@@ -26,8 +26,10 @@ static inline u32 spc_be32(const u8* p)
 }
 static void spc_swap_blob(u8* d)
 {
-	// Idempotent across re-loads of the same cached archive resource.
-	static std::set<const u8*> swapped;
+	// Idempotent across re-loads of the same cached archive resource. Host-malloc-backed so
+	// the game's per-scene JKRHeap::freeAll doesn't free this process-global set's nodes
+	// (see JSystem/sb_host_swapset.h — that dangling caused the _Rb_tree insert crash).
+	static smsport::HostPtrSet swapped;
 	if (!swapped.insert(d).second)
 		return;
 	if (std::memcmp(d, "SPCB", 4) != 0)
