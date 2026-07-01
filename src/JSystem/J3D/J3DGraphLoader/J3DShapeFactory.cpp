@@ -26,7 +26,7 @@ J3DShape* J3DShapeFactory::create(int no, J3DMdlDataFlag flag,
 	J3DShape* shape      = new J3DShape();
 	shape->mElementCount = getMtxGroupNum(no);
 	shape->unkC          = getRadius(no);
-	shape->unk2C         = getVtxDescList(no);
+	shape->mVtxDescList  = getVtxDescList(no);
 	shape->mMatrices     = new J3DShapeMtx*[shape->mElementCount];
 	shape->mDraws        = new J3DShapeDraw*[shape->mElementCount];
 	shape->unk10         = getMin(no);
@@ -38,7 +38,7 @@ J3DShape* J3DShapeFactory::create(int no, J3DMdlDataFlag flag,
 		shape->mDraws[i]    = newShapeDraw(no, i, flag);
 	}
 
-	shape->unk4 = no;
+	shape->mIndex = no;
 	return shape;
 }
 
