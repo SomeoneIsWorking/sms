@@ -307,6 +307,19 @@ void J3DDrawBuffer::drawHead() const
 	if (const char* e = std::getenv("SB_DBHEAD_DBG"); e && e[0] && e[0] != '0') {
 		long np = 0; for (u32 i = 0; i < mSize; i++)
 			for (J3DPacket* p = mBuffer[i]; p; p = p->getNextPacket()) ++np;
+		// SB_DBHEAD_MAT=1: also print each packet's J3DMaterial low-24 bits (cast to J3DMatPacket) so the
+		// ph6 buffer that holds the sea-MASK material (c97c48, key eb5c8e74) is named — distinguishes
+		// the real MapXlu (b1f7bc) from the two unnamed ph6 buffers. One-shot per (phase,buf) at settle.
+		static int s_matN = 0;
+		if (np > 0 && std::getenv("SB_DBHEAD_MAT") && sb_boot_capture_phase() == 6 && s_matN < 12) {
+			++s_matN; char mats[200]; int mn = 0; mats[0] = 0;
+			for (u32 i = 0; i < mSize; i++)
+				for (J3DPacket* p = mBuffer[i]; p && mn < 180; p = p->getNextPacket())
+					mn += std::snprintf(mats + mn, sizeof(mats) - mn, " %06x",
+					        (unsigned)((uintptr_t)static_cast<J3DMatPacket*>(p)->getMaterial() & 0xffffff));
+			std::fprintf(stderr, "[dbhead-mat] phase=6 buf=%p packets=%ld mats=%s\n",
+			             (const void*)this, np, mats);
+		}
 		if (np > 0)
 			std::fprintf(stderr, "[dbhead] phase=%d buf=%p packets=%ld\n",
 			             sb_boot_capture_phase(), (const void*)this, np);
