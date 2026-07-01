@@ -31,6 +31,7 @@
 #include <Enemy/Conductor.hpp>
 #ifdef SMS_NATIVE_PLATFORM
 #include <Enemy/GraphSwap.h>
+#include <cstdio>
 #endif
 
 // rogue includes needed for matching sinit & bss
@@ -283,9 +284,20 @@ bool TMarDirector::setupObjects()
 		// struct access (no auto-swap). Swap it to host order before use, else a
 		// node count reads byte-swapped (e.g. 0xB0 -> 0xB0000000) -> ~2.9 GB
 		// `new TGraphNode[]` -> JKRSolidHeap OOM. See Enemy/GraphSwap.h.
-		if (ral)
-			smsport::sb_ral_swap_to_host(
-			    ral, JKRFileLoader::getResSize(ral, nullptr));
+		if (ral) {
+			u32 ral_sz = JKRFileLoader::getResSize(ral, nullptr);
+			if (getenv("SB_RAL_DBG")) {
+				const uint8_t* d = (const uint8_t*)ral;
+				fprintf(stderr, "[ral] ptr=%p size=%u mNodeNum(BE-read raw)=%02x%02x%02x%02x\n",
+				        ral, ral_sz, d[0], d[1], d[2], d[3]);
+			}
+			smsport::sb_ral_swap_to_host(ral, ral_sz);
+			if (getenv("SB_RAL_DBG")) {
+				const uint8_t* d = (const uint8_t*)ral;
+				fprintf(stderr, "[ral] after-swap mNodeNum bytes=%02x%02x%02x%02x\n",
+				        d[0], d[1], d[2], d[3]);
+			}
+		}
 #endif
 		gpConductor->makeGraphGroup(ral);
 	}
