@@ -554,7 +554,7 @@ void J3DModel::entryModelData(J3DModelData* param_1, u32 param_2, u32 param_3)
 			mMatPackets[i].unk38 = param_1->getMaterialNodePointer(i);
 			mMatPackets[i].addShapePacket(
 			    &mShapePackets
-			        [param_1->getMaterialNodePointer(i)->getShape()->unk4]);
+			        [param_1->getMaterialNodePointer(i)->getShape()->mIndex]);
 			mMatPackets[i].mTexture = param_1->getTexture();
 
 			if (param_2 & 0x20000) {
@@ -596,7 +596,7 @@ void J3DModel::entryModelData(J3DModelData* param_1, u32 param_2, u32 param_3)
 			if (nbtScale->mbHasScale == 1) {
 				mBumpMtxArr[i][nextBumpMtx] = new Mtx33*[param_3];
 
-				mat->getShape()->unk5C = nextBumpMtx;
+				mat->getShape()->mBumpMtxOffset = nextBumpMtx;
 				++nextBumpMtx;
 			}
 		}
