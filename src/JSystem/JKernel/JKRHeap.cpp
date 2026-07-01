@@ -230,7 +230,21 @@ void JKRDefaultMemoryErrorRoutine(void* heap, u32 size, int alignment)
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdlib>
 #include <cstdint>
+#include <cstring>
 #include <atomic>
+#include <sys/mman.h>
+#include <unistd.h>
+// SB_HEAP_GUARD=1: electric-fence-style guard-page mode for host allocations. Each host
+// block is mmap'd with its USER data flush against a trailing PROT_NONE guard page, so any
+// write past the requested size faults IMMEDIATELY at the offending instruction (clean
+// backtrace) instead of silently corrupting a neighbouring glibc-heap object (e.g. the
+// restimg_swap idempotency set). Diagnostic only — off by default; costs a guard page per
+// host allocation. Read once (getenv is slow, called on the alloc hot path).
+static bool sb_heap_guard() {
+	static int g = -1;
+	if (g < 0) { const char* e = getenv("SB_HEAP_GUARD"); g = (e && e[0] && e[0] != '0') ? 1 : 0; }
+	return g != 0;
+}
 // =============================================================================
 // Native host-runtime isolation. The single global operator-new override forces
 // EVERY native allocation into the JKR heap — not just game objects, but the
@@ -298,7 +312,8 @@ extern "C" int  sb_is_game_thread(void)   { return g_sb_is_game_thread ? 1 : 0; 
 //       cap + the live total, instead of silently driving the host to OOM.
 // SB_HOST_ALLOC_CAP_MB overrides the cap (default 2048 MB). The cap bounds how much memory
 // the game (incl. JKR-overflow + capture) can hold at once on the host.
-static const uint64_t SB_HOST_TAG_MAGIC = 0x53424845415021ULL; // "SBHEAP!"
+static const uint64_t SB_HOST_TAG_MAGIC  = 0x53424845415021ULL; // "SBHEAP!"
+static const uint64_t SB_HOST_GUARD_MAGIC = 0x53424847554152ULL; // "SBHGUAR" (guard-page block)
 struct SbHostHdr { uint64_t magic; void* base; uint64_t bytes; uint64_t pad; };
 static std::atomic<uint64_t> g_host_outstanding{0};
 
@@ -333,6 +348,34 @@ static void* sb_host_malloc(size_t n, int alignment)
 		        (unsigned long long)(live >> 20), n,
 		        (unsigned long long)(sb_host_cap_bytes() >> 20));
 		return nullptr;
+	}
+
+	if (sb_heap_guard()) {
+		// Guard-page mode: [ payload pages (RW) ][ 1 guard page (PROT_NONE) ]. Place the
+		// user data so it ENDS flush against the guard page; any store past user+n faults.
+		const size_t page = (size_t)sysconf(_SC_PAGESIZE);
+		const size_t need = sizeof(SbHostHdr) + n + a;      // header + data + alignment slack
+		const size_t payload = ((need + page - 1) / page) * page;
+		const size_t maplen  = payload + page;               // + guard page
+		void* region = mmap(nullptr, maplen, PROT_READ | PROT_WRITE,
+		                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+		if (region == MAP_FAILED) {
+			OSPanic(__FILE__, __LINE__, "[heap] guard mmap failed for %zu bytes\n", n);
+			return nullptr;
+		}
+		mprotect((char*)region + payload, page, PROT_NONE); // trailing guard
+		uintptr_t rw_end = (uintptr_t)region + payload;
+		uintptr_t user = (rw_end - n) & ~(uintptr_t)(a - 1); // flush data end to guard, then align down
+		// Shadow header immediately before user (guaranteed >= region: payload includes hdr+a
+		// slack), so the SAME sb_host_free_if_tagged path finds it via (user - sizeof hdr).
+		SbHostHdr* h = (SbHostHdr*)(user - sizeof(SbHostHdr));
+		h->magic = SB_HOST_GUARD_MAGIC;
+		h->base  = region;
+		h->bytes = maplen;
+		h->pad   = 0;
+		g_host_outstanding.fetch_add(maplen, std::memory_order_relaxed);
+		++g_native_malloc_fallbacks;
+		return (void*)user;
 	}
 
 	// Over-allocate room for the header + alignment slack; place the user pointer at the
@@ -371,6 +414,13 @@ extern "C" bool sb_host_free_if_tagged(void* p)
 {
 	if (!p) return false;
 	SbHostHdr* h = (SbHostHdr*)((uintptr_t)p - sizeof(SbHostHdr));
+	if (h->magic == SB_HOST_GUARD_MAGIC) {
+		void* base = h->base; uint64_t len = h->bytes;
+		g_host_outstanding.fetch_sub(len, std::memory_order_relaxed);
+		h->magic = 0;
+		munmap(base, (size_t)len);
+		return true;
+	}
 	if (h->magic != SB_HOST_TAG_MAGIC) return false;
 	g_host_outstanding.fetch_sub(h->bytes, std::memory_order_relaxed);
 	h->magic = 0;          // poison so a double free is not mistaken for a live tag
