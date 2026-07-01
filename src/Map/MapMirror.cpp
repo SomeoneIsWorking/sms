@@ -10,6 +10,10 @@
 #include <JSystem/JDrama/JDRNameRefGen.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DMaterial.hpp>
 #include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 #include <JSystem/J3D/J3DGraphBase/J3DTexture.hpp>
 #include <JSystem/J3D/J3DGraphLoader/J3DModelLoaderFlags.hpp>
 
@@ -362,6 +366,18 @@ TMirrorModelManager::TMirrorModelManager(const char* name)
 
 void TMirrorMapDrawBuf::perform(u32 cue, JDrama::TGraphics* graphics)
 {
-	if (!(cue & CUE_DRAW) || (gpMirrorModelManager->unk18 != -1 ? true : false))
-		JDrama::TDrawBufObj::perform(cue, graphics);
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_MIRRORBUF_DBG: which named draw-buffers are TMirrorMapDrawBuf, and the mirror gate state.
+	// If "DrawBuf MapXlu" appears here, the ph6 mask overdraw = broken mirror gate (unk18 should be -1
+	// in file-select → the draw(0x8) should be SUPPRESSED; native evidently lets it through).
+	if (const char* e = std::getenv("SB_MIRRORBUF_DBG"); e && e[0] && e[0] != '0') {
+		static int n = 0; if (n < 60) { ++n;
+			std::fprintf(stderr, "[mirrorbuf] name='%s' flag=0x%x unk18=%d draws=%d\n",
+			             getName() ? getName() : "?", param_1, gpMirrorModelManager->unk18,
+			             (!(param_1 & 8) || gpMirrorModelManager->unk18 != -1) ? 1 : 0);
+		}
+	}
+#endif
+	if (!(param_1 & 8) || (gpMirrorModelManager->unk18 != -1 ? true : false))
+		JDrama::TDrawBufObj::perform(param_1, param_2);
 }

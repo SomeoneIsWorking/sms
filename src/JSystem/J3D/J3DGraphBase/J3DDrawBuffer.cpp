@@ -11,6 +11,7 @@
 #include <execinfo.h>   // SB_ENTRY_MAT entry backtrace
 extern "C" int sb_boot_capture_phase();   // SB_DBHEAD_DBG: which pass this drawHead flush is in
 extern "C" void* sb_b76_material();       // SB_ENTRY_MAT: the b76 mask material ptr (published by capture)
+extern "C" void sb_gx_get_color_alpha_update(int*, int*);  // SB_DBHEAD_PKT: live cU/aU at flush
 #endif
 
 J3DDrawBuffer::sortFunc J3DDrawBuffer::sortFuncTable[6] = {
@@ -323,6 +324,32 @@ void J3DDrawBuffer::drawHead() const
 		if (np > 0)
 			std::fprintf(stderr, "[dbhead] phase=%d buf=%p packets=%ld\n",
 			             sb_boot_capture_phase(), (const void*)this, np);
+	}
+	// SB_DBHEAD_PKT=1: at each flush of a buffer that holds the sea-mask material (c97c48), print the
+	// live GXSetColorUpdate/AlphaUpdate + every packet's (phase, model, modelData, material) so ph1 vs
+	// ph6 MapXlu contents + the pass-level colorUpdate can be compared directly (the overbright question:
+	// does GC's ph6 buffer really lack the mask, or is native's cU wrong?). Gated to a settled window.
+	if (const char* e = std::getenv("SB_DBHEAD_PKT"); e && e[0] && e[0] != '0') {
+		bool hasMask = false;
+		for (u32 i = 0; i < mSize; i++)
+			for (J3DPacket* p = mBuffer[i]; p; p = p->getNextPacket())
+				if (((uintptr_t)static_cast<J3DMatPacket*>(p)->getMaterial() & 0xffffff) == 0xc97c48)
+					hasMask = true;
+		static int s_pktN = 0;
+		if (hasMask && s_pktN < 24) {
+			++s_pktN;
+			int cu = 1, au = 1; sb_gx_get_color_alpha_update(&cu, &au);
+			std::fprintf(stderr, "[dbhead-pkt] phase=%d buf=%p cU=%d aU=%d\n",
+			             sb_boot_capture_phase(), (const void*)this, cu, au);
+			for (u32 i = 0; i < mSize; i++)
+				for (J3DPacket* p = mBuffer[i]; p; p = p->getNextPacket()) {
+					J3DMatPacket* mp = static_cast<J3DMatPacket*>(p);
+					std::fprintf(stderr, "    pkt slot=%u packet=%p mat=%06x shapePkt=%p\n", i,
+					             (void*)mp,
+					             (unsigned)((uintptr_t)mp->getMaterial() & 0xffffff),
+					             (void*)mp->getShapePacket());
+				}
+		}
 	}
 #endif
 	for (u32 i = 0; i < mSize; i++) {
