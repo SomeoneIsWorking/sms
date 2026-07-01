@@ -96,6 +96,15 @@ void TDrawBufObj::perform(u32 cue, TGraphics* graphics)
 		}
 		// Attribute the shapes this flush captures to THIS draw buffer by name (overbright harness).
 		sb_boot_capture_set_drawbuf(getName());
+		// SB_DRAWFLAG_DBG: which phase actually sets the draw bit (0x8) for each named buffer —
+		// settles whether ph1 and ph4 both genuinely draw() (double-buffer handoff, correct) or one
+		// of them is a phase-mislabeling artifact.
+		if (const char* e = std::getenv("SB_DRAWFLAG_DBG"); e && e[0] && e[0] != '0') {
+			static long n = 0; if (n < 400) { ++n;
+				std::fprintf(stderr, "[drawflag] phase=%d name='%s' flag=0x%x\n",
+				             sb_boot_capture_phase(), getName() ? getName() : "?", param_1);
+			}
+		}
 #endif
 #ifdef SMS_NATIVE_PLATFORM
 		{
