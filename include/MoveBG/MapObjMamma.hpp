@@ -155,6 +155,8 @@ public:
 	TGoalWatermelon(const char* name = "スイカゴール");
 };
 
+class J3DJoint;
+
 class TMammaMirrorMapOperator : public JDrama::TViewObj {
 public:
 	void show(int);
@@ -162,6 +164,23 @@ public:
 	void perform(u32 cue, JDrama::TGraphics* graphics);
 	void loadAfter();
 	TMammaMirrorMapOperator(const char* name = "鏡内地形操作");
+
+	// Ivars from the loadAfter/perform RE (@0x801cf1b0 / @0x801cf46c). The class body was
+	// empty in the header — the GC decomp lost the fields. Byte offsets fit the used
+	// accesses exactly (loadAfter writes 0x10..0xD8; perform reads the same range).
+	//
+	//   mNodes[i]        = joints[2] + i sibling walks (mYounger chain in J3DModelData)
+	//   mNodeCenter[i]   = 0.5 * (joint.mMin + joint.mMax)   (XYZ midpoint)
+	//   mNodeRadius[i]   = min(max(0.5*dx, 0.5*dz) + 2000, 3000)   (horizontal LOD radius)
+	//   mNodeVisible[i]  = per-node show/hide cache (transitions call SMS_ShowJoint)
+	//   mMirror{S,M,L}Pos = positions of the "mirrorS/M/L" TMapStaticObj scene entries
+	/* 0x10 */ J3DJoint* mNodes[8];
+	/* 0x30 */ JGeometry::TVec3<f32> mNodeCenter[8];
+	/* 0x90 */ f32 mNodeRadius[8];
+	/* 0xB0 */ u8 mNodeVisible[8];
+	/* 0xB8 */ JGeometry::TVec3<f32> mMirrorSPos;
+	/* 0xC4 */ JGeometry::TVec3<f32> mMirrorMPos;
+	/* 0xD0 */ JGeometry::TVec3<f32> mMirrorLPos;
 };
 
 class TSandEgg : public TMapObjBase {
