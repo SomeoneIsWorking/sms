@@ -53,6 +53,11 @@ public:
 	void control();
 	void loadAfter();
 	TWireBell(const char* name = "ワイヤー鈴（紫）");
+
+	// Ivar identified from loadAfter RE (@0x801d8f1c): the wire index this bell is
+	// pinned to, resolved once via gpMapWireManager->getWireNo(mPosition). Class body
+	// was empty; single u32 at TMapObjBase's end (0x138).
+	/* 0x138 */ u32 mWireIndex;
 };
 
 class TMapObjPuncher : public TMapObjBase {
