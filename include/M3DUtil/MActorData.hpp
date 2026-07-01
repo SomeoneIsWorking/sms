@@ -99,33 +99,35 @@ public:
 	void addIncidentalAnm(const char*, int);
 	u32 partsNameToIdx(const char*);
 
-	// fabricated
-	s32 getUnk0() { return unk0; }
-	SampleCtrlModelData* getUnk48() { return unk48; }
-	MActorAnmDataEach<J3DAnmTransformKey>* getUnk2C() { return unk2C; }
-	MActorAnmDataEach<J3DAnmColorKey>* getUnk30() { return unk30; }
-	MActorAnmDataEach<J3DAnmTexPattern>* getUnk34() { return unk34; }
-	MActorAnmDataEach<J3DAnmTextureSRTKey>* getUnk38() { return unk38; }
-	MActorAnmDataEach<J3DAnmTevRegKey>* getUnk3C() { return unk3C; }
-	MActorAnmDataEach<J3DAnmClusterKey>* getUnk40() { return unk40; }
+	// fabricated. getUnk2C..getUnk40/getUnk48 keep their names (widely called); they now
+	// return the renamed fields. The per-anm-kind counts (unkN) double as write indices
+	// during addFileTable's second pass (reset to 0 after init), hence the plain `Num`.
+	s32 getIncidentalAnmNum() { return mIncidentalAnmNum; }
+	SampleCtrlModelData* getUnk48() { return mSampleModelData; }
+	MActorAnmDataEach<J3DAnmTransformKey>* getUnk2C() { return mBckData; }
+	MActorAnmDataEach<J3DAnmColorKey>* getUnk30() { return mBpkData; }
+	MActorAnmDataEach<J3DAnmTexPattern>* getUnk34() { return mBtpData; }
+	MActorAnmDataEach<J3DAnmTextureSRTKey>* getUnk38() { return mBtkData; }
+	MActorAnmDataEach<J3DAnmTevRegKey>* getUnk3C() { return mBrkData; }
+	MActorAnmDataEach<J3DAnmClusterKey>* getUnk40() { return mBlkData; }
 
 public:
-	/* 0x0 */ int unk0;
-	/* 0x4 */ int unk4;
-	/* 0x8 */ int unk8;
-	/* 0xC */ int unkC;
-	/* 0x10 */ int unk10;
-	/* 0x14 */ int unk14;
-	/* 0x18 */ int unk18;
-	/* 0x1C */ JGadget::TList<MActorSubAnmInfo> unk1C;
-	/* 0x2C */ MActorAnmDataEach<J3DAnmTransformKey>* unk2C;
-	/* 0x30 */ MActorAnmDataEach<J3DAnmColorKey>* unk30;
-	/* 0x34 */ MActorAnmDataEach<J3DAnmTexPattern>* unk34;
-	/* 0x38 */ MActorAnmDataEach<J3DAnmTextureSRTKey>* unk38;
-	/* 0x3C */ MActorAnmDataEach<J3DAnmTevRegKey>* unk3C;
-	/* 0x40 */ MActorAnmDataEach<J3DAnmClusterKey>* unk40;
+	/* 0x0 */ int mIncidentalAnmNum;  // incidental sub-BCK count (== mIncidentalAnmList len)
+	/* 0x4 */ int mBckNum;            // per-kind file counts (also reused as indices)
+	/* 0x8 */ int mBlkNum;
+	/* 0xC */ int mBpkNum;
+	/* 0x10 */ int mBtpNum;
+	/* 0x14 */ int mBtkNum;
+	/* 0x18 */ int mBrkNum;
+	/* 0x1C */ JGadget::TList<MActorSubAnmInfo> mIncidentalAnmList;
+	/* 0x2C */ MActorAnmDataEach<J3DAnmTransformKey>* mBckData;
+	/* 0x30 */ MActorAnmDataEach<J3DAnmColorKey>* mBpkData;
+	/* 0x34 */ MActorAnmDataEach<J3DAnmTexPattern>* mBtpData;
+	/* 0x38 */ MActorAnmDataEach<J3DAnmTextureSRTKey>* mBtkData;
+	/* 0x3C */ MActorAnmDataEach<J3DAnmTevRegKey>* mBrkData;
+	/* 0x40 */ MActorAnmDataEach<J3DAnmClusterKey>* mBlkData;
 	/* 0x44 */ u32 unk44;
-	/* 0x48 */ SampleCtrlModelData* unk48;
+	/* 0x48 */ SampleCtrlModelData* mSampleModelData;
 };
 
 u16 MActorCalcKeyCode(const char* name);
