@@ -1,4 +1,8 @@
 #include <Map/MapXlu.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 #include <Map/MapModel.hpp>
 #include <Map/Map.hpp>
 #include <JSystem/JSupport/JSUMemoryInputStream.hpp>
@@ -45,7 +49,21 @@ void TMapXlu::init(JSUMemoryInputStream& stream)
 	// WRONG (or no) map joints, leaving the translucent-priority / shine-shadow mask joints VISIBLE in
 	// the normal map draw → the file-select overbright white volume. readU32() is BE on the GC (no-op
 	// swap) and bswaps on LE — correct on both. Same fix pattern as TDrawBufObj::load / PerformList.
+#ifdef SMS_NATIVE_PLATFORM
+	if (const char* e = std::getenv("SB_XLU_DBG"); e && e[0] && e[0] != '0') {
+		int pos = stream.getPosition(), len = stream.getLength();
+		const unsigned char* cur = (const unsigned char*)stream.getCurrent();
+		char hx[128]; int hn = 0;
+		for (int k = 0; k < 32 && pos + k < len; ++k)
+			hn += std::snprintf(hx + hn, sizeof(hx) - hn, "%02x", cur[k]);
+		std::fprintf(stderr, "[xlu-init] pos=%d len=%d bytes=%s\n", pos, len, hx);
+	}
+#endif
 	unk0 = (int)stream.readU32();
+#ifdef SMS_NATIVE_PLATFORM
+	if (const char* e = std::getenv("SB_XLU_DBG"); e && e[0] && e[0] != '0')
+		std::fprintf(stderr, "[xlu-init] unk0(numGroups)=%d\n", unk0);
+#endif
 	if (unk0 != 0) {
 		unk4 = new Entry[unk0];
 		for (int i = 0; i < unk0; ++i) {
