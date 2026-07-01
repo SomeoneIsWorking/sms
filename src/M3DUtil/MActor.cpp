@@ -6,6 +6,10 @@
 #include <JSystem/J3D/J3DGraphBase/J3DTransform.hpp>
 #include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
 #include <JSystem/J3D/J3DGraphAnimator/J3DMaterialAnm.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 #include <JSystem/J3D/J3DGraphAnimator/J3DJoint.hpp>
 #include <MarioUtil/DrawUtil.hpp>
 #include <Camera/CubeManagerBase.hpp>
@@ -146,6 +150,12 @@ void MActor::setModel(J3DModel* param_1, u32 param_2)
 			mat->change();
 			mat->setMaterialAnm(anm);
 		}
+#ifdef SMS_NATIVE_PLATFORM
+		if (const char* e = std::getenv("SB_MATANM_DBG"); e && e[0] && e[0] != '0')
+			fprintf(stderr, "[matanm-setModel] this=%p i=%u/%u unk30=%u unk2C=%u pre_anm=%p post_anm=%p\n",
+			             (void*)this, i, unk34, unk30[i], unk2C[i], (void*)anm,
+			             (void*)mat->getMaterialAnm());
+#endif
 		unk2C[i] = 0x32;
 	}
 
@@ -644,10 +654,19 @@ void MActor::entryOut()
 
 void MActor::updateMatAnm()
 {
-	j3dSys.setTexture(mModel->getModelData()->getTexture());
-	for (u16 i = 0; i < mMaterialNum; ++i)
-		if (unk30[i] != 0x32 || unk2C[i] != 0x32)
-			SMS_CalcMatAnmAndMakeDL(mModel, i);
+	j3dSys.setTexture(unk4->getModelData()->getTexture());
+	for (u16 i = 0; i < unk34; ++i)
+		if (unk30[i] != 0x32 || unk2C[i] != 0x32) {
+#ifdef SMS_NATIVE_PLATFORM
+			if (const char* e = std::getenv("SB_MATANM_DBG"); e && e[0] && e[0] != '0') {
+				J3DMaterial* m = unk4->getModelData()->getMaterialNodePointer(i);
+				fprintf(stderr, "[matanm-update] this=%p i=%u/%u unk30=%u unk2C=%u anm=%p\n",
+				             (void*)this, i, unk34, unk30[i], unk2C[i],
+				             (void*)m->getMaterialAnm());
+			}
+#endif
+			SMS_CalcMatAnmAndMakeDL(unk4, i);
+		}
 }
 
 void MActor::dumpReport() { }
