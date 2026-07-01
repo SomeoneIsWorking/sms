@@ -171,8 +171,8 @@ void TMapWireManager::getPointPosInNthWire(int param_1,
                                            const JGeometry::TVec3<f32>& param_2,
                                            JGeometry::TVec3<f32>* param_3) const
 {
-	getWire(param_1)->getPointPosOnWire(getWire(param_1)->getPosInWire(param_2),
-	                                    param_3);
+	mWires[param_1]->getPointPosOnWire(mWires[param_1]->getPosInWire(param_2),
+	                                   param_3);
 }
 
 void TMapWireManager::getPointPosInWire(const JGeometry::TVec3<f32>&,
@@ -225,15 +225,17 @@ void TMapWireManager::loadAfter()
 {
 	JDrama::TViewObj::loadAfter();
 
-	entry(gpMarioOriginal);
+	TTakeActor* mario   = gpMarioOriginal;
+	mActorMgrs[mActorMgrNum] = new TMapWireActorManager(mario);
+	++mActorMgrNum;
 }
 
 void TMapWireManager::load(JSUMemoryInputStream& stream)
 {
 	JDrama::TViewObj::load(stream);
 	stream.readString();
-	stream.read(&unk14, 4);
-	stream.read(&unk20, 4);
+	stream.read(&mMaxWireNum, 4);
+	stream.read(&mMaxActorMgrNum, 4);
 	stream.read(&TMapWire::mDrawWidth, 4);
 	stream.read(&TMapWire::mDrawHeight, 4);
 	int val;
@@ -253,12 +255,12 @@ void TMapWireManager::load(JSUMemoryInputStream& stream)
 
 #ifdef SMS_NATIVE_PLATFORM
 	// These fields are big-endian on disc but read via the raw read(&x,4) (which
-	// does not byteswap, unlike the typed readers). Swap to host: unk14/unk20 are
-	// array counts (unswapped -> a ~1GB `new TMapWire*[unk14]` OOM-panics), and
-	// mDrawWidth/mDrawHeight are f32 line dimensions. The color components above
-	// use SB_BE32 since `int val` is truncated to a u8 immediately.
-	unk14 = __builtin_bswap32(unk14);
-	unk20 = __builtin_bswap32(unk20);
+	// does not byteswap, unlike the typed readers). Swap to host: mMaxWireNum/
+	// mMaxActorMgrNum are array capacities (unswapped -> a ~1GB `new TMapWire*[]`
+	// OOM-panics), and mDrawWidth/mDrawHeight are f32 line dimensions. The color
+	// components above use SB_BE32 since `int val` is truncated to a u8 immediately.
+	mMaxWireNum     = __builtin_bswap32(mMaxWireNum);
+	mMaxActorMgrNum = __builtin_bswap32(mMaxActorMgrNum);
 	{
 		u32 w, h;
 		__builtin_memcpy(&w, &TMapWire::mDrawWidth, 4);
@@ -270,14 +272,14 @@ void TMapWireManager::load(JSUMemoryInputStream& stream)
 	}
 #endif
 
-	unk18 = new TMapWire*[unk14];
-	unk24 = new TMapWireActorManager*[unk20];
+	mWires     = new TMapWire*[mMaxWireNum];
+	mActorMgrs = new TMapWireActorManager*[mMaxActorMgrNum];
 
-	unk10 = gpCubeWire->unk10;
+	mWireNum = gpCubeWire->unk10;
 
-	for (int i = 0; i < unk10; ++i) {
-		unk18[i] = new TMapWire;
-		unk18[i]->init(&gpCubeWire->unk14->getChildren()[i]);
+	for (int i = 0; i < mWireNum; ++i) {
+		mWires[i] = new TMapWire;
+		mWires[i]->init(&(*gpCubeWire->unk14)[i]);
 	}
 }
 
@@ -290,12 +292,12 @@ TMapWireManager::TMapWireManager(const char* name)
     , unk28(0)
 {
 	gpMapWireManager = this;
-	// unk1C is the running insert index into the unk24[] TMapWireActorManager array
-	// (loadAfter does `unk24[unk1C++] = new TMapWireActorManager(...)`). load() populates
-	// unk14/unk18/unk20/unk24 but not unk1C, and the decomp ctor omitted it, so on a
-	// non-zeroed heap allocation loadAfter indexed unk24[] with garbage -> wild store ->
-	// crash. A freshly built manager holds zero actor managers.
-	unk1C = 0;
+	// mActorMgrNum is the running insert index into the mActorMgrs[] array (loadAfter does
+	// `mActorMgrs[mActorMgrNum++] = new TMapWireActorManager(...)`). load() populates
+	// mMaxWireNum/mWires/mMaxActorMgrNum/mActorMgrs but not this, and the decomp ctor omitted
+	// it, so on a non-zeroed heap allocation loadAfter indexed mActorMgrs[] with garbage ->
+	// wild store -> crash. A freshly built manager holds zero actor managers.
+	mActorMgrNum = 0;
 	mUpperSurface.r  = 0x78;
 	mUpperSurface.g  = 0x78;
 	mUpperSurface.b  = 0x78;
