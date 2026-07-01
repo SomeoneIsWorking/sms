@@ -14,6 +14,9 @@
 #include <System/TimeRec.hpp>
 #include <MSound/MSound.hpp>
 #include <MarioUtil/DLUtil.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include "sms_water_billboard.h"  // sb_water_billboard_corners (pure, unit-tested; native/render on path)
+#endif
 #include <MarioUtil/ScreenUtil.hpp>
 #include <MarioUtil/DrawUtil.hpp>
 #include <MarioUtil/MathUtil.hpp>
@@ -770,7 +773,58 @@ void TModelWaterManager::calcWorldMinMax()
 }
 
 #pragma dont_inline on
+#ifdef SMS_NATIVE_PLATFORM
+// @0x8027e5f4. Build the water-splash TDLTexQuad (unk5D30) that drawRefracAndSpec draws (the
+// refraction/water-colour/specular passes). For every active type-1 water particle within its
+// lifetime band and inside the view frustum, view-transform its centre + velocity and emit a
+// screen-facing quad (axis-aligned for slow particles, velocity-stretched for fast ones). Faithful
+// port from the Ghidra decompile; the per-particle corner math is the unit-tested pure helper
+// sb_water_billboard_corners (native/render/sms_water_billboard.h). SDA2 constants read from the DOL:
+// 1.414 / 0.5 (size), 1.0 (stretch threshold), 0.0 (near-plane z), 0.5 / 3.0 (frsqrte Newton).
+void TModelWaterManager::calcDrawVtx(MtxPtr viewMtx)
+{
+	unk5D30->reset();
+
+	for (int i = 0; i < mParticleCount; ++i) {
+		if ((mParticleFlagSOA[i] & 0xf) != 1)
+			continue;
+		const TWaterParticleType* wpt = mWaterParticleTypes[mParticleTypeSOA[i]];
+
+		// Lifetime-band cull: only splashes still younger than (type mAlive - unk5D88[7]).
+		if (!(mParticleLifetimeSOA[i] < wpt->mAlive.get() - unk5D88[7]))
+			continue;
+
+		JGeometry::TVec3<f32> center;
+		PSMTXMultVec(viewMtx, &mParticlePositionSOA[i], &center);
+
+		// View-frustum Z cull (view space: -unk5D28 <= z <= 0).
+		if (!(center.z <= 0.0f && -unk5D28 <= center.z))
+			continue;
+
+		// Velocity → view space (rotate/scale only), scaled by the particle type's mExtension.
+		JGeometry::TVec3<f32> vel;
+		PSMTXMultVecSR(viewMtx, &mParticleVelocitySOA[i], &vel);
+		const f32 ext = wpt->mExtension.get();
+		vel.x *= ext; vel.y *= ext; vel.z *= ext;
+
+		const f32 half = 1.4140000343322754f * (0.5f * mParticleSizeSOA[i]);
+
+		const float c[3] = { center.x, center.y, center.z };
+		const float v[3] = { vel.x, vel.y, vel.z };
+		float q[4][3];
+		sb_water_billboard_corners(c, v, half, unk5D18, q);
+
+		JGeometry::TVec3<f32> corners[4];
+		for (int k = 0; k < 4; ++k)
+			corners[k].set(q[k][0], q[k][1], q[k][2]);
+		unk5D30->request(corners);
+	}
+
+	unk5D30->setEnd();
+}
+#else
 void TModelWaterManager::calcDrawVtx(MtxPtr) { }
+#endif
 #pragma dont_inline off
 
 void TModelWaterManager::calcVMMtxGround(MtxPtr param_1, f32 param_2,
