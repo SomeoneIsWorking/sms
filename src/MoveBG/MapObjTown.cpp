@@ -1,6 +1,7 @@
 #include <MoveBG/MapObjTown.hpp>
 #include <JSystem/JSupport/JSUInputStream.hpp>
 #include <M3DUtil/MActor.hpp>
+#include <MSound/MSound.hpp>
 #include <JSystem/J3D/J3DGraphAnimator/J3DAnimation.hpp>
 #include "sms_boot_door.h"
 
@@ -59,4 +60,22 @@ void TManhole::loadAfter()
 {
 	TMapObjBase::loadAfter();
 	mMActor->getFrameCtrl(0)->setRate(0.0f);
+}
+
+// Native port of TMapObjSwitch::control (@0x801c0e18). RE: scratch/decomp_next3/801c0e18.c.
+// オブジェスイッチ — the switches around Delfino that arm a timer for a group of hidden
+// objects (block appearance countdown). Per-tick: after the base control, if a countdown
+// is active (mTimeTilAppear > 0), play the ticking timer SE. mTimeTilAppear is decremented
+// elsewhere; we only sound while it's still counting.
+//
+// SDA scan (tools/dol_sda.py 0x801c0e18):
+//   SDA1[-0x6044] = gpMSound  (playTimer(u32) ticks the countdown SE)
+// FUN_80013e90 identified as MSound::playTimer(u32) via PAL/US symbol delta (PAL playTimer
+// @0x80013EEC minus 0x5c region-offset = US 0x80013e90 exactly).
+void TMapObjSwitch::control()
+{
+	TMapObjBase::control();
+	if (mTimeTilAppear > 0) {
+		gpMSound->playTimer(mTimeTilAppear);
+	}
 }
