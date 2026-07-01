@@ -66,13 +66,19 @@ public:
 	static JUtility::TColor mUpperSurface;
 	static JUtility::TColor mLowerSurface;
 
+	// fabricated
+	static TMapWire* getGlobalWire(int index)
+	{
+		return gpMapWireManager->mWires[index];
+	}
+
 public:
-	/* 0x10 */ int unk10;
-	/* 0x14 */ u32 unk14;
-	/* 0x18 */ TMapWire** unk18;
-	/* 0x1C */ int unk1C;
-	/* 0x20 */ u32 unk20;
-	/* 0x24 */ TMapWireActorManager** unk24;
+	/* 0x10 */ int mWireNum;                       // active wires (= gpCubeWire's count)
+	/* 0x14 */ u32 mMaxWireNum;                     // mWires[] capacity (from scene data)
+	/* 0x18 */ TMapWire** mWires;
+	/* 0x1C */ u32 mActorMgrNum;                    // live mActorMgrs[] entries (insert index)
+	/* 0x20 */ u32 mMaxActorMgrNum;                 // mActorMgrs[] capacity (from scene data)
+	/* 0x24 */ TMapWireActorManager** mActorMgrs;
 	/* 0x28 */ u16 unk28;
 };
 

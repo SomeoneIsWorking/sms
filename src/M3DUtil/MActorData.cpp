@@ -71,31 +71,31 @@ void MActorAnmDataBase::sortByFileNameRaw(void** param_1)
 
 MActorAnmData::MActorAnmData()
 {
-	unk2C = nullptr;
-	unk30 = nullptr;
-	unk34 = nullptr;
-	unk38 = nullptr;
-	unk3C = nullptr;
-	unk40 = nullptr;
+	mBckData = nullptr;
+	mBpkData = nullptr;
+	mBtpData = nullptr;
+	mBtkData = nullptr;
+	mBrkData = nullptr;
+	mBlkData = nullptr;
 
-	unk44 = 0;
-	unk48 = nullptr;
+	unk44            = 0;
+	mSampleModelData = nullptr;
 
-	// unk0 is the count of INCIDENTAL sub-BCK anims (the unk1C list length); MActor's ctor
-	// sizes `unk10 = new MActorAnmBck*[getUnk0()]` by it and fills it by iterating unk1C.
-	// The list is only populated by addIncidentalAnm (an unimplemented decomp stub here), so
-	// with no incidental anims it must read 0. The decomp ctor omitted this initializer, so
-	// on a non-zeroed heap allocation unk0 held garbage -> a huge/garbage unk10[] whose
-	// unaligned tail entries were never assigned -> MActor::updateInSubBck dereferenced an
-	// uninitialized MActorAnmBck* and crashed (intermittently, per heap contents). An empty
-	// incidental-anm list is exactly 0.
-	unk0  = 0;
-	unk4  = 0;
-	unk8  = 0;
-	unkC  = 0;
-	unk10 = 0;
-	unk14 = 0;
-	unk18 = 0;
+	// mIncidentalAnmNum is the count of INCIDENTAL sub-BCK anims (the mIncidentalAnmList
+	// length); MActor's ctor sizes `unk10 = new MActorAnmBck*[getIncidentalAnmNum()]` by it
+	// and fills it by iterating mIncidentalAnmList. The list is only populated by
+	// addIncidentalAnm (an unimplemented decomp stub here), so with no incidental anims it
+	// must read 0. The decomp ctor omitted this initializer, so on a non-zeroed heap
+	// allocation it held garbage -> a huge/garbage unk10[] whose unaligned tail entries were
+	// never assigned -> MActor::updateInSubBck dereferenced an uninitialized MActorAnmBck* and
+	// crashed (intermittently, per heap contents). An empty incidental-anm list is exactly 0.
+	mIncidentalAnmNum = 0;
+	mBckNum = 0;
+	mBlkNum = 0;
+	mBpkNum = 0;
+	mBtpNum = 0;
+	mBtkNum = 0;
+	mBrkNum = 0;
 }
 
 u16 MActorCalcKeyCode(const char* name)
@@ -111,7 +111,7 @@ u32 MActorAnmData::partsNameToIdx(const char* name)
 {
 	typedef JGadget::TList<MActorSubAnmInfo>::iterator I;
 	u32 idx = 0;
-	for (I it = unk1C.begin(), e = unk1C.end(); it != e; ++idx, ++it)
+	for (I it = mIncidentalAnmList.begin(), e = mIncidentalAnmList.end(); it != e; ++idx, ++it)
 		if (strcmp(it->unk4, name) == 0)
 			return idx;
 	return -1;
@@ -153,25 +153,25 @@ void MActorAnmData::init(const char* param_1, const char** param_2)
 
 	delete fileFinder;
 
-	if (unk4 > 0)
-		unk2C = new MActorAnmDataEach<J3DAnmTransformKey>(unk4);
-	if (unkC > 0)
-		unk30 = new MActorAnmDataEach<J3DAnmColorKey>(unkC);
-	if (unk10 > 0)
-		unk34 = new MActorAnmDataEach<J3DAnmTexPattern>(unk10);
-	if (unk14 > 0)
-		unk38 = new MActorAnmDataEach<J3DAnmTextureSRTKey>(unk14);
-	if (unk18 > 0)
-		unk3C = new MActorAnmDataEach<J3DAnmTevRegKey>(unk18);
-	if (unk8 > 0)
-		unk40 = new MActorAnmDataEach<J3DAnmClusterKey>(unk8);
+	if (mBckNum > 0)
+		mBckData = new MActorAnmDataEach<J3DAnmTransformKey>(mBckNum);
+	if (mBpkNum > 0)
+		mBpkData = new MActorAnmDataEach<J3DAnmColorKey>(mBpkNum);
+	if (mBtpNum > 0)
+		mBtpData = new MActorAnmDataEach<J3DAnmTexPattern>(mBtpNum);
+	if (mBtkNum > 0)
+		mBtkData = new MActorAnmDataEach<J3DAnmTextureSRTKey>(mBtkNum);
+	if (mBrkNum > 0)
+		mBrkData = new MActorAnmDataEach<J3DAnmTevRegKey>(mBrkNum);
+	if (mBlkNum > 0)
+		mBlkData = new MActorAnmDataEach<J3DAnmClusterKey>(mBlkNum);
 
-	unk4  = 0;
-	unk8  = 0;
-	unkC  = 0;
-	unk10 = 0;
-	unk14 = 0;
-	unk18 = 0;
+	mBckNum = 0;
+	mBlkNum = 0;
+	mBpkNum = 0;
+	mBtpNum = 0;
+	mBtkNum = 0;
+	mBrkNum = 0;
 
 	fileFinder = JKRFileLoader::findFirstFile(thing2);
 #ifdef SMS_NATIVE_PLATFORM
@@ -196,34 +196,34 @@ void MActorAnmData::init(const char* param_1, const char** param_2)
 	// "yoshiyoshi_born_tx.btp" -> null -> every anim slot left unloaded -> null
 	// deref in MActorAnmBtp::setTexNoAnmFullPtr. (Decomp transcription bug; wrong on
 	// GC too, hence unguarded.)
-	if (unk2C)
-		unk2C->loadAnmPtrArray2(thing2, ".bck");
-	if (unk30)
-		unk30->loadAnmPtrArray2(thing2, ".bpk");
-	if (unk34)
-		unk34->loadAnmPtrArray2(thing2, ".btp");
-	if (unk38)
-		unk38->loadAnmPtrArray2(thing2, ".btk");
-	if (unk3C)
-		unk3C->loadAnmPtrArray2(thing2, ".brk");
-	if (unk40)
-		unk40->loadAnmPtrArray2(thing2, ".blk");
+	if (mBckData)
+		mBckData->loadAnmPtrArray2(thing2, ".bck");
+	if (mBpkData)
+		mBpkData->loadAnmPtrArray2(thing2, ".bpk");
+	if (mBtpData)
+		mBtpData->loadAnmPtrArray2(thing2, ".btp");
+	if (mBtkData)
+		mBtkData->loadAnmPtrArray2(thing2, ".btk");
+	if (mBrkData)
+		mBrkData->loadAnmPtrArray2(thing2, ".brk");
+	if (mBlkData)
+		mBlkData->loadAnmPtrArray2(thing2, ".blk");
 }
 
 void MActorAnmData::addFileNum(const char* name)
 {
 	if (strstr(name, ".bck"))
-		++unk4;
+		++mBckNum;
 	if (strstr(name, ".bpk"))
-		++unkC;
+		++mBpkNum;
 	if (strstr(name, ".btp"))
-		++unk10;
+		++mBtpNum;
 	if (strstr(name, ".btk"))
-		++unk14;
+		++mBtkNum;
 	if (strstr(name, ".brk"))
-		++unk18;
+		++mBrkNum;
 	if (strstr(name, ".blk"))
-		++unk8;
+		++mBlkNum;
 }
 
 void MActorAnmData::addFileTable(const char* param_1)
@@ -243,12 +243,12 @@ void MActorAnmData::addFileTable(const char* param_1)
 		pcVar1 = new char[uVar5];
 		snprintf(pcVar1, uVar5, "%s", param_1);
 		uVar4             = 0;
-		unk2C->unk8[unk4] = pcVar1;
+		mBckData->unk8[mBckNum] = pcVar1;
 		while (*pcVar1 != '\0') {
 			uVar4 = *pcVar1++ + uVar4 * 5;
 		}
-		unk2C->unk4[unk4] = uVar4;
-		++unk4;
+		mBckData->unk4[mBckNum] = uVar4;
+		++mBckNum;
 	}
 
 	pcVar1 = (char*)strstr(param_1, ".bpk");
@@ -260,12 +260,12 @@ void MActorAnmData::addFileTable(const char* param_1)
 		pcVar1 = new char[uVar5];
 		snprintf(pcVar1, uVar5, "%s", param_1);
 		uVar4             = 0;
-		unk30->unk8[unkC] = pcVar1;
+		mBpkData->unk8[mBpkNum] = pcVar1;
 		while (*pcVar1 != '\0') {
 			uVar4 = *pcVar1++ + uVar4 * 5;
 		}
-		unk30->unk4[unkC] = uVar4;
-		++unkC;
+		mBpkData->unk4[mBpkNum] = uVar4;
+		++mBpkNum;
 	}
 
 	pcVar1 = (char*)strstr(param_1, ".btp");
@@ -277,12 +277,12 @@ void MActorAnmData::addFileTable(const char* param_1)
 		pcVar1 = new char[uVar5];
 		snprintf(pcVar1, uVar5, "%s", param_1);
 		uVar4              = 0;
-		unk34->unk8[unk10] = pcVar1;
+		mBtpData->unk8[mBtpNum] = pcVar1;
 		while (*pcVar1 != '\0') {
 			uVar4 = *pcVar1++ + uVar4 * 5;
 		}
-		unk34->unk4[unk10] = uVar4;
-		++unk10;
+		mBtpData->unk4[mBtpNum] = uVar4;
+		++mBtpNum;
 	}
 
 	pcVar1 = (char*)strstr(param_1, ".btk");
@@ -294,12 +294,12 @@ void MActorAnmData::addFileTable(const char* param_1)
 		pcVar1 = new char[uVar5];
 		snprintf(pcVar1, uVar5, "%s", param_1);
 		uVar4              = 0;
-		unk38->unk8[unk14] = pcVar1;
+		mBtkData->unk8[mBtkNum] = pcVar1;
 		while (*pcVar1 != '\0') {
 			uVar4 = *pcVar1++ + uVar4 * 5;
 		}
-		unk38->unk4[unk14] = uVar4;
-		++unk14;
+		mBtkData->unk4[mBtkNum] = uVar4;
+		++mBtkNum;
 	}
 
 	pcVar1 = (char*)strstr(param_1, ".brk");
@@ -311,12 +311,12 @@ void MActorAnmData::addFileTable(const char* param_1)
 		pcVar1 = new char[uVar5];
 		snprintf(pcVar1, uVar5, "%s", param_1);
 		uVar4              = 0;
-		unk3C->unk8[unk18] = pcVar1;
+		mBrkData->unk8[mBrkNum] = pcVar1;
 		while (*pcVar1 != '\0') {
 			uVar4 = *pcVar1++ + uVar4 * 5;
 		}
-		unk3C->unk4[unk18] = uVar4;
-		++unk18;
+		mBrkData->unk4[mBrkNum] = uVar4;
+		++mBrkNum;
 	}
 
 	pcVar1 = (char*)strstr(param_1, ".blk");
@@ -328,16 +328,16 @@ void MActorAnmData::addFileTable(const char* param_1)
 		pcVar1 = new char[uVar5];
 		snprintf(pcVar1, uVar5, "%s", param_1);
 		uVar4             = 0;
-		unk40->unk8[unk8] = pcVar1;
+		mBlkData->unk8[mBlkNum] = pcVar1;
 		while (*pcVar1 != '\0') {
 			uVar4 = *pcVar1++ + uVar4 * 5;
 		}
-		unk40->unk4[unk8] = uVar4;
-		++unk8;
+		mBlkData->unk4[mBlkNum] = uVar4;
+		++mBlkNum;
 	}
 }
 
 void MActorAnmData::createSampleModelData(J3DModelData* data)
 {
-	unk48 = new SampleCtrlModelData(data);
+	mSampleModelData = new SampleCtrlModelData(data);
 }
