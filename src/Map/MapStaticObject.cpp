@@ -181,12 +181,28 @@ J3DModel* TMapStaticObj::getModel() const { return mMActor->getModel(); }
 
 void TMapStaticObj::calcUnique(JPABaseEmitter* emitter)
 {
-	switch (mActorType) {
-	case 0x40000024:
-		if (emitter) {
-			JGeometry::TVec3<f32> scale(mEffectCoronaScale, mEffectCoronaScale,
-			                            mEffectCoronaScale);
-			emitter->setScale(scale);
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_SEA_DBG: trace the "sea"/reflective static objects — which perform flag, whether the
+	// 0x80 (DrawBuf AfterIndirect) enter branch fires, and the model shape count. The pass-3
+	// indirect reflective sea is a flag-0x80 static obj entered into DrawBuf AfterIndirect.
+	if (const char* e = getenv("SB_SEA_DBG"); e && e[0] && e[0] != '0') {
+		if (unk6C && (strcmp(unk6C, "sea") == 0 || strcmp(unk6C, "SeaIndirect") == 0
+		    || strcmp(unk6C, "ReflectSky") == 0 || strcmp(unk6C, "ReflectParts") == 0)) {
+			static int sn = 0;
+			if (sn < 60) { ++sn;
+				fprintf(stderr, "[sea] '%s' perform(0x%x) unk40=0x%x model=%p enter80=%d\n",
+				        unk6C, param_1, unk68 ? unk68->unk40 : 0, (void*)unk70,
+				        (int)((param_1 & 0x200) && unk68 && (unk68->unk40 & 0x80)));
+			}
+		}
+	}
+#endif
+	if (param_1 & 2) {
+		u32 sfx = unk78;
+		if (sfx != 0xffffffff) {
+			if (gpMSound->gateCheck(sfx))
+				MSoundSESystem::MSoundSE::startSoundActor(sfx, &mPosition, 0,
+				                                          nullptr, 0, 4);
 		}
 		break;
 	default:
