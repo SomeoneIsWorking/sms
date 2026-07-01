@@ -1,4 +1,5 @@
 #include <MoveBG/MapObjPinna.hpp>
+#include <MoveBG/MapObjManager.hpp>
 #include <System/Particles.hpp>
 #include <JSystem/JParticle/JPAResourceManager.hpp>
 #include "sms_boot_amiking.h"
@@ -21,4 +22,21 @@ void TAmiKing::loadAfter()
 		gpResourceManager->load(sb::kAmiKingParticlePath, sb::kAmiKingParticleId);
 		s_registered_184 = true;
 	}
+}
+
+// Native port of TPinnaEntrance::loadAfter (@0x801d49cc). RE: scratch/decomp_next5/801d49cc.c.
+// ピンナ入り口 — Pinna Park entrance. After the base loadAfter, spawns a companion
+// "GateManta" (the giant manta silhouette that swims through the water gate). Rotation is
+// (90°, 0°, 0°) — pitch it onto its side — and scale is identity.
+//
+// SDA scan (tools/dol_sda.py 0x801d49cc):
+//   SDA2[-0x2728] = 90.0f  (pitch rotation)
+//   SDA2[-0x2724] = 1.0f   (identity scale)
+//   SDA2[-0x2750] = 0.0f   (yaw + roll)
+void TPinnaEntrance::loadAfter()
+{
+	TMapObjBase::loadAfter();
+	JGeometry::TVec3<f32> rotation(90.0f, 0.0f, 0.0f);
+	JGeometry::TVec3<f32> scale(1.0f, 1.0f, 1.0f);
+	TMapObjBaseManager::newAndRegisterObj("GateManta", mPosition, rotation, scale);
 }
