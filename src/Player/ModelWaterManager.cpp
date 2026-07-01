@@ -1552,7 +1552,20 @@ void TModelWaterManager::perform(u32 cue, JDrama::TGraphics* graphics)
 {
 	MtxPtr r29 = graphics->mViewMtx;
 
-	if (cue & CUE_MOVE) {
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_WATER_DBG: confirm the reflective-sea path runs natively. Logs each perform flag
+	// and, for the 0x80 (drawRefracAndSpec) pass, the TDLTexQuad quad count + flag bits.
+	if (const char* e = getenv("SB_WATER_DBG"); e && e[0] && e[0] != '0') {
+		static int wn = 0;
+		if (wn < 40) { ++wn;
+			fprintf(stderr, "[water] perform(0x%x) unk5D60=0x%x quad=%p quadN=%d tex0=%p tex1=%p tex2=%p\n",
+			        param_1, unk5D60, (void*)unk5D30, unk5D30 ? (int)unk5D30->unk8 : -1,
+			        (void*)unk5D34, (void*)unk5D38, (void*)unk5D3C);
+		}
+	}
+#endif
+
+	if (param_1 & 1) {
 		move();
 		calcWorldMinMax();
 		unk5E00 += 1;
