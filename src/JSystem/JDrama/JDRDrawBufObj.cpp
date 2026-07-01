@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <cstring>
 extern "C" void sb_boot_capture_set_drawbuf(const char*);  // overbright harness: name the active buffer
+extern "C" int  sb_boot_capture_phase();                   // which perform-list phase (6 = GXPost/display)
 #endif
 
 using namespace JDrama;
@@ -71,6 +72,28 @@ void TDrawBufObj::perform(u32 param_1, TGraphics* param_2)
 	if (param_1 & 8) {
 		j3dSys.unk4C = unk18;
 #ifdef SMS_NATIVE_PLATFORM
+		// STOPGAP (file-select overbright): suppress the GXPost/display-pass (phase 6) redraw of the
+		// map translucent buffer "DrawBuf MapXlu". On GC the frame renders across multiple EFB targets:
+		// the whole scene (incl. this MapXlu buffer's sea-mask joint, drawn colorUpdate=FALSE as a Z/
+		// silhouette mask) renders OFF-SCREEN in the main pass, and the GXPost/display pass RE-ENTERS
+		// MapXlu with the reflective water-surface model (a tev=2 ~1352-vert draw) that native does NOT
+		// reproduce. Because native never re-enters MapXlu, its buffer still holds the main-pass packets
+		// (the sea-MASK, key eb5c8e74 / material c97c48, drawn colorUpdate=TRUE here) — so the display
+		// pass paints that mask as a full-screen white overdraw = the file-select overbright wash.
+		// VERIFIED by the GX-stream oracle (scratch/passes/oracle_gxdbg.log): the mask appears ONLY in
+		// pass2 as [noC][noA] (colorUpdate=FALSE) and NEVER in pass3 (display); the mask is the same
+		// packet native also draws (harmlessly, later covered) in the phase-1 scene flush. Until the GC
+		// reflective-water re-entry is ported, drop native's stale phase-6 MapXlu redraw so the display
+		// matches GC (the correct phase-1 sea shows through). PROPER FIX: port the water-reflection
+		// MapXlu re-entry (TModelWaterManager / the pass2→pass3 EFB composite). A/B: SB_KEEP_PH6_MAPXLU=1.
+		if (sb_boot_capture_phase() == 6) {
+			const char* nm = getName();
+			if (nm && std::strcmp(nm, "DrawBuf MapXlu") == 0) {
+				static int keep = -1;
+				if (keep < 0) { const char* e = getenv("SB_KEEP_PH6_MAPXLU"); keep = (e && e[0] && e[0] != '0') ? 1 : 0; }
+				if (!keep) return;
+			}
+		}
 		// Attribute the shapes this flush captures to THIS draw buffer by name (overbright harness).
 		sb_boot_capture_set_drawbuf(getName());
 #endif
