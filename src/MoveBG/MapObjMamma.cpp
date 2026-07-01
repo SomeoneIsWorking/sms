@@ -1,14 +1,18 @@
 #include <MoveBG/MapObjMamma.hpp>
 #include <M3DUtil/MActor.hpp>
 #include <M3DUtil/MActorUtil.hpp>
+#include <Map/MapStaticObject.hpp>
 #include <MoveBG/MapObjManager.hpp>
 #include <Strategic/MirrorActor.hpp>
 #include <System/EmitterViewObj.hpp>
 #include <System/Particles.hpp>
+#include <JSystem/J3D/J3DGraphAnimator/J3DJoint.hpp>
 #include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
+#include <JSystem/JDrama/JDRNameRef.hpp>
 #include <JSystem/JGeometry.hpp>
 #include <JSystem/JParticle/JPAResourceManager.hpp>
 #include <MarioUtil/MathUtil.hpp>
+#include "sms_boot_mamma_mirror.h"
 #include "sms_boot_shining_stone.h"
 
 // Native port of TShiningStone::perform (@0x801d07b4). RE: scratch/decomp_next/801d07b4.c.
@@ -113,5 +117,54 @@ void TShiningStone::load(JSUMemoryInputStream& stream)
 	if (!s_registered_056) {
 		gpResourceManager->load("/scene/mapObj/ShiningStoneF.jpa", 0x56);
 		s_registered_056 = true;
+	}
+}
+
+// Native port of TMammaMirrorMapOperator::loadAfter (@0x801cf1b0). RE:
+// scratch/decomp_mamma_mirror/801cf1b0.c. Runs once after the Sirena Beach scene has
+// finished loading. Populates the 8 per-node bounding-box + threshold arrays and caches the
+// 3 mirror-actor positions (mirrorS/M/L). The 4th name-lookup ("鏡内地形" = mirror-interior
+// terrain) is where the 8 joints come from — its J3DModelData is walked from
+// mJointNodePointer[2] via mYounger (sibling) for 8 nodes.
+//
+// SDA scan (tools/dol_sda.py 0x801cf1b0):
+//   SDA2[-0x2864/-0x285c/-0x2854] = "mirrorS"/"mirrorM"/"mirrorL"  (name strings)
+//   SDA2[-0x284c] = 0.5      (bbox half-scale)
+//   SDA2[-0x2848] = 2000.0   (radius padding)
+//   SDA2[-0x2844] = 3000.0   (radius cap)
+//   SDA1[-0x5db8] = <unknown scene/setup container>  → we substitute JDrama::TNameRef::search
+//                   which walks the same global name registry the game's own NameRefGen
+//                   feeds into (functionally identical intent — resolve by name).
+void TMammaMirrorMapOperator::loadAfter()
+{
+	TMapStaticObj* mirrorS = (TMapStaticObj*)JDrama::TNameRef::search("mirrorS");
+	if (mirrorS) mMirrorSPos = mirrorS->getPosition();
+
+	TMapStaticObj* mirrorM = (TMapStaticObj*)JDrama::TNameRef::search("mirrorM");
+	if (mirrorM) mMirrorMPos = mirrorM->getPosition();
+
+	TMapStaticObj* mirrorL = (TMapStaticObj*)JDrama::TNameRef::search("mirrorL");
+	if (mirrorL) mMirrorLPos = mirrorL->getPosition();
+
+	TMapStaticObj* mirrorTerrain
+	    = (TMapStaticObj*)JDrama::TNameRef::search("鏡内地形");
+	if (!mirrorTerrain) return;
+
+	J3DModelData* md = mirrorTerrain->getModelData();
+	if (!md) return;
+
+	// Start at joints[2] (index-2), walk mYounger siblings for 8 nodes.
+	J3DJoint* joint = md->getJointNodePointer(2);
+	for (int i = 0; i < 8 && joint != nullptr; ++i) {
+		const Vec& mn = joint->getMin();
+		const Vec& mx = joint->getMax();
+
+		mNodes[i] = joint;
+		mNodeCenter[i].x = sb::mamma_node_center(mn.x, mx.x);
+		mNodeCenter[i].y = sb::mamma_node_center(mn.y, mx.y);
+		mNodeCenter[i].z = sb::mamma_node_center(mn.z, mx.z);
+		mNodeRadius[i]   = sb::mamma_node_threshold(mn.x, mx.x, mn.z, mx.z);
+
+		joint = static_cast<J3DJoint*>(joint->getYounger());
 	}
 }
