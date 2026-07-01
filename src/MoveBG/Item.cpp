@@ -713,7 +713,15 @@ BOOL TItemNozzle::receiveMessage(THitActor*, u32) { }
 
 void TItemNozzle::appearing() { }
 
-void TItemNozzle::control() { }
+// Native port of TItemNozzle::control (@0x801bbbec). RE via scratch/disasm.py.
+// ノズル ("nozzle") item — a pickup that swaps Mario's spray head. Per-tick behavior is
+// nothing more than delegating to TMapObjGeneral::control (the standard held/thrown/sinking
+// state machine). TItem inherits TMapObjGeneral directly and neither TItem nor TItemNozzle
+// overrides control between them, so the RE emits a bare `bl 0x801b35f8` (TMapObjGeneral).
+//
+// SDA scan (tools/dol_sda.py 0x801bbbec): no references.
+// Dispatch-only port; the pure logic is a single delegation. No spec test.
+void TItemNozzle::control() { TMapObjGeneral::control(); }
 
 void TItemNozzle::initMapObj() { }
 
