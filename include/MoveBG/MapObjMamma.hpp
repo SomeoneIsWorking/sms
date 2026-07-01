@@ -109,6 +109,15 @@ public:
 	void perform(u32 cue, JDrama::TGraphics* graphics);
 	void load(JSUMemoryInputStream&);
 	TShiningStone(const char* name = "太陽石");
+
+	// Ivars identified from the perform RE @0x801d07b4 (scratch/decomp_next/801d07b4.c).
+	// The class body was empty in the header — CodeWarrior emitted the fields but the
+	// GC decomp lost them. Added here so the native port can reference them by name
+	// rather than raw byte-offset casts. Sizes fit the used byte offsets exactly.
+	/* 0x68 */ MActor** mSpokes;      // pointer to array of 4 MActor* (the "rays")
+	/* 0x6C */ MActor*  mMainActor;   // main stone body MActor
+	/* 0x70 */ u32 unk70;             // not referenced by perform — kept as opaque
+	/* 0x74 */ int mActivatedCount;   // 0..3 — # of activation-state particles to emit per frame per spoke
 };
 
 class TMammaBlockRotate : public TMapObjBase {
