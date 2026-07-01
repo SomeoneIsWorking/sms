@@ -174,3 +174,37 @@ static void draw_mist(u16 x, u16 y, u16 wd, u16 ht, void* buffer)
 	GXTexCoord2f32(0.0f, 1.0f + offset_y);
 	GXEnd();
 }
+
+// Native port of TBathWaterPreprocessor::perform (@0x801aa5a8). Thin dispatch: on the DRAW
+// flag bit, forward to the manager's renderer->render(graphics, bathtubData, waters, params, 2).
+// RE: scratch/decomp_bathwater/801aa5a8.c.
+//
+// vtable slot resolution: TBathWaterRenderer's virtuals in declaration order are prerender[0]
+// / render[1] / getHeight[2]. CodeWarrior emits the dtor as vtable[0] (byte 0), so the
+// virtuals sit at byte offsets 4/8/12 respectively. The RE's `*(*(int**)(mgr+0x30) + 8)`
+// dereferences vtable[8/4] = the 3rd slot with a dtor prefix = render. Args
+// (graphics, bathtubData, TBathWater** waters, TBathWaterParams** params, count=2) match
+// TBathWaterRenderer::render's signature exactly, confirming the pick.
+//
+// The dispatch gate is the pure sb::bath_water_preprocessor_should_dispatch predicate
+// (native/render/sms_boot_bath_water.h), unit-tested in bath_water_preprocessor_test.cpp.
+// The shipping port routes through it so the test validates the real gate.
+#include "sms_boot_bath_water.h"
+
+void TBathWaterPreprocessor::perform(u32 flags, JDrama::TGraphics* graphics)
+{
+	// mgr->unk24 is declared u32 in the header but the RE treats it as a POINTER to a
+	// TBathtubData-adjacent structure (the RE's `mgr->unk24 + 0x170` yields the
+	// TBathtubData& passed to render). We match that here — a subtle typing mismatch that
+	// only matters at this seam; unk24 is written by other parts of the manager as a raw
+	// pointer address. If the header is ever retyped, remove this cast.
+	TBathWaterManager* mgr = unk10;
+	const bool bathtub_present  = mgr && mgr->unk24 != 0;
+	const bool renderer_present = mgr && mgr->unk30 != nullptr;
+	if (!sb::bath_water_preprocessor_should_dispatch(flags, mgr != nullptr,
+	                                                 bathtub_present, renderer_present)) {
+		return;
+	}
+	const TBathtubData* bathtub = reinterpret_cast<const TBathtubData*>((uintptr_t)mgr->unk24 + 0x170);
+	mgr->unk30->render(graphics, *bathtub, mgr->unk20, mgr->unk14, 2);
+}
