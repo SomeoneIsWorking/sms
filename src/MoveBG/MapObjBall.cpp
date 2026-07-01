@@ -2,7 +2,9 @@
 #include <MoveBG/MapObjGeneral.hpp>
 #include <Strategic/LiveActor.hpp>
 #include <System/MarDirector.hpp>
+#include <System/FlagManager.hpp>
 #include "sms_boot_reset_fruit.h"
+#include "sms_boot_coverfruit.h"
 
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
@@ -58,4 +60,27 @@ void TResetFruit::perform(u32 param_1, JDrama::TGraphics* param_2)
 	// model actually render (parent runs the per-frame perform-list dispatch that drives
 	// calc/entry/draw through the J3D model).
 	TMapObjGeneral::perform(param_1, param_2);
+}
+
+// Native port of TCoverFruit::loadAfter (@0x801e1748). RE via scratch/disasm.py + PAL/US
+// symbol delta (getBool at PAL 0x8028C83C + 0x81E8 US delta = 0x80294A24 confirmed against
+// setBlueCoinFlag/getShineFlag pairs in that range).
+// フタのフルーツ ("lid fruit"): after the base loadAfter, check the "was this fruit already
+// collected in this save" boolean; if set, kill the object at load time so the fruit never
+// appears. TCoverFruit does NOT override makeObjDead, so the vtable slot 0x104 dispatched by
+// the RE resolves to TMapObjBase::makeObjDead (zeros velocity, ORs 0x10 into mLiveFlag).
+//
+// SDA scan (tools/dol_sda.py 0x801e1748):
+//   SDA1[-0x6060] = gpFlagManager  (== TFlagManager::getInstance())
+//
+// Vtable slot 0x104 resolution (added to memory for future ports): TMapObjBase's vtable is at
+// US VA 0x803c2ab8 (ctor stw pattern @0x801af6c8). Offset 0x104 → 0x801b0738, whose body
+// zeros mVelocity + sets mLiveFlag bit 0x10 = makeObjDead (the virtual declared between
+// makeObjAppeared and changeObjSRT in MapObjBase.hpp — matches vtable ordering).
+void TCoverFruit::loadAfter()
+{
+	TMapObjBase::loadAfter();
+	if (TFlagManager::getInstance()->getBool(sb::kCoverFruitCollectedFlag)) {
+		makeObjDead();
+	}
 }
