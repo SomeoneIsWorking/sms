@@ -134,38 +134,17 @@ public:
 	void offFlag(u32 flag) { mFlags &= ~flag; }
 
 	u32 getIndex() const { return mIndex; }
-	GXVtxDescList* getVtxDesc() const { return mVtxDesc; }
+	GXVtxDescList* getVtxDesc() const { return mVtxDescList; }
 	u32 getMtxGroupNum() const { return mElementCount; }
 	J3DShapeMtx* getShapeMtx(u16 idx) const { return mMatrices[idx]; }
 	J3DShapeDraw* getShapeDraw(u16 idx) const { return mDraws[idx]; }
 	u32 getBumpMtxOffset() const { return mBumpMtxOffset; }
-	void setBumpMtxOffset(u32 offset) { mBumpMtxOffset = offset; }
 
-	void setDrawMtx(Mtx** pDrawMtx) { mDrawMatrices = pDrawMtx; }
-	void setNrmMtx(Mtx33** pNrmMtx) { mNormMatrices = pNrmMtx; }
-	void setCurrentViewNoPtr(u32* pViewNoPtr)
-	{
-		J3D_ASSERT_NULLPTR(584, pViewNoPtr != nullptr);
-		mCurrentViewNo = pViewNoPtr;
-	}
+	void setScaleFlagArray(u8* pScaleFlagArray) { mScaleFlagArray = pScaleFlagArray; }
 
-	void setScaleFlagArray(u8* pScaleFlagArray)
-	{
-		J3D_ASSERT_NULLPTR(595, pScaleFlagArray != nullptr);
-		mScaleFlagArray = pScaleFlagArray;
-	}
+	void setDrawMtxDataPointer(J3DDrawMtxData* pMtxData) { mDrawMtxData = pMtxData; }
 
-	void setDrawMtxDataPointer(J3DDrawMtxData* pMtxData)
-	{
-		J3D_ASSERT_NULLPTR(554, pMtxData != nullptr);
-		unk48 = pMtxData;
-	}
-
-	void setVertexDataPointer(J3DVertexData* pVtxData)
-	{
-		J3D_ASSERT_NULLPTR(657, pVtxData != nullptr);
-		mVertexData = pVtxData;
-	}
+	void setVertexDataPointer(J3DVertexData* pVtxData) { mVertexData = pVtxData; }
 
 	// fabricated
 	void* getDrawList() { return mGDCommands; }
@@ -179,13 +158,19 @@ public:
 	/* 0x10 */ Vec mMin;
 	/* 0x1C */ Vec mMax;
 	/* 0x28 */ void* mGDCommands;
-	/* 0x2C */ GXVtxDescList* mVtxDesc;
+	/* 0x2C */ GXVtxDescList* mVtxDescList;
 	/* 0x30 */ bool unk30;
 	/* 0x34 */ J3DShapeMtx** mMatrices; // mElementCount entries
 	/* 0x38 */ J3DShapeDraw** mDraws;   // mElementCount entries
 	/* 0x3C */ u8 unk3C[8];
 	/* 0x44 */ J3DVertexData* mVertexData;
-	/* 0x48 */ J3DDrawMtxData* unk48;
+	// mDrawMtxData: this shape's OWN pointer to its owning model's draw-matrix-table descriptor
+	// (mEntryNum = draw-matrix table size), bound ONCE at model-init via setDrawMtxDataPointer.
+	// Always correct for THIS shape regardless of which model j3dSys.getModel() currently points
+	// at — see native/render/sms_boot_j3d_capture.cpp's skin-matrix bounds-check fix (2026-07-01,
+	// commit 32a03fa): using j3dSys.getModel()'s table size instead of this field's is what
+	// produced the mangled file-select Mario.
+	/* 0x48 */ J3DDrawMtxData* mDrawMtxData;
 	/* 0x4C */ u8* mScaleFlagArray;
 	/* 0x50 */ Mtx** mDrawMatrices;
 	/* 0x54 */ Mtx33** mNormMatrices;

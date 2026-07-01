@@ -95,27 +95,27 @@ void J3DShapeDraw::draw() const
 
 void J3DShape::initialize()
 {
-	unk0            = 0;
-	mIndex          = -1;
-	mElementCount   = 0;
-	mFlags          = 0;
-	mRadius         = 0;
-	mMin.x          = 0.0f;
-	mMin.y          = 0.0f;
-	mMin.z          = 0.0f;
-	mMax.x          = 0.0f;
-	mMax.y          = 0.0f;
-	mMax.z          = 0.0f;
-	mVtxDesc        = nullptr;
-	mMatrices       = nullptr;
-	mDraws          = nullptr;
-	mVertexData     = nullptr;
-	unk48           = nullptr;
-	mScaleFlagArray = nullptr;
-	mDrawMatrices   = nullptr;
-	mNormMatrices   = nullptr;
-	mCurrentViewNo  = &j3dDefaultViewNo;
-	unk30           = 0;
+	unk0           = 0;
+	mIndex         = 0xffff;
+	mElementCount  = 0;
+	unk8           = 0;
+	unkC           = 0;
+	unk10.x        = 0.0f;
+	unk10.y        = 0.0f;
+	unk10.z        = 0.0f;
+	unk1C.x        = 0.0f;
+	unk1C.y        = 0.0f;
+	unk1C.z        = 0.0f;
+	mVtxDescList          = nullptr;
+	mMatrices      = nullptr;
+	mDraws         = nullptr;
+	mVertexData    = 0;
+	mDrawMtxData   = 0;
+	mScaleFlagArray          = 0;
+	mDrawMatrices  = nullptr;
+	mNormMatrices  = nullptr;
+	mCurrentViewNo = &j3dDefaultViewNo;
+	unk30          = 0;
 }
 
 J3DShape::~J3DShape() { }
@@ -187,8 +187,7 @@ void J3DShape::makeVtxArrayCmd()
 			break;
 		}
 	}
-	for (GXVtxDescList* piVar5 = mVtxDesc; piVar5->attr != GX_VA_NULL;
-	     ++piVar5) {
+	for (GXVtxDescList* piVar5 = mVtxDescList; piVar5->attr != GX_VA_NULL; ++piVar5) {
 		if ((piVar5->attr == GX_VA_NBT) && (piVar5->type != GX_NONE)) {
 			unk30 = 1;
 			stride[1] *= 3;
@@ -209,8 +208,8 @@ void J3DShape::makeVcdVatCmd()
 	GDLObj list;
 
 	GDInitGDLObj(&list, mGDCommands, 0xC0);
-	GDSetCurrent(&list);
-	GDSetVtxDescv(mVtxDesc);
+	__GDCurrentDL = &list;
+	GDSetVtxDescv(mVtxDescList);
 	makeVtxArrayCmd();
 	J3DSetVtxAttrFmtv(GX_VTXFMT0, mVertexData->getVtxAttrFmtList(), unk30);
 	GDPadCurr32();

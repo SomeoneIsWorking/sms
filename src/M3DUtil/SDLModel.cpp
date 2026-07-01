@@ -280,11 +280,12 @@ void SDLModel::entryModelDataSDL(SDLModelData* model_data, u32 flags,
 
 	for (int i = 0; i < 2; ++i) {
 		u32 matsWithBumpMtxs = 0;
-		for (int j = 0; j < md->mMaterialNum; ++j) {
-			J3DMaterial* mat = mModelData->getMaterialNodePointer(j);
-			if (mat->getNBTScale()->mbHasScale == 1) {
-				mBumpMtxArr[i][matsWithBumpMtxs] = new Mtx33*[mtx_num];
-				mat->getShape()->setBumpMtxOffset(matsWithBumpMtxs);
+		for (int j = 0; j < md->getMaterialNum(); ++j) {
+			J3DMaterial* mat      = mModelData->getMaterialNodePointer(j);
+			J3DNBTScale* nbtScale = mat->getTexGenBlock()->getNBTScale();
+			if (nbtScale->mbHasScale == 1) {
+				mBumpMtxArr[i][matsWithBumpMtxs] = new Mtx33*[param_3];
+				mat->getShape()->mBumpMtxOffset  = matsWithBumpMtxs;
 				++matsWithBumpMtxs;
 			}
 		}

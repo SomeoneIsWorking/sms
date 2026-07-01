@@ -568,11 +568,12 @@ void J3DModel::entryModelData(J3DModelData* pModelData, u32 mdlFlags,
 	if (pModelData->getMaterialNum()) {
 		mMatPackets = new J3DMatPacket[pModelData->getMaterialNum()];
 
-		for (int i = 0; i < pModelData->getMaterialNum(); ++i) {
-			mMatPackets[i].setMaterial(pModelData->getMaterialNodePointer(i));
-			J3DShape* shape = pModelData->getMaterialNodePointer(i)->getShape();
-			mMatPackets[i].addShapePacket(&mShapePackets[shape->getIndex()]);
-			mMatPackets[i].setTexture(pModelData->getTexture());
+		for (int i = 0; i < param_1->getMaterialNum(); ++i) {
+			mMatPackets[i].setMaterial(param_1->getMaterialNodePointer(i));
+			mMatPackets[i].addShapePacket(
+			    &mShapePackets
+			        [param_1->getMaterialNodePointer(i)->getShape()->mIndex]);
+			mMatPackets[i].mTexture = param_1->getTexture();
 
 			if (mdlFlags & 0x20000) {
 				J3DMaterial* mat = pModelData->getMaterialNodePointer(i);
@@ -612,7 +613,7 @@ void J3DModel::entryModelData(J3DModelData* pModelData, u32 mdlFlags,
 			if (mat->getNBTScale()->mbHasScale == 1) {
 				mBumpMtxArr[i][nextBumpMtx] = new Mtx33*[mtxNum];
 
-				mat->getShape()->setBumpMtxOffset(nextBumpMtx);
+				mat->getShape()->mBumpMtxOffset = nextBumpMtx;
 				++nextBumpMtx;
 			}
 		}
