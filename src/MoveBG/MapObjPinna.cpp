@@ -3,6 +3,7 @@
 #include <System/Particles.hpp>
 #include <JSystem/JParticle/JPAResourceManager.hpp>
 #include "sms_boot_amiking.h"
+#include "sms_boot_horizontalviking.h"
 
 // Native port of TAmiKing::loadAfter (@0x801d48e0). RE: scratch/decomp_next5/801d48e0.c.
 // あみキング (Ami King / "net king") — Pinna Park's giant net-body boss creature. loadAfter
@@ -39,4 +40,37 @@ void TPinnaEntrance::loadAfter()
 	JGeometry::TVec3<f32> rotation(90.0f, 0.0f, 0.0f);
 	JGeometry::TVec3<f32> scale(1.0f, 1.0f, 1.0f);
 	TMapObjBaseManager::newAndRegisterObj("GateManta", mPosition, rotation, scale);
+}
+
+// Native port of THorizontalViking::reset (@0x801d6664, 52 bytes). RE via scratch/disasm.py.
+// バイキング船 ("Viking ship") — the Pinna Park pirate-swing ride. reset() copies the target
+// swing angle (unk140) into the current-angle slot (unk144), zeros the angular velocity
+// (unk148), and latches the starting direction into mState: 1 if the target is >0, else 2.
+//
+// SDA scan (tools/dol_sda.py 0x801d6664):
+//   SDA2[-0x2750] = 0.0f  (zeroed velocity slot)
+//
+// Pure math extracted into sms_boot_horizontalviking.h and unit-tested (spec cases including
+// the 0.0 vs positive boundary).
+void THorizontalViking::reset()
+{
+	const sb::HorizontalVikingResetState s = sb::horizontal_viking_reset(unk140);
+	unk144 = s.current;
+	unk148 = s.velocity;
+	mState = s.state;
+}
+
+// Native port of TViking::loadAfter (@0x801d6090, 64 bytes). RE via scratch/disasm.py.
+// バイキング — TViking IS a THorizontalViking (per header). loadAfter forwards to the base
+// TMapObjBase::loadAfter, then virtually invokes THorizontalViking::reset via vtable slot
+// 0x164 (the first slot beyond TMapObjBase's 0x164-byte vtable — the base offset added by
+// derived classes with new virtuals). TViking has its own `reset()` at 0x801d60d0 which is
+// a DIFFERENT function (non-virtual, longer, additional logic), NOT an override of the
+// base's slot 0x164 — the RE's vtable[0x164] resolves to THorizontalViking::reset.
+//
+// SDA scan (tools/dol_sda.py 0x801d6090): no references.
+void TViking::loadAfter()
+{
+	TMapObjBase::loadAfter();
+	THorizontalViking::reset();
 }
