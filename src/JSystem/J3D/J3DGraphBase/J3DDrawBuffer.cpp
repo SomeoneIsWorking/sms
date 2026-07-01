@@ -6,6 +6,9 @@
 #include <JSystem/J3D/J3DGraphBase/J3DPacket.hpp>
 #include <JSystem/JKernel/JKRHeap.hpp>
 #ifdef SMS_NATIVE_PLATFORM
+#include <JSystem/J3D/J3DGraphBase/Blocks/J3DTevBlocks.hpp>
+#include <JSystem/J3D/J3DGraphBase/Blocks/J3DPEBlocks.hpp>
+#include <JSystem/J3D/J3DGraphBase/Components/J3DBlend.hpp>
 #include <cstdio>
 #include <cstdlib>
 #include <execinfo.h>   // SB_ENTRY_MAT entry backtrace
@@ -344,10 +347,25 @@ void J3DDrawBuffer::drawHead() const
 			for (u32 i = 0; i < mSize; i++)
 				for (J3DPacket* p = mBuffer[i]; p; p = p->getNextPacket()) {
 					J3DMatPacket* mp = static_cast<J3DMatPacket*>(p);
-					std::fprintf(stderr, "    pkt slot=%u packet=%p mat=%06x shapePkt=%p\n", i,
+					J3DMaterial* mat = mp->getMaterial();
+					int tevN = -1, bm = -1, sf = -1, df = -1;
+					int cr = -1, cg = -1, cb = -1, ca = -1;
+					if (mat) {
+						if (J3DTevBlock* tb = mat->getTevBlock()) tevN = tb->getTevStageNum();
+						if (J3DPEBlock* pe = mat->getPEBlock())
+							if (J3DBlend* bl = pe->getBlend()) {
+								bm = bl->mBlendMode; sf = bl->mSrcFactor; df = bl->mDstFactor;
+							}
+						if (J3DGXColorS10* c1 = mat->getTevColor(1)) {
+							cr = c1->color.r; cg = c1->color.g; cb = c1->color.b; ca = c1->color.a;
+						}
+					}
+					std::fprintf(stderr, "    pkt slot=%u packet=%p mat=%06x shapePkt=%p"
+					             " tev=%d blend=%d/%d/%d reg1=%d,%d,%d,%d\n", i,
 					             (void*)mp,
-					             (unsigned)((uintptr_t)mp->getMaterial() & 0xffffff),
-					             (void*)mp->getShapePacket());
+					             (unsigned)((uintptr_t)mat & 0xffffff),
+					             (void*)mp->getShapePacket(),
+					             tevN, bm, sf, df, cr, cg, cb, ca);
 				}
 		}
 	}
