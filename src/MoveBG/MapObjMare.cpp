@@ -1,5 +1,6 @@
 #include <MoveBG/MapObjMare.hpp>
 #include <JSystem/JSupport/JSUInputStream.hpp>
+#include <Map/MapWireManager.hpp>
 #include "sms_boot_mare_event_point.h"
 
 // Native port of TMareEventPoint::load (@0x801d77b4). RE: scratch/decomp_next3/801d77b4.c.
@@ -37,4 +38,19 @@ void TMapObjGrowTree::loadAfter()
 {
 	TMapObjBase::loadAfter();
 	removeMapCollision();
+}
+
+// Native port of TWireBell::loadAfter (@0x801d8f1c). RE: scratch/decomp_next5/801d8f1c.c.
+// ワイヤー鈴（紫）— the purple wire-bells strung across Noki Bay's wire ropes. loadAfter
+// extends the base then resolves the bell's wire-pin index by asking gpMapWireManager
+// which wire in the scene passes closest to the bell's placed position. That index is
+// cached in mWireIndex so per-tick control() can query the wire's live pose without a
+// spatial lookup each frame.
+//
+// SDA scan (tools/dol_sda.py 0x801d8f1c):
+//   SDA1[-0x6308] = gpMapWireManager  (getWireNo(const Vec3&) → wire index)
+void TWireBell::loadAfter()
+{
+	TMapObjBase::loadAfter();
+	mWireIndex = gpMapWireManager->getWireNo(mPosition);
 }
