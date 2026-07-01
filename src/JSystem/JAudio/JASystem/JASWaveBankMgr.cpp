@@ -8,7 +8,7 @@
 #include <JSystem/JKernel/JKRHeap.hpp>
 
 #ifdef SMS_NATIVE_PLATFORM
-#include <set>
+#include <JSystem/sb_host_swapset.h>
 // =============================================================================
 // Native PC build: WSYS wave-bank blobs (AAF chunk id 3) are GC BIG-ENDIAN, but
 // WSParser reads them by casting raw bytes to host structs via
@@ -41,7 +41,10 @@ inline u32 wsys_h32(const void* p) { return *(const u32*)p; } // host read AFTER
 // Swap a WSYS blob to host endian in place. Idempotent per blob pointer.
 void sb_wsys_swap_to_host(void* data)
 {
-	static std::set<void*> swapped;
+	// Host-malloc-backed (see JSystem/sb_host_swapset.h): a plain static std::set's nodes
+	// would be JKR-arena-allocated on the game thread and freed by per-scene freeAll ->
+	// dangling -> crash on a later insert.
+	static smsport::HostPtrSet swapped;
 	if (!data || swapped.count(data))
 		return;
 	swapped.insert(data);
