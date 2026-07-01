@@ -1,5 +1,7 @@
 #include <MoveBG/MapObjTown.hpp>
 #include <JSystem/JSupport/JSUInputStream.hpp>
+#include <M3DUtil/MActor.hpp>
+#include <JSystem/J3D/J3DGraphAnimator/J3DAnimation.hpp>
 #include "sms_boot_door.h"
 
 // Native port of TDamageObj::perform (@0x801c1570). RE: scratch/decomp_next3/801c1570.c.
@@ -42,4 +44,19 @@ void TDoor::load(JSUMemoryInputStream& stream)
 	if (sb::door_locked_from_serialized(serialized)) {
 		mLocked = 1;
 	}
+}
+
+// Native port of TManhole::loadAfter (@0x801c1bc0). RE: scratch/decomp_next5/801c1bc0.c.
+// マンホール (Delfino Plaza's manholes). loadAfter freezes the manhole's default BCK
+// animation: after the base loadAfter has set up the MActor + BCK bindings, the manhole's
+// frame-ctrl 0 (the primary BCK) gets its rate zeroed so the cover doesn't spin on its own.
+// The specific animation is triggered later by touchPlayer / animationFinished; while idle,
+// mRate = 0 keeps it visually static.
+//
+// SDA scan (tools/dol_sda.py 0x801c1bc0):
+//   SDA2[-0x2b20] = 0.0f
+void TManhole::loadAfter()
+{
+	TMapObjBase::loadAfter();
+	mMActor->getFrameCtrl(0)->setRate(0.0f);
 }
