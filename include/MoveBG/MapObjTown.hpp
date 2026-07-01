@@ -13,6 +13,11 @@ public:
 	void touchPlayer(THitActor*);
 	void load(JSUMemoryInputStream&);
 	TDoor(const char* name = "ドア");
+
+	// Ivar deduced from the load RE (@0x801c24cc). Header was empty; CW emitted a single
+	// byte at TMapObjBase's end (0x138). Nonzero → the door is "locked" (specific gameplay
+	// gate — needs a key / stage-flag). Named provisionally.
+	/* 0x138 */ u8 mLocked;
 };
 
 class TManhole : public TMapObjGeneral {
