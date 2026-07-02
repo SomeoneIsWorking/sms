@@ -284,17 +284,25 @@ void TLightMario::perform(u32 flag, JDrama::TGraphics* graphics)
 	}
 }
 
-	GXSetChanAmbColor(GX_COLOR0A0, getAmbColor(index));
-}
-
 // TLightMario overrides — stubbed for now. TLightCommon's base impl is what
-// the file-select light path uses (setLight port in scene_drive.cpp reads from
-// Light-Group directly, not through these getters). Faithful ports pending.
+// the file-select light path uses. Faithful ports pending.
 GXColor TLightMario::getLightColor(int) const { return GXColor{0, 0, 0, 0xFF}; }
 
 GXColor TLightMario::getAmbColor(int) const   { return GXColor{0, 0, 0, 0xFF}; }
 
-void TLightMario::perform(u32 cue, JDrama::TGraphics* graphics)
+// Native port of TLightMario::setLight (@0x80229610, 156 insns). Byte-
+// identical to TLightCommon::setLight (verified by side-by-side disasm
+// comparison against @0x80229a30). The RE is CodeWarrior having emitted the
+// SAME function twice because both classes are polymorphic setLight
+// overrides; the C++ source is a single implementation delegated by the
+// override. Faithful port = dispatch to the base.
+void TLightMario::setLight(const JDrama::TGraphics* graphics, int idx)
+{
+	TLightCommon::setLight(graphics, idx);
+}
+
+TLightDrawBuffer::TLightDrawBuffer(int, u32, const char* name)
+    : JDrama::TViewObj(name)
 {
 	if (cue & CUE_LIGHT)
 		setLight(graphics, *gpMarioLightID);
