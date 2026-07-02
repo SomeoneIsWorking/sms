@@ -444,7 +444,25 @@ void TShine::kill() { }
 
 void TShine::makeMActors() { }
 
-void TShine::initMapObj() { }
+// Native port of TShine::initMapObj (@0x801bcd70). シャイン ("Shine") — the
+// game's collectible sun/star. Chains to TMapObjGeneral::initMapObj, then
+// seeds a fixed block of per-instance defaults. Byte-verified against the
+// RE at scratch/disasm.py 0x801bcd70:
+//   unk14C=0x1e0 (480), unk150=0x78 (120), unk1A4=0, {unk1A8,unk1AC,unk1B0}=0.0f,
+//   unk170=0xf0 (240), unk174=0, unk178=0xf0.
+void TShine::initMapObj()
+{
+	TMapObjGeneral::initMapObj();
+	unk14C = 0x1e0;
+	unk150 = 0x78;
+	unk1A4[0] = 0;
+	unk1A8 = 0.0f;
+	unk1AC = 0.0f;
+	unk1B0 = 0.0f;
+	unk170 = 0xf0;
+	unk174 = 0;
+	unk178 = 0xf0;
+}
 
 void TShine::loadAfter() { }
 
