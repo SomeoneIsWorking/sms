@@ -225,13 +225,14 @@ void TMapStaticObj::perform(u32 cue, JDrama::TGraphics* graphics)
 		mMActor->updateMatAnm();
 	}
 
-	if ((!(cue & CUE_ENTRY) || !(mActorData->mFlags & TActorData::FLAG_UNK10)
-	     || gpMirrorModelManager->isUnk18Present())
-	    && mMActor) {
-		if (cue & CUE_CALC_ANIM) {
-			MsMtxSetXYZRPH(getModel()->getBaseTRMtx(), mPosition.x, mPosition.y,
-			               mPosition.z, mRotation.x, mRotation.y, mRotation.z);
-			getModel()->setBaseScale(mScaling);
+	if ((!(param_1 & 0x200) || !(unk68->unk40 & 0x10)
+	     || (gpMirrorModelManager->mCurrentMirrorIndex != -1 ? true : false))
+	    && unk70) {
+		if (param_1 & 0x2) {
+			MsMtxSetXYZRPH(unk70->getModel()->getBaseTRMtx(), mPosition.x,
+			               mPosition.y, mPosition.z, mRotation.x, mRotation.y,
+			               mRotation.z);
+			unk70->getModel()->setBaseScale(mScaling);
 		}
 
 		if ((cue & CUE_ENTRY)
