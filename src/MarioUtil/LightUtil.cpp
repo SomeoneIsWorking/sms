@@ -308,109 +308,47 @@ TLightDrawBuffer::TLightDrawBuffer(int, u32, const char* name)
 		setLight(graphics, *gpMarioLightID);
 }
 
-void TLightMario::setLight(const JDrama::TGraphics* gfx, int index)
+// Native port of TLightDrawBuffer::perform (@0x802292c0, 17 insns). Same phase
+// gate as TLightCommon (flag & 0x20 → setLight). Dispatches to its owning
+// TLightCommon at unk10, using the per-buffer light index at unk80.
+void TLightDrawBuffer::perform(u32 flag, JDrama::TGraphics* graphics)
 {
-	ReInitializeGX();
-	SMS_DrawInit();
-	int lightIndex = index * 2;
-
-	GXLightObj light;
-	Vec pos;
-	MTXMultVec(gfx->getViewMtx(), getLightPosition(lightIndex), &pos);
-	GXInitLightPos(&light, pos.x, pos.y, pos.z);
-	GXInitLightColor(&light, getLightColor(lightIndex));
-	GXInitLightAttn(&light, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f);
-	GXLoadLightObjImm(&light, GX_LIGHT0);
-
-	gpLightManager->setEffectLight(gfx, &light);
-
-	Vec spos;
-	MTXMultVec(gfx->getViewMtx(), getLightPosition(lightIndex), &spos);
-	VECNormalize(&spos, &spos);
-	GXInitSpecularDir(&light, -spos.x, -spos.y, -spos.z);
-	GXInitLightColor(&light, getLightColor(lightIndex));
-	GXInitLightAttn(&light, 0.0f, 0.0f, 1.0f, unk10 / 2.0f, 0.0f,
-	                1.0f - unk10 / 2.0f);
-	GXLoadLightObjImm(&light, GX_LIGHT2);
-
-	GXSetChanAmbColor(GX_COLOR0A0, getAmbColor(index));
-}
-
-GXColor TLightMario::getLightColor(int index) const
-{
-	GXColor color = TLightCommon::getLightColor(index + unk24);
-	color.a *= unk14;
-	return color;
-}
-
-GXColor TLightMario::getAmbColor(int index) const
-{
-	index += unk24;
-	GXColor color = TLightCommon::getAmbColor(index);
-	color.a *= unk14;
-	return color;
-}
-
-#pragma dont_inline on
-TLightDrawBuffer::TLightDrawBuffer(int param_1, u32 param_2, const char* name)
-    : JDrama::TViewObj(name)
-    , unk10(nullptr)
-    , mOpaDrawBufferObject(nullptr)
-    , mXluDrawBufferObject(nullptr)
-    , unk80(param_1)
-{
-	snprintf(unk1C, 0x32, "%s%s", name, "opa");
-	mOpaDrawBufferObject = new JDrama::TDrawBufObj(3, param_2, unk1C);
-
-	snprintf(unk4E, 0x32, "%s%s", name, "xlu");
-	mXluDrawBufferObject = new JDrama::TDrawBufObj(4, param_2, unk4E);
-}
-#pragma dont_inline reset
-
-void TLightDrawBuffer::perform(u32 cue, JDrama::TGraphics* graphics)
-{
-	if (cue & CUE_LIGHT)
-		unk10->setLight(graphics, unk80);
-}
-
-TLightWithDBSet::TLightWithDBSet(int param_1, const char* name)
-    : JDrama::TViewObj(name)
-{
-	unk10 = nullptr;
-	unk14 = nullptr;
-	unk18 = nullptr;
-	unk1C = param_1;
-	unk20 = 0;
-}
-
-void TLightWithDBSet::perform(u32 cue, JDrama::TGraphics* graphics)
-{
-	if (cue & CUE_LIGHT) {
-		for (int i = 0; i < unk1C; ++i) {
-			unk10[i]->perform(CUE_LIGHT, graphics);
-			if (cue & CUE_UNK10000)
-				unk10[i]->getOpaDbo()->perform(CUE_DRAW, graphics);
-			if (cue & CUE_UNK20000)
-				unk10[i]->getXluDbo()->perform(CUE_DRAW, graphics);
-		}
-	}
-	if (cue & CUE_SET_DRAW_BUFFER) {
-		for (int i = 0; i < unk1C; ++i) {
-			unk10[i]->getOpaDbo()->perform(CUE_SET_DRAW_BUFFER | CUE_DRAW_INIT,
-			                               graphics);
-			unk10[i]->getXluDbo()->perform(CUE_SET_DRAW_BUFFER | CUE_DRAW_INIT,
-			                               graphics);
-		}
+	if (flag & 0x20) {
+		if (unk10)
+			unk10->setLight(graphics, unk80);
 	}
 }
 
-void TLightWithDBSet::addChildGroupObj(
-    JDrama::TViewObjPtrListT<JDrama::TViewObj>* list)
+// Native port of TLightWithDBSet::perform (@0x80229178, 82 insns). Dispatches
+// each per-light draw buffer in unk10[0..unk1C) through its own perform +
+// optional J3DDrawBuffer perform calls, gated by three independent flag bits:
+//   * flag & 0x20    → per-DrawBuffer perform(0x20, graphics)
+//   * flag & 0x10000 → per-DrawBuffer's unk14->perform(8, graphics)
+//   * flag & 0x20000 → per-DrawBuffer's unk18->perform(8, graphics)
+//   * flag & 0x800   → both unk14/unk18 perform(0x480, graphics)
+// Guarded on unk10 non-null — matches the STOPGAP in changeLightDrawBuffer;
+// once TLightWithDBSet::makeDrawBuffer × 4 is ported the guard becomes
+// harmless.
+void TLightWithDBSet::perform(u32 flag, JDrama::TGraphics* graphics)
 {
-	if (unk20) {
-		for (int j = 0; j < unk1C; ++j) {
-			list->insert(unk10[j]->getOpaDbo());
-			list->insert(unk10[j]->getXluDbo());
+	if (!unk10) return;  // makeDrawBuffer not yet populated on this instance
+
+	if (flag & 0x20) {
+		const bool do_unk14_8 = (flag & 0x10000) != 0;
+		const bool do_unk18_8 = (flag & 0x20000) != 0;
+		for (int i = 0; i < unk1C; ++i) {
+			TLightDrawBuffer* buf = unk10[i];
+			buf->perform(0x20, graphics);
+			if (do_unk14_8 && buf->unk14) buf->unk14->perform(8, graphics);
+			if (do_unk18_8 && buf->unk18) buf->unk18->perform(8, graphics);
+		}
+	}
+
+	if (flag & 0x800) {
+		for (int i = 0; i < unk1C; ++i) {
+			TLightDrawBuffer* buf = unk10[i];
+			if (buf->unk14) buf->unk14->perform(0x480, graphics);
+			if (buf->unk18) buf->unk18->perform(0x480, graphics);
 		}
 	}
 }
