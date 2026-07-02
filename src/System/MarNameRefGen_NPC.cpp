@@ -6,7 +6,7 @@
 JDrama::TNameRef* TMarNameRefGen::getNameRef_NPC(const char* name) const
 {
 #ifdef SMS_NATIVE_PLATFORM
-	// STOPGAP: register the NPC *Managers* (MonteMManager/.../KinopioManager) so
+	// STOPGAP:  the NPC *Managers* (MonteMManager/.../KinopioManager) so
 	// these NPCs get a non-null mManager, because the NPC population needs its
 	// managers to set mManager before TBaseNPC::load -> setIndividualDifference_
 	// dereferences it (mManager->unk28). Until the managers are wired (their

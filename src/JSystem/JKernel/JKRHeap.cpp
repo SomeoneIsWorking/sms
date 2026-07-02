@@ -286,7 +286,7 @@ extern "C" void sb_host_alloc_pop(void)  { if (g_sb_host_alloc_gate > 0) --g_sb_
 // and allocate C++ objects through the GLOBAL operator new. Routing those onto the JKR
 // heap corrupted it (radeonsi SIGSEGV in LLVMCreateTargetMachine) AND leaked into the
 // solid heap until "SolidHeap OUT OF MEMORY". A FOREIGN thread has no business on the
-// game heap, so a plain `new` from a thread we did NOT register as a game thread goes
+// game heap, so a plain `new` from a thread we did NOT  as a game thread goes
 // straight to host malloc. Game threads are marked at their entry point: the main fiber
 // (boot_heap_bringup, before any game alloc) and every OSCreateThread carrier
 // (os_impl thread_trampoline). Synchronous driver allocs that land on a game thread

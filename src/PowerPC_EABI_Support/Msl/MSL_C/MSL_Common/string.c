@@ -17,10 +17,10 @@ size_t strlen(const char* str)
 
 char* strcpy(char* dst, const char* src)
 {
-	register unsigned char *destb, *fromb;
-	register unsigned long w, t, align;
-	register unsigned int k1;
-	register unsigned int k2;
+	 unsigned char *destb, *fromb;
+	 unsigned long w, t, align;
+	 unsigned int k1;
+	 unsigned int k2;
 
 	fromb = (unsigned char*)src;
 	destb = (unsigned char*)dst;
@@ -118,8 +118,8 @@ char* strcat(char* dst, const char* src)
 
 int strcmp(const char* str1, const char* str2)
 {
-	register unsigned char* left  = (unsigned char*)str1;
-	register unsigned char* right = (unsigned char*)str2;
+	 unsigned char* left  = (unsigned char*)str1;
+	 unsigned char* right = (unsigned char*)str2;
 	unsigned long align, l1, r1, x;
 
 	l1 = *left;

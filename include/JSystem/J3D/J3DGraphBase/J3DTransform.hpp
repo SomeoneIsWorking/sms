@@ -50,25 +50,25 @@ void J3DPSMtxArrayConcat(Mtx, Mtx, Mtx, u32);
 // TODO: is this used in sms? Probably, but totally inlined
 
 // regalloc issues
-inline void J3DPSMulMtxVec(register MtxPtr mtx, register Vec* vec,
-                           register Vec* dst)
+inline void J3DPSMulMtxVec( MtxPtr mtx,  Vec* vec,
+                            Vec* dst)
 {
-	register f32 fr12;
-	register f32 fr11;
-	register f32 fr10;
-	register f32 fr9;
-	register f32 fr8;
-	register f32 fr6;
-	register f32 fra6;
-	register f32 fr5;
-	register f32 fra5;
-	register f32 fra4;
-	register f32 fr4;
-	register f32 fr3;
-	register f32 fr2;
-	register f32 fra2;
-	register f32 fr01;
-	register f32 fr00;
+	 f32 fr12;
+	 f32 fr11;
+	 f32 fr10;
+	 f32 fr9;
+	 f32 fr8;
+	 f32 fr6;
+	 f32 fra6;
+	 f32 fr5;
+	 f32 fra5;
+	 f32 fra4;
+	 f32 fr4;
+	 f32 fr3;
+	 f32 fr2;
+	 f32 fra2;
+	 f32 fr01;
+	 f32 fr00;
 #ifdef __MWERKS__ // clang-format off
     asm {
         psq_l fr00, 0(vec), 0, 0
@@ -96,25 +96,25 @@ inline void J3DPSMulMtxVec(register MtxPtr mtx, register Vec* vec,
 }
 
 // regalloc issues
-inline void J3DPSMulMtxVec(register MtxPtr mtx, register S16Vec* vec,
-                           register S16Vec* dst)
+inline void J3DPSMulMtxVec( MtxPtr mtx,  S16Vec* vec,
+                            S16Vec* dst)
 {
-	register f32 fr12;
-	register f32 fr11;
-	register f32 fr10;
-	register f32 fr9;
-	register f32 fr8;
-	register f32 fr6;
-	register f32 fra6;
-	register f32 fr5;
-	register f32 fra5;
-	register f32 fra4;
-	register f32 fr4;
-	register f32 fr3;
-	register f32 fr2;
-	register f32 fra2;
-	register f32 fr01;
-	register f32 fr00;
+	 f32 fr12;
+	 f32 fr11;
+	 f32 fr10;
+	 f32 fr9;
+	 f32 fr8;
+	 f32 fr6;
+	 f32 fra6;
+	 f32 fr5;
+	 f32 fra5;
+	 f32 fra4;
+	 f32 fr4;
+	 f32 fr3;
+	 f32 fr2;
+	 f32 fra2;
+	 f32 fr01;
+	 f32 fr00;
 #ifdef __MWERKS__ // clang-format off
     asm {
         psq_l fr00, 0(vec), 0, 7
@@ -142,23 +142,23 @@ inline void J3DPSMulMtxVec(register MtxPtr mtx, register S16Vec* vec,
 }
 
 // regalloc issues
-inline void J3DPSMulMtxVec(register ROMtxPtr mtx, register Vec* vec,
-                           register Vec* dst)
+inline void J3DPSMulMtxVec( ROMtxPtr mtx,  Vec* vec,
+                            Vec* dst)
 {
-	register f32* punit;
-	register f32 unit;
-	register f32 fr12;
-	register f32 fr11;
-	register f32 fr10;
-	register f32 fr9;
-	register f32 fr8;
-	register f32 fr6;
-	register f32 fr5;
-	register f32 fr4;
-	register f32 fr3;
-	register f32 fr2;
-	register f32 fr01;
-	register f32 fr00;
+	 f32* punit;
+	 f32 unit;
+	 f32 fr12;
+	 f32 fr11;
+	 f32 fr10;
+	 f32 fr9;
+	 f32 fr8;
+	 f32 fr6;
+	 f32 fr5;
+	 f32 fr4;
+	 f32 fr3;
+	 f32 fr2;
+	 f32 fr01;
+	 f32 fr00;
 #ifdef __MWERKS__ // clang-format off
     asm {
         lis punit, PSMulUnit01@ha
@@ -190,18 +190,18 @@ inline void J3DPSMulMtxVec(register ROMtxPtr mtx, register Vec* vec,
 }
 
 // regalloc issues
-inline void J3DPSMulMtxVec(register ROMtxPtr mtx, register S16Vec* vec,
-                           register S16Vec* dst)
+inline void J3DPSMulMtxVec( ROMtxPtr mtx,  S16Vec* vec,
+                            S16Vec* dst)
 {
-	register f32* punit;
-	register f32 unit;
-	register f32 fr6;
-	register f32 fr5;
-	register f32 fr4;
-	register f32 fr3;
-	register f32 fr2;
-	register f32 fr01;
-	register f32 fr00;
+	 f32* punit;
+	 f32 unit;
+	 f32 fr6;
+	 f32 fr5;
+	 f32 fr4;
+	 f32 fr3;
+	 f32 fr2;
+	 f32 fr01;
+	 f32 fr00;
 #ifdef __MWERKS__ // clang-format off
     asm {
         lis punit, PSMulUnit01@ha
