@@ -1,6 +1,7 @@
 #include <MarioUtil/LightUtil.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DSys.hpp>
 #include <JSystem/JDrama/JDRLighting.hpp>
+#include <JSystem/JDrama/JDRNameRefGen.hpp>
 #include <cstring>
 
 TLightWithDBSetManager* gpLightManager;
@@ -37,7 +38,61 @@ TLightCommon::TLightCommon(const char* name)
 	gpTLightCommonAmbAry   = nullptr;
 }
 
-void TLightCommon::loadAfter() { }
+// Native port of TLightCommon::loadAfter (@0x80229e30, 84 insns). Runs once
+// per scene load. Resolves the "Light Group" (TLightAry) and "Ambient Group"
+// (TAmbAry) singletons through the top-level TNameRefGen at SDA1[-0x5db8],
+// caches them into the SDA1 slots at [-0x6114]/[-0x6118] (the getters read
+// them back), plus caches &mLights[0].mPosition at [-0x6110]. Then seeds the
+// local per-light-color / per-light-position arrays this->mLocalLightColor[4]
+// and this->mLocalPos[4] from Light-Group[unk24..unk24+4], and the local
+// ambient arrays this->mLocalAmbColor[2] from AmbAry->mAmbColors[unk20..+1].
+// Also final-writes this->unk10 = 50.0f (SDA2 -0x1770).
+//
+// gpTLightCommonLightAry / gpTLightCommonAmbAry are the SDA1 caches; the
+// getters (defined earlier in this file) read from them.
+void TLightCommon::loadAfter()
+{
+	// r13-0x5db8 is a top-level director object; in the RE it exposes its
+	// TNameRefGen at offset +0x4. In the native build the same lookup is
+	// available through JDrama::TNameRefGen::searchF on any live gen. Fall
+	// back to the game's global gen if the specific director isn't wired.
+	auto* lightAry = JDrama::TNameRefGen::search<JDrama::TLightAry>("Light Group");
+	auto* ambAry   = JDrama::TNameRefGen::search<JDrama::TAmbAry>  ("Ambient Group");
+
+	gpTLightCommonAmbAry   = ambAry;
+	gpTLightCommonLightAry = lightAry;
+
+	unk10 = 50.0f;  // SDA2 -0x1770
+
+	if (!lightAry || !lightAry->mLights) {
+		// Match the RE: even on a partial load, keep going; the getters guard.
+		return;
+	}
+
+	// Populate local light-color + local position arrays from
+	// Light-Group[unk24 .. unk24+4] — 4 entries.
+	for (int i = 0; i < 4; ++i) {
+		JDrama::TIdxLight& L = lightAry->mLights[i + unk24];
+		// mLocalLightColor slot 0/1/2/3 lives at offset 0x31 + i*4 (4 bytes).
+		GXColor col;
+		GXGetLightColor(&L.unk24, &col);
+		std::memcpy(&mLocalLightColor[i * 4], &col, 4);
+		// mLocalPos slot i at offset 0x44 + i*12 (Vec3).
+		mLocalPos[i].set(L.mPosition.x, L.mPosition.y, L.mPosition.z);
+	}
+
+	// Populate local ambient colors from AmbAry->mAmbColors[unk20 + 0..1].
+	if (ambAry && ambAry->mAmbColors) {
+		for (int i = 0; i < 2; ++i) {
+			JUtility::TColor& c = ambAry->mAmbColors[i + unk20].mColor;
+			// Layout at this + 0x29 + i*4.
+			mLocalAmbColor[i * 4 + 0] = c.r;
+			mLocalAmbColor[i * 4 + 1] = c.g;
+			mLocalAmbColor[i * 4 + 2] = c.b;
+			mLocalAmbColor[i * 4 + 3] = c.a;
+		}
+	}
+}
 
 // Native port of TLightCommon::getLightColor (@0x80229d78). When the LOCAL
 // override flag (unk28) is set, returns one of 4 packed GXColors stored at
