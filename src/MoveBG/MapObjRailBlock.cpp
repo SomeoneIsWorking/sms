@@ -6,11 +6,14 @@
 #include <System/MarDirector.hpp>
 #include <Player/MarioAccess.hpp>
 #include <M3DUtil/MActor.hpp>
+#include <MarioUtil/MathUtil.hpp>
 #include <MarioUtil/PacketUtil.hpp>
 #include <Enemy/Graph.hpp>
 #include <Enemy/Conductor.hpp>
+#include <JSystem/JMath.hpp>
 #include <JSystem/JParticle/JPAEmitter.hpp>
 #include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
+#include <dolphin/mtx.h>
 
 TRailMapObj::TRailMapObj(const char* name)
     : TMapObjBase(name)
@@ -407,7 +410,37 @@ Mtx* TRollBlock::getRootJointMtx() const
 	return (Mtx*)getModel()->getAnmMtx(0);
 }
 
-void TRollBlock::calcRootMatrix() { }
+void TRollBlock::calcRootMatrix()
+{
+	// Faithful port of @0x801efdc4 (US GMSE01). Sets the J3DModel's base TR matrix
+	// from TMapObjBase's (mPosition − mYOffset) + mInitialRotation, latches the base
+	// scale from TActor::mScaling, then concats a Z-axis rotation-by-unk138° onto it.
+	// Slot layout confirmed against the 12 back-to-back stfs's at 0x2c..0x58 in the
+	// disasm; see native/render/sms_boot_rollblock.h for the pure spec + tests.
+	J3DModel* model = getModel();
+	MtxPtr base = model->getBaseTRMtx();
+
+	MsMtxSetXYZRPH(base,
+	               mPosition.x,
+	               mPosition.y - mYOffset,
+	               mPosition.z,
+	               mInitialRotation.x,
+	               mInitialRotation.y,
+	               mInitialRotation.z);
+
+	model->setBaseScale(mScaling);
+
+	s16 roll = static_cast<s16>(DEG2SHORTANGLE(unk138));
+	f32 c = JMASCos(roll);
+	f32 s = JMASSin(roll);
+
+	Mtx rot;
+	rot[0][0] = c;    rot[0][1] = -s;   rot[0][2] = 0.0f; rot[0][3] = 0.0f;
+	rot[1][0] = s;    rot[1][1] =  c;   rot[1][2] = 0.0f; rot[1][3] = 0.0f;
+	rot[2][0] = 0.0f; rot[2][1] =  0.0f; rot[2][2] = 1.0f; rot[2][3] = 0.0f;
+
+	PSMTXConcat(base, rot, base);
+}
 
 void TRollBlock::control()
 {
