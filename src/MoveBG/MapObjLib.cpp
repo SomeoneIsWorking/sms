@@ -7,6 +7,7 @@
 #include <MoveBG/MapObjWave.hpp>
 #include <MoveBG/MapObjTown.hpp>
 #include <Enemy/Conductor.hpp>
+#include <Enemy/EffectObj.hpp>
 #include <System/EmitterViewObj.hpp>
 #include <System/MarDirector.hpp>
 #include <Player/MarioAccess.hpp>
@@ -659,7 +660,19 @@ bool TMapObjBase::marioHipAttack() const
 #endif
 }
 
-void TMapObjBase::emitColumnWater() { }
+void TMapObjBase::emitColumnWater()
+{
+	// ROM 0x801b8d34 (US) — spawn a water-column effect at this actor's
+	// position, scaled by this actor's scale. Only caller is
+	// TWoodBarrel::calc via barrel-hits-water. Effect manager key is the
+	// SJIS literal (same one used in Enemy/smallEnemy.cpp:849).
+	TEffectColumWater* effect
+	    = (TEffectColumWater*)gpConductor->makeOneEnemyAppear(
+	        mPosition, "エフェクト水柱マネージャー", 0);
+	if (!effect)
+		return;
+	effect->generate(mPosition, mScaling);
+}
 
 JPABaseEmitter* TMapObjBase::emitAndSRT(s32 param_1, u8 param_2,
                                         const JGeometry::TVec3<f32>* param_3,
