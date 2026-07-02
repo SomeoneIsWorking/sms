@@ -309,12 +309,31 @@ void TMapObjBase::startAnim(u16 param_1)
 		//   J3DMtxCalc[0x58] = mMActor->unk4/*J3DModel*/->mModelData->mJointNodePointer[0]
 		// The exact 0x58 field is a concrete-subclass slot (J3DMtxCalc itself
 		// is abstract); the base pointer + offset is faithful to the disasm.
-		J3DModel*    model    = mMActor->getModel();
-		J3DModelData* modelData = model->getModelData();
-		J3DJoint*    rootJoint = modelData->mJointNodePointer[0];
-		*reinterpret_cast<J3DJoint**>(
-		    reinterpret_cast<u8*>(mMActor->unk8) + 0x58)
-		    = rootJoint;
+		//
+		// Native compat (2026-07-02, [[fileselect-startanim-mtxcalc-null]]):
+		// The RE unconditionally writes into mMActor->unk8 (J3DMtxCalc*); if
+		// unk8 is null it SEGVs identically to native. On hardware it isn't
+		// null because MActor::setModel (MActor.cpp:114) runs early enough
+		// that unk8 is populated before any startAnim("no name") reaches
+		// here. Native's `TFileLoadBlock::makeBlockNormal → startAnim(0)`
+		// fires from TCardLoad::changeScene BEFORE the file-block's MActor
+		// has been through setModel — mMActorKeeper->getMActor returns an
+		// MActor whose model has not yet been bound to its J3DModelData.
+		// Skip the reset when unk8 is null: this call path is "clear the
+		// currently-playing anim" (entry->unk4 == null); with no
+		// currently-bound MtxCalc there is nothing to reset. The real fix
+		// (initialize mMActor->unk8 upstream, i.e. wire setModel earlier in
+		// the file-block init) is a separate port item tracked by
+		// [[fileselect-startanim-mtxcalc-null]].
+		J3DModel*     model     = mMActor->getModel();
+		J3DModelData* modelData = model ? model->getModelData() : nullptr;
+		J3DJoint*     rootJoint =
+		    modelData ? modelData->mJointNodePointer[0] : nullptr;
+		if (mMActor->unk8 && rootJoint) {
+			*reinterpret_cast<J3DJoint**>(
+			    reinterpret_cast<u8*>(mMActor->unk8) + 0x58)
+			    = rootJoint;
+		}
 	}
 #endif
 }
