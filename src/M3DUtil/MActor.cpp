@@ -353,7 +353,7 @@ void MActor::setLightType(int param_1)
 {
 	unk44 = param_1;
 
-	gpLightManager->unk14[param_1]->unk20 = 1;
+	gpLightManager->mLightSets[param_1]->mEnabled = 1;
 }
 
 void MActor::entry()
