@@ -24,7 +24,7 @@ asm void __init_hardware(void)
 #endif // clang-format on
 }
 
-asm void __flush_cache(register void* address, register unsigned int size)
+asm void __flush_cache( void* address,  unsigned int size)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc

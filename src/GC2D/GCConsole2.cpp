@@ -2224,10 +2224,10 @@ void TGCConsole2::startAppearTank()
 		return;
 	}
 
-	// TODO: needs register swapping
-	unk45 = 1;
-	unk59 = 1;
-	unk7C = 0;
+	// TODO: needs  swapping
+	unk34[17] = 1;
+	unk59     = 1;
+	unk7C     = 0;
 
 	unk2F8->getPane()->show();
 	unk2F8->setPaneOffset(unk98, 0, 0, 0, 465 - unk2F8->mInitialBounds.y1);

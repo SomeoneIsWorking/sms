@@ -252,7 +252,7 @@ static void __AIDHandler(__OSInterrupt interrupt, OSContext* context)
 	OSSetCurrentContext(context);
 }
 
-static asm void __AICallbackStackSwitch(register void* cb)
+static asm void __AICallbackStackSwitch( void* cb)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc

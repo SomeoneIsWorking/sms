@@ -549,8 +549,8 @@ entry __OSEVEnd
 
 void __OSUnhandledException(__OSException exception, OSContext* context,
                             u32 dsisr, u32 dar);
-asm void OSDefaultExceptionHandler(register __OSException exception,
-                                   register OSContext* context)
+asm void OSDefaultExceptionHandler( __OSException exception,
+                                    OSContext* context)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc

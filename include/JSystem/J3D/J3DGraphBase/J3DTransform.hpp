@@ -47,9 +47,28 @@ void J3DMTXConcatArrayIndexedSrc(const float (*)[4], const float (*)[3][4],
                                  const u16*, float (*)[3][4], u32);
 void J3DPSMtxArrayConcat(Mtx, Mtx, Mtx, u32);
 
-inline void J3DPSMulMtxVec(register MtxPtr mtx, register Vec* vec,
-                           register Vec* dst)
+// TODO: is this used in sms? Probably, but totally inlined
+
+// regalloc issues
+inline void J3DPSMulMtxVec( MtxPtr mtx,  Vec* vec,
+                            Vec* dst)
 {
+	 f32 fr12;
+	 f32 fr11;
+	 f32 fr10;
+	 f32 fr9;
+	 f32 fr8;
+	 f32 fr6;
+	 f32 fra6;
+	 f32 fr5;
+	 f32 fra5;
+	 f32 fra4;
+	 f32 fr4;
+	 f32 fr3;
+	 f32 fr2;
+	 f32 fra2;
+	 f32 fr01;
+	 f32 fr00;
 #ifdef __MWERKS__ // clang-format off
     asm {
         psq_l f0, 0(vec), 0, 0
@@ -76,9 +95,26 @@ inline void J3DPSMulMtxVec(register MtxPtr mtx, register Vec* vec,
 #endif // clang-format on
 }
 
-inline void J3DPSMulMtxVec(register MtxPtr mtx, register S16Vec* vec,
-                           register S16Vec* dst)
+// regalloc issues
+inline void J3DPSMulMtxVec( MtxPtr mtx,  S16Vec* vec,
+                            S16Vec* dst)
 {
+	 f32 fr12;
+	 f32 fr11;
+	 f32 fr10;
+	 f32 fr9;
+	 f32 fr8;
+	 f32 fr6;
+	 f32 fra6;
+	 f32 fr5;
+	 f32 fra5;
+	 f32 fra4;
+	 f32 fr4;
+	 f32 fr3;
+	 f32 fr2;
+	 f32 fra2;
+	 f32 fr01;
+	 f32 fr00;
 #ifdef __MWERKS__ // clang-format off
     asm {
         psq_l f0, 0(vec), 0, 7
@@ -105,9 +141,24 @@ inline void J3DPSMulMtxVec(register MtxPtr mtx, register S16Vec* vec,
 #endif // clang-format on
 }
 
-inline void J3DPSMulMtxVec(register ROMtxPtr mtx, register Vec* vec,
-                           register Vec* dst)
+// regalloc issues
+inline void J3DPSMulMtxVec( ROMtxPtr mtx,  Vec* vec,
+                            Vec* dst)
 {
+	 f32* punit;
+	 f32 unit;
+	 f32 fr12;
+	 f32 fr11;
+	 f32 fr10;
+	 f32 fr9;
+	 f32 fr8;
+	 f32 fr6;
+	 f32 fr5;
+	 f32 fr4;
+	 f32 fr3;
+	 f32 fr2;
+	 f32 fr01;
+	 f32 fr00;
 #ifdef __MWERKS__ // clang-format off
     asm {
         addis r6, r0, PSMulUnit01@ha
@@ -138,9 +189,19 @@ inline void J3DPSMulMtxVec(register ROMtxPtr mtx, register Vec* vec,
 #endif // clang-format on
 }
 
-inline void J3DPSMulMtxVec(register ROMtxPtr mtx, register S16Vec* vec,
-                           register S16Vec* dst)
+// regalloc issues
+inline void J3DPSMulMtxVec( ROMtxPtr mtx,  S16Vec* vec,
+                            S16Vec* dst)
 {
+	 f32* punit;
+	 f32 unit;
+	 f32 fr6;
+	 f32 fr5;
+	 f32 fr4;
+	 f32 fr3;
+	 f32 fr2;
+	 f32 fr01;
+	 f32 fr00;
 #ifdef __MWERKS__ // clang-format off
     asm {
         addis r6, r0, PSMulUnit01@ha
