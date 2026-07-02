@@ -511,14 +511,24 @@ void TShine::movingUp()
 	if (isStateTimerEngaged())
 		return;
 
-	if (unk154 == 3) {
-		mStateTimer = unk170;
-		mState      = STATE_MOVING_DOWN;
-	} else {
-		unk164      = mPosition.y;
-		mStateTimer = unk168;
-		mState      = STATE_MOVING_CIRCLE;
-	}
+// Native port of TShine::initMapObj (@0x801bcd70). シャイン ("Shine") — the
+// game's collectible sun/star. Chains to TMapObjGeneral::initMapObj, then
+// seeds a fixed block of per-instance defaults. Byte-verified against the
+// RE at scratch/disasm.py 0x801bcd70:
+//   unk14C=0x1e0 (480), unk150=0x78 (120), unk1A4=0, {unk1A8,unk1AC,unk1B0}=0.0f,
+//   unk170=0xf0 (240), unk174=0, unk178=0xf0.
+void TShine::initMapObj()
+{
+	TMapObjGeneral::initMapObj();
+	unk14C = 0x1e0;
+	unk150 = 0x78;
+	unk1A4[0] = 0;
+	unk1A8 = 0.0f;
+	unk1AC = 0.0f;
+	unk1B0 = 0.0f;
+	unk170 = 0xf0;
+	unk174 = 0;
+	unk178 = 0xf0;
 }
 
 void TShine::movingDown()
