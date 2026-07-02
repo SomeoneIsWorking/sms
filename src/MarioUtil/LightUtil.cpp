@@ -284,11 +284,27 @@ void TLightMario::perform(u32 flag, JDrama::TGraphics* graphics)
 	}
 }
 
-// TLightMario overrides — stubbed for now. TLightCommon's base impl is what
-// the file-select light path uses. Faithful ports pending.
-GXColor TLightMario::getLightColor(int) const { return GXColor{0, 0, 0, 0xFF}; }
+// Native ports of TLightMario::getLightColor (@0x80229510) and
+// TLightMario::getAmbColor (@0x80229430). Side-by-side disasm comparison
+// against TLightCommon::getLightColor (@0x80229d78) / getAmbColor (@0x80229cec)
+// shows byte-identical logic: same clamp fencepost (>=4 / >=2), same
+// mUseLocalColor polarity check reading unk28, same local-override packed-
+// GXColor read from mLocalLightColor / mLocalAmbColor, same group-path
+// alpha-scaling via mAlphaScale (unk1C) truncated back to u8. TLightMario
+// adds NO fields past TLightCommon (see LightUtil.hpp), so the offsets
+// resolve identically. CodeWarrior emitted per-class copies because both
+// classes are polymorphic overrides; the C++ source is a single
+// implementation delegated by the override — same pattern as
+// TLightMario::setLight below.
+GXColor TLightMario::getLightColor(int idx) const
+{
+	return TLightCommon::getLightColor(idx);
+}
 
-GXColor TLightMario::getAmbColor(int) const   { return GXColor{0, 0, 0, 0xFF}; }
+GXColor TLightMario::getAmbColor(int idx) const
+{
+	return TLightCommon::getAmbColor(idx);
+}
 
 // Native port of TLightMario::setLight (@0x80229610, 156 insns). Byte-
 // identical to TLightCommon::setLight (verified by side-by-side disasm
