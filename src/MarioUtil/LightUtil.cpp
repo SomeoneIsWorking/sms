@@ -410,13 +410,59 @@ void TLightWithDBSet::resetLightDrawBuffer()
 	mSavedXluBuffer = nullptr;
 }
 
+// Pure search helper - counterpart of the strcmp loop that each subclass
+// makeDrawBuffer runs against LightAry->mLights[] (stride 0x6c) or
+// AmbAry->mAmbColors[] (stride 0x18). Returns first matching index or -1.
+// Extracted so the search shape (which IS the pure logic) can be unit-tested
+// spec-derived from the disasm without a live Light Group.
+template <typename T>
+static int sb_find_named_index(T* arr, int count, const char* needle)
+{
+	if (!arr || !needle) return -1;
+	for (int i = 0; i < count; ++i) {
+		const char* n = arr[i].getName();
+		if (n && std::strcmp(n, needle) == 0) return i;
+	}
+	return -1;
+}
+
+// Native port of TIndirectLightWithDBSet::makeDrawBuffer (@0x802289ac, 114 insns).
+// Two name-lookup loops -> alloc mDrawBuffers[mBufferCount] -> for each: alloc a
+// TLightDrawBuffer + a TLightCommon owner, wire owner via setLight, and seed
+// owner->mAmbBaseIdx / mLightBaseIdx from the searched indices. Search needles
+// captured from GMSE01 rodata @0x8039d868 pointer table.
+void TIndirectLightWithDBSet::makeDrawBuffer()
+{
+	static const char kLightNeedle[]
+	    = "\x91\xbe\x97\x7a\x81\x69\x83\x49\x83\x75\x83\x57\x83\x46\x83\x4e\x83\x67\x81\x6a";  // "太陽（オブジェクト）"
+	static const char kAmbNeedle[]
+	    = "\x91\xbe\x97\x7a\x83\x41\x83\x93\x83\x72\x83\x47\x83\x93\x83\x67\x81\x69\x83\x49\x83\x75\x83\x57\x83\x46\x83\x4e\x83\x67\x81\x6a";  // "太陽アンビエント（オブジェクト）"
+
+	int lightIdx = -1;
+	if (JDrama::TLightAry* la = gpTLightCommonLightAry)
+		lightIdx = sb_find_named_index(la->mLights, la->mLightCount, kLightNeedle);
+
+	int ambIdx = -1;
+	if (JDrama::TAmbAry* aa = gpTLightCommonAmbAry)
+		ambIdx = sb_find_named_index(aa->mAmbColors, aa->mAmbColorCount, kAmbNeedle);
+
+	mDrawBuffers = new TLightDrawBuffer*[mBufferCount];
+	for (int i = 0; i < mBufferCount; ++i) {
+		TLightDrawBuffer* buf = new TLightDrawBuffer(i, 0x100, "<TLightDrawBuffer>");
+		mDrawBuffers[i] = buf;
+		TLightCommon* owner = new TLightCommon("<TLightCommon>");
+		buf->setLight(owner);
+		owner->mAmbBaseIdx   = (u32)ambIdx;
+		owner->mLightBaseIdx = (u32)lightIdx;
+	}
+}
+
+// The remaining three subclass makeDrawBuffer bodies are still stubbed;
+// they share this exact shape with different needle strings (see the RE
+// journal). Filling them is the immediate follow-up.
 void TPlayerLightWithDBSet::makeDrawBuffer() { }
-
 void TObjectLightWithDBSet::makeDrawBuffer() { }
-
 void TMapObjectLightWithDBSet::makeDrawBuffer() { }
-
-void TIndirectLightWithDBSet::makeDrawBuffer() { }
 
 // The decomp left the TLightWithDBSet hierarchy ctors and the manager's unk14
 // initialization unimplemented (declared-only). The base/subclass ctors are restored
