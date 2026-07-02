@@ -1109,22 +1109,29 @@ void TItemNozzle::touchPlayer(THitActor* param_1)
 	if (isState(STATE_HOLDING))
 		return;
 
-	if (SMS_IsMarioOnYoshi())
-		return;
+// Native port of TItemNozzle::put (@0x801bbcf4). 6 instructions:
+// clear THitActor::unk64 bit 0 (rlwinm r,r,0,0,30 = &= ~1u), set mState = 1.
+void TItemNozzle::put()
+{
+	unk64 &= ~0x1u;
+	setState(1);
+}
 
 	if ((param_1->isActorType(0x80000001) || param_1->isActorType(0x8000083))
 	    && !checkHitFlag(HIT_FLAG_NO_COLLISION))
 		taken(param_1);
 
-	int boxKind;
-	if (isActorType(0x2000001F))
-		boxKind = 4;
-	else if (isActorType(0x20000022))
-		boxKind = 1;
-	else if (isActorType(0x2000002A))
-		boxKind = 5;
-	else
-		boxKind = 4;
+// Native port of TItemNozzle::appearing (@0x801bbc0c). 9 instructions:
+// if the LIVE_FLAG_UNK10 bit is clear on mLiveFlag, return early;
+// otherwise setState(1) and clear unk64 bit 0. Byte-verified against
+// the rlwinm-0-27-27 mask (PPC bit 27 = host mask 0x10).
+void TItemNozzle::appearing()
+{
+	if (!checkLiveFlag(LIVE_FLAG_UNK10))
+		return;
+	setState(1);
+	unk64 &= ~0x1u;
+}
 
 // Native port of TItemNozzle::control (@0x801bbbec). RE via scratch/disasm.py.
 // ノズル ("nozzle") item — a pickup that swaps Mario's spray head. Per-tick behavior is
@@ -1171,10 +1178,20 @@ void TItemNozzle::appearing()
 
 void TItemNozzle::control() { TMapObjGeneral::control(); }
 
-void TItemNozzle::initMapObj()
+// Native port of TNozzleBox::control (@0x801bb674). 22 instructions.
+// Chains to TMapObjGeneral::control, then a 3-guard predicate that
+// clears the unk166 "pending" latch iff (a) not in special state 4,
+// (b) unk166 was set, (c) no collisions this tick (mColCount == 0).
+void TNozzleBox::control()
 {
-	TItem::initMapObj();
-	unk14C = 7200;
+	TMapObjGeneral::control();
+	if (unk148 == 4)
+		return;
+	if (unk166 == 0)
+		return;
+	if (mColCount != 0)
+		return;
+	unk166 = 0;
 }
 
 void TItemNozzle::load(JSUMemoryInputStream& stream)
