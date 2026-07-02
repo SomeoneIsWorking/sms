@@ -133,7 +133,7 @@ JDrama::TNameRef* TMarNameRefGen::getNameRef(const char* name) const
 
 	if (strcmp(name, "MLight") == 0) {
 		TLightMario* light    = new TLightMario;
-		gpLightManager->unk10 = light;
+		gpLightManager->mMarioLight = light;
 		return light;
 	}
 
