@@ -4,8 +4,7 @@
 #include <JSystem/JDrama/JDRDrawBufObj.hpp>
 #include <JSystem/JDrama/JDRViewObjPtrList.hpp>
 #include <JSystem/JGeometry/JGVec3.hpp>
-#include <dolphin/gx.h>
-#include <dolphin/mtx.h>
+#include <dolphin/types.h>
 
 class J3DDrawBuffer;
 
@@ -62,30 +61,31 @@ public:
 	TLightCommon(const char* = "<TLightCommon>");
 
 	virtual void loadAfter();
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 	virtual GXColor getLightColor(int) const;
 	virtual GXColor getAmbColor(int) const;
-	virtual Vec* getLightPosition(int);
+	virtual const JGeometry::TVec3<f32>* getLightPosition(int);
 	virtual void setLight(const JDrama::TGraphics*, int);
 
-	static JDrama::TAmbAry* mAmbAry;
-	static JDrama::TLightAry* mLightAry;
-	static Vec* mLightPos;
-
+	// Field layout reverse-engineered from GMSE01 @0x80229fbc (ctor),
+	// @0x80229ca0 (getLightPosition), @0x80229cec (getAmbColor),
+	// @0x80229d78 (getLightColor). All decomp-invisible until now — the
+	// header declared TLightCommon as size sizeof(TViewObj), which was WRONG.
 public:
-	/* 0x10 */ f32 unk10;
-	/* 0x14 */ f32 unk14;
-	/* 0x18 */ f32 unk18;
-	/* 0x1C */ f32 unk1C;
-	/* 0x20 */ int unk20;
-	/* 0x24 */ int unk24;
-	/* 0x28 */ u8 unk28;
-	/* 0x29 */ GXColor unk29[2];
-	/* 0x31 */ GXColor unk31[4];
-	/* 0x41 */ u8 unk41;
-	/* 0x42 */ char pad42[2];
-	/* 0x44 */ JGeometry::TVec3<f32> unk44[4];
+	/* 0x10 */ f32 unk10;      // ctor: SDA2 -0x17a4 first, then overwritten with -0x1770 default
+	/* 0x14 */ f32 unk14;      // = 0.0f
+	/* 0x18 */ f32 unk18;      // = 0.0f
+	/* 0x1C */ f32 unk1C;      // = 0.0f — used as an alpha scale in getLightColor's group path
+	/* 0x20 */ u32 unk20;      // idx-offset added into Light-Group index for getLightColor's group path
+	/* 0x24 */ u32 unk24;      // idx-offset added into Light-Group index for getLightPosition's group path
+	/* 0x28 */ u8  unk28;      // "use LOCAL ambient/light-color override" flag (getAmbColor + getLightColor)
+	/* 0x29 */ u8  mLocalAmbColor[2 * 4];     // packed GXColor[2] at 0x29..0x30 (getAmbColor local override)
+	/* 0x31 */ u8  mLocalLightColor[4 * 4];   // packed GXColor[4] at 0x31..0x40 (getLightColor local override)
+	/* 0x41 */ u8  unk41;      // "use LOCAL light-position override" flag (getLightPosition)
+	/* 0x42 */ u8  pad_42_43[2];
+	/* 0x44 */ JGeometry::TVec3<f32> mLocalPos[4];  // 4×12 = 48 bytes (0x44..0x74)
 };
+// static_assert(sizeof(TLightCommon) == 0x74, "TLightCommon layout drift");
 
 class TLightDrawBuffer : public JDrama::TViewObj {
 public:
@@ -182,6 +182,11 @@ public:
 	virtual GXColor getLightColor(int) const;
 	virtual GXColor getAmbColor(int) const;
 	virtual void setLight(const JDrama::TGraphics*, int);
+
+	// Overrides of TLightCommon virtuals (return GXColor now that the header
+	// reflects the actual RE-derived signatures).
+	GXColor getAmbColor(int) const;
+	GXColor getLightColor(int) const;
 };
 
 class TLightShadow : public TLightCommon {
