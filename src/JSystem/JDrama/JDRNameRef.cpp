@@ -54,7 +54,7 @@ TNameRef* TNameRef::genObject(JSUMemoryInputStream& param_1,
 			// individual NPCs need their *Manager registered to set mManager
 			// before TBaseNPC::load (see MarNameRefGen_NPC.cpp). These are
 			// characters, not plaza GEOMETRY, so we exclude them to reach a
-			// rendering plaza first. PROPER FIX: register the managers (their
+			// rendering plaza first. PROPER FIX:  the managers (their
 			// getNameRef cases are TODO'd) and wire NPC<->manager. The "NPC"
 			// prefix below covers every individual NPC name (all nulled in
 			// getNameRef_NPC under SB_NPC_ON); these are the non-"NPC" creatures

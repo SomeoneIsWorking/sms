@@ -14,7 +14,7 @@ const PTMF __ptmf_null = { 0, 0, 0 };
 long __ptmf_test(PTMF* ptmf);
 void __ptmf_scall(...);
 
-asm long __ptmf_test(register PTMF* ptmf)
+asm long __ptmf_test( PTMF* ptmf)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc

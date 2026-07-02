@@ -10,7 +10,7 @@ asm u32 PPCMfmsr()
 #endif // clang-format on
 }
 
-asm void PPCMtmsr(register u32 newMSR)
+asm void PPCMtmsr( u32 newMSR)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -28,7 +28,7 @@ asm u32 PPCMfhid0()
 #endif // clang-format on
 }
 
-asm void PPCMthid0(register u32 newHID0)
+asm void PPCMthid0( u32 newHID0)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -46,7 +46,7 @@ asm u32 PPCMfl2cr()
 #endif // clang-format on
 }
 
-asm void PPCMtl2cr(register u32 newL2cr)
+asm void PPCMtl2cr( u32 newL2cr)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -55,7 +55,7 @@ asm void PPCMtl2cr(register u32 newL2cr)
 #endif // clang-format on
 }
 
-asm void PPCMtdec(register u32 newDec)
+asm void PPCMtdec( u32 newDec)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -95,7 +95,7 @@ asm u32 PPCMfhid2()
 #endif // clang-format on
 }
 
-asm void PPCMthid2(register u32 newhid2)
+asm void PPCMthid2( u32 newhid2)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -104,7 +104,7 @@ asm void PPCMthid2(register u32 newhid2)
 #endif // clang-format on
 }
 
-asm void PPCMtwpar(register u32 newwpar)
+asm void PPCMtwpar( u32 newwpar)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc

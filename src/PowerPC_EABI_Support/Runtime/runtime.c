@@ -22,7 +22,7 @@ static const unsigned __constants[] = {
 	0x41E00000, 0x00000000, // 2**31
 };
 
-asm unsigned __cvt_fp2unsigned(register double d)
+asm unsigned __cvt_fp2unsigned( double d)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -229,7 +229,7 @@ func_end:
 }
 
 // Modulo for 64-bit ints
-// uses funky 2-register passing ABI
+// uses funky 2- passing ABI
 // r3,r4 = r3,r4 % r5,r6
 asm void __mod2u(void)
 {

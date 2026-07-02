@@ -6,7 +6,7 @@
 
 namespace JGeometry {
 
-inline void gekko_ps_copy12(register void* dst, register void* src)
+inline void gekko_ps_copy12( void* dst,  void* src)
 {
 #ifdef __MWERKS__ // clang-format off
 	asm {

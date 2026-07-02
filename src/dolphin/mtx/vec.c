@@ -3,7 +3,7 @@
 
 #define qr0 0
 
-asm void PSVECAdd(register Vec* a, register Vec* b, register Vec* c)
+asm void PSVECAdd( Vec* a,  Vec* b,  Vec* c)
 {
 #ifdef __MWERKS__ // clang-format off
 	psq_l  f2, Vec.x(a), 0, qr0
@@ -17,7 +17,7 @@ asm void PSVECAdd(register Vec* a, register Vec* b, register Vec* c)
 #endif // clang-format on
 }
 
-asm void PSVECSubtract(register Vec* a, register Vec* b, register Vec* c)
+asm void PSVECSubtract( Vec* a,  Vec* b,  Vec* c)
 {
 #ifdef __MWERKS__ // clang-format off
 	psq_l  f2, Vec.x(a), 0, qr0
@@ -31,7 +31,7 @@ asm void PSVECSubtract(register Vec* a, register Vec* b, register Vec* c)
 #endif // clang-format on
 }
 
-asm void PSVECScale(register Vec* src, register Vec* dst, register f32 mult)
+asm void PSVECScale( Vec* src,  Vec* dst,  f32 mult)
 {
 #ifdef __MWERKS__ // clang-format off
 	psq_l f0, Vec.x(src), 0, qr0
@@ -43,18 +43,18 @@ asm void PSVECScale(register Vec* src, register Vec* dst, register f32 mult)
 #endif // clang-format on
 }
 
-void PSVECNormalize(register Vec* vec1, register Vec* dst)
+void PSVECNormalize( Vec* vec1,  Vec* dst)
 {
-	register float c_half  = 0.5f;
-	register float c_three = 3.0f;
-	register float v1_xy;
-	register float v1_z;
-	register float xx_zz;
-	register float xx_yy;
-	register float sqsum;
-	register float rsqrt;
-	register float nwork0;
-	register float nwork1;
+	 float c_half  = 0.5f;
+	 float c_three = 3.0f;
+	 float v1_xy;
+	 float v1_z;
+	 float xx_zz;
+	 float xx_yy;
+	 float sqsum;
+	 float rsqrt;
+	 float nwork0;
+	 float nwork1;
 
 #ifdef __MWERKS__ // clang-format off
 	asm
@@ -77,7 +77,7 @@ void PSVECNormalize(register Vec* vec1, register Vec* dst)
 #endif // clang-format on
 }
 
-asm float PSVECMag(register Vec* v)
+asm float PSVECMag( Vec* v)
 {
 #ifdef __MWERKS__ // clang-format off
 	psq_l   f0, Vec.x(v), 0, qr0
@@ -97,7 +97,7 @@ asm float PSVECMag(register Vec* v)
 #endif // clang-format on
 }
 
-asm f32 PSVECDotProduct(register Vec* vec1, register Vec* vec2)
+asm f32 PSVECDotProduct( Vec* vec1,  Vec* vec2)
 {
 #ifdef __MWERKS__ // clang-format off
 	psq_l f2, Vec.y(vec1), 0, qr0
@@ -110,8 +110,8 @@ asm f32 PSVECDotProduct(register Vec* vec1, register Vec* vec2)
 #endif // clang-format on
 }
 
-asm void PSVECCrossProduct(register Vec* vec1, register Vec* vec2,
-                           register Vec* dst)
+asm void PSVECCrossProduct( Vec* vec1,  Vec* vec2,
+                            Vec* dst)
 {
 #ifdef __MWERKS__ // clang-format off
 	psq_l f1, Vec.x(vec2), 0, qr0
@@ -131,7 +131,7 @@ asm void PSVECCrossProduct(register Vec* vec1, register Vec* vec2,
 #endif // clang-format on
 }
 
-asm f32 PSVECSquareDistance(register Vec* vec1, register Vec* vec2)
+asm f32 PSVECSquareDistance( Vec* vec1,  Vec* vec2)
 {
 #ifdef __MWERKS__ // clang-format off
 	psq_l f0, Vec.y(vec1), 0, qr0
@@ -146,7 +146,7 @@ asm f32 PSVECSquareDistance(register Vec* vec1, register Vec* vec2)
 #endif // clang-format on
 }
 
-asm f32 PSVECDistance(register Vec* vec1, register Vec* vec2)
+asm f32 PSVECDistance( Vec* vec1,  Vec* vec2)
 {
 #ifdef __MWERKS__ // clang-format off
 	psq_l   f0, Vec.y(vec1), 0, qr0

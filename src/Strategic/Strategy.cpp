@@ -145,7 +145,7 @@ void TStrategy::perform(u32 param_1, JDrama::TGraphics* param_2)
 		// "ＮＰＣグループ") here. On real hardware the draw is dispatched by the master GX perform
 		// list (MarDirectorPreEntry::preEntry), which NEVER pushes ストラテジ — it draws the NPCs
 		// exclusively through "コンダクター" (0x204) into the dedicated ChrOpa/ChrXlu buffers. The
-		// NPC actors are scene-tree children of ＮＰＣグループ AND register to their TLiveManager
+		// NPC actors are scene-tree children of ＮＰＣグループ AND  to their TLiveManager
 		// (drawn by the conductor), so sms-boot's hand-driven scene->perform(0x8) — which walks the
 		// WHOLE scene tree (both ストラテジ and コンダクター) into one shared draw buffer — entered
 		// every NPC's J3DMatPacket TWICE per frame. A J3DMatPacket has a single `next` pointer:

@@ -358,7 +358,7 @@ void JRNLoadCurrentMtx(u32 param_1, u32 param_2, u32 param_3, u32 param_4,
 		param_9 << 18;
 	// clang-format on
 
-	// TODO: this is all wrong, it should be using the CP register macros
+	// TODO: this is all wrong, it should be using the CP  macros
 	GXCmd1u8(0x8);
 	GXCmd1u8(0x30);
 	GXCmd1u32(a);

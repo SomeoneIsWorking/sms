@@ -111,7 +111,7 @@ void TConsoleStr::loadAfter()
 	// in an undecompiled function, so the native build left unk94 uninitialized
 	// -> SEGV reading a null `this` in startAppearScenario. The console object
 	// ("GCコンソール") and this TConsoleStr ("コンソール文字") are siblings in the
-	// NameRef tree (all load()ed before any loadAfter), so register ourselves
+	// NameRef tree (all load()ed before any loadAfter), so  ourselves
 	// with the console here. Faithful reconstruction of the missing cache, not a
 	// guard around the symptom.
 	if (TGCConsole2* console

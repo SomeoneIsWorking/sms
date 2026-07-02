@@ -369,7 +369,7 @@ void JUTException::showGPRMap(OSContext* context)
 	}
 
 	if (!found_address_register) {
-		sConsole->print("  no register which seem to address.\n");
+		sConsole->print("  no  which seem to address.\n");
 	}
 }
 
@@ -632,7 +632,7 @@ void JUTException::createFB()
 
 // Native reimplementation: the original read the GameCube/Gekko FPSCR (floating
 // point status & control register) for the exception-dump screen. There is no
-// such register on the host; return 0.
+// such  on the host; return 0.
 u32 JUTException::getFpscr() {
   return 0;
 }

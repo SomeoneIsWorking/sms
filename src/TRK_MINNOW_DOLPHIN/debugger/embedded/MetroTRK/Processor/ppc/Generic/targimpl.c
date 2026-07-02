@@ -84,13 +84,13 @@ DSError TRKPPCAccessFPRegister(void* srcDestPtr, u32 fpr, BOOL read);
 DSError TRKPPCAccessSpecialReg(void* value, u32* access_func, BOOL read);
 void TRKExceptionHandler(u16);
 void TRKInterruptHandlerEnableInterrupts(void);
-void WriteFPSCR(register f64*);
-void ReadFPSCR(register f64*);
+void WriteFPSCR( f64*);
+void ReadFPSCR( f64*);
 void __TRK_set_MSR(u32 msr);
 u32 __TRK_get_MSR();
-static void TRK_ppc_memcpy(register void* dest, register const void* src,
-                           register int n, register u32 param_4,
-                           register u32 param_5);
+static void TRK_ppc_memcpy( void* dest,  const void* src,
+                            int n,  u32 param_4,
+                            u32 param_5);
 
 void TRKRestoreExtended1Block();
 void TRKUARTInterruptHandler();
@@ -106,7 +106,7 @@ asm u32 __TRK_get_MSR()
 #endif // clang-format on
 }
 
-asm void __TRK_set_MSR(register u32 msr) {
+asm void __TRK_set_MSR( u32 msr) {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
 	mtmsr msr
@@ -200,9 +200,9 @@ DSError TRKValidMemory32(const void* addr, size_t length,
 	return err;
 }
 
-static asm void TRK_ppc_memcpy(register void* dest, register const void* src,
-                               register int n, register u32 param_4,
-                               register u32 param_5) {
+static asm void TRK_ppc_memcpy( void* dest,  const void* src,
+                                int n,  u32 param_4,
+                                u32 param_5) {
 #ifdef __MWERKS__ // clang-format off
 #define msr		r8
 #define byte	r9

@@ -391,7 +391,7 @@ void TGCConsole2::startAppearTank()
 		return;
 	}
 
-	// TODO: needs register swapping
+	// TODO: needs  swapping
 	unk34[17] = 1;
 	unk59     = 1;
 	unk7C     = 0;
