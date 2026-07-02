@@ -50,6 +50,24 @@ inline u32 be32(const u8* p)
 // Must be called exactly once per freshly-loaded RARC buffer.
 JKRArchive::SDIFileEntry* sb_rarc_swap_to_host(void* buffer, JKRHeap* heap)
 {
+	// FAIL FAST (CLAUDE.md 2026-06-21): a null buffer here means an upstream loader
+	// (typically SMSLoadArchive → JKRDvdRipper::loadToMainRAM) returned null and its
+	// caller (JKRMemArchive::mountFixed / open) passed the null straight in. The
+	// downstream signature swap would SEGV at (rdi) with a two-frame backtrace that
+	// hides the real cause. Point at the ORIGIN: almost always a missing/misplaced
+	// disc image — sms-boot needs SUNBRIGHT_DISC set to a valid Super Mario Sunshine
+	// .iso (a decompressed GCM). The env-check message is aimed at that: run.sh /
+	// tools/render/title_sbs.sh do set it; a bare `./build-native/sms-boot` will not
+	// unless the user exports it themselves.
+	if (!buffer) {
+		OSReport("\n=== FATAL: sb_rarc_swap_to_host called with NULL buffer ===\n");
+		OSReport("  Upstream loader returned null; mountFixed/open forwarded it.\n");
+		OSReport("  Almost always: SMSLoadArchive failed because the disc image is missing.\n");
+		OSReport("  env SUNBRIGHT_DISC = %s\n",
+		         getenv("SUNBRIGHT_DISC") ? getenv("SUNBRIGHT_DISC") : "(unset)");
+		OSReport("  Default fallback is scratch/disc/sms.iso next to the binary.\n");
+		OSPanic(__FILE__, __LINE__, "null buffer in sb_rarc_swap_to_host");
+	}
 	JKRArchive::SArcHeader* h = (JKRArchive::SArcHeader*)buffer;
 	// SArcHeader: 8 x u32 (signature included -> the 'RARC' compare then matches
 	// on a host reading the swapped bytes as host-endian).
