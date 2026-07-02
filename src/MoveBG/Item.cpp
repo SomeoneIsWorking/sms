@@ -440,7 +440,15 @@ void TShine::appearSimple(int) { }
 
 void TShine::appearWithDemo(const char*) { }
 
-void TShine::kill() { }
+// Native port of TShine::kill (@0x801bced0). 13 instructions.
+// Chains TMapObjGeneral::kill, then sets unk154 = 1 — which is the
+// "self-schedule dead" flag consumed by TShine::loadAfter (unk154==1 →
+// virtual makeObjDead dispatch on the next scene load).
+void TShine::kill()
+{
+	TMapObjGeneral::kill();
+	unk154 = 1;
+}
 
 void TShine::makeMActors() { }
 
@@ -481,7 +489,39 @@ void TShine::loadAfter()
 	}
 }
 
-void TShine::loadBeforeInit(JSUMemoryInputStream& stream) { }
+// Native port of TShine::loadBeforeInit (@0x801bcc18). 40 instructions.
+// Reads three scene-stream params: a 32-byte name tag mapped to unk154
+// (0=normal, 2=quickly, 1=other), a signed s32 "wait time" defaulted
+// to 0x78 when -1 (→ unk134), and a signed s32 toggle with a
+// (val+1)<2 clamp yielding u8 unk190. Byte-verified against disasm.
+void TShine::loadBeforeInit(JSUMemoryInputStream& stream)
+{
+	char name_buf[32];
+	stream.readString(name_buf, 32);
+
+	if (strcmp(name_buf, "normal") == 0) {
+		unk154 = 0;
+	} else if (strcmp(name_buf, "quickly") == 0) {
+		unk154 = 2;
+	} else {
+		unk154 = 1;
+	}
+
+	int wait_time;
+	stream.read(&wait_time, 4);
+	if (wait_time == -1)
+		wait_time = 0x78;
+	unk134 = static_cast<u32>(wait_time);
+
+	int toggle;
+	stream.read(&toggle, 4);
+	// Byte-exact RE: if (toggle+1) < 2 (signed), keep toggle;
+	// else pin toggle to -1. Then unk190 = (u8)(toggle+1).
+	// Effect: toggle∈{-1,0} → unk190∈{0,1}; anything else → 0.
+	if (toggle + 1 >= 2)
+		toggle = -1;
+	unk190 = static_cast<u8>(toggle + 1);
+}
 
 TShine::TShine(const char* name)
     : TItem(name)
