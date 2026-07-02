@@ -580,29 +580,37 @@ void TLightWithDBSetManager::loadAfter()
 	unk1C = group->getLight(0)->mPosition;
 }
 
-void TLightWithDBSetManager::perform(u32 cue, JDrama::TGraphics* graphics)
+// Native port of TLightWithDBSetManager::perform (@0x80228394, 63 insns).
+// Dispatches active per-kind TLightWithDBSet buffers (player/mapobj/object/
+// indirect at unk14[0..3]). Two independent phase gates with independent
+// index-range selections:
+//   * flag & 0x20  → iterate a slice of unk14[]:
+//                    flag & 0x100000 → [3, 4)  (indirect only)
+//                    flag & 0x80000  → [2, 3)  (object only)
+//                    else            → [0, 2)  (player + mapobj)
+//   * flag & 0x800 → iterate ALL unk14[0..4)
+// Each iteration guards on the buffer's own unk20 "enabled" flag being set,
+// then forwards `flag` unchanged.
+void TLightWithDBSetManager::perform(u32 flag, JDrama::TGraphics* graphics)
 {
-	if (cue & CUE_LIGHT) {
-		int start;
-		int end;
-		if (cue & CUE_UNK80000) {
-			start = 3;
-			end   = 4;
-		} else if (cue & CUE_UNK40000) {
-			start = 2;
-			end   = 3;
-		} else {
-			start = 0;
-			end   = 2;
+	if (flag & 0x20) {
+		int start, end;
+		if (flag & 0x100000)      { start = 3; end = 4; }
+		else if (flag & 0x80000)  { start = 2; end = 3; }
+		else                       { start = 0; end = 2; }
+		for (int i = start; i < end; ++i) {
+			TLightWithDBSet* buf = unk14[i];
+			if (buf && buf->unk20)
+				buf->perform(flag, graphics);
 		}
-		for (int i = start; i < end; ++i)
-			if (unk14[i]->isEnabled())
-				unk14[i]->perform(cue, graphics);
 	}
-	if (cue & CUE_SET_DRAW_BUFFER) {
-		for (int i = 0; i < 4; ++i)
-			if (unk14[i]->isEnabled())
-				unk14[i]->perform(cue, graphics);
+
+	if (flag & 0x800) {
+		for (int i = 0; i < 4; ++i) {
+			TLightWithDBSet* buf = unk14[i];
+			if (buf && buf->unk20)
+				buf->perform(flag, graphics);
+		}
 	}
 }
 
