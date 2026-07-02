@@ -519,13 +519,62 @@ void TMapObjectLightWithDBSet::makeDrawBuffer()
 	}
 }
 
-// TPlayerLightWithDBSet::makeDrawBuffer (@0x80228eac, 137 insns) — still
-// stubbed: unlike the other 3 it has a THIRD search loop with a distinct
-// container-stride/base that isn't yet RE'd. Needles for the first two loops
-// (r31+0xc "太陽（プレイヤー）", r31+0x20 "太陽アンビエント（プレイヤー）")
-// are known; the third loop starts around 0x80228fa4. Deferred to a follow-up
-// increment rather than shipping a guessed body.
-void TPlayerLightWithDBSet::makeDrawBuffer() { }
+// Native port of TPlayerLightWithDBSet::makeDrawBuffer (@0x80228eac, 137 insns).
+// Same overall shape as the other 3 subclasses (two name-lookup loops, then a
+// buffer-alloc loop of length mBufferCount). The prior "third search loop"
+// note was WRONG on re-disassembly: there are only two name lookups; the
+// third loop @0x80228f7c is the buffer-allocation loop, not a name search.
+//
+// Player-specific deltas vs TIndirect/TObject/TMapObject (both RE'd from the
+// disasm, not guessed):
+//   * TLightDrawBuffer cap=0x80 (not 0x100) — 0x80228fac `li r5, 0x80`.
+//   * TLightDrawBuffer name arg = mAmbColors[ambIdx + i].name (dynamic per
+//     buffer) — 0x80228f90..0x80228fa0. Falls back to a literal if the amb
+//     name table isn't loaded yet.
+// Documented residuals (matches the same shape as TIndirect port's shortcuts
+// so we stay consistent, and captured here for follow-up):
+//   * The disasm allocates a 0x74-byte object then PROMOTES its vtable to a
+//     Player-specific TLightCommon subclass at 0x803da774 (`stw r31, 0(r24)`,
+//     r31 = 0x803e0000 - 0x588c). That subclass isn't yet declared in the
+//     hierarchy; TIndirect uses plain TLightCommon here too, and we match.
+//   * After setting mAmb/LightBaseIdx the disasm calls owner->vtable[0x18]
+//     (`getLightPosition`) once — no observable side-effect on our port's
+//     state, so we omit the call (same simplification as the TIndirect port).
+void TPlayerLightWithDBSet::makeDrawBuffer()
+{
+	static const char kLightNeedle[]
+	    = "\x91\xbe\x97\x7a\x81\x69\x83\x76\x83\x8c\x83\x43\x83\x84\x81\x5b\x81\x6a";  // "太陽（プレイヤー）"
+	static const char kAmbNeedle[]
+	    = "\x91\xbe\x97\x7a\x83\x41\x83\x93\x83\x72\x83\x47\x83\x93\x83\x67\x81\x69\x83\x76\x83\x8c\x83\x43\x83\x84\x81\x5b\x81\x6a";  // "太陽アンビエント（プレイヤー）"
+
+	int lightIdx = -1;
+	if (JDrama::TLightAry* la = gpTLightCommonLightAry)
+		lightIdx = sb_find_named_index(la->mLights, la->mLightCount, kLightNeedle);
+
+	JDrama::TAmbAry* aa = gpTLightCommonAmbAry;
+	int ambIdx = -1;
+	if (aa)
+		ambIdx = sb_find_named_index(aa->mAmbColors, aa->mAmbColorCount, kAmbNeedle);
+
+	mDrawBuffers = new TLightDrawBuffer*[mBufferCount];
+	for (int i = 0; i < mBufferCount; ++i) {
+		// mAmbColors[ambIdx + i].name — per-buffer name. If ambIdx failed to
+		// resolve OR the (ambIdx + i) index is out of range, fall back to a
+		// literal so we never deref garbage (fail-safe, not fail-silent —
+		// the search miss is a scene-data issue, not a port bug).
+		const char* bufName = "<TLightDrawBuffer>";
+		if (aa && ambIdx >= 0 && (ambIdx + i) < aa->mAmbColorCount) {
+			const char* n = aa->mAmbColors[ambIdx + i].getName();
+			if (n) bufName = n;
+		}
+		TLightDrawBuffer* buf = new TLightDrawBuffer(i, 0x80, bufName);
+		mDrawBuffers[i] = buf;
+		TLightCommon* owner = new TLightCommon("<TLightCommon>");
+		buf->setLight(owner);
+		owner->mAmbBaseIdx   = (u32)ambIdx;
+		owner->mLightBaseIdx = (u32)lightIdx;
+	}
+}
 
 // The decomp left the TLightWithDBSet hierarchy ctors and the manager's unk14
 // initialization unimplemented (declared-only). The base/subclass ctors are restored
