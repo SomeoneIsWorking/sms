@@ -457,12 +457,71 @@ void TIndirectLightWithDBSet::makeDrawBuffer()
 	}
 }
 
-// The remaining three subclass makeDrawBuffer bodies are still stubbed;
-// they share this exact shape with different needle strings (see the RE
-// journal). Filling them is the immediate follow-up.
+// Native port of TObjectLightWithDBSet::makeDrawBuffer (@0x80228d08, 105 insns).
+// Same shape as TIndirect above; needles at r31+0x40 / r31+0x58 in the
+// 0x8039d868 pointer table — LightAry "太陽（オブジェクト）" (same as
+// Indirect/MapObj) and AmbAry "太陽アンビエント（オブジェクト）" (same).
+void TObjectLightWithDBSet::makeDrawBuffer()
+{
+	static const char kLightNeedle[]
+	    = "\x91\xbe\x97\x7a\x81\x69\x83\x49\x83\x75\x83\x57\x83\x46\x83\x4e\x83\x67\x81\x6a";  // "太陽（オブジェクト）"
+	static const char kAmbNeedle[]
+	    = "\x91\xbe\x97\x7a\x83\x41\x83\x93\x83\x72\x83\x47\x83\x93\x83\x67\x81\x69\x83\x49\x83\x75\x83\x57\x83\x46\x83\x4e\x83\x67\x81\x6a";  // "太陽アンビエント（オブジェクト）"
+
+	int lightIdx = -1;
+	if (JDrama::TLightAry* la = gpTLightCommonLightAry)
+		lightIdx = sb_find_named_index(la->mLights, la->mLightCount, kLightNeedle);
+
+	int ambIdx = -1;
+	if (JDrama::TAmbAry* aa = gpTLightCommonAmbAry)
+		ambIdx = sb_find_named_index(aa->mAmbColors, aa->mAmbColorCount, kAmbNeedle);
+
+	mDrawBuffers = new TLightDrawBuffer*[mBufferCount];
+	for (int i = 0; i < mBufferCount; ++i) {
+		TLightDrawBuffer* buf = new TLightDrawBuffer(i, 0x100, "<TLightDrawBuffer>");
+		mDrawBuffers[i] = buf;
+		TLightCommon* owner = new TLightCommon("<TLightCommon>");
+		buf->setLight(owner);
+		owner->mAmbBaseIdx   = (u32)ambIdx;
+		owner->mLightBaseIdx = (u32)lightIdx;
+	}
+}
+
+// Native port of TMapObjectLightWithDBSet::makeDrawBuffer (@0x80228b74, 101 insns).
+// Needles at r31+0x7c / r31+0x94 — same strings as TObject/TIndirect.
+void TMapObjectLightWithDBSet::makeDrawBuffer()
+{
+	static const char kLightNeedle[]
+	    = "\x91\xbe\x97\x7a\x81\x69\x83\x49\x83\x75\x83\x57\x83\x46\x83\x4e\x83\x67\x81\x6a";  // "太陽（オブジェクト）"
+	static const char kAmbNeedle[]
+	    = "\x91\xbe\x97\x7a\x83\x41\x83\x93\x83\x72\x83\x47\x83\x93\x83\x67\x81\x69\x83\x49\x83\x75\x83\x57\x83\x46\x83\x4e\x83\x67\x81\x6a";  // "太陽アンビエント（オブジェクト）"
+
+	int lightIdx = -1;
+	if (JDrama::TLightAry* la = gpTLightCommonLightAry)
+		lightIdx = sb_find_named_index(la->mLights, la->mLightCount, kLightNeedle);
+
+	int ambIdx = -1;
+	if (JDrama::TAmbAry* aa = gpTLightCommonAmbAry)
+		ambIdx = sb_find_named_index(aa->mAmbColors, aa->mAmbColorCount, kAmbNeedle);
+
+	mDrawBuffers = new TLightDrawBuffer*[mBufferCount];
+	for (int i = 0; i < mBufferCount; ++i) {
+		TLightDrawBuffer* buf = new TLightDrawBuffer(i, 0x100, "<TLightDrawBuffer>");
+		mDrawBuffers[i] = buf;
+		TLightCommon* owner = new TLightCommon("<TLightCommon>");
+		buf->setLight(owner);
+		owner->mAmbBaseIdx   = (u32)ambIdx;
+		owner->mLightBaseIdx = (u32)lightIdx;
+	}
+}
+
+// TPlayerLightWithDBSet::makeDrawBuffer (@0x80228eac, 137 insns) — still
+// stubbed: unlike the other 3 it has a THIRD search loop with a distinct
+// container-stride/base that isn't yet RE'd. Needles for the first two loops
+// (r31+0xc "太陽（プレイヤー）", r31+0x20 "太陽アンビエント（プレイヤー）")
+// are known; the third loop starts around 0x80228fa4. Deferred to a follow-up
+// increment rather than shipping a guessed body.
 void TPlayerLightWithDBSet::makeDrawBuffer() { }
-void TObjectLightWithDBSet::makeDrawBuffer() { }
-void TMapObjectLightWithDBSet::makeDrawBuffer() { }
 
 // The decomp left the TLightWithDBSet hierarchy ctors and the manager's unk14
 // initialization unimplemented (declared-only). The base/subclass ctors are restored
