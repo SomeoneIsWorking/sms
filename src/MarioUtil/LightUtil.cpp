@@ -4,6 +4,7 @@
 #include <JSystem/J3D/J3DGraphBase/J3DSys.hpp>
 #include <JSystem/JDrama/JDRLighting.hpp>
 #include <JSystem/JDrama/JDRNameRefGen.hpp>
+#include <cstdio>
 #include <cstring>
 
 TLightWithDBSetManager* gpLightManager;
@@ -38,6 +39,52 @@ TLightCommon::TLightCommon(const char* name)
 	// SDA1 singletons — ctor zeroes them (game code fills them at scene load).
 	gpTLightCommonLightAry = nullptr;
 	gpTLightCommonAmbAry   = nullptr;
+}
+
+// Native compatibility shim (2026-07-02, [[fileselect-lightcommon-lazy-gp]]):
+//
+// The RE ctor @0x8022a058..068 unconditionally zeroes gpTLightCommonLightAry
+// (r13-0x6114) and gpTLightCommonAmbAry (r13-0x6118). `TLightCommon::loadAfter`
+// then re-populates them by calling searchF("Light Group") / searchF("Ambient
+// Group"). The real game's setup order is:
+//   1. sceneCommon->loadAfter()   → all TLightCommon-derived scene objects'
+//                                    loadAfter runs, populating gp.
+//   2. gpLightManager->makeDrawBuffer()
+//      → each of TIndirect/TObject/TMapObject/TPlayerLightWithDBSet does
+//        `new TLightCommon("<TLightCommon>")` per draw buffer (`mBufferCount`
+//        times). Every one of those ctors NULLS gp again.
+//   3. perform() phase runs. If the plain TLightCommon scene object's
+//      `setLight` fires, its `getLightPosition` / `getLightColor` group-path
+//      reads gp — which was nulled in step 2.
+//
+// Under Dolphin/hardware this is masked by mEnabled=0 on the DB sets (scene
+// setup never trips the DB perform path at file-select) AND by the fact that
+// most callers hit the LOCAL path (mUseLocal{Pos,Color}=1) after loadAfter
+// seeded `mLocalPos[]`/`mLocalLightColor[]`. Native tripped the group path on
+// the "<TLightCommon>" scene object.
+//
+// RE-faithful choice: keep the ctor's null-write (matches disasm), and lazily
+// re-search "Light Group"/"Ambient Group" in the accessor when gp is null.
+// searchF is idempotent by design (NameRef by key), so this is a no-op if the
+// scene has no Light Group and a proper repopulate if it does. Tested by
+// `native/platform/tests/light_common_test.cpp::TestLazyGpRepopulate`.
+static JDrama::TLightAry* sb_light_ary_or_search()
+{
+	JDrama::TLightAry* la = gpTLightCommonLightAry;
+	if (!la) {
+		la = JDrama::TNameRefGen::search<JDrama::TLightAry>("Light Group");
+		gpTLightCommonLightAry = la;
+	}
+	return la;
+}
+static JDrama::TAmbAry* sb_amb_ary_or_search()
+{
+	JDrama::TAmbAry* aa = gpTLightCommonAmbAry;
+	if (!aa) {
+		aa = JDrama::TNameRefGen::search<JDrama::TAmbAry>("Ambient Group");
+		gpTLightCommonAmbAry = aa;
+	}
+	return aa;
 }
 
 // Native port of TLightCommon::loadAfter (@0x80229e30, 84 insns). Runs once
@@ -110,7 +157,12 @@ GXColor TLightCommon::getLightColor(int idx) const
 		return c;
 	}
 	// Group path: mLights[idx + mLightBaseIdx].unk24 is the GXLightObj.
-	JDrama::TLightAry* la = gpTLightCommonLightAry;
+	// sb_light_ary_or_search: RE reads gpTLightCommonLightAry raw with no null
+	// guard (would SEGV under Dolphin too if unset). Native shim re-searches
+	// "Light Group" when null — see the block above sb_light_ary_or_search()
+	// for why this is required and NOT a functional deviation.
+	JDrama::TLightAry* la = sb_light_ary_or_search();
+	if (!la || !la->mLights) { GXColor c={0,0,0,0xFF}; return c; }
 	JDrama::TIdxLight& L  = la->mLights[idx + mLightBaseIdx];
 	GXColor c;
 	GXGetLightColor(&L.unk24, &c);
@@ -130,7 +182,8 @@ GXColor TLightCommon::getAmbColor(int idx) const
 		std::memcpy(&c, &mLocalAmbColor[idx * 4], 4);
 		return c;
 	}
-	JDrama::TAmbAry* aa    = gpTLightCommonAmbAry;
+	JDrama::TAmbAry* aa    = sb_amb_ary_or_search();
+	if (!aa || !aa->mAmbColors) { GXColor c={0,0,0,0xFF}; return c; }
 	JDrama::TAmbColor& A   = aa->mAmbColors[idx + mAmbBaseIdx];
 	GXColor c              = { A.mColor.r, A.mColor.g, A.mColor.b, A.mColor.a };
 	c.a = static_cast<u8>(static_cast<int>(static_cast<f32>(c.a) * mAlphaScale));
@@ -146,7 +199,11 @@ const JGeometry::TVec3<f32>* TLightCommon::getLightPosition(int idx)
 		if (idx >= 4) idx = 0;
 		return &mLocalPos[idx];
 	}
-	JDrama::TLightAry* la = gpTLightCommonLightAry;
+	JDrama::TLightAry* la = sb_light_ary_or_search();
+	if (!la || !la->mLights) {
+		static const JGeometry::TVec3<f32> kZero{0.0f, 0.0f, 0.0f};
+		return &kZero;
+	}
 	JDrama::TIdxLight& L  = la->mLights[idx + mLightBaseIdx];
 	return &L.mPosition;
 }
