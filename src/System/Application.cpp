@@ -326,6 +326,21 @@ void TApplication::initialize_bootAfter()
 {
 	JKRGetRootHeap()->becomeCurrentHeap();
 	JKRMemArchive* this_01 = new (JKRGetSystemHeap(), 0) JKRMemArchive;
+#ifdef SMS_NATIVE_PLATFORM
+	// FAIL FAST (CLAUDE.md 2026-06-21): if the /data/nintendo.arc load in
+	// initialize_boot returned null, arcBufNLogo is null and mountFixed->open->
+	// sb_rarc_swap_to_host will SEGV three frames below. Fail here at the origin --
+	// the disc image is the usual cause. (ASCII-only: this TU compiles with
+	// -fexec-charset=SHIFT_JIS.)
+	if (!arcBufNLogo) {
+		OSReport("\n=== FATAL: arcBufNLogo is NULL, SMSLoadArchive(/data/nintendo.arc) failed ===\n");
+		OSReport("  sms-boot needs a valid Super Mario Sunshine disc image.\n");
+		OSReport("  env SUNBRIGHT_DISC = %s\n",
+		         getenv("SUNBRIGHT_DISC") ? getenv("SUNBRIGHT_DISC") : "(unset)");
+		OSReport("  Default fallback is scratch/disc/sms.iso next to the binary.\n");
+		OSPanic(__FILE__, __LINE__, "arcBufNLogo is NULL after SMSLoadArchive");
+	}
+#endif
 	this_01->mountFixed(arcBufNLogo, MBF_0);
 
 	this_01->becomeCurrent("/font");
