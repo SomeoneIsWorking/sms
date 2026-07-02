@@ -707,11 +707,27 @@ TEggYoshi::TEggYoshi(const char* name)
 
 void TItemNozzle::touchPlayer(THitActor*) { }
 
-void TItemNozzle::put() { }
+// Native port of TItemNozzle::put (@0x801bbcf4). 6 instructions:
+// clear THitActor::unk64 bit 0 (rlwinm r,r,0,0,30 = &= ~1u), set mState = 1.
+void TItemNozzle::put()
+{
+	unk64 &= ~0x1u;
+	setState(1);
+}
 
 BOOL TItemNozzle::receiveMessage(THitActor*, u32) { }
 
-void TItemNozzle::appearing() { }
+// Native port of TItemNozzle::appearing (@0x801bbc0c). 9 instructions:
+// if the LIVE_FLAG_UNK10 bit is clear on mLiveFlag, return early;
+// otherwise setState(1) and clear unk64 bit 0. Byte-verified against
+// the rlwinm-0-27-27 mask (PPC bit 27 = host mask 0x10).
+void TItemNozzle::appearing()
+{
+	if (!checkLiveFlag(LIVE_FLAG_UNK10))
+		return;
+	setState(1);
+	unk64 &= ~0x1u;
+}
 
 // Native port of TItemNozzle::control (@0x801bbbec). RE via scratch/disasm.py.
 // ノズル ("nozzle") item — a pickup that swaps Mario's spray head. Per-tick behavior is
@@ -737,7 +753,21 @@ BOOL TNozzleBox::receiveMessage(THitActor*, u32) { }
 
 void TNozzleBox::touchPlayer(THitActor*) { }
 
-void TNozzleBox::control() { }
+// Native port of TNozzleBox::control (@0x801bb674). 22 instructions.
+// Chains to TMapObjGeneral::control, then a 3-guard predicate that
+// clears the unk166 "pending" latch iff (a) not in special state 4,
+// (b) unk166 was set, (c) no collisions this tick (mColCount == 0).
+void TNozzleBox::control()
+{
+	TMapObjGeneral::control();
+	if (unk148 == 4)
+		return;
+	if (unk166 == 0)
+		return;
+	if (mColCount != 0)
+		return;
+	unk166 = 0;
+}
 
 void TNozzleBox::loadAfter() { }
 
