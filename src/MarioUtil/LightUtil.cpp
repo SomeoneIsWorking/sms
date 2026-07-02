@@ -456,7 +456,28 @@ TLightWithDBSetManager::TLightWithDBSetManager(const char* name)
 #endif
 }
 
-void TLightWithDBSetManager::loadAfter() { }
+// Native port of TLightWithDBSetManager::loadAfter (@0x80228490, 41 insns).
+// Resolves the "Light Group" (TLightAry) singleton and caches the effect
+// light's data — GXLightObj colour → this->unk18, mPosition → this->unk1C..
+// unk24 (Vec3 aliased over the 3 u32 slots in the header). setLight reads
+// these when unk54 && unk55 are set (the calcLightBorder gate).
+void TLightWithDBSetManager::loadAfter()
+{
+	JDrama::TLightAry* la = JDrama::TNameRefGen::search<JDrama::TLightAry>("Light Group");
+	if (!la || !la->mLights) return;
+
+	// Effect light data = Light-Group[0]. GXGetLightColor reads the packed
+	// GXColor out of the group's GXLightObj (unk24).
+	GXGetLightColor(&la->mLights[0].unk24, &unk18);
+
+	// Vec3 mPosition aliased over unk1C/unk20/unk24 (3 u32 slots).
+	f32 x = la->mLights[0].mPosition.x;
+	f32 y = la->mLights[0].mPosition.y;
+	f32 z = la->mLights[0].mPosition.z;
+	std::memcpy(&unk1C, &x, 4);
+	std::memcpy(&unk20, &y, 4);
+	std::memcpy(&unk24, &z, 4);
+}
 
 // Native port of TLightWithDBSetManager::perform (@0x80228394, 63 insns).
 // Dispatches active per-kind TLightWithDBSet buffers (player/mapobj/object/
