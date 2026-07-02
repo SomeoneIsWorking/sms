@@ -31,17 +31,17 @@ public:
 	void makeDrawBuffer();
 	void addChildGroupObj(JDrama::TViewObjPtrListT<JDrama::TViewObj>*);
 
-	// fabricated
-	TLightWithDBSet* getUnk14(int i) { return unk14[i]; }
-	GXColor getUnk18() const { return unk18; }
-	f32 getUnk28() const { return unk28; }
+	// fabricated (renamed for clarity — see mLightSets below)
+	TLightWithDBSet* getUnk14(int i) { return mLightSets[i]; }
 
 public:
-	/* 0x10 */ TLightMario* unk10;
-	/* 0x14 */ TLightWithDBSet** unk14;
-	/* 0x18 */ GXColor unk18;
-	/* 0x1C */ JGeometry::TVec3<f32> unk1C;
-	/* 0x28 */ float unk28;
+	/* 0x10 */ TLightMario* mMarioLight;                    // was unk10
+	/* 0x14 */ TLightWithDBSet** mLightSets;                // was unk14 — 4 per-kind sets (player/mapobj/object/indirect)
+	/* 0x18 */ GXColor mEffectColor;                        // was unk18 — GX_LIGHT1 effect color
+	/* 0x1C */ u32 unk1C;                                   // aliased over Vec3<f32> mEffectPos (setLight reads as 3 f32s)
+	/* 0x20 */ u32 unk20;                                   // ...
+	/* 0x24 */ u32 unk24;                                   // ...
+	/* 0x28 */ float mEffectAlphaScale;                     // was unk28 — setLight scales mEffectColor.a
 	/* 0x2C */ float unk2C;
 	/* 0x30 */ float unk30;
 	/* 0x34 */ float unk34;
@@ -50,8 +50,8 @@ public:
 	/* 0x40 */ float unk40;
 	/* 0x44 */ float unk44;
 	/* 0x48 */ Vec unk48;
-	/* 0x54 */ u8 unk54;
-	/* 0x55 */ u8 unk55;
+	/* 0x54 */ u8 mEffectEnabled;                           // was unk54 — setLight gate #1 for GX_LIGHT1
+	/* 0x55 */ u8 mEffectValid;                             // was unk55 — setLight gate #2 for GX_LIGHT1
 };
 
 extern TLightWithDBSetManager* gpLightManager;
@@ -72,16 +72,16 @@ public:
 	// @0x80229d78 (getLightColor). All decomp-invisible until now — the
 	// header declared TLightCommon as size sizeof(TViewObj), which was WRONG.
 public:
-	/* 0x10 */ f32 unk10;      // ctor: SDA2 -0x17a4 first, then overwritten with -0x1770 default
-	/* 0x14 */ f32 unk14;      // = 0.0f
-	/* 0x18 */ f32 unk18;      // = 0.0f
-	/* 0x1C */ f32 unk1C;      // = 0.0f — used as an alpha scale in getLightColor's group path
-	/* 0x20 */ u32 unk20;      // idx-offset added into Light-Group index for getLightColor's group path
-	/* 0x24 */ u32 unk24;      // idx-offset added into Light-Group index for getLightPosition's group path
-	/* 0x28 */ u8  unk28;      // "use LOCAL ambient/light-color override" flag (getAmbColor + getLightColor)
+	/* 0x10 */ f32 unk10;              // ctor default 50.0f (SDA2 -0x1770) — meaning unresolved
+	/* 0x14 */ f32 unk14;              // = 0.0f
+	/* 0x18 */ f32 unk18;              // = 0.0f
+	/* 0x1C */ f32 mAlphaScale;        // was unk1C — multiplies GXColor.a in getLightColor/getAmbColor group paths
+	/* 0x20 */ u32 mAmbBaseIdx;        // was unk20 — added into AmbGroup index in getAmbColor group path
+	/* 0x24 */ u32 mLightBaseIdx;      // was unk24 — added into LightGroup index in getLightPosition/getLightColor group paths
+	/* 0x28 */ u8  mUseLocalColor;     // was unk28 — gate for LOCAL ambient/light-color override
 	/* 0x29 */ u8  mLocalAmbColor[2 * 4];     // packed GXColor[2] at 0x29..0x30 (getAmbColor local override)
 	/* 0x31 */ u8  mLocalLightColor[4 * 4];   // packed GXColor[4] at 0x31..0x40 (getLightColor local override)
-	/* 0x41 */ u8  unk41;      // "use LOCAL light-position override" flag (getLightPosition)
+	/* 0x41 */ u8  mUseLocalPos;       // was unk41 — gate for LOCAL light-position override (getLightPosition)
 	/* 0x42 */ u8  pad_42_43[2];
 	/* 0x44 */ JGeometry::TVec3<f32> mLocalPos[4];  // 4×12 = 48 bytes (0x44..0x74)
 };
@@ -103,12 +103,11 @@ public:
 	JDrama::TDrawBufObj* getXluDbo() { return mXluDrawBufferObject; }
 
 public:
-	/* 0x10 */ TLightCommon* unk10;
-	/* 0x14 */ JDrama::TDrawBufObj* mOpaDrawBufferObject;
-	/* 0x18 */ JDrama::TDrawBufObj* mXluDrawBufferObject;
-	/* 0x1C */ char unk1C[0x32];
-	/* 0x4E */ char unk4E[0x32];
-	/* 0x80 */ int unk80;
+	/* 0x10 */ TLightCommon* mOwnerLight;                   // was unk10 — perform dispatches setLight through it
+	/* 0x14 */ JDrama::TDrawBufObj* mOpaDrawBuf;            // was unk14 — perform forwards to it in OPA phase
+	/* 0x18 */ JDrama::TDrawBufObj* mXluDrawBuf;            // was unk18 — perform forwards to it in XLU phase
+	/* 0x1C */ char unk1C[0x64];
+	/* 0x80 */ int mLightIndex;                             // was unk80 — passed to owner->setLight as idx arg
 };
 
 class TLightWithDBSet : public JDrama::TViewObj {
@@ -128,15 +127,12 @@ public:
 	void changeLightDrawBuffer(int);
 	void addChildGroupObj(JDrama::TViewObjPtrListT<JDrama::TViewObj>*);
 
-	bool isEnabled() const { return unk20; }
-	void enable() { unk20 = true; }
-
-protected:
-	/* 0x10 */ TLightDrawBuffer** unk10;
-	/* 0x14 */ J3DDrawBuffer* unk14;
-	/* 0x18 */ J3DDrawBuffer* unk18;
-	/* 0x1C */ int unk1C;
-	/* 0x20 */ bool unk20;
+public:
+	/* 0x10 */ TLightDrawBuffer** mDrawBuffers;             // was unk10 — allocated by makeDrawBuffer, iterated in perform
+	/* 0x14 */ J3DDrawBuffer* mSavedOpaBuffer;              // was unk14 — J3D draw-buffer saved for reset
+	/* 0x18 */ J3DDrawBuffer* mSavedXluBuffer;              // was unk18 — J3D draw-buffer saved for reset
+	/* 0x1C */ int mBufferCount;                            // was unk1C — length of mDrawBuffers
+	/* 0x20 */ u8 mEnabled;                                 // was unk20 — set by external callers, gates manager perform
 };
 
 class TIndirectLightWithDBSet : public TLightWithDBSet {
