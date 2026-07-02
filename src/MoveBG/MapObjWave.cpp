@@ -9,6 +9,9 @@
 #include <dolphin/gx.h>
 #include <cmath>
 #include <cstdlib>
+#ifdef SMS_NATIVE_PLATFORM
+#include "sms_boot_wave_grid.h"   // pure grid dims / fade / phase / wave-height helpers
+#endif
 
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
@@ -81,9 +84,19 @@ void TMapObjWave::load(JSUMemoryInputStream&)
 	// @0x801dcc08. Fixed grid + tex parameters; wave coeffs selected by the stage's BG type.
 	mExtentBase    = 5200.0f;            // SDA2[-0x2510]
 	mGridStep      = 200.0f;             // SDA2[-0x250c]
+#ifdef SMS_NATIVE_PLATFORM
+	// Pure spec: sb::wave::grid_dims derives half/inv-half/strip-count from the two inputs.
+	// Unit-tested in native/platform/tests/wave_grid_test.cpp against the RE constants
+	// (2600 / 1/2600 / 26 / 52 verts-per-strip / 1352 total).
+	const auto g   = sb::wave::grid_dims(mExtentBase, mGridStep);
+	mHalfExtent    = g.half_extent;
+	mInvHalfExtent = g.inv_half_extent;
+	mStripCount    = g.strip_count;
+#else
 	mHalfExtent    = mExtentBase * 0.5f; // 2600
 	mInvHalfExtent = 1.0f / mHalfExtent; // 1/2600
 	mStripCount    = (s32)(mExtentBase / mGridStep); // 26
+#endif
 
 	mTexture   = (ResTIMG*)JKRFileLoader::getGlbResource("/scene/map/map/wave.bti");
 
@@ -122,9 +135,16 @@ void TMapObjWave::load(JSUMemoryInputStream&)
 void TMapObjWave::updateTime()
 {
 	// @0x801dce60. Scroll wave phases (wrap at 2pi) and tex offsets (wrap at 1.0).
+#ifdef SMS_NATIVE_PLATFORM
+	// Pure spec: sb::wave::phase_advance is the shared "add freq, single-subtract-wrap"
+	// unit-tested for the 2π boundary case.
+	mPhaseX = sb::wave::phase_advance(mPhaseX, mWaveFreqX);
+	mPhaseZ = sb::wave::phase_advance(mPhaseZ, mWaveFreqZ);
+#else
 	const f32 kTwoPi = 6.28318f; // SDA2[-0x24cc]
 	mPhaseX += mWaveFreqX; if (mPhaseX > kTwoPi) mPhaseX -= kTwoPi;
 	mPhaseZ += mWaveFreqZ; if (mPhaseZ > kTwoPi) mPhaseZ -= kTwoPi;
+#endif
 	mTexOffS += mTexRate;  if (mTexOffS > 1.0f)  mTexOffS -= 1.0f;
 	mTexOffT += mTexRate;  if (mTexOffT > 1.0f)  mTexOffT -= 1.0f;
 }
@@ -267,12 +287,19 @@ void TMapObjWave::draw()
 			const f32 xp = kInv2Pi * xw;
 			// Radial edge-fade alpha (faithful intent of draw @0x801dd2b8/0x801dd30c:
 			// mAlpha * clamp(1 - |coord|/half)); opaque at the Mario-centred middle.
+#ifdef SMS_NATIVE_PLATFORM
+			// Pure spec: sb::wave::fade_ratio — unit-tested against hand-derived (xc,zc,r)
+			// samples on the diagonal + corners.
+			const u8 aN = (u8)(mAlpha * sb::wave::fade_ratio(xc, zc, mInvHalfExtent));
+			const u8 aF = (u8)(mAlpha * sb::wave::fade_ratio(xc, zc + mGridStep, mInvHalfExtent));
+#else
 			f32 fadeN = 1.0f - mInvHalfExtent * std::fmax(std::fabs(xc), std::fabs(zc));
 			f32 fadeF = 1.0f - mInvHalfExtent * std::fmax(std::fabs(xc), std::fabs(zc + mGridStep));
 			if (fadeN < 0.0f) fadeN = 0.0f; if (fadeN > 1.0f) fadeN = 1.0f;
 			if (fadeF < 0.0f) fadeF = 0.0f; if (fadeF > 1.0f) fadeF = 1.0f;
 			const u8 aN = (u8)(mAlpha * fadeN);
 			const u8 aF = (u8)(mAlpha * fadeF);
+#endif
 
 			const f32 sinX = std::sin(mWaveFreqX * xp + mPhaseX);
 			// near vertex
@@ -310,7 +337,13 @@ f32 TMapObjWave::getHeight(float x, float y, float z) const
 f32 TMapObjWave::getWaveHeight(float x, float z) const
 {
 	// @801dd694: the same two-axis sinusoid draw() applies to the surface, sampled at (x,z).
+#ifdef SMS_NATIVE_PLATFORM
+	// Pure spec: sb::wave::wave_height_2d — unit-tested against hand-computed values.
+	return sb::wave::wave_height_2d(x, z, mAmpX, mWaveFreqX, mPhaseX,
+	                                mAmpZ, mWaveFreqZ, mPhaseZ);
+#else
 	const f32 kInv2Pi = 0.15915507f;
 	return mAmpX * std::sin(mWaveFreqX * (kInv2Pi * x) + mPhaseX)
 	     + mAmpZ * std::sin(mWaveFreqZ * (kInv2Pi * z) + mPhaseZ);
+#endif
 }
