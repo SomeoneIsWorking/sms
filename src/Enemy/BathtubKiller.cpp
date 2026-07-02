@@ -232,7 +232,33 @@ void TBathtubKillerManager::loadAfter() { }
 
 void TBathtubKillerManager::generateMushroom(JGeometry::TVec3<f32>) { }
 
-int TBathtubKillerManager::countActiveKillers() { return 0; }
+// Native port of TBathtubKillerManager::countActiveKillers (@0x8012f204).
+// Counts the manager's obj-array entries whose LIVE_FLAG_DEAD (bit 0 of mLiveFlag)
+// is clear — i.e. the killers that are currently alive. The iteration limit is the
+// same as TEnemyManager::getActiveObjNum(): clamped to the params-declared
+// mSLActiveEnemyNum when unk38 is set, else the full mObjNum. Faithful to the RE:
+// the limit is re-fetched every iteration (CodeWarrior didn't hoist it).
+int TBathtubKillerManager::countActiveKillers()
+{
+	TSpineEnemyParams* params = unk38;
+	int count                 = 0;
+	int i                     = 0;
+	for (;;) {
+		int limit = getObjNum();
+		if (params) {
+			int p = params->mSLActiveEnemyNum.get();
+			if (p <= limit)
+				limit = p;
+		}
+		if (i >= limit)
+			break;
+		TLiveActor* actor = (TLiveActor*)getObj(i);
+		if ((actor->mLiveFlag & LIVE_FLAG_DEAD) == 0)
+			++count;
+		++i;
+	}
+	return count;
+}
 
 int TBathtubKillerManager::countActiveShineKillers() { return 0; }
 
