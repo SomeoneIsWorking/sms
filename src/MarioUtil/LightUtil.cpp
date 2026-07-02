@@ -2,37 +2,37 @@
 #include <MarioUtil/DrawUtil.hpp>
 #include <MarioUtil/ReinitGX.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DSys.hpp>
-#include <JSystem/JDrama/JDRNameRefGen.hpp>
 #include <JSystem/JDrama/JDRLighting.hpp>
-#include <System/MarDirector.hpp>
-#include <Player/MarioAccess.hpp>
-#include <stdio.h>
-#include <string.h>
-
-// TODO: figure out headers & PCH
-static const char dummy1[] = "\0\0\0\0\0\0\0\0\0\0\0";
-
-JDrama::TAmbAry* TLightCommon::mAmbAry;
-JDrama::TLightAry* TLightCommon::mLightAry;
-Vec* TLightCommon::mLightPos;
+#include <cstring>
 
 TLightWithDBSetManager* gpLightManager;
 
+// r13-0x6114 = the "Light Group" TLightAry* singleton, cached at TLightCommon
+// ctor-time (initialized to 0 there, populated by JDrama scene load). r13-0x6118
+// is the AmbAry singleton, same pattern. Names below are fabricated.
+extern JDrama::TLightAry* gpTLightCommonLightAry;   // r13-0x6114
+extern JDrama::TAmbAry*   gpTLightCommonAmbAry;     // r13-0x6118
+JDrama::TLightAry* gpTLightCommonLightAry;
+JDrama::TAmbAry*   gpTLightCommonAmbAry;
+
 TLightCommon::TLightCommon(const char* name)
     : JDrama::TViewObj(name)
-    , unk10(0.0f)
-    , unk14(1.0f)
-    , unk18(1.0f)
-    , unk1C(1.0f)
+    , unk10(1.0f)  // final ctor write: SDA2 -0x1770 = 1.0f
+    , unk14(0.0f)
+    , unk18(0.0f)
+    , unk1C(0.0f)
     , unk20(0)
     , unk24(0)
     , unk28(0)
     , unk41(0)
 {
-	mAmbAry   = nullptr;
-	mLightAry = nullptr;
-	mLightPos = nullptr;
-	unk10     = 50.0f;
+	std::memset(mLocalAmbColor,   0, sizeof(mLocalAmbColor));
+	std::memset(mLocalLightColor, 0, sizeof(mLocalLightColor));
+	for (int i = 0; i < 4; ++i)
+		mLocalPos[i].set(0.0f, 0.0f, 0.0f);
+	// SDA1 singletons — ctor zeroes them (game code fills them at scene load).
+	gpTLightCommonLightAry = nullptr;
+	gpTLightCommonAmbAry   = nullptr;
 }
 
 void TLightCommon::loadAfter()
@@ -49,41 +49,59 @@ void TLightCommon::loadAfter()
 	unk29[1] = mAmbAry->getAmb(unk20 + 1)->getColor();
 }
 
-GXColor TLightCommon::getLightColor(int index) const
+// Native port of TLightCommon::getLightColor (@0x80229d78). When the LOCAL
+// override flag (unk28) is set, returns one of 4 packed GXColors stored at
+// mLocalLightColor[]. Otherwise reads the corresponding Light-Group entry,
+// scales its ALPHA by unk1C (as a f32 multiplier converted back to u8),
+// and returns the modified color.
+GXColor TLightCommon::getLightColor(int idx) const
 {
 	if (unk28) {
-		if (index >= 4)
-			index = 0;
-		return unk31[index];
+		if (idx >= 4) idx = 0;
+		GXColor c;
+		std::memcpy(&c, &mLocalLightColor[idx * 4], 4);
+		return c;
 	}
-	index += unk24;
-	GXColor color = mLightAry->getLight(index)->getColor();
-	color.a *= unk1C;
-	return color;
+	// Group path: mLights[idx + unk24].unk24 is the GXLightObj.
+	JDrama::TLightAry* la = gpTLightCommonLightAry;
+	JDrama::TIdxLight& L  = la->mLights[idx + unk24];
+	GXColor c;
+	GXGetLightColor(&L.unk24, &c);
+	// Alpha scaling: (float)a * unk1C, truncated to int, stored back as u8.
+	c.a = static_cast<u8>(static_cast<int>(static_cast<f32>(c.a) * unk1C));
+	return c;
 }
 
-GXColor TLightCommon::getAmbColor(int index) const
+// Native port of TLightCommon::getAmbColor (@0x80229cec). Same pattern as
+// getLightColor but the local override array has ONLY 2 entries (at
+// mLocalAmbColor[0..7]), and reads the Ambient Group instead of Light Group.
+GXColor TLightCommon::getAmbColor(int idx) const
 {
 	if (unk28) {
-		if (index >= 2)
-			index = 0;
-		return unk29[index];
+		if (idx >= 2) idx = 0;
+		GXColor c;
+		std::memcpy(&c, &mLocalAmbColor[idx * 4], 4);
+		return c;
 	}
-	index += unk20;
-	GXColor color = mAmbAry->getAmb(index)->getColor();
-	color.a *= unk18;
-	return color;
+	JDrama::TAmbAry* aa    = gpTLightCommonAmbAry;
+	JDrama::TAmbColor& A   = aa->mAmbColors[idx + unk20];
+	GXColor c              = { A.mColor.r, A.mColor.g, A.mColor.b, A.mColor.a };
+	c.a = static_cast<u8>(static_cast<int>(static_cast<f32>(c.a) * unk1C));
+	return c;
 }
 
-Vec* TLightCommon::getLightPosition(int index)
+// Native port of TLightCommon::getLightPosition (@0x80229ca0). If the local
+// override flag (unk41) is set, returns &mLocalPos[idx]. Otherwise returns
+// &Light-Group[idx + unk24].mPosition (offset 0x10 in TPlacement).
+const JGeometry::TVec3<f32>* TLightCommon::getLightPosition(int idx)
 {
 	if (unk41) {
-		if (index >= 4)
-			index = 0;
-		return unk44[index];
+		if (idx >= 4) idx = 0;
+		return &mLocalPos[idx];
 	}
-	index += unk24;
-	return &mLightAry->getLight(index)->mPosition;
+	JDrama::TLightAry* la = gpTLightCommonLightAry;
+	JDrama::TIdxLight& L  = la->mLights[idx + unk24];
+	return &L.mPosition;
 }
 
 void TLightCommon::setLight(const JDrama::TGraphics* gfx, int index)
@@ -114,29 +132,12 @@ void TLightCommon::setLight(const JDrama::TGraphics* gfx, int index)
 	GXSetChanAmbColor(GX_COLOR0A0, getAmbColor(index));
 }
 
-void TLightCommon::perform(u32 cue, JDrama::TGraphics* graphics)
-{
-	if (cue & CUE_DRAW_INIT) {
-		ReInitializeGX();
-		SMS_DrawInit();
-		GXLightObj light;
-		GXInitLightPos(&light, getLightPosition(0)->x, getLightPosition(0)->y,
-		               getLightPosition(0)->z);
-		GXInitLightColor(&light, getLightColor(0));
-		GXInitLightAttn(&light, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-		GXLoadLightObjImm(&light, GX_LIGHT0);
-		GXLoadLightObjImm(&light, GX_LIGHT1);
-		GXLoadLightObjImm(&light, GX_LIGHT2);
-	}
-	if (cue & CUE_LIGHT)
-		setLight(graphics, 0);
-}
+// TLightMario overrides — stubbed for now. TLightCommon's base impl is what
+// the file-select light path uses (setLight port in scene_drive.cpp reads from
+// Light-Group directly, not through these getters). Faithful ports pending.
+GXColor TLightMario::getLightColor(int) const { return GXColor{0, 0, 0, 0xFF}; }
 
-void TLightShadow::perform(u32 cue, JDrama::TGraphics* graphics)
-{
-	if (cue & CUE_LIGHT)
-		setLight(graphics, 1);
-}
+GXColor TLightMario::getAmbColor(int) const   { return GXColor{0, 0, 0, 0xFF}; }
 
 void TLightMario::perform(u32 cue, JDrama::TGraphics* graphics)
 {
