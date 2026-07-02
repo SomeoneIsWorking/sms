@@ -85,7 +85,7 @@ JDrama::TViewObj* TMarDirector::initECTMir(
 	TMirrorCamera* mirrorCam
 	    = JDrama::TNameRefGen::search<TMirrorCamera>("鏡カメラ");
 
-	GXTexObj& obj = mirrorCam->unk60;
+	GXTexObj& obj = mirrorCam->mMirrorTexObj;
 	mirrorTex->setTexAttb(obj);
 	mirrorTex->setSrcRect(
 	    JDrama::TRect(0, 0, GXGetTexObjWidth(&obj), GXGetTexObjHeight(&obj)));

@@ -214,7 +214,7 @@ void TMapStaticObj::perform(u32 param_1, JDrama::TGraphics* param_2)
 	}
 
 	if ((!(param_1 & 0x200) || !(unk68->unk40 & 0x10)
-	     || (gpMirrorModelManager->unk18 != -1 ? true : false))
+	     || (gpMirrorModelManager->mCurrentMirrorIndex != -1 ? true : false))
 	    && unk70) {
 		if (param_1 & 0x2) {
 			MsMtxSetXYZRPH(unk70->getModel()->getBaseTRMtx(), mPosition.x,
