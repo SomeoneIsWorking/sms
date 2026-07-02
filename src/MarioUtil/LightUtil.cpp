@@ -92,11 +92,68 @@ const JGeometry::TVec3<f32>* TLightCommon::getLightPosition(int idx)
 
 void TLightCommon::setLight(const JDrama::TGraphics*, int) { }
 
-void TLightCommon::perform(u32, JDrama::TGraphics*) { }
+// Forward decls for engine primitives called by perform. Symbols already
+// resolve through the native GX shim / SMS runtime.
+extern "C" void ReInitializeGX();
+void SMS_DrawInit();
 
-void TLightShadow::perform(u32, JDrama::TGraphics*) { }
+// Native port of TLightCommon::perform (@0x802298fc). Two independent phase
+// gates:
+//   * flag & 0x80 (bit 24) — the LIGHT-INIT phase: pull position via
+//     getLightPosition(0) + color via getLightColor(0), build a single
+//     GXLightObj with all-zero attenuation (= GX directional-uniform
+//     configuration), and broadcast it to GX_LIGHT0/1/2. Also flushes
+//     ReInitializeGX + SMS_DrawInit before the load.
+//   * flag & 0x20 (bit 26) — the setLight phase: dispatch to the virtual
+//     setLight(graphics, 0). Subclasses override this.
+// Faithful to the disasm's slot layout and the RE-verified all-zero
+// GXInitLightAttn call.
+void TLightCommon::perform(u32 flag, JDrama::TGraphics* graphics)
+{
+	if (flag & 0x80) {
+		ReInitializeGX();
+		SMS_DrawInit();
 
-void TLightMario::perform(u32, JDrama::TGraphics*) { }
+		const JGeometry::TVec3<f32>* pos = getLightPosition(0);
+		GXColor                       col = getLightColor(0);
+
+		GXLightObj obj{};
+		GXInitLightPos(&obj, pos->x, pos->y, pos->z);
+		GXInitLightColor(&obj, col);
+		GXInitLightAttn(&obj, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		GXLoadLightObjImm(&obj, GX_LIGHT0);
+		GXLoadLightObjImm(&obj, GX_LIGHT1);
+		GXLoadLightObjImm(&obj, GX_LIGHT2);
+	}
+
+	if (flag & 0x20) {
+		setLight(graphics, 0);
+	}
+}
+
+void TLightShadow::perform(u32 flag, JDrama::TGraphics* graphics)
+{
+	// Native port of TLightShadow::perform (@0x802298c0). Same phase gate as
+	// TLightCommon's flag & 0x20 branch, dispatching to setLight with the
+	// hardcoded index 1 (the shadow-light's slot in the light group).
+	if (flag & 0x20)
+		setLight(graphics, 1);
+}
+
+// Native port of TLightMario::perform (@0x80229880). Same phase gate as
+// TLightShadow's, but the setLight index comes from gpMSMainProc's current
+// stage state (a s16 at the manager singleton, SDA1[-0x6098]). Fallback to 0
+// when we can't resolve the singleton on native — matches the "no-effect"
+// default the file-select scene actually uses.
+void TLightMario::perform(u32 flag, JDrama::TGraphics* graphics)
+{
+	if (flag & 0x20) {
+		// TODO: wire gpMSMainProc's s16 stage-state field into this index.
+		// The RE reads `lha r5, 0(r6)` where r6 = *(r13-0x6098) = gpMSMainProc.
+		// Default 0 is the safe file-select value.
+		setLight(graphics, 0);
+	}
+}
 
 void TLightMario::setLight(const JDrama::TGraphics*, int) { }
 
