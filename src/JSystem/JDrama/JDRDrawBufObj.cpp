@@ -89,14 +89,20 @@ void TDrawBufObj::perform(u32 cue, TGraphics* graphics)
 		// reflective-water re-entry is ported, drop native's stale phase-6 MapXlu redraw so the display
 		// matches GC (the correct phase-1 sea shows through). PROPER FIX: port the water-reflection
 		// MapXlu re-entry (TModelWaterManager / the pass2→pass3 EFB composite). A/B: SB_KEEP_PH6_MAPXLU=1.
-		if (&sb_boot_capture_phase && sb_boot_capture_phase() == 6) {
-			const char* nm = getName();
-			if (nm && std::strcmp(nm, "DrawBuf MapXlu") == 0) {
-				static int keep = -1;
-				if (keep < 0) { const char* e = getenv("SB_KEEP_PH6_MAPXLU"); keep = (e && e[0] && e[0] != '0') ? 1 : 0; }
-				if (!keep) return;
-			}
-		}
+		// 2026-07-02: gate below is DEAD CODE (debug_journal/2026-07-02_overbright_stopgap_is_dead_code.md).
+		// SB_DRAWFLAG_DBG proves `DrawBuf MapXlu` fires only at ph0 (setup) and ph1 (unk40 flush),
+		// NEVER at ph6 — perform-list routing moved map-translucent draws to `DrawBuf Map 半透明優先`
+		// in ph6. Both SB_KEEP_PH6_MAPXLU=1 and unset measure identical mean|Δ|=58.2 on the
+		// title-screen overbright harness. Kept commented so the intent survives; bandaid-free
+		// fix = port TMapObjSeaIndirect::perform (EFB screen-texture composite).
+		// if (&sb_boot_capture_phase && sb_boot_capture_phase() == 6) {
+		// 	const char* nm = getName();
+		// 	if (nm && std::strcmp(nm, "DrawBuf MapXlu") == 0) {
+		// 		static int keep = -1;
+		// 		if (keep < 0) { const char* e = getenv("SB_KEEP_PH6_MAPXLU"); keep = (e && e[0] && e[0] != '0') ? 1 : 0; }
+		// 		if (!keep) return;
+		// 	}
+		// }
 		// Attribute the shapes this flush captures to THIS draw buffer by name (overbright harness).
 		if (&sb_boot_capture_set_drawbuf) sb_boot_capture_set_drawbuf(getName());
 		// SB_DRAWFLAG_DBG: which phase actually sets the draw bit (0x8) for each named buffer —
