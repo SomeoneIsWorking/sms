@@ -5,6 +5,10 @@
 
 TLightWithDBSetManager* gpLightManager;
 
+// Forward decls for engine primitives called from perform/setLight.
+extern "C" void ReInitializeGX();
+void SMS_DrawInit();
+
 // r13-0x6114 = the "Light Group" TLightAry* singleton, cached at TLightCommon
 // ctor-time (initialized to 0 there, populated by JDrama scene load). r13-0x6118
 // is the AmbAry singleton, same pattern. Names below are fabricated.
@@ -90,12 +94,80 @@ const JGeometry::TVec3<f32>* TLightCommon::getLightPosition(int idx)
 	return &L.mPosition;
 }
 
-void TLightCommon::setLight(const JDrama::TGraphics*, int) { }
+// Native port of TLightCommon::setLight (@0x80229a30, 156 insns). Broadcasts
+// three GX lights (LIGHT0 positional, LIGHT1 gpLightManager-effect if enabled,
+// LIGHT2 specular-directional) — the real light source the pre-oracle
+// scene_drive.cpp hack was faking. Matches the pure spec at
+// native/render/sms_boot_setlight.h (value-verified by the GX oracle for
+// stage-15 file-select's 3-white-light baseline). Slot arg to the getters is
+// `idx * 2` per the disasm's `slwi r31, r30, 1` — file-select passes idx=0 so
+// the doubling is transparent, but faithful for future callers.
+void TLightCommon::setLight(const JDrama::TGraphics* graphics, int idx)
+{
+	ReInitializeGX();
+	SMS_DrawInit();
 
-// Forward decls for engine primitives called by perform. Symbols already
-// resolve through the native GX shim / SMS runtime.
-extern "C" void ReInitializeGX();
-void SMS_DrawInit();
+	const int  gi   = idx * 2;              // getter idx (faithful to `slwi r31, r30, 1`)
+	MtxPtr     view = const_cast<JDrama::TGraphics*>(graphics)->getUnkB4();
+
+	GXLightObj obj{};
+
+	// --- GX_LIGHT0 — positional world light (Light-Group[idx+unk24]). ---
+	{
+		const JGeometry::TVec3<f32>* wpos = getLightPosition(gi);
+		JGeometry::TVec3<f32>        vpos;
+		PSMTXMultVec(view, const_cast<JGeometry::TVec3<f32>*>(wpos), &vpos);
+		GXInitLightPos(&obj, vpos.x, vpos.y, vpos.z);
+
+		GXColor col = getLightColor(gi);
+		GXInitLightColor(&obj, col);
+
+		// GXInitLightAttn(a0=1, a1=0, a2=0, k0=1, k1=0, k2=0) — GC default.
+		GXInitLightAttn(&obj, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f);
+		GXLoadLightObjImm(&obj, GX_LIGHT0);
+	}
+
+	// --- GX_LIGHT1 — gpLightManager's "effect" (specular sun) light, gated
+	// on unk54 && unk55. Position is manager's Vec3<f32> aliased as unk1C..unk24
+	// (the header still declares those as u32 slots because the ctor writes them
+	// through the `unk1C = unk20 = unk24 = 0` path in TLightWithDBSetManager). ---
+	if (gpLightManager && gpLightManager->unk54 && gpLightManager->unk55) {
+		// Reinterpret the 3 consecutive u32 slots as a Vec3<f32> — the game's
+		// C++ source did this by pointer arithmetic on the manager instance.
+		const JGeometry::TVec3<f32>* mgrPos =
+		    reinterpret_cast<const JGeometry::TVec3<f32>*>(&gpLightManager->unk1C);
+		JGeometry::TVec3<f32> vpos;
+		PSMTXMultVec(view, const_cast<JGeometry::TVec3<f32>*>(mgrPos), &vpos);
+		GXInitLightPos(&obj, vpos.x, vpos.y, vpos.z);
+
+		// Color: manager's GXColor (unk18) with alpha scaled by unk28 (f32).
+		GXColor col = gpLightManager->unk18;
+		col.a = static_cast<u8>(static_cast<int>(static_cast<f32>(col.a)
+		                                        * gpLightManager->unk28));
+		GXInitLightColor(&obj, col);
+
+		// Spot(1, 0=OFF) + DistAttn(-0x17a0, -0x179c, 3=EXP) — SDA2 constants.
+		GXInitLightAttnA(&obj, 1.0f, 0.0f, 0.0f);
+		GXInitLightDistAttn(&obj, /*ref_distance=*/ 1000.0f, /*ref_brightness=*/ 0.5f,
+		                    GX_DA_MEDIUM);
+		GXLoadLightObjImm(&obj, GX_LIGHT1);
+	}
+
+	// --- GX_LIGHT2 — specular-directional (dir = -normalize(view-pos)). ---
+	{
+		const JGeometry::TVec3<f32>* wpos = getLightPosition(gi);
+		JGeometry::TVec3<f32>        vpos;
+		PSMTXMultVec(view, const_cast<JGeometry::TVec3<f32>*>(wpos), &vpos);
+		JGeometry::TVec3<f32> nrm = vpos;
+		PSVECNormalize(&nrm, &nrm);
+		GXInitSpecularDir(&obj, -nrm.x, -nrm.y, -nrm.z);
+
+		GXColor col = getLightColor(gi);
+		GXInitLightColor(&obj, col);
+		GXInitLightAttn(&obj, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f);
+		GXLoadLightObjImm(&obj, GX_LIGHT2);
+	}
+}
 
 // Native port of TLightCommon::perform (@0x802298fc). Two independent phase
 // gates:
