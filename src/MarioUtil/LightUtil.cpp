@@ -25,11 +25,11 @@ TLightCommon::TLightCommon(const char* name)
     , unk10(1.0f)  // final ctor write: SDA2 -0x1770 = 1.0f
     , unk14(0.0f)
     , unk18(0.0f)
-    , unk1C(0.0f)
-    , unk20(0)
-    , unk24(0)
-    , unk28(0)
-    , unk41(0)
+    , mAlphaScale(0.0f)
+    , mAmbBaseIdx(0)
+    , mLightBaseIdx(0)
+    , mUseLocalColor(0)
+    , mUseLocalPos(0)
 {
 	std::memset(mLocalAmbColor,   0, sizeof(mLocalAmbColor));
 	std::memset(mLocalLightColor, 0, sizeof(mLocalLightColor));
@@ -72,9 +72,9 @@ void TLightCommon::loadAfter()
 	}
 
 	// Populate local light-color + local position arrays from
-	// Light-Group[unk24 .. unk24+4] — 4 entries.
+	// Light-Group[mLightBaseIdx .. mLightBaseIdx+4] — 4 entries.
 	for (int i = 0; i < 4; ++i) {
-		JDrama::TIdxLight& L = lightAry->mLights[i + unk24];
+		JDrama::TIdxLight& L = lightAry->mLights[i + mLightBaseIdx];
 		// mLocalLightColor slot 0/1/2/3 lives at offset 0x31 + i*4 (4 bytes).
 		GXColor col;
 		GXGetLightColor(&L.unk24, &col);
@@ -83,10 +83,10 @@ void TLightCommon::loadAfter()
 		mLocalPos[i].set(L.mPosition.x, L.mPosition.y, L.mPosition.z);
 	}
 
-	// Populate local ambient colors from AmbAry->mAmbColors[unk20 + 0..1].
+	// Populate local ambient colors from AmbAry->mAmbColors[mAmbBaseIdx + 0..1].
 	if (ambAry && ambAry->mAmbColors) {
 		for (int i = 0; i < 2; ++i) {
-			JUtility::TColor& c = ambAry->mAmbColors[i + unk20].mColor;
+			JUtility::TColor& c = ambAry->mAmbColors[i + mAmbBaseIdx].mColor;
 			// Layout at this + 0x29 + i*4.
 			mLocalAmbColor[i * 4 + 0] = c.r;
 			mLocalAmbColor[i * 4 + 1] = c.g;
@@ -103,19 +103,19 @@ void TLightCommon::loadAfter()
 // and returns the modified color.
 GXColor TLightCommon::getLightColor(int idx) const
 {
-	if (unk28) {
+	if (mUseLocalColor) {
 		if (idx >= 4) idx = 0;
 		GXColor c;
 		std::memcpy(&c, &mLocalLightColor[idx * 4], 4);
 		return c;
 	}
-	// Group path: mLights[idx + unk24].unk24 is the GXLightObj.
+	// Group path: mLights[idx + mLightBaseIdx].unk24 is the GXLightObj.
 	JDrama::TLightAry* la = gpTLightCommonLightAry;
-	JDrama::TIdxLight& L  = la->mLights[idx + unk24];
+	JDrama::TIdxLight& L  = la->mLights[idx + mLightBaseIdx];
 	GXColor c;
 	GXGetLightColor(&L.unk24, &c);
-	// Alpha scaling: (float)a * unk1C, truncated to int, stored back as u8.
-	c.a = static_cast<u8>(static_cast<int>(static_cast<f32>(c.a) * unk1C));
+	// Alpha scaling: (float)a * mAlphaScale, truncated to int, stored back as u8.
+	c.a = static_cast<u8>(static_cast<int>(static_cast<f32>(c.a) * mAlphaScale));
 	return c;
 }
 
@@ -124,16 +124,16 @@ GXColor TLightCommon::getLightColor(int idx) const
 // mLocalAmbColor[0..7]), and reads the Ambient Group instead of Light Group.
 GXColor TLightCommon::getAmbColor(int idx) const
 {
-	if (unk28) {
+	if (mUseLocalColor) {
 		if (idx >= 2) idx = 0;
 		GXColor c;
 		std::memcpy(&c, &mLocalAmbColor[idx * 4], 4);
 		return c;
 	}
 	JDrama::TAmbAry* aa    = gpTLightCommonAmbAry;
-	JDrama::TAmbColor& A   = aa->mAmbColors[idx + unk20];
+	JDrama::TAmbColor& A   = aa->mAmbColors[idx + mAmbBaseIdx];
 	GXColor c              = { A.mColor.r, A.mColor.g, A.mColor.b, A.mColor.a };
-	c.a = static_cast<u8>(static_cast<int>(static_cast<f32>(c.a) * unk1C));
+	c.a = static_cast<u8>(static_cast<int>(static_cast<f32>(c.a) * mAlphaScale));
 	return c;
 }
 
@@ -142,12 +142,12 @@ GXColor TLightCommon::getAmbColor(int idx) const
 // &Light-Group[idx + unk24].mPosition (offset 0x10 in TPlacement).
 const JGeometry::TVec3<f32>* TLightCommon::getLightPosition(int idx)
 {
-	if (unk41) {
+	if (mUseLocalPos) {
 		if (idx >= 4) idx = 0;
 		return &mLocalPos[idx];
 	}
 	JDrama::TLightAry* la = gpTLightCommonLightAry;
-	JDrama::TIdxLight& L  = la->mLights[idx + unk24];
+	JDrama::TIdxLight& L  = la->mLights[idx + mLightBaseIdx];
 	return &L.mPosition;
 }
 
@@ -169,7 +169,7 @@ void TLightCommon::setLight(const JDrama::TGraphics* graphics, int idx)
 
 	GXLightObj obj{};
 
-	// --- GX_LIGHT0 — positional world light (Light-Group[idx+unk24]). ---
+	// --- GX_LIGHT0 — positional world light (Light-Group[idx+mLightBaseIdx]). ---
 	{
 		const JGeometry::TVec3<f32>* wpos = getLightPosition(gi);
 		JGeometry::TVec3<f32>        vpos;
@@ -185,10 +185,10 @@ void TLightCommon::setLight(const JDrama::TGraphics* graphics, int idx)
 	}
 
 	// --- GX_LIGHT1 — gpLightManager's "effect" (specular sun) light, gated
-	// on unk54 && unk55. Position is manager's Vec3<f32> aliased as unk1C..unk24
-	// (the header still declares those as u32 slots because the ctor writes them
-	// through the `unk1C = unk20 = unk24 = 0` path in TLightWithDBSetManager). ---
-	if (gpLightManager && gpLightManager->unk54 && gpLightManager->unk55) {
+	// on mEffectEnabled && mEffectValid. Position is the manager's Vec3<f32>
+	// aliased over unk1C/unk20/unk24 (the header keeps those as u32 slots
+	// because the ctor writes them through `unk1C = unk20 = unk24 = 0`). ---
+	if (gpLightManager && gpLightManager->mEffectEnabled && gpLightManager->mEffectValid) {
 		// Reinterpret the 3 consecutive u32 slots as a Vec3<f32> — the game's
 		// C++ source did this by pointer arithmetic on the manager instance.
 		const JGeometry::TVec3<f32>* mgrPos =
@@ -197,10 +197,10 @@ void TLightCommon::setLight(const JDrama::TGraphics* graphics, int idx)
 		PSMTXMultVec(view, const_cast<JGeometry::TVec3<f32>*>(mgrPos), &vpos);
 		GXInitLightPos(&obj, vpos.x, vpos.y, vpos.z);
 
-		// Color: manager's GXColor (unk18) with alpha scaled by unk28 (f32).
-		GXColor col = gpLightManager->unk18;
+		// Color: manager's mEffectColor with alpha scaled by mEffectAlphaScale.
+		GXColor col = gpLightManager->mEffectColor;
 		col.a = static_cast<u8>(static_cast<int>(static_cast<f32>(col.a)
-		                                        * gpLightManager->unk28));
+		                                        * gpLightManager->mEffectAlphaScale));
 		GXInitLightColor(&obj, col);
 
 		// Spot(1, 0=OFF) + DistAttn(-0x17a0, -0x179c, 3=EXP) — SDA2 constants.
@@ -314,8 +314,8 @@ TLightDrawBuffer::TLightDrawBuffer(int, u32, const char* name)
 void TLightDrawBuffer::perform(u32 flag, JDrama::TGraphics* graphics)
 {
 	if (flag & 0x20) {
-		if (unk10)
-			unk10->setLight(graphics, unk80);
+		if (mOwnerLight)
+			mOwnerLight->setLight(graphics, mLightIndex);
 	}
 }
 
@@ -331,71 +331,71 @@ void TLightDrawBuffer::perform(u32 flag, JDrama::TGraphics* graphics)
 // harmless.
 void TLightWithDBSet::perform(u32 flag, JDrama::TGraphics* graphics)
 {
-	if (!unk10) return;  // makeDrawBuffer not yet populated on this instance
+	if (!mDrawBuffers) return;  // makeDrawBuffer not yet populated on this instance
 
 	if (flag & 0x20) {
 		const bool do_unk14_8 = (flag & 0x10000) != 0;
 		const bool do_unk18_8 = (flag & 0x20000) != 0;
-		for (int i = 0; i < unk1C; ++i) {
-			TLightDrawBuffer* buf = unk10[i];
+		for (int i = 0; i < mBufferCount; ++i) {
+			TLightDrawBuffer* buf = mDrawBuffers[i];
 			buf->perform(0x20, graphics);
-			if (do_unk14_8 && buf->unk14) buf->unk14->perform(8, graphics);
-			if (do_unk18_8 && buf->unk18) buf->unk18->perform(8, graphics);
+			if (do_unk14_8 && buf->mOpaDrawBuf) buf->mOpaDrawBuf->perform(8, graphics);
+			if (do_unk18_8 && buf->mXluDrawBuf) buf->mXluDrawBuf->perform(8, graphics);
 		}
 	}
 
 	if (flag & 0x800) {
-		for (int i = 0; i < unk1C; ++i) {
-			TLightDrawBuffer* buf = unk10[i];
-			if (buf->unk14) buf->unk14->perform(0x480, graphics);
-			if (buf->unk18) buf->unk18->perform(0x480, graphics);
+		for (int i = 0; i < mBufferCount; ++i) {
+			TLightDrawBuffer* buf = mDrawBuffers[i];
+			if (buf->mOpaDrawBuf) buf->mOpaDrawBuf->perform(0x480, graphics);
+			if (buf->mXluDrawBuf) buf->mXluDrawBuf->perform(0x480, graphics);
 		}
 	}
 }
 
 void TLightWithDBSet::changeLightDrawBuffer(int param_1)
 {
-	unk14 = nullptr;
-	unk18 = nullptr;
-	if (param_1 > unk1C)
+	mSavedOpaBuffer = nullptr;
+	mSavedXluBuffer = nullptr;
+	if (param_1 > mBufferCount)
 		param_1 = 0;
 
 #ifdef SMS_NATIVE_PLATFORM
-	// STOPGAP: the per-light draw-buffer set (unk10) is NOT built — makeDrawBuffer() is a
+	// STOPGAP: the per-light draw-buffer set (mDrawBuffers) is NOT built — makeDrawBuffer() is a
 	// no-op stub across the whole TLightWithDBSet hierarchy (LightUtil.cpp:69-75), and the
 	// TLightDrawBuffer::perform that would actually render those buffers is not wired into any
-	// perform list. So redirecting an actor's draw into unk10[param_1] (the original behavior
-	// below) would (a) deref a null unk10 and (b), even if built, send the actor into an
-	// UNRENDERED buffer -> the actor would vanish. When the set is absent, leaving unk14/unk18
+	// perform list. So redirecting an actor's draw into mDrawBuffers[param_1] (the original behavior
+	// below) would (a) deref a null mDrawBuffers and (b), even if built, send the actor into an
+	// UNRENDERED buffer -> the actor would vanish. When the set is absent, leaving mSavedOpaBuffer/mSavedXluBuffer
 	// null makes entry() draw into the CURRENT (normal Chr) buffer and resetLightDrawBuffer() a
-	// no-op (its own !unk14/!unk18 guards) — the correct degenerate result when no per-light
+	// no-op (its own !mSavedOpaBuffer/!mSavedXluBuffer guards) — the correct degenerate result when no per-light
 	// shadow volumes exist, which is exactly this stub's state. This is what lets NPCs (whose
 	// MActor::setLightData assigns a real unk3C on shadow ground) render at all.
 	// PROPER FIX: port the light-with-DB-set subsystem — TLightWithDBSet::makeDrawBuffer building
-	// unk10 (TLightDrawBuffer opa/xlu pairs), wire their perform into PerformList GX, and
+	// mDrawBuffers (TLightDrawBuffer opa/xlu pairs), wire their perform into PerformList GX, and
 	// implement TLightCommon::setLight — then restore the redirect below.
-	if (!unk10)
+	if (!mDrawBuffers)
 		return;
 #endif
 
-	unk14 = j3dSys.getDrawBuffer(0);
-	unk18 = j3dSys.getDrawBuffer(1);
+	mSavedOpaBuffer = j3dSys.getDrawBuffer(0);
+	mSavedXluBuffer = j3dSys.getDrawBuffer(1);
 
-	j3dSys.setDrawBuffer(unk10[param_1]->getOpaDbo()->getDrawBuffer(), 0);
-	j3dSys.setDrawBuffer(unk10[param_1]->getXluDbo()->getDrawBuffer(), 1);
+	j3dSys.setDrawBuffer(mDrawBuffers[param_1]->mOpaDrawBuf->mDrawBuffer, 0);
+	j3dSys.setDrawBuffer(mDrawBuffers[param_1]->mXluDrawBuf->mDrawBuffer, 1);
 }
 
 void TLightWithDBSet::resetLightDrawBuffer()
 {
-	if (!unk14)
+	if (!mSavedOpaBuffer)
 		return;
-	if (!unk18)
+	if (!mSavedXluBuffer)
 		return;
 
-	j3dSys.setDrawBuffer(unk14, 0);
-	j3dSys.setDrawBuffer(unk18, 1);
-	unk14 = nullptr;
-	unk18 = nullptr;
+	j3dSys.setDrawBuffer(mSavedOpaBuffer, 0);
+	j3dSys.setDrawBuffer(mSavedXluBuffer, 1);
+	mSavedOpaBuffer = nullptr;
+	mSavedXluBuffer = nullptr;
 }
 
 void TLightWithDBSet::getOpaDrawBuffer(int) { }
@@ -526,11 +526,11 @@ TIndirectLightWithDBSet::TIndirectLightWithDBSet()
 // write (TLiveManager / MActor: getUnk14(i)->unk20 = 1); it must be addressable.
 TLightWithDBSet::TLightWithDBSet(int idx, const char* name)
     : JDrama::TViewObj(name)
-    , unk10(nullptr)
-    , unk14(nullptr)
-    , unk18(nullptr)
-    , unk1C(idx)
-    , unk20(0)
+    , mDrawBuffers(nullptr)
+    , mSavedOpaBuffer(nullptr)
+    , mSavedXluBuffer(nullptr)
+    , mBufferCount(idx)
+    , mEnabled(0)
 {
 }
 
@@ -556,19 +556,20 @@ TLightWithDBSetManager::TLightWithDBSetManager(const char* name)
 {
 #ifdef SMS_NATIVE_PLATFORM
 	// Allocate the 4-entry light-set array the managers index by light kind
-	// (player/mapobj/object/indirect). The decomp's empty ctor left unk14 wild, so
-	// the first getUnk14(i)->unk20 = 1 (TLiveManager ctor) dereferenced garbage.
-	unk10 = new TLightMario;
-	unk14 = new TLightWithDBSet*[4];
-	unk14[0] = new TPlayerLightWithDBSet;
-	unk14[1] = new TMapObjectLightWithDBSet;
-	unk14[2] = new TObjectLightWithDBSet;
-	unk14[3] = new TIndirectLightWithDBSet;
-	unk18.r = unk18.g = unk18.b = unk18.a = 0;
+	// (player/mapobj/object/indirect). The decomp's empty ctor left mLightSets
+	// wild, so the first getUnk14(i)->mEnabled = 1 (TLiveManager ctor)
+	// dereferenced garbage.
+	mMarioLight = new TLightMario;
+	mLightSets = new TLightWithDBSet*[4];
+	mLightSets[0] = new TPlayerLightWithDBSet;
+	mLightSets[1] = new TMapObjectLightWithDBSet;
+	mLightSets[2] = new TObjectLightWithDBSet;
+	mLightSets[3] = new TIndirectLightWithDBSet;
+	mEffectColor.r = mEffectColor.g = mEffectColor.b = mEffectColor.a = 0;
 	unk1C = unk20 = unk24 = 0;
-	unk28 = unk2C = unk30 = unk34 = unk38 = unk3C = unk40 = unk44 = 0.0f;
+	mEffectAlphaScale = unk2C = unk30 = unk34 = unk38 = unk3C = unk40 = unk44 = 0.0f;
 	unk48.x = unk48.y = unk48.z = 0.0f;
-	unk54 = unk55 = 0;
+	mEffectEnabled = mEffectValid = 0;
 #endif
 }
 
@@ -584,7 +585,7 @@ void TLightWithDBSetManager::loadAfter()
 
 	// Effect light data = Light-Group[0]. GXGetLightColor reads the packed
 	// GXColor out of the group's GXLightObj (unk24).
-	GXGetLightColor(&la->mLights[0].unk24, &unk18);
+	GXGetLightColor(&la->mLights[0].unk24, &mEffectColor);
 
 	// Vec3 mPosition aliased over unk1C/unk20/unk24 (3 u32 slots).
 	f32 x = la->mLights[0].mPosition.x;
@@ -614,16 +615,16 @@ void TLightWithDBSetManager::perform(u32 flag, JDrama::TGraphics* graphics)
 		else if (flag & 0x80000)  { start = 2; end = 3; }
 		else                       { start = 0; end = 2; }
 		for (int i = start; i < end; ++i) {
-			TLightWithDBSet* buf = unk14[i];
-			if (buf && buf->unk20)
+			TLightWithDBSet* buf = mLightSets[i];
+			if (buf && buf->mEnabled)
 				buf->perform(flag, graphics);
 		}
 	}
 
 	if (flag & 0x800) {
 		for (int i = 0; i < 4; ++i) {
-			TLightWithDBSet* buf = unk14[i];
-			if (buf && buf->unk20)
+			TLightWithDBSet* buf = mLightSets[i];
+			if (buf && buf->mEnabled)
 				buf->perform(flag, graphics);
 		}
 	}
@@ -639,8 +640,8 @@ void TLightWithDBSetManager::addChildGroupObj(
 void TLightWithDBSetManager::makeDrawBuffer()
 {
 	for (int i = 0; i < 4; ++i)
-		if (unk14[i]->isEnabled())
-			unk14[i]->makeDrawBuffer();
+		if (mLightSets[i]->mEnabled)
+			mLightSets[i]->makeDrawBuffer();
 }
 
 Vec* TLightWithDBSetManager::getLightPos() const

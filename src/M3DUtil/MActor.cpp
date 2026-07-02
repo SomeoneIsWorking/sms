@@ -349,7 +349,8 @@ void MActor::setLightData(const TBGCheckData* param_1,
 void MActor::setLightType(int param_1)
 {
 	unk44 = param_1;
-	gpLightManager->getUnk14(param_1)->enable();
+
+	gpLightManager->mLightSets[param_1]->mEnabled = 1;
 }
 
 void MActor::entry()
