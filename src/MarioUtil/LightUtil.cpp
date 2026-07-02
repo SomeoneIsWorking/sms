@@ -304,9 +304,50 @@ TLightDrawBuffer::TLightDrawBuffer(int, u32, const char* name)
 {
 }
 
-void TLightDrawBuffer::perform(u32, JDrama::TGraphics*) { }
+// Native port of TLightDrawBuffer::perform (@0x802292c0, 17 insns). Same phase
+// gate as TLightCommon (flag & 0x20 → setLight). Dispatches to its owning
+// TLightCommon at unk10, using the per-buffer light index at unk80.
+void TLightDrawBuffer::perform(u32 flag, JDrama::TGraphics* graphics)
+{
+	if (flag & 0x20) {
+		if (unk10)
+			unk10->setLight(graphics, unk80);
+	}
+}
 
-void TLightWithDBSet::perform(u32, JDrama::TGraphics*) { }
+// Native port of TLightWithDBSet::perform (@0x80229178, 82 insns). Dispatches
+// each per-light draw buffer in unk10[0..unk1C) through its own perform +
+// optional J3DDrawBuffer perform calls, gated by three independent flag bits:
+//   * flag & 0x20    → per-DrawBuffer perform(0x20, graphics)
+//   * flag & 0x10000 → per-DrawBuffer's unk14->perform(8, graphics)
+//   * flag & 0x20000 → per-DrawBuffer's unk18->perform(8, graphics)
+//   * flag & 0x800   → both unk14/unk18 perform(0x480, graphics)
+// Guarded on unk10 non-null — matches the STOPGAP in changeLightDrawBuffer;
+// once TLightWithDBSet::makeDrawBuffer × 4 is ported the guard becomes
+// harmless.
+void TLightWithDBSet::perform(u32 flag, JDrama::TGraphics* graphics)
+{
+	if (!unk10) return;  // makeDrawBuffer not yet populated on this instance
+
+	if (flag & 0x20) {
+		const bool do_unk14_8 = (flag & 0x10000) != 0;
+		const bool do_unk18_8 = (flag & 0x20000) != 0;
+		for (int i = 0; i < unk1C; ++i) {
+			TLightDrawBuffer* buf = unk10[i];
+			buf->perform(0x20, graphics);
+			if (do_unk14_8 && buf->unk14) buf->unk14->perform(8, graphics);
+			if (do_unk18_8 && buf->unk18) buf->unk18->perform(8, graphics);
+		}
+	}
+
+	if (flag & 0x800) {
+		for (int i = 0; i < unk1C; ++i) {
+			TLightDrawBuffer* buf = unk10[i];
+			if (buf->unk14) buf->unk14->perform(0x480, graphics);
+			if (buf->unk18) buf->unk18->perform(0x480, graphics);
+		}
+	}
+}
 
 void TLightWithDBSet::changeLightDrawBuffer(int param_1)
 {
