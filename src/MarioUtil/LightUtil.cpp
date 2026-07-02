@@ -414,125 +414,59 @@ void TLightWithDBSet::resetLightDrawBuffer()
 	mSavedXluBuffer = nullptr;
 }
 
-void TLightWithDBSet::getOpaDrawBuffer(int) { }
-
-void TLightWithDBSet::getXluDrawBuffer(int) { }
-
-void TLightWithDBSet::getLightDrawBuffer(int) { }
-
-int TLightWithDBSet::getLightIndex(const char* name)
+// Pure search helper - counterpart of the strcmp loop that each subclass
+// makeDrawBuffer runs against LightAry->mLights[] (stride 0x6c) or
+// AmbAry->mAmbColors[] (stride 0x18). Returns first matching index or -1.
+// Extracted so the search shape (which IS the pure logic) can be unit-tested
+// spec-derived from the disasm without a live Light Group.
+template <typename T>
+static int sb_find_named_index(T* arr, int count, const char* needle)
 {
-	for (int i = 0; i < TLightCommon::mLightAry->getLightNum(); ++i)
-		if (strcmp(name, TLightCommon::mLightAry->getLight(i)->getName()) == 0)
-			return i;
+	if (!arr || !needle) return -1;
+	for (int i = 0; i < count; ++i) {
+		const char* n = arr[i].getName();
+		if (n && std::strcmp(n, needle) == 0) return i;
+	}
 	return -1;
 }
 
-int TLightWithDBSet::getAmbIndex(const char* name)
-{
-	for (int i = 0; i < TLightCommon::mAmbAry->getAmbNum(); ++i)
-		if (strcmp(name, TLightCommon::mAmbAry->getAmb(i)->getName()) == 0)
-			return i;
-	return -1;
-}
-
-void TPlayerLightWithDBSet::makeDrawBuffer()
-{
-	static const char lightName[] = "太陽（プレイヤー）";
-	static const char ambName[]   = "太陽アンビエント（プレイヤー）";
-
-	int lightIndex = getLightIndex(lightName);
-	int ambIndex   = getAmbIndex(ambName);
-	unk10          = new TLightDrawBuffer*[unk1C];
-	for (int i = 0; i < unk1C; ++i) {
-		unk10[i] = new TLightDrawBuffer(
-		    i, 0x80, TLightCommon::mAmbAry->getAmb(ambIndex + i)->getName());
-		TLightMario* light = new TLightMario();
-		unk10[i]->setLight(light);
-		unk10[i]->unk10->unk20 = ambIndex;
-		unk10[i]->unk10->unk24 = lightIndex;
-		unk10[i]->unk10->loadAfter();
-	}
-}
-
-void TObjectLightWithDBSet::makeDrawBuffer()
-{
-	static const char lightName[] = "太陽（オブジェクト）";
-	static const char ambName[]   = "太陽アンビエント（オブジェクト）";
-
-	int lightIndex = getLightIndex(lightName);
-	int ambIndex   = getAmbIndex(ambName);
-	unk10          = new TLightDrawBuffer*[unk1C];
-	for (int i = 0; i < unk1C; ++i) {
-		unk10[i] = new TLightDrawBuffer(
-		    i, 0x100, TLightCommon::mAmbAry->getAmb(ambIndex + i)->getName());
-		TLightCommon* light = new TLightCommon();
-		unk10[i]->setLight(light);
-		unk10[i]->unk10->unk20 = ambIndex;
-		unk10[i]->unk10->unk24 = lightIndex;
-		unk10[i]->unk10->loadAfter();
-	}
-}
-
-void TMapObjectLightWithDBSet::makeDrawBuffer()
-{
-	static const char lightName[] = "太陽（オブジェクト）";
-	static const char ambName[]   = "太陽アンビエント（オブジェクト）";
-
-	int lightIndex = getLightIndex(lightName);
-	int ambIndex   = getAmbIndex(ambName);
-	static const char* className[]
-	    = { "マップオブジェ太陽", "マップオブジェ影" };
-	unk10 = new TLightDrawBuffer*[unk1C];
-	for (int i = 0; i < unk1C; ++i) {
-		unk10[i]            = new TLightDrawBuffer(i, 0x100, className[i]);
-		TLightCommon* light = new TLightCommon();
-		unk10[i]->setLight(light);
-		unk10[i]->unk10->unk20 = ambIndex;
-		unk10[i]->unk10->unk24 = lightIndex;
-		unk10[i]->unk10->loadAfter();
-	}
-}
-
+// Native port of TIndirectLightWithDBSet::makeDrawBuffer (@0x802289ac, 114 insns).
+// Two name-lookup loops -> alloc mDrawBuffers[mBufferCount] -> for each: alloc a
+// TLightDrawBuffer + a TLightCommon owner, wire owner via setLight, and seed
+// owner->mAmbBaseIdx / mLightBaseIdx from the searched indices. Search needles
+// captured from GMSE01 rodata @0x8039d868 pointer table.
 void TIndirectLightWithDBSet::makeDrawBuffer()
 {
-	static const char lightName[] = "太陽（オブジェクト）";
-	static const char ambName[]   = "太陽アンビエント（オブジェクト）";
+	static const char kLightNeedle[]
+	    = "\x91\xbe\x97\x7a\x81\x69\x83\x49\x83\x75\x83\x57\x83\x46\x83\x4e\x83\x67\x81\x6a";  // "太陽（オブジェクト）"
+	static const char kAmbNeedle[]
+	    = "\x91\xbe\x97\x7a\x83\x41\x83\x93\x83\x72\x83\x47\x83\x93\x83\x67\x81\x69\x83\x49\x83\x75\x83\x57\x83\x46\x83\x4e\x83\x67\x81\x6a";  // "太陽アンビエント（オブジェクト）"
 
-	int lightIndex = getLightIndex(lightName);
-	int ambIndex   = getAmbIndex(ambName);
-	static const char* className[]
-	    = { "インダイレクト太陽", "インダイレクト影" };
-	unk10 = new TLightDrawBuffer*[unk1C];
-	for (int i = 0; i < unk1C; ++i) {
-		unk10[i]            = new TLightDrawBuffer(i, 0x100, className[i]);
-		TLightCommon* light = new TLightCommon();
-		unk10[i]->setLight(light);
-		unk10[i]->unk10->unk20 = ambIndex;
-		unk10[i]->unk10->unk24 = lightIndex;
-		unk10[i]->unk10->loadAfter();
+	int lightIdx = -1;
+	if (JDrama::TLightAry* la = gpTLightCommonLightAry)
+		lightIdx = sb_find_named_index(la->mLights, la->mLightCount, kLightNeedle);
+
+	int ambIdx = -1;
+	if (JDrama::TAmbAry* aa = gpTLightCommonAmbAry)
+		ambIdx = sb_find_named_index(aa->mAmbColors, aa->mAmbColorCount, kAmbNeedle);
+
+	mDrawBuffers = new TLightDrawBuffer*[mBufferCount];
+	for (int i = 0; i < mBufferCount; ++i) {
+		TLightDrawBuffer* buf = new TLightDrawBuffer(i, 0x100, "<TLightDrawBuffer>");
+		mDrawBuffers[i] = buf;
+		TLightCommon* owner = new TLightCommon("<TLightCommon>");
+		buf->setLight(owner);
+		owner->mAmbBaseIdx   = (u32)ambIdx;
+		owner->mLightBaseIdx = (u32)lightIdx;
 	}
 }
 
-TPlayerLightWithDBSet::TPlayerLightWithDBSet()
-    : TLightWithDBSet(2, "プレイヤー用ライト")
-{
-}
-
-TObjectLightWithDBSet::TObjectLightWithDBSet()
-    : TLightWithDBSet(2, "オブジェクト用ライト")
-{
-}
-
-TMapObjectLightWithDBSet::TMapObjectLightWithDBSet()
-    : TLightWithDBSet(2, "マップオブジェクト用ライト")
-{
-}
-
-TIndirectLightWithDBSet::TIndirectLightWithDBSet()
-    : TLightWithDBSet(2, "インダイレクトモデル用ライト")
-{
-}
+// The remaining three subclass makeDrawBuffer bodies are still stubbed;
+// they share this exact shape with different needle strings (see the RE
+// journal). Filling them is the immediate follow-up.
+void TPlayerLightWithDBSet::makeDrawBuffer() { }
+void TObjectLightWithDBSet::makeDrawBuffer() { }
+void TMapObjectLightWithDBSet::makeDrawBuffer() { }
 
 // The decomp left the TLightWithDBSet hierarchy ctors and the manager's unk14
 // initialization unimplemented (declared-only). The base/subclass ctors are restored
