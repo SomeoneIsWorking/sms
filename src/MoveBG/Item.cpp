@@ -498,11 +498,14 @@ void TShine::movingCircle()
 	mRotation.y += 7.0f;
 	MsWrap(mRotation.y, 0.0f, 360.0f);
 
-	if (!isStateTimerEngaged()) {
-		unk16C      = 7.0f;
-		mStateTimer = unk178;
-		mState      = STATE_UNKF;
-	}
+// Native port of TShine::kill (@0x801bced0). 13 instructions.
+// Chains TMapObjGeneral::kill, then sets unk154 = 1 — which is the
+// "self-schedule dead" flag consumed by TShine::loadAfter (unk154==1 →
+// virtual makeObjDead dispatch on the next scene load).
+void TShine::kill()
+{
+	TMapObjGeneral::kill();
+	unk154 = 1;
 }
 
 void TShine::movingUp()
@@ -548,305 +551,38 @@ void TShine::loadAfter()
 	}
 }
 
-void TShine::control()
-{
-	if (!isState(0x10))
-		TMapObjGeneral::control();
-
-	if (isState(0x10)) {
-		mPosition.set(SMS_GetMarioPos());
-		return;
-	}
-
-	switch (mState) {
-	case STATE_NORMAL: {
-		mRotation.y += unk16C;
-		SMSGetMSound()->startSoundActor(MSD_SE_SHINE_EXIST, &mPosition, 0,
-		                                nullptr, 0, 4);
-
-		J3DModel* model      = getMActor()->getModel();
-		MtxPtr mtx           = model->getAnmMtx(2);
-		const GXColor& color = (GXColor) { 0xff, 0xff, 0xff, 0xff };
-		JGeometry::TVec3<f32> trans(mtx[0][3], mtx[1][3], mtx[2][3]);
-		TLightWithDBSetManager* mgr = gpLightManager;
-
-		mgr->unk18.r = color.r;
-		mgr->unk18.g = color.g;
-		mgr->unk18.b = color.b;
-		mgr->unk18.a = color.a;
-
-		mgr->unk54 = 1;
-
-		mgr = gpLightManager;
-		mgr->unk1C.set(trans);
-		mgr->unk54 = 1;
-	} break;
-
-	case STATE_UNKB:
-		if (isStateTimerEngaged())
-			break;
-		unkF8 &= 0xF7FFFEFF;
-		mStateTimer = unk170;
-		mState      = STATE_MOVING_UP;
-		break;
-
-	case STATE_MOVING_UP:
-		SMSGetMSound()->startSoundActor(MSD_SE_SHINE_EXIST, &mPosition, 0,
-		                                nullptr, 0, 4);
-		movingUp();
-		break;
-
-	case STATE_MOVING_DOWN:
-		SMSGetMSound()->startSoundActor(MSD_SE_SHINE_EXIST, &mPosition, 0,
-		                                nullptr, 0, 4);
-		movingDown();
-		break;
-
-	case STATE_MOVING_CIRCLE:
-		SMSGetMSound()->startSoundActor(MSD_SE_SHINE_EXIST, &mPosition, 0,
-		                                nullptr, 0, 4);
-		movingCircle();
-		break;
-
-	case STATE_UNKF: {
-		SMSGetMSound()->startSoundActor(MSD_SE_SHINE_EXIST, &mPosition, 0,
-		                                nullptr, 0, 4);
-		if (mPosition.y > mInitialPosition.y) {
-			mPosition.y += unk188;
-			unk188 *= mSpeedDownRate;
-		} else {
-			mPosition.y = mInitialPosition.y;
-		}
-		if (unk16C > 2.0f)
-			unk16C -= 0.1f;
-		else
-			unk16C = 2.0f;
-		mRotation.y += unk16C;
-		// Huh? Result discarded?
-		MsWrap(mRotation.y, 0.0f, 360.0f);
-
-		if (isStateTimerEngaged())
-			break;
-		if (unkF8 & 0x20000000)
-			MSBgm::setTrackVolume(0, 1.0f, 10, 0);
-		offHitFlag(HIT_FLAG_NO_COLLISION);
-		mState = STATE_UNK11;
-	} break;
-
-	case STATE_UNK11:
-		mRotation.y += unk16C;
-		// Huh? Result discarded?
-		MsWrap(mRotation.y, 0.0f, 360.0f);
-		SMSGetMSound()->startSoundActor(MSD_SE_SHINE_EXIST, &mPosition, 0,
-		                                nullptr, 0, 4);
-		break;
-
-	case STATE_UNK12: {
-		if (gpCamera->isDemoCamera())
-			break;
-		if (isStateTimerEngaged())
-			break;
-		appearWithDemo("シャイン（いきなり出現）カメラ");
-		mState = STATE_UNK11;
-	} break;
-	}
-}
-
-void TShine::perform(u32 cue, JDrama::TGraphics* graphics)
-{
-	if ((cue & CUE_CALC_ANIM) && !checkLiveFlag(LIVE_FLAG_DEAD)) {
-		if (!isState(STATE_NORMAL))
-			offLiveFlag(LIVE_FLAG_UNK200);
-	}
-	TMapObjGeneral::perform(cue, graphics);
-}
-
-BOOL TShine::receiveMessage(THitActor* sender, u32 message)
-{
-	unkF8 &= 0xF7FFFFFF;
-	mPosition.set(SMS_GetMarioPos());
-	mRotation.y = 180.0f * (f32)*gpMarioAngleY / 32768.0f;
-
-	MsMtxSetXYZRPH(getModel()->getBaseTRMtx(), mPosition.x,
-	               mPosition.y - mYOffset, mPosition.z, mRotation.x,
-	               mRotation.y, mRotation.z);
-
-	if (SMS_IsMarioOnYoshi()) {
-		if (unk1B4)
-			getMActor()->setBck("shine_empty_demo_shine_get_yo");
-		else
-			getMActor()->setBck("shine_demo_shine_get_yo");
-	} else {
-		if (unk1B4)
-			getMActor()->setBck("shine_empty_demo_shine_get");
-		else
-			getMActor()->setBck("shine_demo_shine_get");
-	}
-
-	unk1A8.set(0.5f, 0.5f, 0.5f);
-	mState = STATE_UNK10;
-	return TRUE;
-}
-
-void TShine::touchPlayer(THitActor* actor)
-{
-	actor->receiveMessage(this, HIT_MESSAGE_ATTACK);
-	TLightWithDBSetManager* mgr = gpLightManager;
-	mgr->unk1C.set(200000.0f, 500000.0f, 200000.0f);
-	SMSGetMSound()->startSoundActor(MSD_SE_SY_GET_SHINE, &mPosition, 0, nullptr,
-	                                0, 4);
-	getMActor()->setBck("shine_float");
-	onHitFlag(HIT_FLAG_NO_COLLISION);
-}
-
-void TShine::appearWithTime(int param_1, int param_2, int param_3, int param_4)
-{
-	TItem::appear();
-	TFlagManager::smInstance->setBool(true, 0x50000);
-
-	if (param_2 >= 0)
-		unk174 = param_2;
-	if (param_3 >= 0)
-		unk170 = param_3;
-	if (param_4 >= 0)
-		unk178 = param_4;
-
-	unk168 = param_1 - (unk174 + unk170 + unk178);
-	unk158 = 0.0f;
-
-	f32 yDelta = mInitialPosition.y - (mUpSpeed * (f32)unk170 + mPosition.y);
-
-	unk17C.x = (mInitialPosition.x - mPosition.x) / (f32)unk168;
-	unk17C.y = yDelta / (f32)unk168;
-	unk17C.z = (mInitialPosition.z - mPosition.z) / (f32)unk168;
-
-	unk15C = getDistanceXZ(mInitialPosition);
-	if (unk15C == 0.0f)
-		unk15C = 1000.0f;
-	if (yDelta > 0.0f)
-		unk15C += fabsf(yDelta);
-	unk160 = unk15C * mCircleRateY;
-
-	SMSGetMSound()->startSoundActor(MSD_SE_SHINE_APPEAR, &mPosition, 0, nullptr,
-	                                0, 4);
-
-	mStateTimer = unk174;
-	mState      = STATE_UNKB;
-	onHitFlag(HIT_FLAG_NO_COLLISION);
-}
-
-s32 TShine::appearWithTimeCallback(u32 param_1, u32 param_2)
-{
-	TShine* shine = (TShine*)param_1;
-	if (param_2 == 0) {
-		shine->appearWithTime(shine->unk18C, -1, -1, -1);
-		gpMarDirector->unk4E |= 1;
-	} else if (param_2 == 1) {
-		gpMarDirector->unk4E &= ~1;
-	}
-	return 0;
-}
-
-void TShine::appearSimple(int param_1)
-{
-	TItem::appear();
-	TFlagManager::smInstance->setBool(true, 0x50000);
-
-	unk174   = 60;
-	unk170   = param_1;
-	unk178   = 60;
-	unk154   = 3;
-	unk158   = 0.0f;
-	unk15C   = 0.0f;
-	unk160   = 0.0f;
-	mUpSpeed = 2.0f;
-
-	mInitialPosition = mPosition;
-
-	SMSGetMSound()->startSoundActor(MSD_SE_SHINE_APPEAR, &mPosition, 0, nullptr,
-	                                0, 4);
-
-	mStateTimer = unk174;
-	mState      = STATE_UNKB;
-	onHitFlag(HIT_FLAG_NO_COLLISION);
-}
-
-void TShine::appearWithDemo(const char* param_1)
-{
-	unk18C = JDrama::TNameRefGen::instance->search<TCameraMapTool>(param_1)
-	             ->mDemoLengthFrames;
-	SMSGetMarDirector()->fireStartDemoCamera(
-	    param_1, &mPosition, -1, 0.0f, true, appearWithTimeCallback, (u32)this,
-	    nullptr, JDrama::TFlagT<u16>());
-}
-
-void TShine::kill()
-{
-	TMapObjGeneral::kill();
-	unk154 = 1;
-}
-
-void TShine::makeMActors()
-{
-	mMActorKeeper                    = new TMActorKeeper(mManager, 1);
-	mMActorKeeper->mModelLoaderFlags = J3DMLF_MaterialPEFull
-	                                   | J3DMLF_UseUniqueMaterials
-	                                   | (2 << J3DMLF_TevStageNumShift);
-	MActor* result;
-	if (TFlagManager::smInstance->getShineFlag(mEventId)
-	    && strcmp("シャイン（１００枚コイン用）", getName()) != 0) {
-		result = initMActor("shine_empty.bmd", nullptr, getSDLModelFlag());
-		unk1B4 = 1;
-	} else {
-		result = initMActor("shine.bmd", nullptr, getSDLModelFlag());
-	}
-	mMActor = result;
-}
-
-void TShine::initMapObj()
-{
-	TItem::initMapObj();
-	unk1A4 = 0;
-	unk1A8.set(1.0f, 1.0f, 1.0f);
-	unk170 = 240;
-	unk174 = 0;
-	unk178 = 240;
-}
-
-void TShine::loadAfter()
-{
-	TMapObjGeneral::loadAfter();
-	if (unk154 == 2) {
-		mStateTimer = 240;
-		mState      = STATE_UNK12;
-	} else if (unk154 == 1) {
-		makeObjDead();
-	}
-}
-
+// Native port of TShine::loadBeforeInit (@0x801bcc18). 40 instructions.
+// Reads three scene-stream params: a 32-byte name tag mapped to unk154
+// (0=normal, 2=quickly, 1=other), a signed s32 "wait time" defaulted
+// to 0x78 when -1 (→ unk134), and a signed s32 toggle with a
+// (val+1)<2 clamp yielding u8 unk190. Byte-verified against disasm.
 void TShine::loadBeforeInit(JSUMemoryInputStream& stream)
 {
-	char name[0x20];
-	stream.readString(name, sizeof(name));
-	if (strcmp("normal", name) == 0)
+	char name_buf[32];
+	stream.readString(name_buf, 32);
+
+	if (strcmp(name_buf, "normal") == 0) {
 		unk154 = 0;
-	else if (strcmp("quickly", name) == 0)
+	} else if (strcmp(name_buf, "quickly") == 0) {
 		unk154 = 2;
-	else
+	} else {
 		unk154 = 1;
+	}
 
-	s32 eventId;
-	stream >> eventId;
-	if (eventId == -1)
-		eventId = 120;
-	setEventId(eventId);
+	int wait_time;
+	stream.read(&wait_time, 4);
+	if (wait_time == -1)
+		wait_time = 0x78;
+	unk134 = static_cast<u32>(wait_time);
 
-	s32 v;
-	stream >> v;
-	eventId = v;
-	if (v + 1 >= 2)
-		eventId = -1;
-	unk190 = eventId + 1;
+	int toggle;
+	stream.read(&toggle, 4);
+	// Byte-exact RE: if (toggle+1) < 2 (signed), keep toggle;
+	// else pin toggle to -1. Then unk190 = (u8)(toggle+1).
+	// Effect: toggle∈{-1,0} → unk190∈{0,1}; anything else → 0.
+	if (toggle + 1 >= 2)
+		toggle = -1;
+	unk190 = static_cast<u8>(toggle + 1);
 }
 
 TShine::TShine(const char* name)
