@@ -22,6 +22,10 @@
 #include <MSound/MSSetSound.hpp>
 #include <MSound/MSoundBGM.hpp>
 
+#ifdef SMS_NATIVE_PLATFORM
+#include "sms_boot_startanim.h"
+#endif
+
 void TMapObjBase::changeObjMtx(MtxPtr mtx)
 {
 	mPosition.x = mtx[3][0];
@@ -205,54 +209,95 @@ void TMapObjBase::startBck(const char* param_1)
 
 void TMapObjBase::startAnim(u16 param_1)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// Native port of TMapObjBase::startAnim (@0x801b09d4, 125 insns). Kicks off
+	// animation slot `param_1` on this map-object. The BMD/BCK data are indexed
+	// by `mMapObjData->mAnim->unk4[idx]` (a TMapObjAnimData: unk0=model name,
+	// unk4=anim name, unk8=slot, unk10=anmsound path).
+	//
+	// Layout in one pass:
+	//   1. clear any active MAnmSound              (setAnmSound(nullptr))
+	//   2. lazy-load mMActor from anim[0].unk0     (if we don't have one yet)
+	//   3. bail if no anim table / idx out of range (fencepost `count > idx`)
+	//   4. if unk8==0 for this entry AND we had a previous slot → freeze &
+	//      reset that previous slot's frame-ctrl + anm sentinel
+	//   5. stopAnmSound() to kill anything the old slot started
+	//   6. if the slot actually changed → maybe reload mMActor from entry.unk0
+	//   7. if entry.unk4 (anim name) → clear the "playing" flag bit, dispatch
+	//      MActor::setAnimation(name, slot); guarded second clear if bit 0x200
+	//      is set (force-restart gate). Else: reset MActor's mtx-calc back to
+	//      the model's root joint (raw offset chain 0x58 in J3DMtxCalc; the
+	//      concrete subclass is decided by the model).
+	//   8. if entry.unk10 (anmsound path) → setAnmSound(path).
+	//
+	// Pure predicates (fencepost, sentinel, flag-bit constants) live in
+	// native/render/sms_boot_startanim.h and are unit-tested by startanim_test.
+	using namespace sb::startanim;
+
 	if (mAnmSound)
 		setAnmSound(nullptr);
 
-	if (!mMActor) {
-		const TMapObjAnimDataInfo* anim = mMapObjData->mAnim;
-		if (anim->unk0 != 0)
+	const TMapObjAnimDataInfo* anim = mMapObjData->mAnim;
+
+	if (mMActor == nullptr) {
+		if (anim && anim->unk0 > 0)
 			mMActor = mMActorKeeper->getMActor(anim->unk4[0].unk0);
 	}
 
-	const TMapObjAnimDataInfo* anim = mMapObjData->mAnim;
-	if (!anim)
+	anim = mMapObjData->mAnim;
+	if (anim == nullptr)
 		return;
 
-	if (param_1 >= anim->unk0)
+	const u16 count = anim->unk0;
+	const u16 idx   = param_1;
+	if (!has_slot(count, idx))
 		return;
 
-	const TMapObjAnimData* data = &anim->unk4[param_1];
-	if (data->unk8 == 0) {
-		if (unkFE != 0xffff && anim && anim->unk0 != 0) {
-			const TMapObjAnimData* d2 = &anim->unk4[unkFE];
-			if (d2->unk4 != nullptr) {
-				u8 idx = d2->unk8;
-				mMActor->getFrameCtrl(idx)->setRate(0.0f);
-				mMActor->getFrameCtrl(idx)->setFrame(0.0f);
-				mMActor->getUnk28(idx)->unk0 = 0xffffffff;
-				unkFE                        = 0xffff;
+	const TMapObjAnimData* entry = &anim->unk4[idx];
+
+	if (entry->unk8 == 0) {
+		// Freeze/reset the OUTGOING slot's frame-ctrl if we had one.
+		if (!is_sentinel(unkFE) && anim && count != 0) {
+			const TMapObjAnimData* outEntry = &anim->unk4[unkFE];
+			if (outEntry->unk4 != nullptr) {
+				u8 outSlot = outEntry->unk8;
+				mMActor->getFrameCtrl(outSlot)->setRate(0.0f);
+				mMActor->getFrameCtrl(outSlot)->setFrame(0.0f);
+				mMActor->getUnk28(outSlot)->unk0 = kMActorAnmReset;
+				unkFE = kSentinelSlot;
 			}
 		}
 		stopAnmSound();
-		if (unkFE != param_1) {
-			unkFE = param_1;
-			if (data->unk0)
-				mMActor = mMActorKeeper->getMActor(data->unk0);
+
+		if (!skip_reload(unkFE, idx)) {
+			unkFE = idx;
+			if (entry->unk0 != nullptr)
+				mMActor = mMActorKeeper->getMActor(entry->unk0);
 		}
 	}
 
-	if (data->unk4) {
-		offMapObjFlag(MAP_OBJ_FLAG_UNK100);
-		mMActor->setAnimation(data->unk4, data->unk8);
-		if (checkMapObjFlag(MAP_OBJ_FLAG_UNK200))
-			offMapObjFlag(MAP_OBJ_FLAG_UNK100);
-		if (data->unk10)
-			setAnmSound(data->unk10);
+	if (entry->unk4 != nullptr) {
+		unkF8 &= ~kMapObjFlagBit_ClearOnStart;
+		mMActor->setAnimation(entry->unk4, entry->unk8);
+		if (unkF8 & kMapObjFlagBit_ForceClearGate)
+			unkF8 &= ~kMapObjFlagBit_ClearOnStart;
+
+		if (entry->unk10 != nullptr)
+			setAnmSound(entry->unk10);
 	} else {
-		MActor* actor = mMActor;
-		actor->getModel()->mModelData->mJointNodePointer[0]->mMtxCalc
-		    = actor->unk8;
+		// No anim name → reset MActor's mtx-calc back to the model's root
+		// joint. Field chain from RE (801b0b8c..0ba4):
+		//   J3DMtxCalc[0x58] = mMActor->unk4/*J3DModel*/->mModelData->mJointNodePointer[0]
+		// The exact 0x58 field is a concrete-subclass slot (J3DMtxCalc itself
+		// is abstract); the base pointer + offset is faithful to the disasm.
+		J3DModel*    model    = mMActor->getModel();
+		J3DModelData* modelData = model->getModelData();
+		J3DJoint*    rootJoint = modelData->mJointNodePointer[0];
+		*reinterpret_cast<J3DJoint**>(
+		    reinterpret_cast<u8*>(mMActor->unk8) + 0x58)
+		    = rootJoint;
 	}
+#endif
 }
 
 void TMapObjBase::makeObjDefault()
