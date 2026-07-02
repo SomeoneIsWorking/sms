@@ -548,28 +548,13 @@ void TApplication::proc()
 				const char* e = getenv("SB_NO_FASTBOOT");
 				sb_fb_on = (e && e[0] && e[0] != '0') ? 0 : 1;
 			}
-			// SB_FILESELECT=1: short-circuit to the file-select screen (APP_STATE_TITLE
-			// -> TSelectDir) instead of gameplay. File-select is a constrained, easily
-			// verifiable scene (a J2D menu over a small 3D backdrop) and the CLAUDE.md
-			// fidelity work-order targets title/file-select before Delfino gameplay.
-			static int sb_fs = -1;
-			if (sb_fs < 0) {
-				const char* e = getenv("SB_FILESELECT");
-				sb_fs = (e && e[0] && e[0] != '0') ? 1 : 0;
-			}
-			if (sb_fb_on && sb_fs && !sb_fb_done && mAppState == APP_STATE_DONE) {
-				sb_fb_done = true;
-				// The stage id passed to TSelectDir selects the file/scenario-select
-				// variant: stages 0/1/10 suppress the file-slot windows (gradient only),
-				// stages >=2 build them. SB_STAGE overrides so the menu is testable.
-				u8 fsStage = 1;
-				if (const char* es = getenv("SB_STAGE"))
-					fsStage = (u8)strtoul(es, nullptr, 0);
-				mCurrArea.set(fsStage, 0, 0);
-				mAppState = APP_STATE_TITLE;
-				fprintf(stderr, "[fastboot] -> file-select (APP_STATE_TITLE) stage %u\n",
-				        fsStage);
-			} else if (sb_fb_on && !sb_fb_done && mAppState == APP_STATE_DONE) {
+			// Taxonomy note (corrected 2026-07-02, memory [[title-vs-scenario-select-taxonomy]]):
+			//   GAMEPLAY stage 15 (option.arc + TFileLoadBlock) = the TITLE SCREEN (PUSH START +
+			//     save-file blocks). Reached via the default SB_STAGE=15 fastboot below.
+			//   APP_STATE_TITLE (TSelectDir + select.szs)      = the SCENARIO SELECT (episode/
+			//     shine grid), reached in-game after picking a file. No boot shortcut for it —
+			//     the old SB_FILESELECT=1 routing was mis-labeled and has been removed.
+			if (sb_fb_on && !sb_fb_done && mAppState == APP_STATE_DONE) {
 				sb_fb_done = true;
 				TFlagManager* fm = TFlagManager::getInstance();
 				// Mark the intro/attract movies as already seen so checkAdditionalMovie
