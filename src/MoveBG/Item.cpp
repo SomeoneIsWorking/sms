@@ -12,6 +12,7 @@
 #include <System/EmitterViewObj.hpp>
 #include <System/Particles.hpp>
 #include <Strategic/MirrorActor.hpp>
+#include <Strategic/ObjModel.hpp>
 #include <Strategic/question.hpp>
 #include <Player/MarioAccess.hpp>
 #include <Player/WaterGun.hpp>
@@ -508,11 +509,26 @@ void TShine::kill()
 	unk154 = 1;
 }
 
-void TShine::movingUp()
+// Native port of TShine::makeMActors (@0x801bcdd4). Allocates a TMActorKeeper
+// (single-slot: mActorNum=1) with mModelLoaderFlags=0x10220000, then picks the
+// bmd to bind: if the shine's ID has already been collected AND this instance is
+// the Mani-shop's placeholder (「シャイン（マニ屋用）」), use "shine_empty.bmd"
+// and latch unk1B4=1; otherwise use "shine.bmd". mMActor is the initMActor
+// result in both branches. Pure decision spec + tests: native/render/
+// sms_boot_shine.h (sb::shine_make_mactors) + shine_test's makeMActors block.
+void TShine::makeMActors()
 {
-	mPosition.y += mUpSpeed;
-	if (isStateTimerEngaged())
-		return;
+	mMActorKeeper                       = new TMActorKeeper(mManager, 1);
+	mMActorKeeper->mModelLoaderFlags    = 0x10220000;
+
+	if (TFlagManager::getInstance()->getShineFlag(static_cast<u8>(unk134))
+	    && strcmp("シャイン（マニ屋用）", mName) == 0) {
+		mMActor  = initMActor("shine_empty.bmd", nullptr, getSDLModelFlag());
+		unk1B4   = 1;
+	} else {
+		mMActor  = initMActor("shine.bmd", nullptr, getSDLModelFlag());
+	}
+}
 
 // Native port of TShine::initMapObj (@0x801bcd70). シャイン ("Shine") — the
 // game's collectible sun/star. Chains to TMapObjGeneral::initMapObj, then
