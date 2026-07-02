@@ -19,6 +19,7 @@
 extern "C" int sb_boot_capture_phase() __attribute__((weak));   // SB_DBHEAD_DBG: which pass this drawHead flush is in
 extern "C" void* sb_b76_material() __attribute__((weak));       // SB_ENTRY_MAT: the b76 mask material ptr (published by capture)
 extern "C" void sb_gx_get_color_alpha_update(int*, int*);  // SB_DBHEAD_PKT: live cU/aU at flush
+extern "C" const char* sb_boot_drawbuf_name(const void* buf) __attribute__((weak));  // SB_ENTRY_MAT: name of the draw buffer entry lands in
 #endif
 
 J3DDrawBuffer::sortFunc J3DDrawBuffer::sortFuncTable[6] = {
@@ -94,10 +95,21 @@ bool J3DDrawBuffer::entryMatSort(J3DMatPacket* packet)
 	if (const char* e = std::getenv("SB_ENTRY_MAT"); e && e[0] && e[0] != '0') {
 		void* want = sb_b76_material();
 		if (want && (void*)packet->getMaterial() == want) {
-			static int n = 0;
-			if (n < 3) { ++n;
-				std::fprintf(stderr, "[entry-mat] mat=%p packet=%p buf(this)=%p phase=%d backtrace:\n",
-				             (void*)packet->getMaterial(), (void*)packet, (const void*)this,
+			// Fire per (buffer, shape) pair — each combination gets ONE line + backtrace so we
+			// see every distinct draw buffer this material enters, not just the first 3 calls.
+			static struct { const void* buf; const void* shp; } seen[16];
+			static int nseen = 0;
+			const void* shp = (const void*)packet->getShapePacket();
+			bool novel = true;
+			for (int i = 0; i < nseen; ++i)
+				if (seen[i].buf == (const void*)this && seen[i].shp == shp) { novel = false; break; }
+			if (novel && nseen < 16) {
+				seen[nseen].buf = (const void*)this; seen[nseen].shp = shp; ++nseen;
+				const char* bufname = (&sb_boot_drawbuf_name)
+				                          ? sb_boot_drawbuf_name((const void*)this) : nullptr;
+				std::fprintf(stderr, "[entry-mat] mat=%p packet=%p shape=%p buf(this)=%p buf-name=\"%s\" phase=%d backtrace:\n",
+				             (void*)packet->getMaterial(), (void*)packet, shp, (const void*)this,
+				             bufname ? bufname : "(unknown)",
 				             sb_boot_capture_phase());
 				void* fr[40]; int nf = ::backtrace(fr, 40); ::backtrace_symbols_fd(fr, nf, 2);
 			}
