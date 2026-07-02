@@ -13,7 +13,8 @@ TLiveManager::TLiveManager(const char* name)
     , unk34(nullptr)
 {
 	gpConductor->registerManager(this);
-	gpLightManager->getLightSet(LIGHT_TYPE_OBJECT)->enable();
+	// TODO: inlines
+	gpLightManager->getUnk14(1)->mEnabled = 1;
 }
 
 void TLiveManager::createSpcBinary()
