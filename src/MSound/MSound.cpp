@@ -32,9 +32,12 @@ template <class T> static inline T max(T a, T b) { return a < b ? b : a; }
 MSound* MSGMSound  = 0;
 JAIBasic* MSGBasic = 0;
 
+// MWERKS narrowed -1 → u16 as 0xFFFF (the "unassigned" sentinel). GCC diagnoses.
 u16 MSSeCallBack::smTrackCategory[32] = {
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
+	0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
+	0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
+	0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
 };
 
 u8 MSSeCallBack::smPolifonic[16] = {

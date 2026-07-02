@@ -470,10 +470,14 @@ TSpineEnemy* TBossDangoHamuKuriManager::createEnemyInstance()
 }
 
 static const GXColorS10 mFireHamNoseColorStart = { 0x1F4, 0xC8, 0x78, 0xFF };
-static const GXColorS10 mFireHamNoseColorEnd = { 0xFFEC, 0xFFA6, 0xFF74, 0xFF };
+// GXColorS10 fields are s16 (signed 10-bit-range channel value). MWERKS treated
+// large hex constants as s16 by narrowing; GCC diagnoses. Explicit s16 casts
+// preserve the exact wire values (0xFFEC = -20, 0xFFA6 = -90, 0xFF74 = -140,
+// 0xFFD8 = -40, 0xFFBA = -70, 0xFFCE = -50).
+static const GXColorS10 mFireHamNoseColorEnd = { (s16)0xFFEC, (s16)0xFFA6, (s16)0xFF74, 0xFF };
 static const GXColorS10 mFireHamOtherColorStart
-    = { 0x1F4, 0xFFD8, 0xFFBA, 0xFF };
-static const GXColorS10 mFireHamOtherColorEnd = { 0x50, 0x5, 0xFFCE, 0xFF };
+    = { 0x1F4, (s16)0xFFD8, (s16)0xFFBA, 0xFF };
+static const GXColorS10 mFireHamOtherColorEnd = { 0x50, 0x5, (s16)0xFFCE, 0xFF };
 
 static GXColorS10 mFireHamNoseColorDiff = {
 	mFireHamNoseColorEnd.r - mFireHamNoseColorStart.r,
