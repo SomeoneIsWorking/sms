@@ -7,6 +7,13 @@
 #include <JSystem/J3D/J3DGraphBase/J3DDrawBuffer.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DShape.hpp>
 #include <JSystem/J3D/J3DGraphAnimator/J3DMaterialAnm.hpp>
+#include <JSystem/JUtility/JUTNameTab.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+extern "C" void* sb_b76_material() __attribute__((weak));   // SB_ENTRY_MAT: b76 mask material ptr
+#endif
 
 // TODO: what is this? This isn't part of mtx.h =/
 inline BOOL checkScaleOne(Vec v)
@@ -356,6 +363,34 @@ void J3DJoint::entryIn()
 	j3dSys.getDrawBuffer(1)->setZMtx(j3dSys.getModel()->getAnmMtx(mJntNo));
 
 	for (J3DMaterial* mesh = mMesh; mesh != nullptr;) {
+#ifdef SMS_NATIVE_PLATFORM
+		// SB_JOINT_NAME=1: at each entry of the b76 material (whichever joint owns the mask
+		// packet the file-select overbright chases), print the joint index + name from the
+		// model's joint/material name tables. Names the DATA-driven purpose of the mask, so
+		// we can decide the clean SMS_NATIVE_PLATFORM handling (typically: don't emit it,
+		// because it exists only for GC's EFB-composite path our native renderer replaces).
+		if (const char* e = std::getenv("SB_JOINT_NAME"); e && e[0] && e[0] != '0') {
+			void* want = (&sb_b76_material) ? sb_b76_material() : nullptr;
+			if (want && (void*)mesh == want) {
+				static int n = 0;
+				if (n < 4) { ++n;
+					J3DModelData* md = j3dSys.getModel() ? j3dSys.getModel()->getModelData() : nullptr;
+					const char* jname = "?";
+					const char* mname = "?";
+					if (md) {
+						if (JUTNameTab* jt = md->getJointName())
+							if (const char* s = jt->getName(mJntNo)) jname = s;
+						if (JUTNameTab* mt = md->getMaterialName())
+							if (const char* s = mt->getName(mesh->getIndex())) mname = s;
+					}
+					std::fprintf(stderr, "[joint-name] b76 mesh=%p joint#=%u name=\"%s\" mat#=%u matName=\"%s\" shape#=%u shapeFlag1=%d\n",
+					             (void*)mesh, mJntNo, jname, mesh->getIndex(), mname,
+					             mesh->getShape()->getIndex(),
+					             (int)mesh->getShape()->checkFlag(1));
+				}
+			}
+		}
+#endif
 		if (mesh->getShape()->checkFlag(1)) {
 			mesh = mesh->getNext();
 		} else {
