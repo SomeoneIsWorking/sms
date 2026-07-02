@@ -20,23 +20,23 @@ public:
 	void drawSetting(MtxPtr);
 	void calcEffectMtx(MtxPtr);
 
-	MtxPtr getUnk30() { return unk30; }
-	void setUnk84AndUnk90(f32 x, f32 y, f32 z, f32 dot)
+	MtxPtr getMirrorViewMtx() { return mMirrorViewMtx; }
+	void setMirrorPlane(f32 x, f32 y, f32 z, f32 dot)
 	{
-		unk84.set(x, y, z);
-		unk90 = dot;
+		mPlaneNormal.set(x, y, z);
+		mPlaneD = dot;
 	}
 
-	const ResTIMG* getUnk94() const { return unk94; }
+	const ResTIMG* getMirrorTexResource() const { return mMirrorTexResource; }
 
 public:
-	/* 0x30 */ Mtx unk30;
-	/* 0x60 */ GXTexObj unk60;
-	/* 0x80 */ f32 unk80;
-	/* 0x84 */ JGeometry::TVec3<f32> unk84;
-	/* 0x90 */ f32 unk90;
-	/* 0x94 */ ResTIMG* unk94;
-	/* 0x98 */ JGeometry::TVec3<f32> unk98;
+	/* 0x30 */ Mtx mMirrorViewMtx;
+	/* 0x60 */ GXTexObj mMirrorTexObj;
+	/* 0x80 */ f32 mFovyScale;                        // 1.3f — MirrorCamera fov = mFovyScale * gpCamera->mFovy
+	/* 0x84 */ JGeometry::TVec3<f32> mPlaneNormal;
+	/* 0x90 */ f32 mPlaneD;
+	/* 0x94 */ ResTIMG* mMirrorTexResource;
+	/* 0x98 */ JGeometry::TVec3<f32> mReflectedPos;
 };
 
 class TMirrorModel {
@@ -49,20 +49,20 @@ public:
 	virtual void init(const char*);
 	virtual void calc() { }
 	virtual void setPlane();
-	virtual const JGeometry::TVec3<f32>& getNormalVec() const { return unk18; }
-	virtual f32 getD() const { return unk24; }
+	virtual const JGeometry::TVec3<f32>& getNormalVec() const { return mPlaneNormal; }
+	virtual f32 getD() const { return mPlaneD; }
 
 	TMirrorModel();
 
 	// fabricated
-	MActor* getUnk4() { return unk4; }
+	MActor* getMActor() { return mMActor; }
 
 public:
-	/* 0x4 */ MActor* unk4;
-	/* 0x8 */ TMirrorCamera* unk8;
-	/* 0xC */ JGeometry::TVec3<f32> unkC;
-	/* 0x18 */ JGeometry::TVec3<f32> unk18;
-	/* 0x24 */ f32 unk24;
+	/* 0x4 */ MActor* mMActor;
+	/* 0x8 */ TMirrorCamera* mMirrorCamera;
+	/* 0xC */ JGeometry::TVec3<f32> mPlanePoint;
+	/* 0x18 */ JGeometry::TVec3<f32> mPlaneNormal;
+	/* 0x24 */ f32 mPlaneD;
 };
 
 class TMirrorModelObj : public TMirrorModel {
@@ -72,7 +72,7 @@ public:
 	virtual void setPlane();
 
 public:
-	/* 0x28 */ J3DModel* unk28;
+	/* 0x28 */ J3DModel* mSourceModel;
 };
 
 class TMirrorModelManager;
@@ -93,16 +93,16 @@ public:
 	void registerObjMirror(TMirrorModel*);
 
 	// fabricated
-	MActorAnmData* getUnk20() { return unk20; }
-	bool isUnk18Present() { return unk18 != -1 ? true : false; }
+	MActorAnmData* getMirrorAnmData() { return mMirrorAnmData; }
+	bool isCurrentMirrorPresent() { return mCurrentMirrorIndex != -1 ? true : false; }
 
 public:
-	/* 0x10 */ int unk10;
-	/* 0x14 */ int unk14;
-	/* 0x18 */ int unk18;
-	/* 0x1C */ TMirrorModel** unk1C;
-	/* 0x20 */ MActorAnmData* unk20;
-	/* 0x24 */ TMirrorCamera* unk24;
+	/* 0x10 */ int mMirrorModelCount;
+	/* 0x14 */ int mTotalMirrorSlots;
+	/* 0x18 */ int mCurrentMirrorIndex;                // -1 = no active mirror; else index into mMirrorModels — the "mirror gate"
+	/* 0x1C */ TMirrorModel** mMirrorModels;
+	/* 0x20 */ MActorAnmData* mMirrorAnmData;
+	/* 0x24 */ TMirrorCamera* mMirrorCamera;           // cached from findMirrorCamera()
 	/* 0x28 */ u16 unk28;
 };
 
