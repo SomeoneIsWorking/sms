@@ -16,8 +16,8 @@ static struct OSAlarmQueue AlarmQueue;
 // functions
 static void SetTimer(struct OSAlarm* alarm);
 static void InsertAlarm(OSAlarm* alarm, OSTime fire, OSAlarmHandler handler);
-static void DecrementerExceptionCallback(register __OSException exception,
-                                         register OSContext* context);
+static void DecrementerExceptionCallback( __OSException exception,
+                                          OSContext* context);
 static void DecrementerExceptionHandler(__OSException exception,
                                         OSContext* context);
 
@@ -133,8 +133,8 @@ void OSCancelAlarm(OSAlarm* alarm)
 	OSRestoreInterrupts(enabled);
 }
 
-static void DecrementerExceptionCallback(register __OSException exception,
-                                         register OSContext* context)
+static void DecrementerExceptionCallback( __OSException exception,
+                                          OSContext* context)
 {
 	OSAlarm* alarm;
 	OSAlarm* next;
@@ -181,8 +181,8 @@ static void DecrementerExceptionCallback(register __OSException exception,
 	OSLoadContext(context);
 }
 
-static asm void DecrementerExceptionHandler(register __OSException exception,
-                                            register OSContext* context)
+static asm void DecrementerExceptionHandler( __OSException exception,
+                                             OSContext* context)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc

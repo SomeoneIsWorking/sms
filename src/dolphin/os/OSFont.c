@@ -208,7 +208,7 @@ static void Decode(unsigned char* s, unsigned char* d)
 	int k;
 	int p;
 	int q;
-	int r7; // huh? DWARF info says these 2 variables might be register names
+	int r7; // huh? DWARF info says these 2 variables might be  names
 	        // and not actual names.
 	int r25;
 	int cnt;

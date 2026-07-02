@@ -25,7 +25,7 @@ typedef struct _ApploaderHeader {
 
 static ApploaderHeader Header __attribute__((aligned(32)));
 
-static asm void Run(register void (*addr)())
+static asm void Run( void (*addr)())
 {
 #ifdef __MWERKS__ // clang-format off
   fralloc

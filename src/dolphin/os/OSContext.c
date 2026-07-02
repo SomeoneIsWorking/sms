@@ -8,7 +8,7 @@
 volatile OSContext* __OSCurrentContext AT_ADDRESS(OS_BASE_CACHED | 0x00D4);
 volatile OSContext* __OSFPUContext AT_ADDRESS(OS_BASE_CACHED | 0x00D8);
 
-static asm void __OSLoadFPUContext(register u32, register OSContext* fpuContext)
+static asm void __OSLoadFPUContext( u32,  OSContext* fpuContext)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -93,8 +93,8 @@ _return:
 #endif // clang-format on
 }
 
-static asm void __OSSaveFPUContext(register u32, register u32,
-                                   register OSContext* fpuContext)
+static asm void __OSSaveFPUContext( u32,  u32,
+                                    OSContext* fpuContext)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -183,7 +183,7 @@ _return:
 #endif // clang-format on
 }
 
-asm void OSSetCurrentContext(register OSContext* context) {
+asm void OSSetCurrentContext( OSContext* context) {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
 
@@ -224,7 +224,7 @@ OSContext* OSGetCurrentContext(void)
 	return (OSContext*)__OSCurrentContext;
 }
 
-asm u32 OSSaveContext(register OSContext* context)
+asm u32 OSSaveContext( OSContext* context)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -266,7 +266,7 @@ asm u32 OSSaveContext(register OSContext* context)
 extern void __RAS_OSDisableInterrupts_begin();
 extern void __RAS_OSDisableInterrupts_end();
 
-asm void OSLoadContext(register OSContext* context)
+asm void OSLoadContext( OSContext* context)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -349,7 +349,7 @@ asm u32 OSGetStackPointer()
 #endif // clang-format on
 }
 
-void OSClearContext(register OSContext* context)
+void OSClearContext( OSContext* context)
 {
 	context->mode  = 0;
 	context->state = 0;
@@ -357,8 +357,8 @@ void OSClearContext(register OSContext* context)
 		__OSFPUContext = NULL;
 }
 
-asm void OSInitContext(register OSContext* context, register u32 pc,
-                       register u32 newsp)
+asm void OSInitContext( OSContext* context,  u32 pc,
+                        u32 newsp)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -478,8 +478,8 @@ void OSDumpContext(OSContext* context)
 	}
 }
 
-static asm void OSSwitchFPUContext(register __OSException exception,
-                                   register OSContext* context)
+static asm void OSSwitchFPUContext( __OSException exception,
+                                    OSContext* context)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -530,7 +530,7 @@ void __OSContextInit(void)
 	DBPrintf("FPU-unavailable handler installed\n");
 }
 
-asm void OSFillFPUContext(register OSContext* context)
+asm void OSFillFPUContext( OSContext* context)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc

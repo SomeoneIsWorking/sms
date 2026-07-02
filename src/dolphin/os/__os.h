@@ -97,7 +97,7 @@ void __OSReschedule(void);
 // OSTime.c
 void __OSSetTime(long long time);
 long long __OSGetSystemTime();
-void __OSSetTick(register unsigned long newTicks);
+void __OSSetTick( unsigned long newTicks);
 
 // ppc_eabi_init.c
 __declspec(section ".init") asm void __init_hardware(void);

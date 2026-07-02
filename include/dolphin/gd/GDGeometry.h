@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-// Command processor register IDs
+// Command processor  IDs
 #define CP_REG_MTXIDXA_ID     0x30 // Matrix index A
 #define CP_REG_MTXIDXB_ID     0x40 // Matrix index B
 #define CP_REG_VCD_LO_ID      0x50 // Vertex descriptor (lo)
@@ -91,7 +91,7 @@ extern "C" {
     )
 // clang-format on
 
-// Transform unit register IDs
+// Transform unit  IDs
 #define XF_REG_ERROR_ID        0x1000
 #define XF_REG_DIAGNOSTICS_ID  0x1001
 #define XF_REG_STATE0_ID       0x1002
