@@ -550,20 +550,27 @@ TLightWithDBSet::TLightWithDBSet(int idx, const char* name)
 {
 }
 
+// Native ctors for the 4 TLightWithDBSet subclasses. The buffer-count arg (=2)
+// and the Shift-JIS name arg both come from RE of the TLightWithDBSetManager
+// ctor @0x80228534 (US), which explicitly writes mBufferCount = 2 to each set
+// (li r4,2 → stw r4, 0x1c(alloc) — evidence per subclass in
+// reference/sms/debug_journal/2026-07-02_light_with_dbset_makedrawbuffer_re.md).
+// Name strings are at 0x8039d9c4 / 0x8039d9d8 / 0x8039d9f0 / 0x8039da0c in the
+// GMSE01 rodata pointer-table @0x8039d868.
 TPlayerLightWithDBSet::TPlayerLightWithDBSet()
-    : TLightWithDBSet(0, "<TPlayerLightWithDBSet>")
+    : TLightWithDBSet(2, "\x83\x76\x83\x8c\x83\x43\x83\x84\x81\x5b\x97\x70\x83\x89\x83\x43\x83\x67")  // "プレイヤー用ライト"
 {
 }
 TMapObjectLightWithDBSet::TMapObjectLightWithDBSet()
-    : TLightWithDBSet(0, "<TMapObjectLightWithDBSet>")
+    : TLightWithDBSet(2, "\x83\x7d\x83\x62\x83\x76\x83\x49\x83\x75\x83\x57\x83\x46\x83\x4e\x83\x67\x97\x70\x83\x89\x83\x43\x83\x67")  // "マップオブジェクト用ライト"
 {
 }
 TObjectLightWithDBSet::TObjectLightWithDBSet()
-    : TLightWithDBSet(0, "<TObjectLightWithDBSet>")
+    : TLightWithDBSet(2, "\x83\x49\x83\x75\x83\x57\x83\x46\x83\x4e\x83\x67\x97\x70\x83\x89\x83\x43\x83\x67")  // "オブジェクト用ライト"
 {
 }
 TIndirectLightWithDBSet::TIndirectLightWithDBSet()
-    : TLightWithDBSet(0, "<TIndirectLightWithDBSet>")
+    : TLightWithDBSet(2, "\x83\x43\x83\x93\x83\x5f\x83\x43\x83\x8c\x83\x4e\x83\x67\x83\x82\x83\x66\x83\x8b\x97\x70\x83\x89\x83\x43\x83\x67")  // "インダイレクトモデル用ライト"
 {
 }
 
