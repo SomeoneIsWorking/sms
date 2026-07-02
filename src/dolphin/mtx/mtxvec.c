@@ -3,7 +3,7 @@
 
 #define qr0 0
 
-asm void PSMTXMultVec(register Mtx44 m, register Vec* src, register Vec* dst)
+asm void PSMTXMultVec( Mtx44 m,  Vec* src,  Vec* dst)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -31,8 +31,8 @@ asm void PSMTXMultVec(register Mtx44 m, register Vec* src, register Vec* dst)
 #endif // clang-format on
 }
 
-asm void PSMTXMultVecArray(register Mtx m, register Vec* srcBase,
-                           register Vec* dstBase, register u32 count)
+asm void PSMTXMultVecArray( Mtx m,  Vec* srcBase,
+                            Vec* dstBase,  u32 count)
 {
 #ifdef __MWERKS__ // clang-format off
 	psq_l      f13, 0x0(m), 0, qr0
@@ -76,7 +76,7 @@ loop:
 #endif // clang-format on
 }
 
-asm void PSMTXMultVecSR(register Mtx44 m, register Vec* src, register Vec* dst)
+asm void PSMTXMultVecSR( Mtx44 m,  Vec* src,  Vec* dst)
 {
 #ifdef __MWERKS__ // clang-format off
 	psq_l   f0, 0x0(m), 0, qr0

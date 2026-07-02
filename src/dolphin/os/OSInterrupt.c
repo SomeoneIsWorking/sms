@@ -5,8 +5,8 @@
 
 #include "__os.h"
 
-static asm void ExternalInterruptHandler(register __OSException exception,
-                                         register OSContext* context);
+static asm void ExternalInterruptHandler( __OSException exception,
+                                          OSContext* context);
 
 extern void __RAS_OSDisableInterrupts_begin(void);
 extern void __RAS_OSDisableInterrupts_end(void);
@@ -60,7 +60,7 @@ asm BOOL OSEnableInterrupts(void)
 #endif // clang-format on
 }
 
-asm BOOL OSRestoreInterrupts(register BOOL level) {
+asm BOOL OSRestoreInterrupts( BOOL level) {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
 
@@ -411,8 +411,8 @@ void __OSDispatchInterrupt(__OSException exception, OSContext* context)
 	OSLoadContext(context);
 }
 
-static asm void ExternalInterruptHandler(register __OSException exception,
-                                         register OSContext* context)
+static asm void ExternalInterruptHandler( __OSException exception,
+                                          OSContext* context)
 {
 #pragma unused(exception)
 #ifdef __MWERKS__ // clang-format off

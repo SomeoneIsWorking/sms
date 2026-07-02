@@ -26,12 +26,12 @@ void C_MTXIdentity(Mtx mtx)
 	mtx[2][2] = 1.0f;
 }
 
-void PSMTXIdentity(register Mtx m)
+void PSMTXIdentity( Mtx m)
 {
-	register f32 c_zero = 0.0f;
-	register f32 c_one  = 1.0f;
-	register f32 c_01;
-	register f32 c_10;
+	 f32 c_zero = 0.0f;
+	 f32 c_one  = 1.0f;
+	 f32 c_01;
+	 f32 c_10;
 
 #ifdef __MWERKS__ // clang-format off
 	asm {
@@ -47,7 +47,7 @@ void PSMTXIdentity(register Mtx m)
 #endif // clang-format on
 }
 
-asm void PSMTXCopy(register Mtx src, register Mtx dst)
+asm void PSMTXCopy( Mtx src,  Mtx dst)
 {
 #ifdef __MWERKS__ // clang-format off
 	psq_l f0, 0(src), 0, qr0
@@ -65,7 +65,7 @@ asm void PSMTXCopy(register Mtx src, register Mtx dst)
 #endif // clang-format on
 }
 
-asm void PSMTXConcat(register Mtx mA, register Mtx mB, register Mtx mAB)
+asm void PSMTXConcat( Mtx mA,  Mtx mB,  Mtx mAB)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -123,7 +123,7 @@ asm void PSMTXConcat(register Mtx mA, register Mtx mB, register Mtx mAB)
 #endif // clang-format on
 }
 
-asm u32 PSMTXInverse(register Mtx src, register Mtx inv)
+asm u32 PSMTXInverse( Mtx src,  Mtx inv)
 {
 #ifdef __MWERKS__ // clang-format off
 	psq_l f0, 0(src), 1, qr0
@@ -199,13 +199,13 @@ void PSMTXRotRad(Mtx m, char axis, f32 rad)
 	PSMTXRotTrig(m, axis, s, c);
 }
 
-void PSMTXRotTrig(register Mtx m, register char axis, register f32 sinA,
-                  register f32 cosA)
+void PSMTXRotTrig( Mtx m,  char axis,  f32 sinA,
+                   f32 cosA)
 {
-	register f32 fc0;
-	register f32 fc1;
-	register f32 nsinA;
-	register f32 fw0, fw1, fw2, fw3;
+	 f32 fc0;
+	 f32 fc1;
+	 f32 nsinA;
+	 f32 fw0, fw1, fw2, fw3;
 
 	fc0 = 0.0f;
 	fc1 = 1.0f;
@@ -263,23 +263,23 @@ _end:
 #endif // clang-format on
 }
 
-static inline void __PSMTXRotAxisRadInternal(register Mtx m,
-                                             const register Vec* axis,
-                                             register f32 sT, register f32 cT)
+static inline void __PSMTXRotAxisRadInternal( Mtx m,
+                                             const  Vec* axis,
+                                              f32 sT,  f32 cT)
 {
 }
 
-void PSMTXRotAxisRad(register Mtx m, Vec* axis, register f32 rad)
+void PSMTXRotAxisRad( Mtx m, Vec* axis,  f32 rad)
 {
-	register f32 tmp0, tmp1, tmp2, tmp3, tmp4;
-	register f32 tmp5, tmp6, tmp7, tmp8, tmp9;
+	 f32 tmp0, tmp1, tmp2, tmp3, tmp4;
+	 f32 tmp5, tmp6, tmp7, tmp8, tmp9;
 
-	register f32 sT;
-	register f32 cT;
-	register f32 oneMinusCosT;
-	register f32 zero;
+	 f32 sT;
+	 f32 cT;
+	 f32 oneMinusCosT;
+	 f32 zero;
 	Vec axisNormalized;
-	register Vec* axisNormalizedPtr;
+	 Vec* axisNormalizedPtr;
 
 	zero              = 0.0f;
 	axisNormalizedPtr = &axisNormalized;
@@ -323,11 +323,11 @@ void PSMTXRotAxisRad(register Mtx m, Vec* axis, register f32 rad)
 #endif // clang-format on
 }
 
-void PSMTXTrans(register Mtx m, register f32 xT, register f32 yT,
-                register f32 zT)
+void PSMTXTrans( Mtx m,  f32 xT,  f32 yT,
+                 f32 zT)
 {
-	register f32 c0 = 0.0F;
-	register f32 c1 = 1.0F;
+	 f32 c0 = 0.0F;
+	 f32 c1 = 1.0F;
 #ifdef __MWERKS__ // clang-format off
 	asm {
 		stfs        xT,     12(m)
@@ -344,8 +344,8 @@ void PSMTXTrans(register Mtx m, register f32 xT, register f32 yT,
 #endif // clang-format on
 }
 
-asm void PSMTXTransApply(register Mtx src, register Mtx dst, register f32 xT,
-                         register f32 yT, register f32 zT)
+asm void PSMTXTransApply( Mtx src,  Mtx dst,  f32 xT,
+                          f32 yT,  f32 zT)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -369,10 +369,10 @@ asm void PSMTXTransApply(register Mtx src, register Mtx dst, register f32 xT,
 #endif // clang-format on
 }
 
-void PSMTXScale(register Mtx m, register f32 xS, register f32 yS,
-                register f32 zS)
+void PSMTXScale( Mtx m,  f32 xS,  f32 yS,
+                 f32 zS)
 {
-	register f32 c0 = 0.0F;
+	 f32 c0 = 0.0F;
 #ifdef __MWERKS__ // clang-format off
 	asm {
 		stfs        xS,      0(m)
@@ -387,8 +387,8 @@ void PSMTXScale(register Mtx m, register f32 xS, register f32 yS,
 #endif // clang-format on
 }
 
-asm void PSMTXScaleApply(register Mtx src, register Mtx dst, register f32 xS,
-                         register f32 yS, register f32 zS)
+asm void PSMTXScaleApply( Mtx src,  Mtx dst,  f32 xS,
+                          f32 yS,  f32 zS)
 {
 #ifdef __MWERKS__ // clang-format off
   nofralloc
@@ -414,11 +414,11 @@ asm void PSMTXScaleApply(register Mtx src, register Mtx dst, register f32 xS,
 #endif // clang-format on
 }
 
-void PSMTXQuat(register Mtx m, register Quaternion* q)
+void PSMTXQuat( Mtx m,  Quaternion* q)
 {
-	register f32 c_zero, c_one, c_two, scale;
-	register f32 tmp0, tmp1, tmp2, tmp3, tmp4;
-	register f32 tmp5, tmp6, tmp7, tmp8, tmp9;
+	 f32 c_zero, c_one, c_two, scale;
+	 f32 tmp0, tmp1, tmp2, tmp3, tmp4;
+	 f32 tmp5, tmp6, tmp7, tmp8, tmp9;
 
 	c_one = 1.0F;
 #ifdef __MWERKS__ // clang-format off

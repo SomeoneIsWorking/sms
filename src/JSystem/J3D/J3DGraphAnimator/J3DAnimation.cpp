@@ -387,7 +387,7 @@ static f32 J3DHermiteInterpolationS(f32 t, s16* time0, s16* value0,
 	f32 v1  = (f32)*value1;    // value1
 	f32 kt  = (t - tm0) / timeRange; // f6 = (t - time0) / timeRange
 
-	f32 tan1 = (f32)*tangent1; // f7 register in asm (fout slot)
+	f32 tan1 = (f32)*tangent1; // f7  in asm (fout slot)
 	f32 dv   = v1 - v0;        // f5 = value1 - value0
 	f32 tan0 = (f32)*tangent0; // f0
 
