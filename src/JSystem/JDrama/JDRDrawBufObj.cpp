@@ -30,6 +30,29 @@ TDrawBufObj::TDrawBufObj(u32 param_1, u32 param_2, const char* name)
 	mDrawBuffer = new J3DDrawBuffer(mDrawBufferSize);
 }
 
+#ifdef SMS_NATIVE_PLATFORM
+// Registry mapping J3DDrawBuffer* -> owning TDrawBufObj name. Populated at first perform()
+// of each buffer; used by SB_ENTRY_MAT (J3DDrawBuffer::entryMatSort) to name the buffer a
+// packet is being entered into. Small fixed table (there are ~30 named buffers in the game).
+namespace {
+	struct DbRegEntry { const void* buf; const char* name; };
+	constexpr int kDbRegMax = 64;
+	DbRegEntry g_dbreg[kDbRegMax];
+	int g_dbreg_n = 0;
+	void register_drawbuf(const void* buf, const char* name) {
+		if (!buf || !name) return;
+		for (int i = 0; i < g_dbreg_n; ++i)
+			if (g_dbreg[i].buf == buf) { g_dbreg[i].name = name; return; }
+		if (g_dbreg_n < kDbRegMax) { g_dbreg[g_dbreg_n].buf = buf; g_dbreg[g_dbreg_n].name = name; ++g_dbreg_n; }
+	}
+}
+extern "C" const char* sb_boot_drawbuf_name(const void* buf) {
+	for (int i = 0; i < g_dbreg_n; ++i)
+		if (g_dbreg[i].buf == buf) return g_dbreg[i].name;
+	return nullptr;
+}
+#endif
+
 void TDrawBufObj::load(JSUMemoryInputStream& stream)
 {
 	TNameRef::load(stream);
@@ -61,6 +84,12 @@ void TDrawBufObj::perform(u32 param_1, TGraphics* param_2)
 		}
 	}
 #endif
+#ifdef SMS_NATIVE_PLATFORM
+	// Register (mDrawBuffer -> mName) so SB_ENTRY_MAT (in J3DDrawBuffer::entryMatSort) can name
+	// the buffer a packet is being entered into. Idempotent; ~30 named buffers in the game.
+	register_drawbuf((const void*)mDrawBuffer, getName());
+#endif
+
 	if (param_1 & 0x80)
 		mDrawBuffer->frameInit();
 
