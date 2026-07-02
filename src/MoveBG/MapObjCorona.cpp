@@ -1,7 +1,43 @@
 #include "MoveBG/MapObjCorona.hpp"
 #include "MoveBG/MapObjBase.hpp"
+#include "JSystem/JParticle/JPAResourceManager.hpp"
 
-void TBathtub::loadAfter() { }
+extern JPAResourceManager* gpResourceManager;
+
+// Native port of TBathtub::loadAfter (@0x801fb894). バスタブ — Corona Mountain's
+// bathtub (Bowser's final-stage arena). Idempotently registers four particle
+// resources with gpResourceManager (r13-0x5fe0): steam (yuge), fountain (funsui),
+// and two break-piece variants. Each registration is guarded by its own file-scope
+// byte latch so if multiple TBathtub instances load in the scene the .jpa file is
+// only pulled off disc once. IDs (0x1be, 0x1bf, 0xf6, 0xf7) match the RE. This
+// override does NOT chain to TMapObjBase::loadAfter — the disasm starts directly
+// with the first flag check, no base call.
+void TBathtub::loadAfter()
+{
+	static bool s_registered_1be = false;
+	if (!s_registered_1be) {
+		gpResourceManager->load("/scene/map/map/ms_lkp_yuge1.jpa", 0x1be);
+		s_registered_1be = true;
+	}
+
+	static bool s_registered_1bf = false;
+	if (!s_registered_1bf) {
+		gpResourceManager->load("/scene/map/map/ms_kp_funsui.jpa", 0x1bf);
+		s_registered_1bf = true;
+	}
+
+	static bool s_registered_f6 = false;
+	if (!s_registered_f6) {
+		gpResourceManager->load("/scene/map/map/ms_kp_break_a.jpa", 0xf6);
+		s_registered_f6 = true;
+	}
+
+	static bool s_registered_f7 = false;
+	if (!s_registered_f7) {
+		gpResourceManager->load("/scene/map/map/ms_kp_break_b.jpa", 0xf7);
+		s_registered_f7 = true;
+	}
+}
 
 void TBathtub::hipdrop(const JGeometry::TVec3<f32>&) { }
 
