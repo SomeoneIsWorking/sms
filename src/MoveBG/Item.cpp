@@ -531,14 +531,21 @@ void TShine::initMapObj()
 	unk178 = 0xf0;
 }
 
-void TShine::movingDown()
+// Native port of TShine::loadAfter (@0x801bcd08). 26 instructions.
+// Chains TMapObjGeneral::loadAfter, then a 2-branch dispatch on unk154:
+//   * unk154 == 2 → mTimeTilAppear = 0xf0 (240 frames), mState = 0x12 (18).
+//   * unk154 == 1 → virtual call vtable[0x104] = makeObjDead (session-11
+//     memory: [[session11-mapobjbase-vtable-slot-0x104]]).
+//   * anything else → no-op after base loadAfter.
+void TShine::loadAfter()
 {
-	mPosition.y -= mUpSpeed;
-	if (isStateTimerEngaged())
-		return;
-	unk16C      = 7.0f;
-	mStateTimer = unk178;
-	mState      = STATE_UNKF;
+	TMapObjGeneral::loadAfter();
+	if (unk154 == 2) {
+		setTimeTilAppear(0xf0);
+		setState(0x12);
+	} else if (unk154 == 1) {
+		makeObjDead();
+	}
 }
 
 void TShine::control()
