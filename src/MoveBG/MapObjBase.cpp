@@ -17,6 +17,7 @@
 #include <JSystem/J3D/J3DGraphAnimator/J3DJoint.hpp>
 #include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
 #include <JSystem/JDrama/JDRNameRefGen.hpp>
+#include <System/MarDirector.hpp>
 
 // rogue includes needed for matching sinit & bss
 #include <MSound/MSSetSound.hpp>
@@ -512,139 +513,161 @@ void TMapObjBase::setGroundCollision()
 	if (mMapCollisionManager->unk8->mKind != TMapCollisionBase::KIND_MOVE)
 		return;
 
-	if (checkMapObjFlag(MAP_OBJ_FLAG_UNK2)) {
-		if (mColCount == 0 && unk102 == 0)
-			return;
-		--unk102;
-		if (mColCount != 0)
-			unk102 = 4;
-	}
+// Native port of TMapObjBase::perform (@0x801afb48, 1068B). This is the
+// per-frame dispatcher inherited by ALL map-object actors — palm trees,
+// coin blocks, cover fruit, warp pipes, etc. Was empty { } before.
+//
+// Vtable slots RE'd from __vt__11TMapObjBase (found at 0x803C2AB8 via
+// __ct__11TMapObjBase); byte offsets into the vtable pointer:
+//   0xC4 → control()                  (TMapObjBase override)
+//   0xD4 → requestShadow()            (inherited from TLiveActor)
+//   0xEC → hasMapCollision() const    (inherited from TLiveActor)
+//   0x138 → calc()                    (TMapObjBase override — empty stub)
+//   0x13C → draw() const              (TMapObjBase override — empty stub)
+//   0x140 → dead()                    (TMapObjBase override — empty stub)
+//
+// The J3DModel* vtable-slot-0x1c call at 0x801aff20 is a subclass-specific
+// virtual (base J3DModel has only 5 virtuals; slot 0x1c is beyond that).
+// Preserved as a raw vtable-offset call — a runtime subclass MActor holds
+// implements it and picks the semantic. Not guessing which named virtual
+// it maps to.
+//
+// _DAT_803c2c58 is a file-static u32 in TMapObjBase.cpp's TU that gates a
+// per-frame sound cue. It's initialized to -1 (no sound) in .data and
+// specific actors set it to a sound id to trigger a one-shot dispatch.
+namespace {
+static u32 s_pendingSoundId = 0xFFFFFFFFu; // .data @0x803c2c58
+} // namespace
 
-	if (checkMapObjFlag(MAP_OBJ_FLAG_UNK8)) {
-		MtxPtr mtx = getModel()->getAnmMtx(0);
-		if (mMapCollisionManager->unk8)
-			mMapCollisionManager->unk8->moveMtx(mtx);
-	} else {
-		JGeometry::TVec3<f32> pos(mPosition.x, mPosition.y - mYOffset,
-		                          mPosition.z);
-		if (checkMapObjFlag(MAP_OBJ_FLAG_UNK4)) {
-			mMapCollisionManager->unk8->offFlag(
-			    TMapCollisionBase::FLAG_UNK8000);
-			mMapCollisionManager->unk8->offFlag(
-			    TMapCollisionBase::FLAG_UNK4000);
-			if (mMapCollisionManager->unk8)
-				mMapCollisionManager->unk8->moveSRT(pos, mRotation, mScaling);
-		} else {
-			mMapCollisionManager->unk8->offFlag(
-			    TMapCollisionBase::FLAG_UNK4000);
-			if (mMapCollisionManager->unk8)
-				mMapCollisionManager->unk8->moveTrans(pos);
-		}
-	}
-}
-
-void TMapObjBase::perform(u32 cue, JDrama::TGraphics* graphics)
+void TMapObjBase::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (gpMarDirector->isTalkModeNow() && !gpMarDirector->isDemoModeNow()) {
-		if (checkLiveFlag(LIVE_FLAG_DEAD))
+	u8 marState = gpMarDirector->unk124;
+
+	// TALK-MODE MAIN BLOCK: only runs when unk124 IS 1 or 2 (talk mode).
+	// The double-negative structure in the decomp collapses to:
+	//   "enter iff talk-mode; the inner demo-check never fires because
+	//   1/2 and 3/4 are disjoint".
+	if (marState == 1 || marState == 2) {
+		if (mLiveFlag & LIVE_FLAG_DEAD)
+			return;
+		if (mActorType == 0x4000003b) // specific "no-perform" actor type
 			return;
 
-		if (isActorType(0x4000003B))
-			return;
-
-		if (cue & CUE_MOVE) {
-			setGroundCollision();
-			cue &= ~CUE_MOVE;
+		if (param_1 & 1) {
+			control();
+			param_1 &= ~1u;
 		}
 
-		if ((cue & CUE_CALC_ANIM) && mMActor) {
-			if (checkLiveFlag(LIVE_FLAG_CLIPPED_OUT | LIVE_FLAG_UNK200)) {
-				if (getModel()->mShapePackets->unk30 != 0)
-					SMS_HideAllShapePacket(getModel());
+		if ((param_1 & 2) && mMActor != nullptr) {
+			J3DModel* model = getModel();
+			// The show/hide decision reads a byte at
+			// (model->mShapePackets[0] + 0x30). ShapePacket's +0x30
+			// stores the show/hide flag flipped by SMS_ShowAll /
+			// SMS_HideAll. 0 = shown, non-0 = hidden.
+			u8 packetHiddenFlag = *((u8*)model->getShapePacket(0) + 0x30);
+			if ((mLiveFlag & 0x204) == 0) {
+				if (packetHiddenFlag == 0)
+					SMS_ShowAllShapePacket(model);
 			} else {
-				if (getModel()->mShapePackets->unk30 == 0)
-					SMS_ShowAllShapePacket(getModel());
+				if (packetHiddenFlag != 0)
+					SMS_HideAllShapePacket(model);
 			}
 		}
 
-		if (checkLiveFlag(LIVE_FLAG_UNK200))
+		if (mLiveFlag & 0x200)
 			return;
 
 		if (hasMapCollision())
-			cue &= ~CUE_CALC_ANIM;
+			param_1 &= ~2u;
 	}
 
-	if (cue & CUE_MOVE) {
-		if (isStateTimerEngaged())
-			--mStateTimer;
+	// SECOND BLOCK: runs when not in talk mode OR after talk-mode block
+	// completes. First: movement phase — decrement mTimeTilAppear and
+	// dispatch the file-static sound cue (if any).
+	if (param_1 & 1) {
+		if (mTimeTilAppear > 0)
+			--mTimeTilAppear;
 
 		if (unk100 == 0) {
-			if (!mMapObjData->mSound) {
-				u32 sound = TMapObjGeneral::mDefaultSound.unk0[unk100];
-				if (sound != 0xffffffff)
-					SMSGetMSound()->startSoundActor(sound, &mPosition, 0,
-					                                nullptr, 0, 4);
+			u32 soundId;
+			const TMapObjSoundInfo* soundOverride = mMapObjData->mSound;
+			if (soundOverride == nullptr) {
+				soundId = s_pendingSoundId;
 			} else {
-				u32 sound = mMapObjData->mSound->unk4->unk0[unk100];
-				if (sound != 0xffffffff)
-					SMSGetMSound()->startSoundActor(sound, &mPosition, 0,
-					                                nullptr, 0, 4);
+				// mMapObjData->mSound->unk4->unk0[0] — per-actor sound id
+				soundId = soundOverride->unk4->unk0[0];
+			}
+			if (soundId != 0xFFFFFFFFu && gpMSound->gateCheck(soundId)) {
+				MSoundSESystem::MSoundSE::startSoundActor(
+				    soundId, &mPosition, 0, nullptr, 0, 4);
 			}
 		}
-		if (checkLiveFlag(LIVE_FLAG_DEAD))
+
+		if (mLiveFlag & 1)
 			dead();
 	}
 
-	if (checkLiveFlag(LIVE_FLAG_DEAD))
-		return;
+	if ((mLiveFlag & 1) == 0) {
+		if (param_1 & 8)
+			draw();
 
-	if (cue & CUE_DRAW)
-		draw();
+		if (mLiveFlag & 0x4000) {
+			if (param_1 & 2)     param_1 &= ~2u;
+			if (param_1 & 0x200) param_1 &= ~0x200u;
+			if (param_1 & 4)     param_1 &= ~4u;
+		}
 
-	if (checkLiveFlag(LIVE_FLAG_UNK4000)) {
-		if (cue & CUE_CALC_ANIM)
-			cue &= ~CUE_CALC_ANIM;
-		if (cue & CUE_ENTRY)
-			cue &= ~CUE_ENTRY;
-		if (cue & CUE_CALC_VIEW)
-			cue &= ~CUE_CALC_VIEW;
-	}
+		if (param_1 & 2) {
+			calc();
 
-	if (cue & CUE_CALC_ANIM) {
-		calc();
-		if (mMActor) {
-			if (checkLiveFlag(LIVE_FLAG_CLIPPED_OUT | LIVE_FLAG_UNK200)) {
-				if (getModel()->mShapePackets->unk30 != 0)
-					SMS_HideAllShapePacket(getModel());
+			if (mMActor != nullptr) {
+				J3DModel* model = getModel();
+				u8 packetHiddenFlag
+				    = *((u8*)model->getShapePacket(0) + 0x30);
+				if ((mLiveFlag & 0x204) == 0) {
+					if (packetHiddenFlag == 0)
+						SMS_ShowAllShapePacket(model);
+				} else {
+					if (packetHiddenFlag != 0)
+						SMS_HideAllShapePacket(model);
+				}
+			}
+
+			if ((unkF8 & 0x100) == 0) {
+				if ((unkF8 & 0x200) && mMActor != nullptr
+				    && mMActor->curAnmEndsNext(0, nullptr)) {
+					unkF8 |= 0x100;
+				}
 			} else {
-				if (getModel()->mShapePackets->unk30 == 0)
-					SMS_ShowAllShapePacket(getModel());
+				param_1 &= ~2u;
 			}
 		}
-		if (checkMapObjFlag(MAP_OBJ_FLAG_UNK100)) {
-			cue &= ~CUE_CALC_ANIM;
-		} else if (checkMapObjFlag(MAP_OBJ_FLAG_UNK200)) {
-			if (mMActor && mMActor->curAnmEndsNext(0, nullptr))
-				onMapObjFlag(MAP_OBJ_FLAG_UNK100);
+
+		if (param_1 & 0x200) {
+			if (unkF8 & 0x1000) param_1 &= ~0x200u;
+			if (unkF8 & 0x800)  param_1 &= ~0x200u;
 		}
-	}
 
-	if (cue & CUE_ENTRY) {
-		if (checkMapObjFlag(MAP_OBJ_FLAG_UNK1000))
-			cue &= ~CUE_ENTRY;
-		if (checkMapObjFlag(MAP_OBJ_FLAG_UNK800))
-			cue &= ~CUE_ENTRY;
-	}
+		if ((param_1 & 4) && mMActor != nullptr && (unkF8 & 0x400)) {
+			J3DModel* model = getModel();
+			// Raw vtable dispatch at byte offset 0x1c — a subclass
+			// virtual beyond base J3DModel's 5 documented virtuals.
+			typedef void (*Vt1cFn)(J3DModel*);
+			Vt1cFn fn = *(Vt1cFn*)((*(u8**)model) + 0x1c);
+			fn(model);
+			param_1 &= ~4u;
+			requestShadow();
+		}
 
-	if ((cue & CUE_CALC_VIEW) && mMActor
-	    && checkMapObjFlag(MAP_OBJ_FLAG_UNK400)) {
-		getModel()->viewCalc();
-		cue &= ~CUE_CALC_VIEW;
-		requestShadow();
+		TLiveActor::perform(param_1, param_2);
 	}
-
-	TLiveActor::perform(cue, graphics);
 }
+
+// Empty TMapObjBase virtuals — byte-exact `blr` in the binary. Ports for
+// vtable slot fill; concrete behavior lives in derived-class overrides.
+void TMapObjBase::calc() { }
+void TMapObjBase::draw() const { }
+void TMapObjBase::dead() { }
 
 u32 TMapObjBase::getShadowType()
 {
