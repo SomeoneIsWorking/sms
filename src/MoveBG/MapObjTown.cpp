@@ -2,6 +2,10 @@
 #include <JSystem/JSupport/JSUInputStream.hpp>
 #include <M3DUtil/MActor.hpp>
 #include <MSound/MSound.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 #include <JSystem/J3D/J3DGraphAnimator/J3DAnimation.hpp>
 #include <System/FlagManager.hpp>
 #include <System/MarDirector.hpp>
@@ -63,6 +67,32 @@ void TDoor::load(JSUMemoryInputStream& stream)
 void TManhole::loadAfter()
 {
 	TMapObjBase::loadAfter();
+#ifdef SMS_NATIVE_PLATFORM
+	// Stage-1 (Plaza) fastboot SEGVs here on `mMActor->getFrameCtrl(0)` — mMActor null.
+	// FAIL FAST with state so the root cause names itself; the GC binary does an
+	// UNCONDITIONAL deref here (verified via `sunbright-recomp --disasm 0x801c1bc0`), so
+	// on real HW mMActor is always non-null and TMapObjBase::load/initMapObj/makeMActors/
+	// initMActor MUST have populated it before loadAfter — the port has a load-path gap.
+	if (mMActor == nullptr) {
+		std::fprintf(stderr,
+		    "[TManhole::loadAfter] FATAL: mMActor NULL - port load-path gap.\n"
+		    "  name=%s  mMapObjData=%p  keeper=%p  unkF4=%s\n",
+		    mName ? mName : "(null)", (void*)mMapObjData,
+		    (void*)mMActorKeeper, unkF4 ? unkF4 : "(null)");
+		if (mMapObjData && mMapObjData->mAnim) {
+			std::fprintf(stderr,
+			    "  anim->unk0=%u anim->unk2=%u anim->unk4[0].unk0=%s\n",
+			    (unsigned)mMapObjData->mAnim->unk0,
+			    (unsigned)mMapObjData->mAnim->unk2,
+			    mMapObjData->mAnim->unk4 && mMapObjData->mAnim->unk4[0].unk0
+			      ? mMapObjData->mAnim->unk4[0].unk0 : "(null)");
+		} else {
+			std::fprintf(stderr, "  mMapObjData->mAnim = null (would trigger fallback initMActor path)\n");
+		}
+		std::fflush(stderr);
+		std::abort();
+	}
+#endif
 	mMActor->getFrameCtrl(0)->setRate(0.0f);
 }
 
