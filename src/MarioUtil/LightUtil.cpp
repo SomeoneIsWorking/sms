@@ -674,6 +674,23 @@ TIndirectLightWithDBSet::TIndirectLightWithDBSet()
 {
 }
 
+// Native port of TLightWithDBSetManager ctor (@0x80228534, 1028 bytes decomp
+// scratch/decomp/80228534.c). The disasm allocates the 4-entry mLightSets
+// array (each a 0x24-byte subclass), zeroes the effect-color word, sets
+// mEffectEnabled=0 / mEffectValid=1, then loads a bank of SDA2 constants into
+// mEffectAlphaScale + unk2C..unk44 + unk48 and calls calcLightBorder() inline.
+//
+// The calcLightBorder body @0x8022886c..0x80228930 (matches Ghidra decomp
+// lines 102-114) computes a quadratic polynomial y = c0 + c1*x + c2*x^2
+// passing through the three (x,y) pairs (unk2C, 0.9), (unk30, 0.5),
+// (unk34, 0.05). Result: unk38=c0, unk3C=c1, unk40=c2. It does NOT touch
+// mEffectEnabled — the "gate is unwired" hypothesis is falsified; both
+// mEffectEnabled=0 (ctor init) and mEffectValid=1 (ctor init) are correct
+// steady-state values and calcLightBorder never overrides them. The gate
+// stays OFF until (unresolved) external code flips mEffectEnabled=1 for
+// scenes that want the specular-sun effect light. At title screen (SB_STAGE
+// =15), mEffectEnabled stays 0 → TLightCommon::setLight's L1 branch is
+// correctly skipped and L1 retains whatever LIGHT-INIT broadcast programmed.
 TLightWithDBSetManager::TLightWithDBSetManager(const char* name)
     : JDrama::TViewObj(name)
 {
@@ -688,11 +705,78 @@ TLightWithDBSetManager::TLightWithDBSetManager(const char* name)
 	mLightSets[1] = new TMapObjectLightWithDBSet;
 	mLightSets[2] = new TObjectLightWithDBSet;
 	mLightSets[3] = new TIndirectLightWithDBSet;
+
 	mEffectColor.r = mEffectColor.g = mEffectColor.b = mEffectColor.a = 0;
 	unk1C = unk20 = unk24 = 0;
+
+	// Gate bytes (RE'd from 0x802285ac / 0x802285b0 — two consecutive stb):
+	//   stb r30, 0x54(r28) with r30 = 0  →  mEffectEnabled = 0
+	//   stb  r0, 0x55(r28) with r0  = 1  →  mEffectValid   = 1
+	// (Prior port had mEffectValid = 0, wrong; caught 2026-07-04 during
+	// calcLightBorder RE.)
+	mEffectEnabled = 0;
+	mEffectValid = 1;
+
+	// SDA2-driven default values the disasm loads into mEffectAlphaScale +
+	// unk2C..unk44 + unk48. The concrete numeric values live in the DOL at
+	// r2-relative offsets 0x1788..0x17a8; we can't reliably decode them
+	// without pinning r2 (Ghidra does not propagate register context here),
+	// so the port leaves these zero for now. That is safe: they only feed
+	// the border curve (via calcLightBorder below) and the effect-color
+	// alpha scale (via TLightCommon::setLight, gated on
+	// mEffectEnabled=1 which never fires at title). Extending: a
+	// spot-verify PPC disasm pass could pin r2 and reveal the exact
+	// initial values; captured as a follow-up rather than gated on here.
 	mEffectAlphaScale = unk2C = unk30 = unk34 = unk38 = unk3C = unk40 = unk44 = 0.0f;
 	unk48.x = unk48.y = unk48.z = 0.0f;
-	mEffectEnabled = mEffectValid = 0;
+
+	// Compute the border coefficients inline. With the SDA2-driven inputs
+	// currently zeroed the fit degenerates (division by zero); guard so
+	// the port doesn't NaN the fields before the SDA2 load is completed.
+	if (unk2C != unk30 && unk30 != unk34) {
+		calcLightBorder();
+	}
+#endif
+}
+
+// Native port of calcLightBorder — inlined by the compiler into the
+// TLightWithDBSetManager ctor @0x8022886c..0x80228930 (Ghidra decomp
+// scratch/decomp/80228534.c lines 102-114). Semantics: given three (x, y)
+// sample points where the x's live at unk2C/unk30/unk34 and the y's are the
+// fixed rodata triple (0.9, 0.5, 0.05) at 0x8039d9ac/b0/b4, solve for the
+// coefficients (c0, c1, c2) of the quadratic  y = c0 + c1*x + c2*x^2  that
+// passes through all three points, and store them into unk38/unk3C/unk40.
+// Used later by the effect-light color scaling path (unresolved caller).
+void TLightWithDBSetManager::calcLightBorder()
+{
+#ifdef SMS_NATIVE_PLATFORM
+	// Fixed y-values (rodata DAT_8039d9ac/b0/b4, byte-verified):
+	const f32 kY0 = 0.9f;    // y at unk2C
+	const f32 kY1 = 0.5f;    // y at unk30
+	const f32 kY2 = 0.05f;   // y at unk34
+
+	const f32 x0 = unk2C;
+	const f32 x1 = unk30;
+	const f32 x2 = unk34;
+
+	// Faithful transcription of the disasm's temporary tree:
+	//   fVar4 = kY1 - kY0
+	//   fVar5 = kY1 * kY0 * (x0 - x1)
+	//   fVar6 = kY1 * kY0 * (x0^2 - x1^2)
+	//   fVar7 = kY2 * kY1 * (x1 - x2)
+	//   unk40 = (fVar4 * fVar7 - (kY2 - kY1) * fVar5)
+	//         / (fVar6 * fVar7 - kY2 * kY1 * (x1^2 - x2^2) * fVar5)
+	//   unk3C = -(fVar6 * unk40 - fVar4) / fVar5
+	//   unk38 = kY0 - (unk40 * x0*x0 + x0 * unk3C)
+	const f32 fVar4 = kY1 - kY0;
+	const f32 fVar5 = kY1 * kY0 * (x0 - x1);
+	const f32 fVar6 = kY1 * kY0 * (x0 * x0 - x1 * x1);
+	const f32 fVar7 = kY2 * kY1 * (x1 - x2);
+	const f32 denom = fVar6 * fVar7 - kY2 * kY1 * (x1 * x1 - x2 * x2) * fVar5;
+
+	unk40 = (fVar4 * fVar7 - (kY2 - kY1) * fVar5) / denom;
+	unk3C = -(fVar6 * unk40 - fVar4) / fVar5;
+	unk38 = kY0 - (unk40 * x0 * x0 + x0 * unk3C);
 #endif
 }
 
