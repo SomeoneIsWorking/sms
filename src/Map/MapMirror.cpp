@@ -21,6 +21,12 @@
 #include <MSound/MSoundBGM.hpp>
 #include <M3DUtil/InfectiousStrings.hpp>
 
+// DEAD CODE — declared non-virtual in header, never called anywhere in the
+// port tree, and NOT emitted in any binary (GMSE01/GMSJ01/GMSP01 symbol
+// tables have no entry for makeMirrorViewMtx / calcEffectMtx / entry /
+// calcView / getMirrorTexInfo). The empty { } bodies satisfy the header
+// declaration so this TU still compiles; not gaps to port. Confirmed
+// 2026-07-04 via full-tree grep + funcs.txt sweep.
 void TMirrorCamera::makeMirrorViewMtx() { }
 
 void TMirrorCamera::perform(u32 param_1, JDrama::TGraphics* param_2)
