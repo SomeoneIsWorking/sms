@@ -838,11 +838,42 @@ void TLightWithDBSetManager::perform(u32 flag, JDrama::TGraphics* graphics)
 	}
 }
 
+// Native port of TLightWithDBSetManager::addChildGroupObj @0x80228234 (Ghidra
+// decomp scratch/decomp/80228234.c, 304 bytes). Called by
+// MarDirectorSetupObjects.cpp:409 after gpLightManager->makeDrawBuffer() to
+// wire every enabled light-DB-set's per-buffer Opa/Xlu TDrawBufObj pointers as
+// children of the given TViewObjPtrListT. Without this port, the light-managed
+// draw buffers (shadow volumes, per-light effect draws) never enter the
+// scene render tree → any actor using MActor::setLightType()/changeLight
+// DrawBuffer path renders nothing through those buffers.
 void TLightWithDBSetManager::addChildGroupObj(
-    JDrama::TViewObjPtrListT<JDrama::TViewObj>* list)
+    JDrama::TViewObjPtrListT<JDrama::TViewObj, JDrama::TViewObj>* list)
 {
-	for (int i = 0; i < 4; ++i)
-		unk14[i]->addChildGroupObj(list);
+#ifdef SMS_NATIVE_PLATFORM
+	if (!list) return;
+	// The `param_2 + 0x10` in the disasm advances past TViewObj to the embedded
+	// JGadget::TList_pointer<TViewObj*>, whose end() + insert() the loop uses.
+	// Under the C++ interface this IS *list (multiple inheritance downcast).
+	JGadget::TList_pointer<JDrama::TViewObj*>& children = *list;
+
+	for (int i = 0; i < 4; ++i) {
+		TLightWithDBSet* set = mLightSets[i];
+		if (!set || !set->mEnabled) continue;
+		for (int j = 0; j < set->mBufferCount; ++j) {
+			TLightDrawBuffer* buf = set->mDrawBuffers[j];
+			if (!buf) continue;
+			// Insert Opa then Xlu (disasm order — matches perform-list dispatch).
+			if (buf->mOpaDrawBuf)
+				children.insert(children.end(),
+				                reinterpret_cast<JDrama::TViewObj*>(buf->mOpaDrawBuf));
+			if (buf->mXluDrawBuf)
+				children.insert(children.end(),
+				                reinterpret_cast<JDrama::TViewObj*>(buf->mXluDrawBuf));
+		}
+	}
+#else
+	(void)list;
+#endif
 }
 
 void TLightWithDBSetManager::makeDrawBuffer()
