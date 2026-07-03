@@ -445,20 +445,26 @@ static inline void* sb_plain_new(size_t n, int alignment)
 	return p ? p : sb_host_malloc(n, alignment);
 }
 
-void* operator new(size_t byteCount) { return sb_plain_new(byteCount, 4); }
+// C++ standard mandates operator new(size_t) return alignof(std::max_align_t) —
+// 16 bytes on x86_64. Anything less breaks types with SSE-aligned members
+// (Dolphin's TextureCacheBase has `alignas(16) u8* m_temp`; TSubclass zero-init
+// uses movaps, which SIGSEGVs on a 4-byte-aligned this). The default alignment
+// is 16, not 4, so callers that didn't ask for a specific alignment still get
+// standards-conformant memory.
+void* operator new(size_t byteCount) { return sb_plain_new(byteCount, 16); }
 void* operator new(size_t byteCount, int alignment)
 {
-	return sb_plain_new(byteCount, alignment);
+	return sb_plain_new(byteCount, alignment < 16 ? 16 : alignment);
 }
 void* operator new(size_t byteCount, JKRHeap* heap, int alignment)
 {
 	// explicit heap -> strict (fail fast on a real solid-heap sizing bug)
 	return JKRHeap::alloc(byteCount, alignment, heap);
 }
-void* operator new[](size_t byteCount) { return sb_plain_new(byteCount, 4); }
+void* operator new[](size_t byteCount) { return sb_plain_new(byteCount, 16); }
 void* operator new[](size_t byteCount, int alignment)
 {
-	return sb_plain_new(byteCount, alignment);
+	return sb_plain_new(byteCount, alignment < 16 ? 16 : alignment);
 }
 void* operator new[](size_t byteCount, JKRHeap* heap, int alignment)
 {
