@@ -598,6 +598,14 @@ void TApplication::proc()
 				mCurrArea.set(stage, scenario, 0);
 				mNextArea.set(stage, scenario, 0);
 				mAppState = APP_STATE_GAMEPLAY;
+				// Match the mMovie side-effect of the case APP_STATE_DONE → APP_STATE_MOVIE
+				// fallthrough at :662-673. Oracle-side fastboot goes through that switch case
+				// (its GCLOGO_DIRECT returns DONE, MOVIE_DIRECT bails to GAMEPLAY), which sets
+				// mMovie=9. Native-side inline fastboot skips the case entirely, so without
+				// this line native's mMovie stays 0 and diverges from oracle in the scene-sync
+				// pin (see runtime/pin_state_schema.h). No runtime effect at title (mMovie is
+				// a director signal that nothing reads post-fastboot), but ensures parity.
+				mMovie = 9;
 				fprintf(stderr,
 				        "[fastboot] -> stage %u scenario %u (APP_STATE_GAMEPLAY)\n",
 				        stage, scenario);
