@@ -3,12 +3,16 @@
 #include <cstdio>
 #include <cstdlib>
 #endif
+#include <Camera/Camera.hpp>
 #include <Map/MapCollisionData.hpp>
 #include <Map/MapData.hpp>
 #include <Map/MapModel.hpp>
 #include <Map/MapWarp.hpp>
 #include <Map/MapXlu.hpp>
 #include <Map/MapCollisionEntry.hpp>
+#include <MoveBG/MapObjWave.hpp>
+#include <MSound/MSound.hpp>
+#include <System/MarDirector.hpp>
 #ifdef SMS_NATIVE_PLATFORM
 // WEAK: only defined inside sms-boot (native/render/sms_boot_j3d_capture.cpp) — a test target
 // linking this file without the render-capture pipeline (e.g. sms-j3dload_test) must still link.
@@ -49,7 +53,76 @@ void TMap::updateMonte() { }
 
 void updateRicco() { }
 
-void TMap::update() { }
+// Native port of TMap::update (@0x80189bd0, 612B). Called from TMap::perform
+// when flag&1 is set. Dispatch is on gpMarDirector->mMap:
+//
+//   mMap == 7:   stage-warp target-change dispatch. RE'd but deferred — the
+//                driving singleton at SDA1[-0x70dc] is not yet named (its
+//                field +0x1c holds the "expected warp target id" that
+//                mWarp->unk8 is compared against). Also used by
+//                TLiveManager::setFlagOutOfCube, TelesaManager, and
+//                TMario::perform, so shared stage-info scope.
+//
+//   mMap == 3:   one-shot copy of a rodata Vec3 (1815, 1500, 1550) — read
+//                from SDA2 at -0x446c/-0x4468/-0x4464 — into a .bss cache
+//                (guarded by a file-static u8 flag at SDA1[-0x6324]),
+//                then dispatch MSoundSE::startSoundActor(0x3000, &cache,
+//                0, nullptr, 0, 4) once per frame if MSound::gateCheck
+//                allows. Deferred — needs SDA1[-0x6324] pinned to a
+//                real symbol.
+//
+//   mMap == 8 && unk7D∈{1,3,5,7}: gpMarioParticleManager->emit(0x156,
+//                gpMapObjManager->unk44, 1, this). Deferred — depends on
+//                port of TMarioParticleManager::emit (@0x8028856c) which
+//                is unresolved at ABI level.
+//
+// Water-camera-immersion detection (the only branch that fires at title
+// map==15, gated by unk124==0 not-in-demo-mode + the SDA1[-0x6094] state
+// singleton's first-u32 bit-1 clear + map ≠ 57 and ≠ 16): pin the camera
+// pos against the water surface height, and on air↔water transitions
+// notify MSSeCallBack to raise/lower the water filter timer. This is
+// ported faithfully below.
+void TMap::update()
+{
+	if (gpMarDirector->unk124 != 0)
+		return; // talk/demo mode — no immersion tracking
+
+	CPolarSubCamera* cam = gpCamera;
+
+	bool skipImmersion = true;
+	if (!cam->isSimpleDemoCamera() && cam->mMode != CAMERA_MODE_COUNT)
+		skipImmersion = false;
+	if (skipImmersion)
+		return;
+
+	u8 mapId = gpMarDirector->mMap;
+	if (mapId == 57 || mapId == 16)
+		return;
+
+	// TODO: SDA1[-0x6094] holds a singleton whose first u32 field, when bit-1
+	// is set, gates OUT the water-immersion tracking (likely a cinematic /
+	// pollution-cleared / cutscene marker). Not yet pinned to a named
+	// symbol. At title (mMap==15), the .sbss is zero-initialized so this
+	// check treats bit-1 as clear (proceed with immersion). Once the
+	// singleton is named, replace this guard with a real read.
+	// if (*((u32*)gpUnkSDA1_6094) & 2) return;
+
+	f32 waterY = gpMapObjWave->getHeight(cam->unk124.x, cam->unk124.y,
+	                                     cam->unk124.z);
+	f32 camY = cam->unk124.y;
+
+	if (waterY <= camY) {
+		// camera above/at water surface
+		if (unk20 == 0) {
+			unk20 = 1;
+			MSSeCallBack::setWaterCameraFir(false);
+		}
+	} else if (unk20 != 0) {
+		// camera below water surface, was previously above
+		unk20 = 0;
+		MSSeCallBack::setWaterCameraFir(true);
+	}
+}
 
 TBGCheckData* TMap::getIllegalCheckData()
 {
