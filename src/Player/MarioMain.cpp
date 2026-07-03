@@ -86,6 +86,24 @@ void TMario::perform(u32 param_1, JDrama::TGraphics* graphics)
 			        (int)mFreezeTimer, mPosition.x, mPosition.y, mPosition.z);
 		}
 	}
+	// SB_MARIO_ANIM_DBG: pin down why sleepily() case-2 (ANIM_SIT=0x131) never
+	// advances to SLEEPING at settled title. Log the anim state at (param_1&1) —
+	// the tick that runs playerControl+sleepily+setAnimation. Log every 30th
+	// such tick so the 500-frame dump window shows the whole sleep progression.
+	if ((param_1 & 1) && ::getenv("SB_MARIO_ANIM_DBG")) {
+		static long s_tick = 0;
+		++s_tick;
+		if ((s_tick % 30) == 1 || s_tick < 12) {
+			J3DFrameCtrl& fc = getMotionFrameCtrl();
+			fprintf(stderr,
+			    "[mario-anim] t=%ld anim=0x%03x status=0x%x state=%u timer=%u "
+			    "frame=%.2f end=%d rate=%.3f isLast1=%d\n",
+			    s_tick, (unsigned)mAnimationId, (unsigned)mStatus,
+			    (unsigned)mStatusState, (unsigned)mStatusTimer,
+			    fc.getFrame(), (int)fc.getEnd(), fc.getRate(),
+			    isLast1AnimeFrame() ? 1 : 0);
+		}
+	}
 #endif
 
 	if (unk114 & UNK114_FLAG_PROFILE)

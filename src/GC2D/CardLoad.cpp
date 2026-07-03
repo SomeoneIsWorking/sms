@@ -585,12 +585,13 @@ void TCardLoad::perform(u32 param_1, JDrama::TGraphics* param_2)
 		// camera having actually SETTLED (view matrix stationary for several frames).
 		static bool s_settledDumped = false;
 		if (!s_settledDumped && mState == 0 && unk1C == PROGRESS_UNK13 && unk10 == 2
-		    && sb_camera_view_settled()) {
+		    && sb_camera_view_settled()
+		    && (!gpMarioOriginal || gpMarioOriginal->mStatus == MARIO_STATUS_SLEEP)) {
 			if (const char* e = getenv("SB_SEL_DUMP_SETTLED")) {
 				int n = atoi(e);
 				sb_boot_request_dump(n > 0 ? n : 4);
 				s_settledDumped = true;
-				fprintf(stderr, "[cardload] SETTLED dump requested (unk10==2 + camera settled, %d frames)\n",
+				fprintf(stderr, "[cardload] SETTLED dump requested (unk10==2 + camera settled + Mario SLEEP, %d frames)\n",
 				        n > 0 ? n : 4);
 			}
 		}
