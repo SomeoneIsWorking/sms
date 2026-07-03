@@ -2,10 +2,6 @@
 #include <JSystem/JSupport/JSUInputStream.hpp>
 #include <M3DUtil/MActor.hpp>
 #include <MSound/MSound.hpp>
-#ifdef SMS_NATIVE_PLATFORM
-#include <cstdio>
-#include <cstdlib>
-#endif
 #include <JSystem/J3D/J3DGraphAnimator/J3DAnimation.hpp>
 #include <System/FlagManager.hpp>
 #include <System/MarDirector.hpp>
@@ -67,33 +63,38 @@ void TDoor::load(JSUMemoryInputStream& stream)
 void TManhole::loadAfter()
 {
 	TMapObjBase::loadAfter();
-#ifdef SMS_NATIVE_PLATFORM
-	// Stage-1 (Plaza) fastboot SEGVs here on `mMActor->getFrameCtrl(0)` — mMActor null.
-	// FAIL FAST with state so the root cause names itself; the GC binary does an
-	// UNCONDITIONAL deref here (verified via `sunbright-recomp --disasm 0x801c1bc0`), so
-	// on real HW mMActor is always non-null and TMapObjBase::load/initMapObj/makeMActors/
-	// initMActor MUST have populated it before loadAfter — the port has a load-path gap.
-	if (mMActor == nullptr) {
-		std::fprintf(stderr,
-		    "[TManhole::loadAfter] FATAL: mMActor NULL - port load-path gap.\n"
-		    "  name=%s  mMapObjData=%p  keeper=%p  unkF4=%s\n",
-		    mName ? mName : "(null)", (void*)mMapObjData,
-		    (void*)mMActorKeeper, unkF4 ? unkF4 : "(null)");
-		if (mMapObjData && mMapObjData->mAnim) {
-			std::fprintf(stderr,
-			    "  anim->unk0=%u anim->unk2=%u anim->unk4[0].unk0=%s\n",
-			    (unsigned)mMapObjData->mAnim->unk0,
-			    (unsigned)mMapObjData->mAnim->unk2,
-			    mMapObjData->mAnim->unk4 && mMapObjData->mAnim->unk4[0].unk0
-			      ? mMapObjData->mAnim->unk4[0].unk0 : "(null)");
-		} else {
-			std::fprintf(stderr, "  mMapObjData->mAnim = null (would trigger fallback initMActor path)\n");
-		}
-		std::fflush(stderr);
-		std::abort();
-	}
-#endif
 	mMActor->getFrameCtrl(0)->setRate(0.0f);
+}
+
+// Native port of TManhole::initMapObj (@0x801c1b4c, 28 insns). RE via
+// `sunbright-recomp --disasm 0x801c1b4c`:
+//
+//   bl TMapObjGeneral::initMapObj    ; chain: populates mMapObjData / mMActor
+//   li r3, 0x68
+//   bl operator new                  ; new TMapCollisionWarp(0x68 bytes)
+//   or. r30, r3, r3                  ; null-check the alloc
+//   beq skip_ctor
+//     bl TMapCollisionWarp::__ct     ; @0x8018d8bc
+//   this->0x158 = warp
+//   r4 = 0x803911ac                  ; ptr to some manhole warp-spec data
+//   r5 = 0
+//   r6 = this
+//   warp->vtable[2](r4=0x803911ac, r5=0, r6=this)   ; init/register the warp
+//
+// The chain call is MANDATORY — without it, mMapObjData and mMActor stay null
+// and TManhole::loadAfter crashes on `mMActor->getFrameCtrl(0)`. That was the
+// stage-1 (Delfino Plaza) boot crash on 2026-07-03.
+//
+// The TMapCollisionWarp allocation + registration is the "Mario can fall THROUGH
+// the manhole cover" gameplay mechanic — unnecessary for rendering, but a real
+// gameplay behavior. Left as a scoped follow-up port; when someone actually
+// interacts with the manhole in gameplay this must be added. Until then the
+// manhole renders correctly but is a solid cover you can't fall through.
+void TManhole::initMapObj()
+{
+	TMapObjGeneral::initMapObj();
+	// TODO(plaza gameplay): allocate TMapCollisionWarp @ this->0x158 and call
+	// its vtable[2] init with 0x803911ac warp-spec data (see disasm above).
 }
 
 // Native port of TMapObjSwitch::control (@0x801c0e18). RE: scratch/decomp_next3/801c0e18.c.
