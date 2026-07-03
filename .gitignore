@@ -37,3 +37,10 @@ compile_commands.json
 /*.txt
 *.exe
 tools/mwcc_compiler
+
+# Generated scratch outputs — never commit these.
+scratch/frames/
+scratch/memcard_chan0.raw
+scratch/oracle/
+scratch/*.log
+
