@@ -2029,13 +2029,27 @@ s8 TCardLoad::selectBookmark(TEProgress param_1, TEProgress param_2,
 			unk2A0->show();
 			for (int i = 0; i < 3; ++i) {
 				if (unk40[i].unk0 == 1) {
+					#ifdef SMS_NATIVE_PLATFORM
+					// Oracle (US binary) hardcodes "Corrupt"; JP decomp source has
+					// "こわれています" which renders as garbage through the US font atlas.
+					strncpy(unk2C0[i]->getStringPtr(), "Corrupt", 20);
+					strncpy(unk2CC[i]->getStringPtr(), "Corrupt", 20);
+#else
 					strncpy(unk2C0[i]->getStringPtr(), "こわれています", 20);
 					strncpy(unk2CC[i]->getStringPtr(), "こわれています", 20);
+#endif
 					unk2CC[i]->show();
 					unk2D8[i]->hide();
 				} else if (unk40[i].unk18 == 0) {
+					#ifdef SMS_NATIVE_PLATFORM
+					// Oracle (US binary) hardcodes mixed-case "New"; JP decomp source
+					// has "NEW". Use the US literal under native for intent match.
+					strncpy(unk2C0[i]->getStringPtr(), "New", 20);
+					strncpy(unk2CC[i]->getStringPtr(), "New", 20);
+#else
 					strncpy(unk2C0[i]->getStringPtr(), "NEW", 20);
 					strncpy(unk2CC[i]->getStringPtr(), "NEW", 20);
+#endif
 					unk2CC[i]->show();
 					unk2D8[i]->hide();
 				} else {
@@ -2212,13 +2226,27 @@ s8 TCardLoad::selectFunction()
 			((J2DPicture*)unk378[mSelectedFile][mFunctionCursor]->getPane())->mWhite = 0x00FF00FF;
 			for (int i = 0; i < 3; ++i) {
 				if (unk40[i].unk0 == 1) {
+					#ifdef SMS_NATIVE_PLATFORM
+					// Oracle (US binary) hardcodes "Corrupt"; JP decomp source has
+					// "こわれています" which renders as garbage through the US font atlas.
+					strncpy(unk2C0[i]->getStringPtr(), "Corrupt", 20);
+					strncpy(unk2CC[i]->getStringPtr(), "Corrupt", 20);
+#else
 					strncpy(unk2C0[i]->getStringPtr(), "こわれています", 20);
 					strncpy(unk2CC[i]->getStringPtr(), "こわれています", 20);
+#endif
 					unk2CC[i]->show();
 					unk2D8[i]->hide();
 				} else if (unk40[i].unk18 == 0) {
+					#ifdef SMS_NATIVE_PLATFORM
+					// Oracle (US binary) hardcodes mixed-case "New"; JP decomp source
+					// has "NEW". Use the US literal under native for intent match.
+					strncpy(unk2C0[i]->getStringPtr(), "New", 20);
+					strncpy(unk2CC[i]->getStringPtr(), "New", 20);
+#else
 					strncpy(unk2C0[i]->getStringPtr(), "NEW", 20);
 					strncpy(unk2CC[i]->getStringPtr(), "NEW", 20);
+#endif
 					unk2CC[i]->show();
 					unk2D8[i]->hide();
 				} else {
