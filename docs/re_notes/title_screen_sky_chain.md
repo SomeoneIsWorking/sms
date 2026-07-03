@@ -9,22 +9,24 @@ this repository.
 This chain is what the SoH-style native port ([sunbright](https://github.com/SomeoneIsWorking/sunbright))
 implements — the RE'd bodies here are its ground truth.
 
-## Ghidra section-aware loading
+## Ghidra loading
 
-The DOL header lays out 7 text + 11 data sections at non-contiguous memory addresses.
-A flat `BinaryLoader` misplaces T1 by 0x40 (T0 ends at 0x80005540, T1 starts at
-0x80005600 with a 0xC0 file+memory gap). Every subsequent function-address lookup is
-off by that amount and the decomps are garbage. A Ghidra pre-script that parses the
-header and creates per-section memory blocks fixes it:
+Install the [Cuyler36 GameCube Loader](https://github.com/Cuyler36/Ghidra-GameCube-Loader)
+extension (release matching your Ghidra version) so `.dol` files import through a native
+loader that parses the 7 text + 11 data sections at their real addresses and uses the
+Gekko/Broadway sleigh (paired singles). Then:
 
 ```
-DOL_PATH=<path>/sms.dol analyzeHeadless <projdir> <projname> \
-    -import <path>/sms.dol -processor "PowerPC:BE:32:default" \
-    -loader BinaryLoader -loader-baseAddr 0x80003100 \
-    -preScript DolLoad.py
+analyzeHeadless <projdir> <projname> -import <path>/sms.dol -loader-autoloadMaps false
 ```
 
-See `DolLoad.py` in the sunbright decomp-port skill directory.
+`analyzeHeadless` resolves via `$PATH`. `-loader-autoloadMaps false` is required headless
+(otherwise the loader pops a "Load Symbols?" `OptionDialog` when no `.map` file sits next
+to the DOL and hangs). Post-scripts (`-postScript foo.py`) need `pyghidraRun -H` under
+Ghidra ≥12 since Jython is gone; `-preScript`/`-import` runs still use `analyzeHeadless`.
+
+A legacy `BinaryLoader` + `DolLoad.py` pre-script workaround exists in the sunbright
+decomp-port skill for Ghidra 11.x installs without the extension — not needed here.
 
 ## Chain (per-frame render at stage 15)
 
@@ -206,8 +208,8 @@ producing the animated cloud puff pattern via a `t0 × t1` intersection.
 
 ## Verification procedure
 
-1. Section-aware Ghidra headless import as above.
-2. `analyzeHeadless <projdir> <projname> -process sms.dol -noanalysis
+1. Import the DOL via the GameCube-loader extension (see "Ghidra loading" above).
+2. `pyghidraRun -H <projdir> <projname> -process sms.dol -noanalysis
     -postScript DecompDump.py` with `DECOMP_TARGETS` file containing the addresses.
 3. Diff Ghidra decomp against the C body in this repo.
 
