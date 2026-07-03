@@ -399,12 +399,13 @@ void TLightDrawBuffer::perform(u32 flag, JDrama::TGraphics* graphics)
 //   * flag & 0x10000 → per-DrawBuffer's unk14->perform(8, graphics)
 //   * flag & 0x20000 → per-DrawBuffer's unk18->perform(8, graphics)
 //   * flag & 0x800   → both unk14/unk18 perform(0x480, graphics)
-// Guarded on unk10 non-null — matches the STOPGAP in changeLightDrawBuffer;
-// once TLightWithDBSet::makeDrawBuffer × 4 is ported the guard becomes
-// harmless.
+// Guarded on mDrawBuffers non-null: only enabled sets (mEnabled=1 → makeDrawBuffer
+// ran → mDrawBuffers populated) render here. Sets that never got enabled by an
+// actor (setLightType) legitimately have mDrawBuffers==null and are correct
+// no-ops on this path.
 void TLightWithDBSet::perform(u32 flag, JDrama::TGraphics* graphics)
 {
-	if (!mDrawBuffers) return;  // makeDrawBuffer not yet populated on this instance
+	if (!mDrawBuffers) return;  // set not enabled by any actor (no setLightType() call)
 
 	if (flag & 0x20) {
 		const bool do_unk14_8 = (flag & 0x10000) != 0;
@@ -438,19 +439,14 @@ void TLightWithDBSet::changeLightDrawBuffer(int param_1)
 		param_1 = 0;
 
 #ifdef SMS_NATIVE_PLATFORM
-	// STOPGAP: the per-light draw-buffer set (mDrawBuffers) is NOT built — makeDrawBuffer() is a
-	// no-op stub across the whole TLightWithDBSet hierarchy (LightUtil.cpp:69-75), and the
-	// TLightDrawBuffer::perform that would actually render those buffers is not wired into any
-	// perform list. So redirecting an actor's draw into mDrawBuffers[param_1] (the original behavior
-	// below) would (a) deref a null mDrawBuffers and (b), even if built, send the actor into an
-	// UNRENDERED buffer -> the actor would vanish. When the set is absent, leaving mSavedOpaBuffer/mSavedXluBuffer
-	// null makes entry() draw into the CURRENT (normal Chr) buffer and resetLightDrawBuffer() a
-	// no-op (its own !mSavedOpaBuffer/!mSavedXluBuffer guards) — the correct degenerate result when no per-light
-	// shadow volumes exist, which is exactly this stub's state. This is what lets NPCs (whose
-	// MActor::setLightData assigns a real unk3C on shadow ground) render at all.
-	// PROPER FIX: port the light-with-DB-set subsystem — TLightWithDBSet::makeDrawBuffer building
-	// mDrawBuffers (TLightDrawBuffer opa/xlu pairs), wire their perform into PerformList GX, and
-	// implement TLightCommon::setLight — then restore the redirect below.
+	// mDrawBuffers is null for any TLightWithDBSet that no actor enabled via
+	// setLightType() → makeDrawBuffer() was never called for this set. That is
+	// a correct scene-state, not a port gap: return and let entry() draw into
+	// the current (normal Chr) buffer. resetLightDrawBuffer() below is a
+	// no-op in that case (its own mSavedOpaBuffer/mSavedXluBuffer guards).
+	// (The 2026-07-02 STOPGAP note claiming "makeDrawBuffer is a no-op stub"
+	// has been retired — makeDrawBuffer × 4 subclass is fully ported and
+	// verified via SB_LMGR_PROBE at settled title, 2026-07-04.)
 	if (!mDrawBuffers)
 		return;
 #endif
@@ -637,12 +633,13 @@ void TPlayerLightWithDBSet::makeDrawBuffer()
 	}
 }
 
-// The decomp left the TLightWithDBSet hierarchy ctors and the manager's unk14
+// The decomp left the TLightWithDBSet hierarchy ctors and the manager's mLightSets
 // initialization unimplemented (declared-only). The base/subclass ctors are restored
-// here (minimal: the draw-buffer setup that the unimplemented makeDrawBuffer would
-// build is left null — the whole light-with-DB-set path is stubbed, perform/
-// makeDrawBuffer are no-ops). unk20 is the per-light "enabled" flag the actor managers
-// write (TLiveManager / MActor: getUnk14(i)->unk20 = 1); it must be addressable.
+// here. makeDrawBuffer × 4 subclasses IS fully ported above and populates mDrawBuffers
+// when the set gets enabled by an actor's setLightType() call; sets no actor enables
+// stay mDrawBuffers=null (correct scene-state, not a gap). mEnabled is the per-light
+// "enabled" flag actor managers write (TLiveManager and MActor::setLightType) so it
+// must be addressable.
 TLightWithDBSet::TLightWithDBSet(int idx, const char* name)
     : JDrama::TViewObj(name)
     , mDrawBuffers(nullptr)
