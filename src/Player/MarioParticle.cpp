@@ -717,16 +717,30 @@ void TMario::kickRoofEffect()
 
 void TMario::sleepingEffect()
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// Owned by native paint (native/src/scene_drive.cpp::sb_native_zzz_paint, called from
+	// sms_boot_present.cpp after the final composite). The JPA `PARTICLE_MS_POI_ZZZ` dispatch
+	// chain fires end-to-end but every particle position comes back as NaN — see
+	// debug_journal/2026-07-03_zzz_particle_nan_diagnosis.md. Per the 2026-07-03 hard rule (no
+	// emulation chasing), we RE'd the intent (rising Z bubbles above sleeping Mario) and ported
+	// it as a native SDL3-GPU pass instead of chasing the JPA NaN.
+#else
 	gpMarioParticleManager->emitAndBindToPosPtr(PARTICLE_MS_POI_ZZZ, &unk1B4, 1,
 	                                            this);
+#endif
 }
 
 void TMario::sleepingEffectKill()
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// See sleepingEffect above — native paint auto-cycles, no explicit kill needed (the gate
+	// on mStatus==MARIO_STATUS_SLEEP stops emission the frame Mario wakes).
+#else
 	JPABaseEmitter* emitter = gpMarioParticleManager->emitAndBindToPosPtr(
 	    PARTICLE_MS_POI_ZZZ, &unk1B4, 1, this);
 	if (emitter != nullptr)
 		emitter->deleteAllParticle();
+#endif
 }
 
 void TMario::toroccoEffect()
