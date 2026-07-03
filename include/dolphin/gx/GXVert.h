@@ -88,6 +88,41 @@ volatile PPCWGPipe GXWGFifo : GXFIFO_ADDR;
 
 #endif
 
+#ifdef SMS_NATIVE_PLATFORM
+// Native PC build: route the raw GX write-gather pipe through sb::gxfifo so the
+// GX_ORACLE render sink can replay it through Dolphin's OpcodeDecoder — the SAME
+// FIFO byte stream the game would send to real GC hardware. Under NATIVE_PC the
+// helpers early-out on a global bool (sb::gxfifo::s_enabled == false), so there
+// is no cost to sms-boot's SDL3 renderer.
+extern void sb_gx_wgfifo_u8(unsigned char v);
+extern void sb_gx_wgfifo_u16(unsigned short v);
+extern void sb_gx_wgfifo_u32(unsigned int v);
+extern void sb_gx_wgfifo_f32(float v);
+
+// GXCmd — raw FIFO command bytes (opcode headers, count fields).
+static inline void GXCmd1u8(u8 x)   { sb_gx_wgfifo_u8(x); }
+static inline void GXCmd1u16(u16 x) { sb_gx_wgfifo_u16(x); }
+static inline void GXCmd1u32(u32 x) { sb_gx_wgfifo_u32(x); }
+
+// GXParam — parameter words for register writes.
+static inline void GXParam1u8(u8 x)   { sb_gx_wgfifo_u8(x); }
+static inline void GXParam1u16(u16 x) { sb_gx_wgfifo_u16(x); }
+static inline void GXParam1u32(u32 x) { sb_gx_wgfifo_u32(x); }
+static inline void GXParam1s8(s8 x)   { sb_gx_wgfifo_u8((u8)x); }
+static inline void GXParam1s16(s16 x) { sb_gx_wgfifo_u16((u16)x); }
+// J2DWindow::Texture::draw writes vertex DIRECT CLR0 with GXParam1s32(-1)
+// (== 0xFFFFFFFF white) rather than GXColor1u32 — same 32-bit FIFO word. Route
+// it to the colour-capture seam when inside a GXBegin; else raw FIFO.
+extern void sb_gx_imm_param_color_s32(int v);
+static inline void GXParam1s32(s32 x) { sb_gx_imm_param_color_s32(x); }
+static inline void GXParam1f32(f32 x) { sb_gx_wgfifo_f32(x); }
+static inline void GXParam3f32(f32 x, f32 y, f32 z) {
+    sb_gx_wgfifo_f32(x); sb_gx_wgfifo_f32(y); sb_gx_wgfifo_f32(z);
+}
+static inline void GXParam4f32(f32 x, f32 y, f32 z, f32 w) {
+    sb_gx_wgfifo_f32(x); sb_gx_wgfifo_f32(y); sb_gx_wgfifo_f32(z); sb_gx_wgfifo_f32(w);
+}
+#else
 // GXCmd  (raw FIFO command/param words — internal DL building, kept on the sink)
 FUNC_1PARAM(GXCmd, u8)
 FUNC_1PARAM(GXCmd, u16)
@@ -99,18 +134,11 @@ FUNC_1PARAM(GXParam, u16)
 FUNC_1PARAM(GXParam, u32)
 FUNC_1PARAM(GXParam, s8)
 FUNC_1PARAM(GXParam, s16)
-#ifdef SMS_NATIVE_PLATFORM
-// J2DWindow::Texture::draw writes each vertex's DIRECT CLR0 colour with GXParam1s32(-1)
-// (== 0xFFFFFFFF white) rather than GXColor1u32 — same 32-bit FIFO word on real HW. Route
-// it to the colour-capture seam when inside a GXBegin (else it's a raw FIFO/DL word → sink).
-extern void sb_gx_imm_param_color_s32(int v);
-static inline void GXParam1s32(s32 x) { sb_gx_imm_param_color_s32(x); }
-#else
 FUNC_1PARAM(GXParam, s32)
-#endif
 FUNC_1PARAM(GXParam, f32)
 FUNC_3PARAM(GXParam, f32)
 FUNC_4PARAM(GXParam, f32)
+#endif
 
 #ifdef SMS_NATIVE_PLATFORM
 // Native PC build: the immediate-mode VERTEX writers feed the gx_imm capture seam
