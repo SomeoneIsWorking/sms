@@ -413,7 +413,11 @@ void TLightWithDBSet::perform(u32 flag, JDrama::TGraphics* graphics)
 		}
 	}
 
-	if (flag & 0x800) {
+	// Bit mask byte-verified against Ghidra decomp scratch/decomp/80229178.c
+	// (2026-07-04): the "iterate all + render opa/xlu" branch is flag & 0x400,
+	// NOT 0x800 (the pre-2026-07-04 port had a 1-bit shift here matching the
+	// same shift in TLightWithDBSetManager::perform above; both corrected).
+	if (flag & 0x400) {
 		for (int i = 0; i < mBufferCount; ++i) {
 			TLightDrawBuffer* buf = mDrawBuffers[i];
 			if (buf->mOpaDrawBuf) buf->mOpaDrawBuf->perform(0x480, graphics);
@@ -716,21 +720,22 @@ void TLightWithDBSetManager::loadAfter()
 
 // Native port of TLightWithDBSetManager::perform (@0x80228394, 63 insns).
 // Dispatches active per-kind TLightWithDBSet buffers (player/mapobj/object/
-// indirect at unk14[0..3]). Two independent phase gates with independent
-// index-range selections:
-//   * flag & 0x20  → iterate a slice of unk14[]:
-//                    flag & 0x100000 → [3, 4)  (indirect only)
-//                    flag & 0x80000  → [2, 3)  (object only)
-//                    else            → [0, 2)  (player + mapobj)
-//   * flag & 0x800 → iterate ALL unk14[0..4)
-// Each iteration guards on the buffer's own unk20 "enabled" flag being set,
-// then forwards `flag` unchanged.
+// indirect at mLightSets[0..3]). Two independent phase gates with independent
+// index-range selections. Bit masks byte-verified against Ghidra decomp
+// scratch/decomp/80228394.c (2026-07-04):
+//   * flag & 0x20  → iterate a slice of mLightSets[]:
+//                    flag & 0x80000 → [3, 4)  (indirect only)
+//                    flag & 0x40000 → [2, 3)  (object only)
+//                    else           → [0, 2)  (player + mapobj)
+//   * flag & 0x400 → iterate ALL mLightSets[0..4)
+// Each iteration guards on the buffer's own mEnabled flag being set, then
+// forwards `flag` unchanged.
 void TLightWithDBSetManager::perform(u32 flag, JDrama::TGraphics* graphics)
 {
 	if (flag & 0x20) {
 		int start, end;
-		if (flag & 0x100000)      { start = 3; end = 4; }
-		else if (flag & 0x80000)  { start = 2; end = 3; }
+		if (flag & 0x80000)       { start = 3; end = 4; }
+		else if (flag & 0x40000)  { start = 2; end = 3; }
 		else                       { start = 0; end = 2; }
 		for (int i = start; i < end; ++i) {
 			TLightWithDBSet* buf = mLightSets[i];
@@ -739,7 +744,7 @@ void TLightWithDBSetManager::perform(u32 flag, JDrama::TGraphics* graphics)
 		}
 	}
 
-	if (flag & 0x800) {
+	if (flag & 0x400) {
 		for (int i = 0; i < 4; ++i) {
 			TLightWithDBSet* buf = mLightSets[i];
 			if (buf && buf->mEnabled)
