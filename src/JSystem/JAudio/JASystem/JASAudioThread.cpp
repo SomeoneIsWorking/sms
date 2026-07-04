@@ -56,7 +56,7 @@ namespace AudioThread {
 	{
 		OSInitFastCast();
 
-		OSInitMessageQueue(&audioproc_mq, &msgbuf, 0x10);
+		OSInitMessageQueue(&audioproc_mq, (OSMessage*)&msgbuf, 0x10);
 		audioproc_mq_init = 1;
 		Kernel::init();
 		if (!isDSPBoot) {
@@ -70,7 +70,7 @@ namespace AudioThread {
 		for (;;) {
 			int msg;
 
-			OSReceiveMessage(&audioproc_mq, &msg, 1);
+			OSReceiveMessage(&audioproc_mq, (OSMessage*)&msg, 1);
 
 			switch (msg) {
 			case 0:
