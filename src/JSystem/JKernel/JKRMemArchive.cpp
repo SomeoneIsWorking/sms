@@ -108,21 +108,33 @@ JKRArchive::SDIFileEntry* sb_rarc_swap_to_host(void* buffer, JKRHeap* heap)
 	u32 n      = di->num_file_entries;
 	u8* feBase = infoBase + di->file_entry_offset;
 	u32 sideBytes = n * sizeof(JKRArchive::SDIFileEntry);
-	JKRArchive::SDIFileEntry* side
-	    = (JKRArchive::SDIFileEntry*)JKRHeap::alloc(sideBytes, 4, heap);
 	// The side array is a HOST-ONLY structure (GC swapped the 0x14 entries in place;
-	// the host needs a 0x18-stride copy). It is allocated from the archive buffer's
-	// own heap, which the GC sized with no slack for it — a tight per-archive heap can
-	// fail. Fall back to the CURRENT heap (the active gameplay solid heap, which has
-	// room) and then the root. (The root is often fully drained by a "claim the rest of
-	// the arena" gameplay solid heap, so the current heap is the roomy one.) Frees use
-	// findFromRoot, so any origin frees correctly.
-	if (!side)
-		side = (JKRArchive::SDIFileEntry*)JKRHeap::alloc(
-		    sideBytes, 4, JKRHeap::getCurrentHeap());
-	if (!side)
-		side = (JKRArchive::SDIFileEntry*)JKRHeap::alloc(
-		    sideBytes, 4, JKRHeap::getRootHeap());
+	// the host needs a 0x18-stride copy, ~20% larger). GC sized every per-archive
+	// solid heap with no slack for this, so `heap` (passed as
+	// findFromRoot(buffer)) is essentially guaranteed to fail on tight archive
+	// heaps. Try the buffer's own heap first (matches original layout for freeing);
+	// on failure fall back to CURRENT then ROOT. JKRHeap::free routes via
+	// findFromRoot so any origin frees correctly.
+	//
+	// Deduplicate the fallback targets: if the buffer's own heap IS also the
+	// current heap (common when a caller `becomeCurrent`'d the archive's private
+	// solid heap), don't waste the 2nd attempt on the same OOM'd heap, and don't
+	// spam a 2nd "SolidHeap OUT OF MEMORY" line. Same for current==root.
+	JKRHeap* const rootHeap = JKRHeap::getRootHeap();
+	JKRHeap* const curHeap  = JKRHeap::getCurrentHeap();
+	JKRArchive::SDIFileEntry* side = nullptr;
+	if (heap && heap != rootHeap)
+		side = (JKRArchive::SDIFileEntry*)JKRHeap::alloc(sideBytes, 4, heap);
+	if (!side && curHeap && curHeap != heap && curHeap != rootHeap)
+		side = (JKRArchive::SDIFileEntry*)JKRHeap::alloc(sideBytes, 4, curHeap);
+	if (!side && rootHeap)
+		side = (JKRArchive::SDIFileEntry*)JKRHeap::alloc(sideBytes, 4, rootHeap);
+	if (!side) {
+		OSPanic(__FILE__, __LINE__,
+		    "[rarc] side-array alloc failed sideBytes=%u n=%u heap=%p cur=%p root=%p; "
+		    "no fallback heap could satisfy this. Increase root/plain heap.",
+		    sideBytes, n, heap, curHeap, rootHeap);
+	}
 	if (getenv("SB_JKR_DBG"))
 		OSReport("[rarc] swap buffer=%p heap=%p n=%u allocBytes=%u side=%p "
 		         "root=%p rootFree=0x%x cur=%p\n",
