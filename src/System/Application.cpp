@@ -315,6 +315,18 @@ void* TApplication::setupThreadFuncLogo()
 	bufStageArcBin = JKRDvdRipper::loadToMainRAM(
 	    "/data/stageArc.bin", nullptr, EXPAND_SWITCH_DEFAULT, 0, mHeap,
 	    JKRDvdRipper::ALLOC_DIRECTION_FORWARD, 0, nullptr);
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_ARC_DBG")) {
+		JKRHeap* rh = JKRGetRootHeap();
+		OSReport("[SBDBG] stageArc.bin buf=%p rootHeap=%p mHeap=%p mHeap->getSize=%d root->getSize=%d\n",
+		         bufStageArcBin, rh, mHeap,
+		         mHeap ? mHeap->getSize(bufStageArcBin) : -1,
+		         rh ? rh->getSize(bufStageArcBin) : -1);
+	}
+	if (bufStageArcBin == nullptr)
+		OSPanic(__FILE__, __LINE__,
+		        "loadToMainRAM(/data/stageArc.bin) returned NULL -- DVD/ripper failed");
+#endif
 
 	SMSLoadArchiveARAM(&gArBkConsole, "/data/game_6.arc");
 
