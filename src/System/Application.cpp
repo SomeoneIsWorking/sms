@@ -201,15 +201,30 @@ JKRArchive* SMSSwitch2DArchive(const char* param_1, TARAMBlock& param_2)
 {
 	JKRMemArchive* arch = (JKRMemArchive*)JKRFileLoader::getVolume(param_1);
 #ifdef SMS_NATIVE_PLATFORM
-	// FAIL FAST: getVolume returns null when the named 2D archive volume isn't mounted
-	// (e.g. "guide" — the 2D/ARAM archive subsystem hasn't loaded it). The decomp then
-	// null-derefs in unmountFixed; crash at the root naming the missing volume.
-	if (!arch)
-		OSPanic(__FILE__, __LINE__,
-		        "SMSSwitch2DArchive: 2D archive volume '%s' not mounted "
-		        "(JKRFileLoader::getVolume returned null) -- the 2D/ARAM archive "
-		        "subsystem must mount it first",
-		        param_1 ? param_1 : "(null)");
+	// Under the streamlined PC engine, the ARAM-swap dance the original game does
+	// between game_6/guide/etc. reduces to "just load the arc from DVD once and
+	// mount it." If the named volume isn't mounted yet, load /data/<name>.arc and
+	// mount fresh. The subsequent SMSMountAramArchive() overwrites the mounted
+	// data with param_2's ARAM contents, but only IF the ARAM read is real; on
+	// PC that ARAM read is a no-op path, so leave the fresh mount in place and
+	// return early with the loaded archive.
+	if (!arch) {
+		char path[64];
+		std::snprintf(path, sizeof path, "/data/%s.arc", param_1);
+		void* blob = SMSLoadArchive(path, nullptr, 0, JKRGetRootHeap());
+		if (!blob)
+			OSPanic(__FILE__, __LINE__,
+			        "SMSSwitch2DArchive: SMSLoadArchive(%s) returned null "
+			        "for first-time mount", path);
+		arch = new JKRMemArchive;
+		if (!arch->mountFixed(blob, MBF_0))
+			OSPanic(__FILE__, __LINE__,
+			        "SMSSwitch2DArchive: mountFixed(%s) failed after load", path);
+		if (getenv("SB_ARC_DBG"))
+			OSReport("[SBDBG] SMSSwitch2DArchive: first-time mount %s -> arch=%p\n",
+			         path, (void*)arch);
+		return arch;
+	}
 #endif
 	arch->unmountFixed();
 	SMSMountAramArchive(arch, param_2);
