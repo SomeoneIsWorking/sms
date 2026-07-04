@@ -84,6 +84,10 @@ void* JKRAram::run()
 	JKRAMCommand* command;
 	JKRAramPiece::Message* message;
 	OSInitMessageQueue(&sMessageQueue, sMessageBuffer, 4);
+#ifdef SMS_NATIVE_PLATFORM
+	// Latency-hiding worker; PC engine does sync ARAM DMA from the enqueue path.
+	return nullptr;
+#endif
 	do {
 		OSReceiveMessage(&sMessageQueue, (OSMessage*)&message,
 		                 OS_MESSAGE_BLOCK);

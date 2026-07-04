@@ -169,7 +169,7 @@ void TCardManager::copyTo(TCardManager::TCriteria* param_1,
 	}
 }
 
-static void* cardmain(void* param_1) { ((TCardManager*)param_1)->cmdLoop(); }
+static void* cardmain(void* param_1) { ((TCardManager*)param_1)->cmdLoop(); return nullptr; }
 
 TCardManager::TCardManager(void* sector_work_area, void* card_work_area,
                            s32 channel, s32 thread_prio, void* thread_stack,
@@ -746,6 +746,13 @@ s32 TCardManager::writeCardSector_(CARDFileInfo* file, s32 index,
 
 s32 TCardManager::cmdLoop()
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// TCardManager worker thread; PC engine drives card commands synchronously
+	// from the requester (Aurora's kabufuda backend has no async latency to
+	// hide). Returning here mirrors OSExitThread; requester-side dispatch is
+	// unchanged.
+	return 0;
+#endif
 	bool doLoop = true;
 	while (doLoop) {
 		OSLockMutex(&mMutex);
