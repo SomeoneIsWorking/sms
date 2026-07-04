@@ -54,6 +54,15 @@ namespace AudioThread {
 
 	static void* audioproc(void* arg)
 	{
+#ifdef SMS_NATIVE_PLATFORM
+		// The JASystem audio thread body is a per-frame audio-mix loop that
+		// assumes it runs concurrently with the game while DSP hardware exists.
+		// Aurora owns audio out; there's no GC DSP to boot, and the sync
+		// scheduler would run this loop straight through with garbage. Native
+		// audio is driven from sms-boot's mSound-native path (see JAI
+		// integration comments in native/src/sms_boot_audio.cpp).
+		return nullptr;
+#endif
 		OSInitFastCast();
 
 		OSInitMessageQueue(&audioproc_mq, (OSMessage*)&msgbuf, 0x10);

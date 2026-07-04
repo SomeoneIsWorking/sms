@@ -27,6 +27,10 @@ JKRDecomp::~JKRDecomp() { }
 void* JKRDecomp::run()
 {
 	OSInitMessageQueue(&sMessageQueue, sMessageBuffer, 4);
+#ifdef SMS_NATIVE_PLATFORM
+	// Latency-hiding worker; PC engine does sync decode from the enqueue path.
+	return nullptr;
+#endif
 	while (true) {
 		OSMessage message;
 		OSReceiveMessage(&sMessageQueue, &message, OS_MESSAGE_BLOCK);

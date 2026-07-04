@@ -32,6 +32,15 @@ void* JKRAramStream::run()
 	OSInitMessageQueue(&sMessageQueue, sMessageBuffer,
 	                   ARRAY_COUNT(sMessageBuffer));
 
+#ifdef SMS_NATIVE_PLATFORM
+	// PC engine: the ARAM stream worker thread is a latency-hiding queue that
+	// doesn't apply when we do sync loads. The GC "for (;;) receive; dispatch"
+	// loop would spin forever under our synchronous OSReceiveMessage stub. The
+	// commands' READ/WRITE bodies are still driven synchronously from the
+	// enqueue path (see JKRAramPiece/JKRAram callers), so returning here from
+	// run() is safe.
+	return nullptr;
+#else
 	for (;;) {
 		OSMessage message;
 		OSReceiveMessage(&sMessageQueue, &message, OS_MESSAGE_BLOCK);
@@ -48,6 +57,7 @@ void* JKRAramStream::run()
 			break;
 		}
 	}
+#endif
 }
 
 s32 JKRAramStream::readFromAram() { return 1; }
