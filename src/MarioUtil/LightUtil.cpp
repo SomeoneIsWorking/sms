@@ -449,6 +449,17 @@ void TLightWithDBSet::changeLightDrawBuffer(int param_1)
 	// verified via SB_LMGR_PROBE at settled title, 2026-07-04.)
 	if (!mDrawBuffers)
 		return;
+	// Same null-tolerance as TLightWithDBSet::perform above: TLightDrawBuffer's
+	// 3-arg ctor doesn't yet allocate its own mOpaDrawBuf / mXluDrawBuf sub-
+	// objects (port gap — original PPC ctor constructs them). perform() null-
+	// guards each read; changeLightDrawBuffer must too, else MActor::entry
+	// crashes on the first per-frame actor draw. Leaving the redirect a no-op
+	// falls through to the caller's default Chr draw buffer, which matches the
+	// behavior when mDrawBuffers is null. PROPER FIX: port the ctor to build
+	// mOpaDrawBuf/mXluDrawBuf as `new TDrawBufObj(...)` matching PPC.
+	TLightDrawBuffer* dbuf = mDrawBuffers[param_1];
+	if (!dbuf || !dbuf->mOpaDrawBuf || !dbuf->mXluDrawBuf)
+		return;
 #endif
 
 	mSavedOpaBuffer = j3dSys.getDrawBuffer(0);
