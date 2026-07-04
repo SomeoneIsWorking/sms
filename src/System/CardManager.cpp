@@ -187,10 +187,12 @@ TCardManager::TCardManager(void* sector_work_area, void* card_work_area,
 {
 	OSInitMutex(&mMutex);
 	OSInitCond(&mCommandIsPending);
+#ifndef SMS_NATIVE_PLATFORM
 	OSCreateThread(&mWorkerThread, &cardmain, this,
 	               (u8*)thread_stack + thread_stack_size, thread_stack_size,
 	               thread_prio, 0);
 	OSResumeThread(&mWorkerThread);
+#endif
 }
 
 TCardManager::~TCardManager()

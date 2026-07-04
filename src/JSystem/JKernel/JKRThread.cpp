@@ -16,9 +16,15 @@ JKRThread::JKRThread(u32 stackSize, int msgCount, int threadPrio)
 	mStackSize    = JKR_ALIGN32(stackSize);
 	mStackMemory  = JKRHeap::alloc(mStackSize, 32, mHeap);
 	mThreadRecord = JKRHeap::allocOne<OSThread>(32, mHeap);
+#ifndef SMS_NATIVE_PLATFORM
 	OSCreateThread(mThreadRecord, &JKRThread::start, this,
 	               (void*)((uintptr_t)mStackMemory + mStackSize), mStackSize,
 	               threadPrio, OS_THREAD_ATTR_DETACH);
+#else
+	// PC engine: subclass run() bodies are latency-hider loops that early-return
+	// under SMS_NATIVE_PLATFORM. Skip thread creation entirely; requester-side
+	// dispatch handles the work synchronously.
+#endif
 	mMesgCount  = msgCount;
 	mMesgBuffer = JKRHeap::allocArray<OSMessage>(mMesgCount, 0, mHeap);
 	OSInitMessageQueue(&mMesgQueue, mMesgBuffer, mMesgCount);
