@@ -208,6 +208,23 @@ void TCardManager::issue(s32 command)
 	OSLockMutex(&mMutex);
 	mPendingCommand = command;
 	mLastStatus     = CARD_RESULT_BUSY;
+#ifdef SMS_NATIVE_PLATFORM
+	// Single-threaded PC engine: dispatch synchronously (the worker thread
+	// that would drain mPendingCommand is skipped at construction; see
+	// cmdLoop() and the OSCreateThread callsite gate). Callers still poll
+	// getLastStatus(), so leaving mLastStatus set on completion is enough.
+	switch (command) {
+	case CMD_FORMAT:        mLastStatus = format_(); break;
+	case CMD_CREATE:        mLastStatus = createFile_(); break;
+	case CMD_BOOKMARK_SCAN: mLastStatus = getBookmarkInfos_(); break;
+	case CMD_READ_BLOCK:    mLastStatus = readBlock_(mReadWriteBlockArg); break;
+	case CMD_WRITE_BLOCK:   mLastStatus = writeBlock_(mReadWriteBlockArg); break;
+	case CMD_READ_OPTION:   mLastStatus = readOptionBlock_(); break;
+	case CMD_WRITE_OPTION:  mLastStatus = writeOptionBlock_(); break;
+	case CMD_THREAD_EXIT:   break;
+	}
+	mPendingCommand = CMD_NONE;
+#endif
 	OSUnlockMutex(&mMutex);
 	OSSignalCond(&mCommandIsPending);
 }
@@ -241,6 +258,10 @@ void TCardManager::getBookmarkInfos(TCardBookmarkInfo* param_1)
 	mGetBookmarkInfosArg = param_1;
 	mPendingCommand      = CMD_BOOKMARK_SCAN;
 	mLastStatus          = CARD_RESULT_BUSY;
+#ifdef SMS_NATIVE_PLATFORM
+	mLastStatus     = getBookmarkInfos_();
+	mPendingCommand = CMD_NONE;
+#endif
 	OSUnlockMutex(&mMutex);
 	OSSignalCond(&mCommandIsPending);
 }
@@ -251,6 +272,10 @@ void TCardManager::readBlock(u32 index)
 	mReadWriteBlockArg = index;
 	mPendingCommand    = CMD_READ_BLOCK;
 	mLastStatus        = CARD_RESULT_BUSY;
+#ifdef SMS_NATIVE_PLATFORM
+	mLastStatus     = readBlock_(mReadWriteBlockArg);
+	mPendingCommand = CMD_NONE;
+#endif
 	OSUnlockMutex(&mMutex);
 	OSSignalCond(&mCommandIsPending);
 }
@@ -274,6 +299,10 @@ void TCardManager::writeBlock(u32 index)
 	mReadWriteBlockArg = index;
 	mPendingCommand    = CMD_WRITE_BLOCK;
 	mLastStatus        = CARD_RESULT_BUSY;
+#ifdef SMS_NATIVE_PLATFORM
+	mLastStatus     = writeBlock_(mReadWriteBlockArg);
+	mPendingCommand = CMD_NONE;
+#endif
 	OSUnlockMutex(&mMutex);
 	OSSignalCond(&mCommandIsPending);
 }
