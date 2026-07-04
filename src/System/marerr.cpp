@@ -30,7 +30,7 @@ void MarErrInit()
 	JUTException::create(print);
 	JUTException::createConsole(new u8[0x1400], 0x1400);
 	JUTException::appendMapFile("/mario.MAP");
-	JUTException::setPreUserCallback(&MarErrException);
+	JUTException::setPreUserCallback((OSErrorHandler)&MarErrException);
 	// fullptr :D
 	JUTException::getManager()->setGamePad((JUTGamePad*)0xffffffff);
 	JUTException::getManager()->setPrintFlags(8);
