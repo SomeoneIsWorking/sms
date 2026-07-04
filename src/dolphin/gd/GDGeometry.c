@@ -279,21 +279,13 @@ void GDSetArray(GXAttr attr, void* base_ptr, u8 stride)
 		cpAttr = attr - GX_VA_POS;
 	}
 
-#ifdef SMS_AURORA
-	// AURORA: the GD bakery writes into mGDCommands which is later replayed via
-	// GXCallDisplayList -- but under SMS_AURORA J3DShape::draw skips that replay
-	// (Aurora rejects raw GC display-list opcodes). The CORRECT array base is
-	// re-applied at draw time via J3DShape::loadVtxArray -> J3DLoadArrayBasePtr,
-	// which emits GX_AURORA_LOAD_ARRAYBASE directly. Baking here would still
-	// write CP_REG_ARRAYBASE_ID (Aurora rejects) OR overflow the 0xC0-byte
-	// mGDCommands buffer with 12*16 = 192 bytes of AURORA framing. Bake nothing.
-	(void)base_ptr;
-	(void)stride;
-	(void)cpAttr;
-#else
+	// Bake the raw CP writes as the original decomp does. On Aurora the
+	// CP_REG_ARRAYBASE_ID write is silently ignored (see the fifo command
+	// processor); the correct 64-bit base pointer is supplied at draw time
+	// by J3DShape::loadVtxArray -> J3DLoadArrayBasePtr's AURORA_LOAD_ARRAYBASE
+	// emission. Stride still comes from this bakery.
 	GDWriteCPCmd(cpAttr + CP_REG_ARRAYBASE_ID, OSCachedToPhysical(base_ptr));
 	GDWriteCPCmd(cpAttr + CP_REG_ARRAYSTRIDE_ID, stride);
-#endif
 }
 
 void GDSetArrayRaw(GXAttr attr, u32 base_ptr_raw, u8 stride)
@@ -306,16 +298,8 @@ void GDSetArrayRaw(GXAttr attr, u32 base_ptr_raw, u8 stride)
 		cpAttr = attr - GX_VA_POS;
 	}
 
-#ifdef SMS_AURORA
-	// AURORA: see GDSetArray above -- the bakery output is discarded, and
-	// J3DLoadArrayBasePtr at draw time applies the correct pointer.
-	(void)base_ptr_raw;
-	(void)stride;
-	(void)cpAttr;
-#else
 	GDWriteCPCmd(cpAttr + CP_REG_ARRAYBASE_ID, base_ptr_raw);
 	GDWriteCPCmd(cpAttr + CP_REG_ARRAYSTRIDE_ID, stride);
-#endif
 }
 
 void GDSetCullMode(GXCullMode mode)

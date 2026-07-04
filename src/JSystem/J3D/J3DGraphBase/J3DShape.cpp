@@ -60,11 +60,7 @@ J3DShapeMtxDL::J3DShapeMtxDL(u16 useMtxIndex)
 // ~J3DShapeMtx is included in the binary and must go *here*
 static void dummy(J3DShapeMtx* mtx) { mtx->~J3DShapeMtx(); }
 
-void J3DShapeMtxDL::load() const {
-#ifndef SMS_AURORA
-	GXCallDisplayList(mDisplayList, 0x20);
-#endif
-}
+void J3DShapeMtxDL::load() const { GXCallDisplayList(mDisplayList, 0x20); }
 
 void J3DShapeMtxMulti::load() const
 {
@@ -95,9 +91,7 @@ J3DShapeDraw::J3DShapeDraw(const u8* list, u32 size)
 
 void J3DShapeDraw::draw() const
 {
-#ifndef SMS_AURORA
 	GXCallDisplayList((void*)mDisplayList, mDisplayListSize);
-#endif
 }
 
 void J3DShape::initialize()
@@ -251,15 +245,7 @@ void J3DShape::draw() const
 		return;
 	}
 #endif
-#ifndef SMS_AURORA
 	GXCallDisplayList(mGDCommands, 0xC0);
-#else
-	// AURORA-specific: Aurora extends the GX fifo format with GX_AURORA
-	// subcommand + explicit size/le payload on GXSetArray/AURORA_LOAD_TEXOBJ
-	// etc. Display lists baked by J3D's J3DGDSet* helpers -- currently
-	// no-op stubs on the Aurora path -- cannot replay through
-	// GXCallDisplayList. Skip until we port the bakers.
-#endif
 
 	J3DShapeMtx::currentPipeline = mFlags >> 2 & 3;
 	loadVtxArray();

@@ -110,9 +110,7 @@ void TDLTexQuad::draw()
 			((DL*)unkC[unk4])->indices[i] = 0;
 		}
 
-#ifndef SMS_AURORA
 		GXCallDisplayList(unkC[unk4], ALIGN_NEXT(unk1C, 0x20));
-#endif
 	}
 }
 
@@ -205,8 +203,6 @@ void TDLColorTexQuad::draw()
 		GXSetArray(GX_VA_CLR0, unk20[unk4], 4);
 		GXSetArray(GX_VA_TEX0, &uv, 2);
 		GXInvalidateVtxCache();
-#ifndef SMS_AURORA
 		GXCallDisplayList(unkC[unk4], ALIGN_NEXT(unk1C, 0x20));
-#endif
 	}
 }

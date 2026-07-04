@@ -25,11 +25,7 @@ void J3DDisplayListObj::swapBuffer()
 	mpData[1] = tmp;
 }
 
-void J3DDisplayListObj::callDL() {
-#ifndef SMS_AURORA
-	GXCallDisplayList(unk0, unk8);
-#endif
-}
+void J3DDisplayListObj::callDL() { GXCallDisplayList(unk0, unk8); }
 
 bool J3DPacket::isSame(J3DMatPacket*) const { return false; }
 
@@ -66,11 +62,7 @@ J3DDrawPacket::J3DDrawPacket()
 
 J3DDrawPacket::~J3DDrawPacket() { }
 
-void J3DDrawPacket::draw() {
-#ifndef SMS_AURORA
-	GXCallDisplayList(unk30->unk0, unk30->unk8);
-#endif
-}
+void J3DDrawPacket::draw() { GXCallDisplayList(unk30->unk0, unk30->unk8); }
 
 void J3DDrawPacket::beginDL()
 {

@@ -1461,14 +1461,10 @@ void TModelWaterManager::drawShineShadowVolume(MtxPtr param_1)
 			GXLoadPosMtxImm(afStack_98, GX_PNMTX0);
 			GXSetBlendMode(GX_BM_BLEND, GX_BL_ONE, GX_BL_ONE, GX_LO_NOOP);
 			GXSetCullMode(GX_CULL_FRONT);
-#ifndef SMS_AURORA
 			GXCallDisplayList(sphere_glist_p, 0x760);
-#endif
 			GXSetBlendMode(GX_BM_SUBTRACT, GX_BL_ZERO, GX_BL_ZERO, GX_LO_NOOP);
 			GXSetCullMode(GX_CULL_BACK);
-#ifndef SMS_AURORA
 			GXCallDisplayList(sphere_glist_p, 0x760);
-#endif
 			++iVar5;
 		} while (iVar5 < r31);
 
