@@ -35,6 +35,16 @@ TNameRef* TNameRef::genObject(JSUMemoryInputStream& param_1,
                               JSUMemoryInputStream& param_2)
 {
 	const char* type = getType(param_1, param_2);
+#ifdef SMS_NATIVE_PLATFORM
+	if (type == nullptr) {
+		OSPanic(__FILE__, __LINE__,
+		        "TNameRef::genObject: getType returned NULL "
+		        "(input stream at %p pos=%d) -- likely empty/short read from DVD",
+		        (void*)param_1.mBuffer, (int)param_1.mPosition);
+	}
+	if (getenv("SB_NAMEREF_DBG"))
+		OSReport("[SBDBG] TNameRef::genObject type=\"%s\"\n", type);
+#endif
 	TNameRef* obj    = TNameRefGen::getInstance()->getNameRef(type);
 #ifdef SMS_NATIVE_PLATFORM
 	// FAIL FAST: getNameRef returning null means the scene asset references a
