@@ -1,6 +1,7 @@
 #include <JSystem/J2D/J2DPrint.hpp>
 #include <JSystem/JKernel/JKRHeap.hpp>
 #include <dolphin/gx.h>
+#include <cstdio>   // vsnprintf (glibc's <printf.h> below doesn't provide it)
 #include <printf.h>
 #include <stdlib.h>
 
