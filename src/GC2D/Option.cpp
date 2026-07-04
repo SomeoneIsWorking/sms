@@ -1,11 +1,6 @@
 #include <GC2D/Option.hpp>
 #include <macros.h>
-
-// DEG_TO_RAD / RAD_TO_DEG live in the MWERKS MSL math.h under Path B; glibc
-// math.h under Path A doesn't ship them. Define locally.
-#ifndef RAD_TO_DEG
-#define RAD_TO_DEG(radians) ((radians) * (180.0f / 3.14159265358979323846f))
-#endif
+#include <dolphin/mtx.h>  // RAD_TO_DEG (via Aurora's mtx.h under Path A; MSL under B)
 #include <JSystem/JKernel/JKRFileLoader.hpp>
 #include <JSystem/J2D/J2DScreen.hpp>
 #include <JSystem/J2D/J2DTextBox.hpp>

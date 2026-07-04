@@ -99,7 +99,7 @@ void* Dvd::dvdProc(void* param)
 	OSInitThreadQueue(&dvdtSleep);
 	while (true) {
 		u32 message;
-		OSReceiveMessage(&mq, &message, 1);
+		OSReceiveMessage(&mq, (OSMessage*)&message, 1);
 		cs = (void*)message;
 		updateBuffer();
 		if (buffersize == 0)

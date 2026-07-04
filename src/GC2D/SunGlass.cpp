@@ -125,10 +125,12 @@ void TSunGlass::perform(u32 flags, JDrama::TGraphics* graphics)
 	// Fade progression on the ANIM bit (0x1) — the pure sb::sunglass_fade_* helpers are the
 	// unit-tested spec truth. The port SHIPS through them so the test validates the real code.
 	if ((flags & 1u) != 0 && unk26 != 0) {
+#ifdef SMS_NATIVE_PLATFORM
 		unk14.a = sb::sunglass_fade_step_alpha(unk1C, unk1D, unk24, unk22);
 		sb::FadeAdvance adv = sb::sunglass_fade_advance(unk24, unk22);
 		unk24  = adv.new_cur;
 		unk26  = adv.new_active ? 1 : 0;
+#endif
 	}
 	// Draw on the DRAW bit (0x8) — virtual dispatch so TSunShine's own draw (if it overrode)
 	// runs; the decompile calls through vtable slot +0x24, which is draw(rect, color).
