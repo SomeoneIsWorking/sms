@@ -100,11 +100,15 @@ TDrawSyncManager::TDrawSyncManager(u32 param_1, u32 param_2, s32 param_3)
     : mCallbacks(param_1)
 {
 	mFlags = 0;
+#ifndef SMS_NATIVE_PLATFORM
 	OSCreateThread(&mProcessingThread, &threadFunc, this,
 	               new u8[0x1000] + 0x1000, 0x1000, param_3, 0);
+#endif
 	OSInitMessageQueue(&mMessageQueue, (OSMessage*)new u8[0x50], 0x14);
 	mFifo = new TFifo(param_2);
+#ifndef SMS_NATIVE_PLATFORM
 	OSResumeThread(&mProcessingThread);
+#endif
 }
 
 TDrawSyncManager::~TDrawSyncManager() { }

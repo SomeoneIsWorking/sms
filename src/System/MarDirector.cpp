@@ -89,9 +89,13 @@ u32 TMarDirector::setup(JDrama::TDisplay* param_1, TMarioGamePad** param_2,
 		         "(map=%d unk30=%p)\n",
 		         mMap, (void*)gpApplication.unk30);
 #endif
+#ifdef SMS_NATIVE_PLATFORM
+	setupThreadFunc(this);
+#else
 	OSCreateThread(&gSetupThread, &setupThreadFunc, this,
 	               (void*)(gpSetupThreadStack + 0x10000), 0x10000, 0x11, 0);
 	OSResumeThread(&gSetupThread);
+#endif
 	return 0;
 }
 

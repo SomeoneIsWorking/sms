@@ -159,17 +159,24 @@ namespace AudioThread {
 		Kernel::sysAramSetup(aram_size);
 		Kernel::stackInit((u64*)jac_audioStack, 0x200);
 		if (flags & 2) {
+#ifndef SMS_NATIVE_PLATFORM
+			// PC engine: audio thread is a latency-hider; native audio owns
+			// output (see native/src/sms_boot_audio.cpp).
 			OSCreateThread(&jac_audioThread, &audioproc, 0,
 			               jac_audioStack + 0x1000, 0x1000, jac_pri, 1);
 			OSResumeThread(&jac_audioThread);
+#endif
 		}
 
 		Kernel::stackInit((u64*)jac_dvdStack, 0x200);
 		if (flags & 1) {
 			Dvd::dvdProcInit();
+#ifndef SMS_NATIVE_PLATFORM
+			// PC engine: DVD streamer thread; Aurora reads sync.
 			OSCreateThread(&jac_dvdThread, &Dvd::dvdProc, 0,
 			               jac_dvdStack + 0x1000, 0x1000, dvd_pri, 1);
 			OSResumeThread(&jac_dvdThread);
+#endif
 		}
 	}
 
