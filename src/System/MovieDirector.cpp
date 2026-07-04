@@ -261,7 +261,7 @@ int TMovieDirector::direct()
 		if (!OSIsThreadTerminated(&gSetupThread))
 			return 0;
 
-		u32 errc;
+		void* errc;
 		OSJoinThread(&gSetupThread, &errc);
 		if (errc)
 			return 5;

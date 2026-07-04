@@ -370,7 +370,12 @@ void TApplication::initialize_bootAfter()
 	gpMSound->loadWave(MS_WAVE_UNK210);
 	prevHeap->becomeCurrentHeap();
 
+#ifdef TARGET_PC
+	// Aurora's CARDInit takes GC game/maker codes explicitly under TARGET_PC.
+	CARDInit("GMSE", "01");
+#else
 	CARDInit();
+#endif
 
 	void* sectorWorkArea    = new (0x20) u8[0x2000];
 	void* cardWorkArea      = new (0x20) u8[0xA000];
