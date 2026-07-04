@@ -1,9 +1,10 @@
 #include <dolphin/types.h>
 
-#ifdef SUNBRIGHT_NATIVE_HOST
-// Native host build: libstdc++ <cmath> already provides global float overloads
-// of sqrt/sqrtf/fabs/floor; the GC-approximation definitions below would be
-// conflicting redeclarations. Defer to the host (exact, fine for a native port).
+#if defined(SUNBRIGHT_NATIVE_HOST) || defined(TARGET_PC)
+// Native host build (Aurora / sunbright): libstdc++ <cmath> already provides
+// global float overloads of sqrt/sqrtf/fabs/floor; the GC-approximation
+// definitions below would be conflicting redeclarations. Defer to the host
+// (exact, fine for a native port).
 #include <cmath>
 #else
 
