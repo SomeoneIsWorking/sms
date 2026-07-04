@@ -25,7 +25,11 @@ void J3DDisplayListObj::swapBuffer()
 	mpData[1] = tmp;
 }
 
-void J3DDisplayListObj::callDL() { GXCallDisplayList(mpData[0], mSize); }
+void J3DDisplayListObj::callDL() {
+#ifndef SMS_NATIVE_PLATFORM
+	GXCallDisplayList(unk0, unk8);
+#endif
+}
 
 bool J3DPacket::isSame(J3DMatPacket*) const { return false; }
 
@@ -62,9 +66,10 @@ J3DDrawPacket::J3DDrawPacket()
 
 J3DDrawPacket::~J3DDrawPacket() { }
 
-void J3DDrawPacket::draw()
-{
-	GXCallDisplayList(mpDisplayListObj->mpData[0], mpDisplayListObj->mSize);
+void J3DDrawPacket::draw() {
+#ifndef SMS_NATIVE_PLATFORM
+	GXCallDisplayList(unk30->unk0, unk30->unk8);
+#endif
 }
 
 void J3DDrawPacket::beginDL()
