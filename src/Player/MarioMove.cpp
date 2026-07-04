@@ -109,7 +109,7 @@ bool TMario::isForceSlip()
 	if (mGroundPlane->isUnk1())
 		return true;
 
-	if (mPollutionTypeStandingOn == 2) {
+	if (mPollutionTypeStandingOn == POLLUTION_TYPE_SLIP) {
 		if (checkFlag(MARIO_FLAG_DIRTY)) {
 			if (mGroundPlane->mNormal.y < mDirtyParams.mSlopeAngle.get())
 				return true;
@@ -985,9 +985,9 @@ void TMario::checkGraffito()
 	    = gpPollution->getPollutionType(mPosition.x, mPosition.y, mPosition.z);
 
 	switch (mPollutionTypeStandingOn) {
-	case 2:
-	case 5:
-	case 6: {
+	case POLLUTION_TYPE_SLIP:
+	case POLLUTION_TYPE_INSTAKILL:
+	case POLLUTION_TYPE_SAFE: {
 		JGeometry::TVec3<f32> pos = mPosition;
 		pos.x -= 32.0f;
 		pos.z -= 32.0f;
@@ -1022,10 +1022,10 @@ void TMario::checkGraffito()
 		break;
 	}
 
-	case 0:
-	case 1:
-	case 3:
-	case 7: {
+	case POLLUTION_TYPE_SINK:
+	case POLLUTION_TYPE_FIRE:
+	case POLLUTION_TYPE_GLASS_WALL:
+	case POLLUTION_TYPE_UNK7: {
 		JGeometry::TVec3<f32> pos;
 		pos.x = mPosition.x;
 		pos.y = mFloorPosition.y;
@@ -1060,7 +1060,7 @@ void TMario::checkGraffito()
 		break;
 	}
 
-	case 4: {
+	case POLLUTION_TYPE_ELECTRIC: {
 		JGeometry::TVec3<f32> pos;
 		pos.x = mPosition.x;
 		pos.y = mFloorPosition.y;
@@ -1072,8 +1072,8 @@ void TMario::checkGraffito()
 		break;
 	}
 
-	case 8:
-	case 10:
+	case POLLUTION_TYPE_UNK8:
+	case POLLUTION_TYPE_UNK10:
 		isDirty = 0;
 		break;
 	}
@@ -1082,29 +1082,29 @@ void TMario::checkGraffito()
 		getOffYoshi(true);
 
 	switch (mPollutionTypeStandingOn) {
-	case 4:
+	case POLLUTION_TYPE_ELECTRIC:
 		if (isDirty == 1)
 			checkGraffitoElec();
 		break;
-	case 1:
-	case 7:
+	case POLLUTION_TYPE_FIRE:
+	case POLLUTION_TYPE_UNK7:
 		if (isDirty == 1)
 			checkGraffitoFire();
 		break;
-	case 2:
+	case POLLUTION_TYPE_SLIP:
 		if (isDirty == 1)
 			checkGraffitoSlip();
 		break;
-	case 3:
+	case POLLUTION_TYPE_GLASS_WALL:
 		if (isDirty == 1) {
 			mPosition.x = unk29C.x;
 			mPosition.z = unk29C.z;
 		}
 		break;
 
-	case 0:
-	case 5:
-	case 6:
+	case POLLUTION_TYPE_SINK:
+	case POLLUTION_TYPE_INSTAKILL:
+	case POLLUTION_TYPE_SAFE:
 	case 8:
 		break;
 	}
@@ -1215,7 +1215,7 @@ void TMario::checkSink()
 		return;
 	}
 
-	if (mPollutionTypeStandingOn == 0) {
+	if (mPollutionTypeStandingOn == POLLUTION_TYPE_SINK) {
 		if (checkFlag(MARIO_FLAG_DIRTY)) {
 			mSinkTimer += 1.0f;
 			mFootPrintTimer = mDeParams.mFootPrintTimerMax.get();
@@ -1245,7 +1245,7 @@ void TMario::checkSink()
 		}
 	}
 
-	if (mPollutionTypeStandingOn == 5) {
+	if (mPollutionTypeStandingOn == POLLUTION_TYPE_INSTAKILL) {
 		if (checkFlag(MARIO_FLAG_DIRTY)) {
 			unk374 -= mJumpParams.mGravity.get();
 			unk378 += unk374;
@@ -2016,7 +2016,7 @@ void TMario::thinkSituation()
 		changePlayerStatus(MARIO_STATUS_FALL_DEAD, 0, true);
 		if (mAnimationId != ANIM_THROWN)
 			startSoundActor(MSD_SE_MV10B_CRY_JUMP_01);
-		gpCamera->unk64 |= 0x800;
+		gpCamera->unk64 |= CPolarSubCamera::CAMERA_FLAG_HELL_DEAD_DEMO;
 		gpMarDirector->unk4E |= 0x8;
 		return;
 	}
@@ -2511,7 +2511,7 @@ void TMario::playerControl(JDrama::TGraphics* param_1)
 		changePlayerStatus(MARIO_STATUS_READ_BILLBOARD, 0, false);
 
 	if (gpMarioOriginal == this) {
-		if (gpCamera->isLButtonCameraSpecifyMode(gpCamera->mMode)
+		if (gpCamera->isLButtonCamera()
 		    && !((mStatus & MARIO_STATUS_TYPE_AND_ID_MASK)
 		             >= (MARIO_STATUS_HANGING & MARIO_STATUS_TYPE_AND_ID_MASK)
 		         && (MARIO_STATUS_HANG_JUMPING & MARIO_STATUS_TYPE_AND_ID_MASK)

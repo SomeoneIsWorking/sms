@@ -25,6 +25,7 @@
 #include <JSystem/JMath.hpp>
 #include <JSystem/JParticle/JPAEmitter.hpp>
 #include <JSystem/J3D/J3DGraphAnimator/J3DAnimation.hpp>
+#include <JSystem/J3D/J3DGraphLoader/J3DModelLoaderFlags.hpp>
 #include <stdlib.h>
 
 // rogue includes needed for matching sinit & bss
@@ -109,7 +110,11 @@ TSmallEnemyManager::TSmallEnemyManager(const char* name)
 
 void TSmallEnemyManager::createModelData()
 {
-	static TModelDataLoadEntry entry = { "default.bmd", 0x10220000, 0 };
+	static TModelDataLoadEntry entry
+	    = { "default.bmd",
+		    J3DMLF_MaterialPEFull | J3DMLF_UseUniqueMaterials
+		        | (2 << J3DMLF_TevStageNumShift),
+		    0 };
 	createModelDataArray(&entry);
 }
 
@@ -241,9 +246,10 @@ void TSmallEnemy::attackToMario()
 
 	// TODO: wtf
 	JGeometry::TVec3<f32> local_14(0, 0, 0);
+	(void)&local_14;
 
 	JGeometry::TVec3<f32> local_20;
-	local_20.sub(mPosition, *gpMarioPos);
+	local_20.sub(mPosition, SMS_GetMarioPos());
 	MsVECNormalize(&local_20, &local_20);
 	mVelocity.set(local_20);
 
@@ -536,7 +542,7 @@ BOOL TSmallEnemy::receiveMessage(THitActor* sender, u32 message)
 		return true;
 	}
 
-	if ((message == HIT_MESSAGE_UNK6 || message == HIT_MESSAGE_UNK7)
+	if ((message == HIT_MESSAGE_PUT || message == HIT_MESSAGE_THROWN)
 	    && mHolder == sender) {
 		mHolder = nullptr;
 		behaveToRelease();
@@ -545,7 +551,7 @@ BOOL TSmallEnemy::receiveMessage(THitActor* sender, u32 message)
 	}
 
 	if (message == HIT_MESSAGE_TRAMPLE || message == HIT_MESSAGE_HIP_DROP
-	    || message == HIT_MESSAGE_UNK3 || message == HIT_MESSAGE_UNKB
+	    || message == HIT_MESSAGE_SUPER_HIP_DROP || message == HIT_MESSAGE_UNKB
 	    || (mActorType == 0x10000021 && message == HIT_MESSAGE_PUNCH)) {
 		if (isHitValid(message)) {
 			unk184 = 0;

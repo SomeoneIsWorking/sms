@@ -551,7 +551,7 @@ void TCardLoad::perform(u32 param_1, JDrama::TGraphics* param_2)
 				const JGeometry::TVec3<f32>& bp = b->getPosition();
 				fprintf(stderr, "[selpos]   block%d(%.1f %.1f %.1f) mBlockPosition(%.1f %.1f %.1f) state=%d ttl=%d\n",
 				        i, bp.x, bp.y, bp.z, b->mBlockPosition.x, b->mBlockPosition.y, b->mBlockPosition.z,
-				        (int)b->mState, (int)b->mTimeTilAppear);
+				        (int)b->mState, (int)b->mStateTimer);
 			}
 		}
 		// SB_SEL_PICK=<0|1|2>: deterministic faithful file selection for headless

@@ -63,7 +63,9 @@ TLensGlow::TLensGlow(bool param_1, const char* name)
 	if (glowRes == nullptr)
 		OSPanic(__FILE__, __LINE__, "TLensGlow: resource not found: %s", buf);
 #endif
-	unk10 = J3DModelLoaderDataBase::load(glowRes, 0x10020000);
+	unk10 = J3DModelLoaderDataBase::load(glowRes,
+	                                     J3DMLF_MaterialPEFull
+	                                         | (2 << J3DMLF_TevStageNumShift));
 	unk14 = new J3DModel(unk10, 0, 1);
 
 	snprintf(buf, sizeof(buf), "%s/%s", base, "glow.btk");

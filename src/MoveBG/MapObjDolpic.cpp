@@ -58,7 +58,7 @@ void TMonumentShine::initMapObj()
 	}
 
 	SMS_InitPacket_OneTevKColor(getModel(), 0, GX_KCOLOR0, &unk138);
-	unk64 &= ~1;
+	offHitFlag(HIT_FLAG_NO_COLLISION);
 }
 
 void TMonumentShine::hitByWater(THitActor* actor)
@@ -221,7 +221,7 @@ void TBellDolpic::initMapObj()
 	}
 
 	SMS_InitPacket_OneTevKColor(getModel(), 0, GX_KCOLOR0, &unk138);
-	unk64 &= ~1;
+	offHitFlag(HIT_FLAG_NO_COLLISION);
 }
 
 void TBellDolpic::calcRootMatrix()
@@ -436,8 +436,8 @@ void TDemoCannon::initMapObj()
 
 	void* res
 	    = JKRFileLoader::getGlbResource("/scene/mapObj/demoCannon_dom.bmd");
-	SDLModelData* sdlData
-	    = new SDLModelData(J3DModelLoaderDataBase::load(res, 0x10050000));
+	SDLModelData* sdlData = new SDLModelData(J3DModelLoaderDataBase::load(
+	    res, J3DMLF_MaterialPEFull | (5 << J3DMLF_TevStageNumShift)));
 
 	JUTNameTab* jointName = mMActor->getModel()->getModelData()->getJointName();
 
@@ -446,8 +446,8 @@ void TDemoCannon::initMapObj()
 	unk138              = parts;
 
 	res = JKRFileLoader::getGlbResource("/scene/mapObj/demoCannon_mario.bmd");
-	SDLModelData* sdlData2
-	    = new SDLModelData(J3DModelLoaderDataBase::load(res, 0x10010000));
+	SDLModelData* sdlData2 = new SDLModelData(J3DModelLoaderDataBase::load(
+	    res, J3DMLF_MaterialPEFull | (1 << J3DMLF_TevStageNumShift)));
 
 	parts  = new TSharedParts(this, 0, sdlData2, 3, "<TSharedParts>");
 	unk13C = parts;
@@ -541,12 +541,8 @@ void TTurboNozzleDoor::touchPlayer(THitActor* player)
 		((TMapObjBase*)unk144)->makeObjDead();
 	}
 
-	if (gpMSound->gateCheck(14346))
-		MSoundSESystem::MSoundSE::startSoundActor(14346, &mPosition, 0, nullptr,
-		                                          0, 4);
-	if (gpMSound->gateCheck(14423))
-		MSoundSESystem::MSoundSE::startSoundActor(14423, &mPosition, 0, nullptr,
-		                                          0, 4);
+	SMSGetMSound()->startSoundActor(14346, &mPosition, 0, nullptr, 0, 4);
+	SMSGetMSound()->startSoundActor(14423, &mPosition, 0, nullptr, 0, 4);
 
 	JGeometry::TVec3<f32> scale(1.3f);
 
@@ -557,5 +553,5 @@ void TTurboNozzleDoor::touchPlayer(THitActor* player)
 	emitAndScale(57, 0, &unk138, scale);
 
 	removeMapCollision();
-	unk64 |= 1;
+	onHitFlag(HIT_FLAG_NO_COLLISION);
 }

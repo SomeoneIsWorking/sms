@@ -20,13 +20,35 @@
 // header tentative-def duplicated across every includer).
 TMapWireManager* gpMapWireManager;
 
+// rogue includes needed for matching sinit & bss
+#include <MSound/MSSetSound.hpp>
+#include <MSound/MSoundBGM.hpp>
+
+f32 TMapWireActor::mCommonAttackRadius = 200.0f;
+f32 TMapWireActor::mCommonAttackHeight = 200.0f;
+
 void TMapWireActor::checkTakingActor() { }
 
-f32 TMapWireActor::getPosInWire() const { }
-
-void TMapWireActor::getTipPoints(JGeometry::TVec3<f32>*,
-                                 JGeometry::TVec3<f32>*) const
+f32 TMapWireActor::getPosInWire() const
 {
+	JGeometry::TVec3<f32> start;
+	JGeometry::TVec3<f32> end;
+	getTipPoints(&start, &end);
+	start.y = 0.0f;
+	end.y   = 0.0f;
+
+	JGeometry::TVec3<f32> foot = MsPerpendicFootToLineR(start, end, mPosition);
+
+	return JGeometry::TVec3<f32>(foot - start).length()
+	       / JGeometry::TVec3<f32>(end - start).length();
+}
+
+void TMapWireActor::getTipPoints(JGeometry::TVec3<f32>* start,
+                                 JGeometry::TVec3<f32>* end) const
+{
+	TMapWire* wire = unk74->unk7C;
+	*start         = wire->mStartPoint;
+	*end           = wire->mEndPoint;
 }
 
 BOOL TMapWireActor::receiveMessage(THitActor* sender, u32 message)
@@ -40,7 +62,17 @@ BOOL TMapWireActor::receiveMessage(THitActor* sender, u32 message)
 	return false;
 }
 
-void TMapWireActor::init(TMapWireActorManager*) { }
+void TMapWireActor::init(TMapWireActorManager* manager)
+{
+	unk74 = manager;
+
+	initHitActor(0x40000098, 1, -0x80000000, TMapWireActor::mCommonAttackRadius,
+	             TMapWireActor::mCommonAttackHeight, 0.0f, 0.0f);
+
+	TIdxGroupObj* group
+	    = JDrama::TNameRefGen::search<TIdxGroupObj>("アイテムグループ");
+	group->getChildren().push_back(this);
+}
 
 #pragma dont_inline on
 TMapWireActor::TMapWireActor(const char* name)
@@ -76,7 +108,53 @@ static void initDraw()
 	GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 }
 
-void TMapWireActorManager::doActorToWire() { }
+void TMapWireActorManager::doActorToWire()
+{
+	TMapWire* previousWire = unk7C;
+	int cubeNo             = gpCubeWire->getInCubeNo(unk0->mPosition);
+	if (cubeNo != -1)
+		unk7C = gpMapWireManager->getWire((u16)cubeNo);
+	else
+		unk7C = nullptr;
+
+	if (unk4.mHeldObject != nullptr && unk4.mHeldObject->mHolder != &unk4) {
+		unk4.mHeldObject = nullptr;
+		unk4.unk70       = 1;
+	}
+
+	if (unk0->mHeldObject != nullptr) {
+		for (int i = 0; i < unk4.mColCount; ++i) {
+			THitActor* col = unk4.mCollisions[i];
+			if (col->isActorType(0x80000001)
+			    && col->receiveMessage(&unk4, HIT_MESSAGE_TAKE))
+				unk4.mHeldObject = (TTakeActor*)unk4.mCollisions[i];
+		}
+	}
+
+	if (previousWire != nullptr) {
+		if (unk7C != nullptr && unk7C != previousWire)
+			unk4.unk70 = 1;
+	}
+
+	if (unk4.unk70) {
+		if (previousWire != nullptr)
+			previousWire->release();
+		unk4.unk70 = 0;
+		return;
+	}
+
+	if (unk4.mHeldObject != nullptr) {
+		if (unk7C != nullptr)
+			unk7C->setFootPointsAtHanged(gpMarioOriginal->getTakenMtx());
+		if (previousWire != nullptr) {
+			previousWire->setFootPointsAtHanged(gpMarioOriginal->getTakenMtx());
+			unk7C = previousWire;
+		}
+	}
+
+	if (unk7C == nullptr && previousWire != nullptr)
+		previousWire->release();
+}
 
 void TMapWireActorManager::doWireToActor() { }
 
@@ -85,14 +163,7 @@ TMapWireActorManager::TMapWireActorManager(TTakeActor* param_1)
     , unk4("アクター補助")
     , unk7C(0)
 {
-	unk4.initHitActor(0x40000098, 1, -0x80000000,
-	                  TMapWireActor::mCommonAttackRadius,
-	                  TMapWireActor::mCommonAttackHeight, 0.0f, 0.0f);
-
-	// TODO: inlines are messed up =(
-	TIdxGroupObj* group
-	    = JDrama::TNameRefGen::search<TIdxGroupObj>("アイテムグループ");
-	group->getChildren().push_back(&unk4);
+	unk4.init(this);
 }
 
 JUtility::TColor TMapWireManager::mUpperSurface;
@@ -107,8 +178,8 @@ void TMapWireManager::getPointPosInNthWire(int param_1,
                                            const JGeometry::TVec3<f32>& param_2,
                                            JGeometry::TVec3<f32>* param_3) const
 {
-	mWires[param_1]->getPointPosOnWire(mWires[param_1]->getPosInWire(param_2),
-	                                   param_3);
+	getWire(param_1)->getPointPosOnWire(getWire(param_1)->getPosInWire(param_2),
+	                                    param_3);
 }
 
 void TMapWireManager::getPointPosInWire(const JGeometry::TVec3<f32>&,
@@ -116,74 +187,95 @@ void TMapWireManager::getPointPosInWire(const JGeometry::TVec3<f32>&,
 {
 }
 
-void TMapWireManager::perform(u32, JDrama::TGraphics*) { }
+void TMapWireManager::perform(u32 param_1, JDrama::TGraphics*)
+{
+	if (param_1 & 1) {
+		for (int i = 0; i < mActorMgrNum; ++i)
+			mActorMgrs[i]->doActorToWire();
 
-void TMapWireManager::entry(TTakeActor*) { }
+		for (int i = 0; i < mWireNum; ++i)
+			mWires[i]->move();
+
+		TMapWireActorManager* mgr;
+		for (int i = 0; i < mActorMgrNum; ++i) {
+			mgr = mActorMgrs[i];
+			mgr->unk4.onHitFlag(HIT_FLAG_NO_COLLISION);
+			if (mgr->unk7C != nullptr) {
+				MtxPtr mtx = gpMarioOriginal->getTakenMtx();
+				mgr->unk4.offHitFlag(HIT_FLAG_NO_COLLISION);
+				mgr->unk4.mPosition.set(mtx[0][3], mtx[1][3], mtx[2][3]);
+			}
+		}
+	}
+	if (param_1 & 8) {
+		initDraw();
+		GXSetChanMatColor(GX_COLOR0A0, mUpperSurface);
+		for (int i = 0; i < mWireNum; ++i)
+			mWires[i]->drawUpper();
+		GXSetChanMatColor(GX_COLOR0A0, mLowerSurface);
+		for (int i = 0; i < mWireNum; ++i)
+			mWires[i]->drawLower();
+	}
+	if (param_1 & 0x200) {
+		for (int i = 0; i < mWireNum; ++i)
+			mWires[i]->calcViewAndDBEntry();
+	}
+}
+
+void TMapWireManager::entry(TTakeActor* actor)
+{
+	mActorMgrs[mActorMgrNum] = new TMapWireActorManager(actor);
+	++mActorMgrNum;
+}
 
 void TMapWireManager::loadAfter()
 {
 	JDrama::TViewObj::loadAfter();
 
-	TTakeActor* mario   = gpMarioOriginal;
-	mActorMgrs[mActorMgrNum] = new TMapWireActorManager(mario);
-	++mActorMgrNum;
+	entry(gpMarioOriginal);
 }
 
 void TMapWireManager::load(JSUMemoryInputStream& stream)
 {
 	JDrama::TViewObj::load(stream);
 	stream.readString();
-	stream.read(&mMaxWireNum, 4);
-	stream.read(&mMaxActorMgrNum, 4);
-	stream.read(&TMapWire::mDrawWidth, 4);
-	stream.read(&TMapWire::mDrawHeight, 4);
-	int val;
-	stream.read(&val, 4);
-	mUpperSurface.r = SB_BE32(val);
-	stream.read(&val, 4);
-	mUpperSurface.g = SB_BE32(val);
-	stream.read(&val, 4);
-	mUpperSurface.b = SB_BE32(val);
+	stream >> mMaxWireNum;
+	stream >> mMaxActorMgrNum;
+	stream >> TMapWire::mDrawWidth;
+	stream >> TMapWire::mDrawHeight;
 
-	stream.read(&val, 4);
-	mLowerSurface.r = SB_BE32(val);
-	stream.read(&val, 4);
-	mLowerSurface.g = SB_BE32(val);
-	stream.read(&val, 4);
-	mLowerSurface.b = SB_BE32(val);
+	s32 val;
+	stream >> val;
+	mUpperSurface.r = val;
+	stream >> val;
+	mUpperSurface.g = val;
+	stream >> val;
+	mUpperSurface.b = val;
 
-#ifdef SMS_NATIVE_PLATFORM
-	// These fields are big-endian on disc but read via the raw read(&x,4) (which
-	// does not byteswap, unlike the typed readers). Swap to host: mMaxWireNum/
-	// mMaxActorMgrNum are array capacities (unswapped -> a ~1GB `new TMapWire*[]`
-	// OOM-panics), and mDrawWidth/mDrawHeight are f32 line dimensions. The color
-	// components above use SB_BE32 since `int val` is truncated to a u8 immediately.
-	mMaxWireNum     = __builtin_bswap32(mMaxWireNum);
-	mMaxActorMgrNum = __builtin_bswap32(mMaxActorMgrNum);
-	{
-		u32 w, h;
-		__builtin_memcpy(&w, &TMapWire::mDrawWidth, 4);
-		__builtin_memcpy(&h, &TMapWire::mDrawHeight, 4);
-		w = __builtin_bswap32(w);
-		h = __builtin_bswap32(h);
-		__builtin_memcpy(&TMapWire::mDrawWidth, &w, 4);
-		__builtin_memcpy(&TMapWire::mDrawHeight, &h, 4);
-	}
-#endif
+	stream >> val;
+	mLowerSurface.r = val;
+	stream >> val;
+	mLowerSurface.g = val;
+	stream >> val;
+	mLowerSurface.b = val;
 
 	mWires     = new TMapWire*[mMaxWireNum];
 	mActorMgrs = new TMapWireActorManager*[mMaxActorMgrNum];
 
 	mWireNum = gpCubeWire->unk10;
-
 	for (int i = 0; i < mWireNum; ++i) {
 		mWires[i] = new TMapWire;
-		mWires[i]->init(&(*gpCubeWire->unk14)[i]);
+		mWires[i]->init(&gpCubeWire->unk14->getChildren()[i]);
 	}
 }
 
 TMapWireManager::TMapWireManager(const char* name)
     : JDrama::TViewObj(name)
+    , mWireNum(0)
+    , mWires(nullptr)
+    , mActorMgrNum(0)
+    , mActorMgrs(nullptr)
+    , unk28(0)
 {
 	gpMapWireManager = this;
 	// mActorMgrNum is the running insert index into the mActorMgrs[] array (loadAfter does

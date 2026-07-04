@@ -1,6 +1,7 @@
 #include <Player/Mario.hpp>
 #include <Player/NozzleTrigger.hpp>
 #include <Player/Yoshi.hpp>
+#include <Map/PollutionLayer.hpp>
 #include <M3DUtil/M3UModelMario.hpp>
 #include <Map/MapData.hpp>
 #include <System/Application.hpp>
@@ -256,10 +257,10 @@ void TMario::soundMovement()
 		}
 
 		if (mColCount != 0) {
-			if (*mCollisions != nullptr) {
+			if (mCollisions[0] != nullptr) {
 				mSoundValues.unk29 = 4;
-				mSoundValues.unk14 = (*mCollisions)->mActorType;
-				if ((*mCollisions)->checkActorType(0x04000000))
+				mSoundValues.unk14 = mCollisions[0]->mActorType;
+				if (mCollisions[0]->checkActorType(0x04000000))
 					mSoundValues.unk28 = 1;
 				else
 					mSoundValues.unk28 = 2;
@@ -623,7 +624,7 @@ void TMario::animSound()
 	mSoundFlags = mGroundPlane->unk6;
 
 	if (checkFlag(MARIO_FLAG_DIRTY)) {
-		if (mPollutionTypeStandingOn == 0
+		if (mPollutionTypeStandingOn == POLLUTION_TYPE_SINK
 		    && mSinkTimer >= mGraffitoParams.mSinkTime.get()
 		                         * mGraffitoParams.mSinkDmgDepth.get())
 			mSoundFlags |= 0x600;

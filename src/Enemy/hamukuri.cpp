@@ -203,7 +203,10 @@ static const char* anmlist[] = {
 void THamuKuriManager::createModelData()
 {
 	static TModelDataLoadEntry entry[] = {
-		{ "default.bmd", 0x10220000, 0 },
+		{ "default.bmd",
+		  J3DMLF_MaterialPEFull | J3DMLF_UseUniqueMaterials
+		      | (2 << J3DMLF_TevStageNumShift),
+		  0 },
 		{ nullptr, 0, 0 },
 	};
 	createModelDataArray(entry);
@@ -446,8 +449,9 @@ void TDoroHaneKuriManager::perform(u32 param_1, JDrama::TGraphics* param_2)
 void TDoroHaneKuriManager::createHige()
 {
 	void* rawModelData = JKRGetResource("/scene/hanekuri/dorokuriHige.bmd");
-	SDLModelData* modelData = new SDLModelData(
-	    J3DModelLoaderDataBase::load(rawModelData, 0x10210000));
+	SDLModelData* modelData = new SDLModelData(J3DModelLoaderDataBase::load(
+	    rawModelData, J3DMLF_MaterialPEFull | J3DMLF_UseUniqueMaterials
+	                      | (1 << J3DMLF_TevStageNumShift)));
 	unk74 = new TDoroHige((TLiveActor*)unk18[0], 7, modelData);
 }
 
@@ -629,8 +633,9 @@ void TDoroHamuKuriManager::perform(u32 param_1, JDrama::TGraphics* param_2)
 void TDoroHamuKuriManager::createHige()
 {
 	void* rawModelData = JKRGetResource("/scene/dorokuri/dorokuriHige.bmd");
-	SDLModelData* modelData = new SDLModelData(
-	    J3DModelLoaderDataBase::load(rawModelData, 0x10210000));
+	SDLModelData* modelData = new SDLModelData(J3DModelLoaderDataBase::load(
+	    rawModelData, J3DMLF_MaterialPEFull | J3DMLF_UseUniqueMaterials
+	                      | (1 << J3DMLF_TevStageNumShift)));
 	unk74 = new TDoroHige((TLiveActor*)unk18[0], 5, modelData);
 }
 
@@ -1048,7 +1053,7 @@ void THamuKuri::setWalkAnm() { setBckAnm(4); }
 void THamuKuri::setDeadAnm()
 {
 	if (unk198 && mHeldObject != nullptr
-	    && mHeldObject->receiveMessage(this, HIT_MESSAGE_UNK6)) {
+	    && mHeldObject->receiveMessage(this, HIT_MESSAGE_PUT)) {
 		TMapObjBase* heldObj = (TMapObjBase*)mHeldObject;
 		heldObj->mHolder     = nullptr;
 		heldObj->offLiveFlag(LIVE_FLAG_HIDDEN);
@@ -1081,7 +1086,7 @@ void THamuKuri::setRollAnm() { setBckAnm(7); }
 void THamuKuri::setCrashAnm()
 {
 	if (unk198 && mHeldObject != nullptr
-	    && mHeldObject->receiveMessage(this, HIT_MESSAGE_UNK6)) {
+	    && mHeldObject->receiveMessage(this, HIT_MESSAGE_PUT)) {
 		TMapObjBase* heldObj = (TMapObjBase*)mHeldObject;
 		heldObj->mHolder     = nullptr;
 		heldObj->offLiveFlag(LIVE_FLAG_HIDDEN);
@@ -1369,7 +1374,7 @@ void THaneHamuKuri::setCrashAnm() { setBckAnm(0); }
 void THaneHamuKuri::setDeadAnm()
 {
 	if (unk198 && mHeldObject != nullptr
-	    && mHeldObject->receiveMessage(this, HIT_MESSAGE_UNK6)) {
+	    && mHeldObject->receiveMessage(this, HIT_MESSAGE_PUT)) {
 		TMapObjBase* heldObj = (TMapObjBase*)mHeldObject;
 		heldObj->mHolder     = nullptr;
 		heldObj->offLiveFlag(LIVE_FLAG_HIDDEN);
@@ -1472,7 +1477,7 @@ void TDoroHaneKuri::behaveToWater(THitActor*)
 void TDoroHaneKuri::setBehavior()
 {
 	if (mSpine->getCurrentNerve() == &TNerveSmallEnemyDie::theNerve()
-	    && mHeldObject && mHeldObject->receiveMessage(this, HIT_MESSAGE_UNK6)) {
+	    && mHeldObject && mHeldObject->receiveMessage(this, HIT_MESSAGE_PUT)) {
 		TMapObjBase* held = (TMapObjBase*)mHeldObject;
 		held->mHolder     = nullptr;
 		held->offLiveFlag(0x2);
@@ -1723,47 +1728,48 @@ void TDangoHamuKuri::reset()
 	mMActor->calc();
 }
 
-BOOL TDangoHamuKuri::receiveMessage(THitActor* param_1, u32 param_2)
+BOOL TDangoHamuKuri::receiveMessage(THitActor* sender, u32 message)
 {
-	if (param_2 == HIT_MESSAGE_TAKE && mHolder == nullptr && mBoss != this) {
+	if (message == HIT_MESSAGE_TAKE && mHolder == nullptr && mBoss != this) {
 		onHitFlag(HIT_FLAG_NO_COLLISION);
-		mHolder = (TLiveActor*)param_1;
-		behaveToTaken(param_1);
+		mHolder = (TLiveActor*)sender;
+		behaveToTaken(sender);
 		return true;
 	}
 
-	if ((param_2 == HIT_MESSAGE_UNK6 || param_2 == HIT_MESSAGE_UNK7)
-	    && mHolder == param_1) {
+	if ((message == HIT_MESSAGE_PUT || message == HIT_MESSAGE_THROWN)
+	    && mHolder == sender) {
 		mHolder = nullptr;
 		behaveToRelease();
 		offHitFlag(HIT_FLAG_NO_COLLISION);
 		return true;
 	}
 
-	if (param_2 == HIT_MESSAGE_TRAMPLE || param_2 == HIT_MESSAGE_HIP_DROP
-	    || param_2 == HIT_MESSAGE_UNK3 || param_2 == HIT_MESSAGE_UNKB) {
-		if (isHitValid(param_2)) {
+	if (message == HIT_MESSAGE_TRAMPLE || message == HIT_MESSAGE_HIP_DROP
+	    || message == HIT_MESSAGE_SUPER_HIP_DROP
+	    || message == HIT_MESSAGE_UNKB) {
+		if (isHitValid(message)) {
 			unk184 = 0;
 			kill();
 		}
 		return true;
 	}
 
-	if (param_2 == HIT_MESSAGE_UNKD) {
+	if (message == HIT_MESSAGE_UNKD) {
 		mHitPoints = 0;
 		onLiveFlag(LIVE_FLAG_DEAD);
 		onHitFlag(HIT_FLAG_NO_COLLISION);
 	}
 
-	if (param_2 == HIT_MESSAGE_SPRAYED_BY_WATER) {
+	if (message == HIT_MESSAGE_SPRAYED_BY_WATER) {
 		gpMarioParticleManager->emit(0xE7, &mPosition, 0, nullptr);
 		gpMSound->startSoundSet(MSD_SE_EN_COMMON_W_HIT_OK, &mPosition, 0.0f,
 		                        0.0f, 0, 0, 4);
 		if (mSprayedByWaterCooldown == 0) {
 			mSprayedByWaterCooldown = 1;
 			if (!changeByJuice()) {
-				decHpByWater(param_1);
-				behaveToWater(param_1);
+				decHpByWater(sender);
+				behaveToWater(sender);
 			}
 		}
 
@@ -1806,7 +1812,7 @@ void TDangoHamuKuri::behaveToWater(THitActor* param_1)
 		if (!mPrev) {
 			THamuKuri::behaveToWater(param_1);
 		} else if (mSprayedByWaterCooldown <= 1
-		           && receiveMessage(mPrev, HIT_MESSAGE_UNK6)) {
+		           && receiveMessage(mPrev, HIT_MESSAGE_PUT)) {
 			mHolder            = nullptr;
 			mPrev->mHeldObject = nullptr;
 			mPrev->mNext       = nullptr;
@@ -2278,7 +2284,7 @@ bool TDoroHamuKuri::isCollidMove(THitActor* param_1)
 					return true;
 				}
 
-				if (receiveMessage(param_1, HIT_MESSAGE_UNK6)) {
+				if (receiveMessage(param_1, HIT_MESSAGE_PUT)) {
 					pTVar1->mPosition = param_1->mPosition;
 					if (pTVar1->receiveMessage(this, HIT_MESSAGE_TAKE)) {
 						other->unk198      = 0;

@@ -43,9 +43,9 @@ void TBreakableBlock::touchPlayer(THitActor* player)
 
 void TSandBlock::touchPlayer(THitActor* player)
 {
-	if (marioIsOn() && checkState(TSandBlock::STATE_WAITING)) {
-		setTimeTilAppear(mWaitTimeToFall);
-		setState(TSandBlock::STATE_TOUCHED);
+	if (marioIsOn() && mState == STATE_NORMAL) {
+		startStateTimer(mWaitTimeToFall);
+		setState(STATE_TOUCHED);
 	}
 }
 
@@ -54,25 +54,24 @@ void TSandBlock::control()
 	TMapObjBase::control();
 
 	switch (mState) {
-	case TSandBlock::STATE_WAITING:
+	case STATE_NORMAL:
 		break;
-	case TSandBlock::STATE_RESTORING:
+	case STATE_RESTORING:
 		mScaling.x += mSandScaleUp;
 		mScaling.y += mSandScaleUp;
 		mScaling.z += mSandScaleUp;
 		if (mScaling.y >= mInitialScaling.x) {
 			mScaling.set(mInitialScaling);
-			setState(TSandBlock::STATE_WAITING);
+			setState(STATE_NORMAL);
 		}
 		break;
-	case TSandBlock::STATE_TOUCHED:
-		if (!isAppearTimeFinished()) {
+	case STATE_TOUCHED:
+		if (!isStateTimerEngaged()) {
 			setUpMapCollision(1);
-			setState(TSandBlock::STATE_FALLING);
+			setState(STATE_FALLING);
 		}
 		break;
-	case TSandBlock::STATE_FALLING: { // braced: particleScale init must not be
-		                              // crossed by the next case label (C++)
+	case STATE_FALLING: {
 		mScaling.y -= mSandScaleDown;
 		gpMSound->startSoundActor(MSD_SE_OBJ_SANDBLOCK_BREAK, &mPosition, 0,
 		                          nullptr, 0, 0x4);
@@ -84,21 +83,19 @@ void TSandBlock::control()
 			mScaling.x = mScaling.y;
 			mScaling.z = mScaling.y;
 			TMapObjBase::sleep();
-			setTimeTilAppear(mSandWaitTime);
-			setState(TSandBlock::STATE_GONE);
+			startStateTimer(mSandWaitTime);
+			setState(STATE_GONE);
 		}
-
-		break;
-	}
-	case TSandBlock::STATE_GONE:
-		if (!isAppearTimeFinished()
+	} break;
+	case STATE_GONE:
+		if (!isStateTimerEngaged()
 		    && getDistance(SMS_GetMarioPos()) > mScaling.x * 100.0f) {
 			TMapObjBase::awake();
 			JGeometry::TVec3<f32> scaleCopy = mScaling;
 			mScaling.set(mInitialScaling);
 			setUpMapCollision(0);
 			mScaling.set(scaleCopy);
-			setState(TSandBlock::STATE_RESTORING);
+			setState(STATE_RESTORING);
 		}
 		break;
 	}
@@ -304,7 +301,8 @@ BOOL TBrickBlock::receiveMessage(THitActor* sender, u32 message)
 	if (sender->isActorType(0x80000001) && marioHeadAttack()) {
 		kill();
 		return TRUE;
-	} else if (sender->isActorType(0x8000005) && message == 0xe) {
+	} else if (sender->isActorType(0x8000005)
+	           && message == HIT_MESSAGE_ATTACK) {
 		kill();
 		return TRUE;
 	}
@@ -382,14 +380,13 @@ void TTelesaBlock::setGroundCollision()
 
 BOOL TSuperHipDropBlock::receiveMessage(THitActor* sender, u32 message)
 {
-	if (message == 3) {
+	if (message == HIT_MESSAGE_SUPER_HIP_DROP) {
 		kill();
-		if (mMonteBlockBroken) {
+		if (mMonteBlockBroken)
 			TFlagManager::getInstance()->setBool(true, 0x1038C);
-		}
 
-		gpMSound->startSoundActor(MSD_SE_OBJ_SUPERBLOCK_BREAK, &mPosition, 0,
-		                          nullptr, 0, 4);
+		SMSGetMSound()->startSoundActor(MSD_SE_OBJ_SUPERBLOCK_BREAK, &mPosition,
+		                                0, nullptr, 0, 4);
 		return TRUE;
 	}
 	return FALSE;

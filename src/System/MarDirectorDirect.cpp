@@ -503,7 +503,7 @@ int TMarDirector::changeState()
 		break;
 
 	case STATE_UNK11: {
-		switch (unkAC->unk118->getNextState()) {
+		switch (unkAC->mCardSave->getNextState()) {
 		case 0:
 			if (unk261 == 7) {
 				TFlagManager::smInstance->restore();
@@ -895,7 +895,7 @@ void TMarDirector::nextStateInitialize(u8 next_state)
 		if (currSeq.unk0 == 1)
 			THPPlayerPause();
 		SMSRumbleMgr->startPause();
-		unkAC->unk118->init(unk261);
+		unkAC->mCardSave->init(unk261);
 		for (int i = 0; i < 4; ++i)
 			JUTGamePad::CRumble::stopMotor(unk18[i]->mPortNum);
 		unk18[0]->onFlag(0x1);
@@ -976,7 +976,7 @@ u8 TMarDirector::updateGameMode()
 				console->unk34[19] = 1;
 				MSBgm::startBGM(MSD_BGM_CHUBOSS);
 				TFlagManager::getInstance()->setBool(true, 0x30006);
-				TFlagManager::getInstance()->setShineFlag(unk25C->unk134);
+				TFlagManager::getInstance()->setShineFlag(unk25C->getEventId());
 				f32 fVar3 = unkDC->mRate;
 				unkDC->registFadeout(fVar3 * 1.0f, fVar3 * 5.3333333f);
 				unk4C |= 0x8202;

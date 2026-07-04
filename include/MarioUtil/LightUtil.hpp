@@ -34,9 +34,7 @@ public:
 	/* 0x10 */ TLightMario* mMarioLight;                    // was unk10
 	/* 0x14 */ TLightWithDBSet** mLightSets;                // was unk14 — 4 per-kind sets (player/mapobj/object/indirect)
 	/* 0x18 */ GXColor mEffectColor;                        // was unk18 — GX_LIGHT1 effect color
-	/* 0x1C */ u32 unk1C;                                   // aliased over Vec3<f32> mEffectPos (setLight reads as 3 f32s)
-	/* 0x20 */ u32 unk20;                                   // ...
-	/* 0x24 */ u32 unk24;                                   // ...
+	/* 0x1C */ JGeometry::TVec3<f32> mEffectPos;            // setLight reads as 3 f32s
 	/* 0x28 */ float mEffectAlphaScale;                     // was unk28 — setLight scales mEffectColor.a
 	/* 0x2C */ float unk2C;
 	/* 0x30 */ float unk30;

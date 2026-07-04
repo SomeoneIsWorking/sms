@@ -247,7 +247,7 @@ void TLightCommon::setLight(const JDrama::TGraphics* graphics, int idx)
 		// Reinterpret the 3 consecutive u32 slots as a Vec3<f32> — the game's
 		// C++ source did this by pointer arithmetic on the manager instance.
 		const JGeometry::TVec3<f32>* mgrPos =
-		    reinterpret_cast<const JGeometry::TVec3<f32>*>(&gpLightManager->unk1C);
+		    &gpLightManager->mEffectPos;
 		JGeometry::TVec3<f32> vpos;
 		PSMTXMultVec(view, const_cast<JGeometry::TVec3<f32>*>(mgrPos), &vpos);
 		GXInitLightPos(&obj, vpos.x, vpos.y, vpos.z);
@@ -703,7 +703,7 @@ TLightWithDBSetManager::TLightWithDBSetManager(const char* name)
 	mLightSets[3] = new TIndirectLightWithDBSet;
 
 	mEffectColor.r = mEffectColor.g = mEffectColor.b = mEffectColor.a = 0;
-	unk1C = unk20 = unk24 = 0;
+	mEffectPos.set(0.0f, 0.0f, 0.0f);
 
 	// Gate bytes (RE'd from 0x802285ac / 0x802285b0 — two consecutive stb):
 	//   stb r30, 0x54(r28) with r30 = 0  →  mEffectEnabled = 0
@@ -794,9 +794,9 @@ void TLightWithDBSetManager::loadAfter()
 	f32 x = la->mLights[0].mPosition.x;
 	f32 y = la->mLights[0].mPosition.y;
 	f32 z = la->mLights[0].mPosition.z;
-	std::memcpy(&unk1C, &x, 4);
-	std::memcpy(&unk20, &y, 4);
-	std::memcpy(&unk24, &z, 4);
+	mEffectPos.x = x;
+	mEffectPos.y = y;
+	mEffectPos.z = z;
 }
 
 // Native port of TLightWithDBSetManager::perform (@0x80228394, 63 insns).

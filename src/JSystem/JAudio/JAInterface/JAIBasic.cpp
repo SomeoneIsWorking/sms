@@ -994,7 +994,7 @@ void JAIBasic::checkPlayingSoundTrack(u32 param) { }
 
 void JAIBasic::changeSoundScene(u32 scene) { }
 
-BOOL JAIBasic::getMapInfoFxline(u32 param)
+u16 JAIBasic::getMapInfoFxline(u32 param)
 {
 	if (!param)
 		return 0;

@@ -15,6 +15,7 @@
 #include <cstdlib>
 #endif
 #include <JSystem/J3D/J3DGraphBase/J3DTexture.hpp>
+#include <JSystem/J3D/J3DGraphLoader/J3DModelLoaderFlags.hpp>
 
 // rogue includes needed for matching sinit & bss
 #include <MSound/MSSetSound.hpp>
@@ -183,8 +184,12 @@ inline static void identity34(MtxPtr mtx)
 
 void TMirrorModel::init(const char* name)
 {
-	mMActor = SMS_MakeMActorWithAnmData(name, gpMirrorModelManager->getMirrorAnmData(), 2,
-	                                    0x10210000);
+	mMActor = SMS_MakeMActorWithAnmData(name,
+	                                    gpMirrorModelManager->getMirrorAnmData(),
+	                                    2,
+	                                    J3DMLF_MaterialPEFull
+	                                        | J3DMLF_UseUniqueMaterials
+	                                        | (1 << J3DMLF_TevStageNumShift));
 
 	TPosition3f local_44;
 	local_44.identity();

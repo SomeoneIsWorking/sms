@@ -190,18 +190,18 @@ void TAmenbo::updateCollision()
 	}
 }
 
-BOOL TAmenbo::receiveMessage(THitActor* param_1, u32 param_2)
+BOOL TAmenbo::receiveMessage(THitActor* sender, u32 message)
 {
 	if (checkLiveFlag(LIVE_FLAG_DEAD))
 		return false;
 
-	switch (param_2) {
+	switch (message) {
 	case HIT_MESSAGE_TRAMPLE:
 	case HIT_MESSAGE_HIP_DROP:
 		return false;
 
 	default:
-		return TSmallEnemy::receiveMessage(param_1, param_2);
+		return TSmallEnemy::receiveMessage(sender, message);
 	}
 }
 
@@ -471,7 +471,7 @@ void TAmenbo::activateJumpBase()
 		deactivateJumpBase();
 
 	unk1E4->setUpTrans(mPosition);
-	onHitFlag(HIT_FLAG_UNK2);
+	onHitFlag(HIT_FLAG_CANNOT_ATTACK);
 	mDamageRadius = 215.0f;
 	mDamageHeight = 120.0f;
 	calcEntryRadius();
@@ -484,7 +484,7 @@ void TAmenbo::deactivateJumpBase()
 		return;
 
 	unk1E4->remove();
-	offHitFlag(HIT_FLAG_UNK2);
+	offHitFlag(HIT_FLAG_CANNOT_ATTACK);
 	setDamageParams(100.0f, 150.0f);
 	offLiveFlag(LIVE_FLAG_UNK10);
 }

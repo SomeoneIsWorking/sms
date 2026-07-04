@@ -81,16 +81,10 @@ void TMarDirector::movement_game()
 		return;
 
 	unk18[0]->offFlag(0x2);
-	if (!gpMarioOriginal->isHolding()
-	    && gpCamera->isLButtonCameraSpecifyMode(gpCamera->mMode))
+	if (!gpMarioOriginal->isHolding() && gpCamera->isLButtonCamera())
 		return;
 
-	bool bVar1 = true;
-	if (gpCamera->isSimpleDemoCamera() && gpCamera->mMode != 0x49) {
-		bVar1 = false;
-	}
-
-	if (!bVar1) {
+	if (!gpCamera->isDemoCamera()) {
 		TBaseNPC* takeNpc = findNearestTakeNPC();
 		if (takeNpc != nullptr) {
 			unk84->associateNPC(takeNpc);
@@ -114,7 +108,7 @@ void TMarDirector::fireGetBlueCoin(TCoin* coin)
 		return;
 
 	TFlagManager::smInstance->setBlueCoinFlag(gpApplication.mCurrArea.unk0,
-	                                          coin->unk134);
+	                                          coin->getEventId());
 	unk4C |= 0x200;
 	unk261 = 1;
 	if (gpMSound->gateCheck(MSD_SE_SY_BLUE_COIN_GET))

@@ -2,6 +2,7 @@
 #define MAP_MAP_COLLISION_DATA_HPP
 
 #include <JSystem/JGeometry.hpp>
+#include <Map/MapData.hpp>
 
 class JSUMemoryInputStream;
 class TBGCheckData;
@@ -157,7 +158,7 @@ public:
 	void initMoveCollision();
 	void initGrid(TBGCheckListRoot*);
 
-	void removeCheckListData(u16, s32);
+	void removeCheckListData(u16 start, s32 count);
 	void updateCheckListNode(s32, s32, s32);
 	void removeCheckListNode(s32, s32);
 
@@ -173,7 +174,7 @@ public:
 	static TBGCheckData mIllegalCheckData;
 
 	// fabricated
-	u32 getEntryRelatedThing(u16 n) const { return unk40 - unk42[n]; }
+	u32 getEntrySize(u16 entry_id) const { return unk40 - unk42[entry_id]; }
 	const TBGCheckListRoot& getGridRoot14(int x, int z) const
 	{
 		return unk14[x + z * unk8];
@@ -183,6 +184,8 @@ public:
 		return unk18[x + z * unk8];
 	}
 	void setGroundPlane(TMapCheckGroundPlane* plane) { mGroundPlane = plane; }
+
+	TBGCheckData* getCheckDataPoolTop() { return &unk28[unk34]; }
 
 public:
 	/* 0x0 */ f32 mGridExtentX;

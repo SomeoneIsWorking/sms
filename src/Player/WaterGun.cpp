@@ -217,8 +217,7 @@ void TNozzleBase::calcGunAngle(const TMarioControllerWork& work)
 {
 	// volatile u32 unused1[17];
 	if (mFludd->mMario == gpMarioAddress
-	    && (gpCamera->isLButtonCameraSpecifyMode(gpCamera->mMode)
-	        || gpCamera->isJetCoaster1stCamera())) {
+	    && (gpCamera->isLButtonCamera() || gpCamera->isJetCoaster1stCamera())) {
 		unk36E = gpCamera->mCurrentTarget.mPitch;
 		return;
 	}
@@ -319,7 +318,7 @@ void TNozzleBase::emit(int param_1)
 		                   + emitPow * (1.0f - emitCtrl));
 
 		refEmitFlag = 0x40;
-		if (mFludd->hasFlag(0x2)) {
+		if (mFludd->hasFlag(TWaterGun::WATER_GUN_FLAG_UNK2)) {
 			refEmitFlag = (refEmitFlag | 0x80);
 		}
 
@@ -643,7 +642,7 @@ void TNozzleTrigger::emit(int param_1)
 		emitInfo->mPow.set(pressure * (emitPow - emitPowMin) + emitPowMin);
 
 		refEmitFlag = 0x40;
-		if (mFludd->hasFlag(0x2)) {
+		if (mFludd->hasFlag(TWaterGun::WATER_GUN_FLAG_UNK2)) {
 			refEmitFlag = (refEmitFlag | 0x80);
 		}
 
@@ -925,7 +924,7 @@ void TNozzleDeform::emit(int param_1)
 		emitInfo->mPow.set(localUnk378 * (emitPow - emitPowMin) + emitPowMin);
 
 		refEmitFlag = 0x40;
-		if (mFludd->hasFlag(0x2)) {
+		if (mFludd->hasFlag(TWaterGun::WATER_GUN_FLAG_UNK2)) {
 			refEmitFlag = (refEmitFlag | 0x80);
 		}
 
@@ -1288,7 +1287,10 @@ void TWaterGun::init()
 	void* fluddModelData
 	    = JKRFileLoader::getGlbResource("/mario/watergun2/body/wg_mdl1.bmd");
 	J3DModel* fluddModel = new J3DModel(
-	    J3DModelLoaderDataBase::load(fluddModelData, 0x10040000), 0, 1);
+	    J3DModelLoaderDataBase::load(fluddModelData,
+	                                 J3DMLF_MaterialPEFull
+	                                     | (4 << J3DMLF_TevStageNumShift)),
+	    0, 1);
 	mFluddModel->setModel(fluddModel, 0);
 
 	MTXCopy(mMario->mModel->unk8->getAnmMtx(mMario->mJointIdChnChest),
@@ -1328,8 +1330,10 @@ void TWaterGun::init()
 			void* nozzleModelData
 			    = JKRFileLoader::getGlbResource(nozzleBmdData.getBmdPath(i));
 			J3DModel* nozzleModel = new J3DModel(
-			    J3DModelLoaderDataBase::load(nozzleModelData, 0x10040000), 0,
-			    1);
+			    J3DModelLoaderDataBase::load(
+			        nozzleModelData,
+			        J3DMLF_MaterialPEFull | (4 << J3DMLF_TevStageNumShift)),
+			    0, 1);
 			mNozzleList[i]->unk380->setModel(nozzleModel, 0);
 
 			J3DModelData* modelData
@@ -1669,7 +1673,7 @@ void TWaterGun::perform(u32 flags, JDrama::TGraphics* graphics)
 	// volatile u32 unused2[24];
 
 	if ((flags & 0x1) != 0) {
-		if ((mFlags & 0x10) != 0) {
+		if ((mFlags & WATER_GUN_FLAG_UNK10) != 0) {
 			mCurrentWater = 0;
 		}
 		movement();
@@ -1839,10 +1843,8 @@ void TWaterGun::emit()
 		}
 	}
 
-	// TODO: Probably an enum
-	// TODO: Probably inline function?
-	if (hasFlag(0x4)) {
-		offFlag(0x4);
+	if (hasFlag(WATER_GUN_FLAG_UNK4)) {
+		offFlag(WATER_GUN_FLAG_UNK4);
 		return;
 	}
 

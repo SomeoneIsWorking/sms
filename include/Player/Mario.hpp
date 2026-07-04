@@ -1235,6 +1235,8 @@ public:
 	void onUnk114(u32 flag) { unk114 |= flag; }
 	void offUnk114(u32 flag) { unk114 &= ~flag; }
 
+	s16 getUnk9C() { return unk9C; }
+
 	// Fabricated
 	bool fabricatedIsPumping() const
 	{
@@ -1248,7 +1250,8 @@ public:
 	}
 
 	// Fabricated
-	int getPreviousStatus() const { return mPrevStatus; }
+	u32 getPreviousStatus() const { return mPrevStatus; }
+	u32 getStatus() const { return mStatus; }
 
 	// Fabricated
 	bool isSleeping() const
@@ -1298,6 +1301,8 @@ public:
 
 	// Fabricated
 	BOOL isSinking() const { return mSinkTimer > 0.0f ? TRUE : FALSE; }
+
+	const JGeometry::TVec3<f32>& getPrevPosition() const { return unk29C; }
 
 public:
 	/* 0x74 */ u32 mInput;

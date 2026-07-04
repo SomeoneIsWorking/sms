@@ -16,6 +16,10 @@ public:
 	void pushed();
 	TFileLoadBlock(const char* name = "ファイル読み込みブロック");
 
+	enum {
+		STATE_ROCKING = 2,
+	};
+
 public:
 	/* 0x138 */ u8 mBlockIndex;           // 0/1/2 = FileLoadBlockA/B/C
 	/* 0x13C */ TFileLoadBlock* mSiblingBlock0; // the other two file blocks

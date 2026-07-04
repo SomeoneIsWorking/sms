@@ -120,8 +120,7 @@ BOOL TMario::receiveMessage(THitActor* sender, u32 message)
 			                                nullptr, 0, 4);
 	}
 
-	// HIT_MESSAGE_UNK7 - damage trigger.
-	if (message == HIT_MESSAGE_UNK7) {
+	if (message == HIT_MESSAGE_THROWN) {
 		if (sender->checkActorType(ACTOR_TYPE_PLAYER)
 		    || sender->checkActorType(ACTOR_TYPE_UNK4000000)
 		    || sender->checkActorType(ACTOR_TYPE_ENEMY)
@@ -522,7 +521,7 @@ BOOL TMario::receiveMessage(THitActor* sender, u32 message)
 		case 0x1000000D: // glistening enemy
 			if (message == HIT_MESSAGE_UNK5) {
 				if (checkFlag(MARIO_FLAG_HAS_FLUDD))
-					mWaterGun->mFlags |= 0x4;
+					mWaterGun->onFlag(TWaterGun::WATER_GUN_FLAG_UNK4);
 			}
 			break;
 		case 0x10000015: // poihana
@@ -620,7 +619,7 @@ BOOL TMario::receiveMessage(THitActor* sender, u32 message)
 			           mDmgParamsHinokuri.mInvincibleTime.get());
 			return TRUE;
 		}
-		if (message == HIT_MESSAGE_UNK3 && !isInvincible()) {
+		if (message == HIT_MESSAGE_SUPER_HIP_DROP && !isInvincible()) {
 			onFlag(MARIO_FLAG_GROUND_POUND_SIT_UP);
 			if (!checkStatusType(MARIO_STATUS_FLAG_JUMPING)) {
 				rumbleStart(0x15, 0x0A);
@@ -819,8 +818,8 @@ BOOL TMario::receiveMessage(THitActor* sender, u32 message)
 					return TRUE;
 				}
 				break;
-			case HIT_MESSAGE_UNK6:
-			case HIT_MESSAGE_UNK7:
+			case HIT_MESSAGE_PUT:
+			case HIT_MESSAGE_THROWN:
 				mHolder = nullptr;
 				changePlayerStatus(MARIO_STATUS_JUMP, 0, false);
 				setPlayerVelocity(40.0f);

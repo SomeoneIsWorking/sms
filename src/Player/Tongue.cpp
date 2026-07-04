@@ -26,9 +26,9 @@ static const char cDirtyTexName[]  = "H_ma_rak_dummy";
 
 void TYoshiTongue::init(TYoshi* yoshi)
 {
-
 	J3DModelData* modelData = J3DModelLoaderDataBase::load(
-	    JKRGetResource("/mario/bmd/yoshi_tongue.bmd"), 0x10040000);
+	    JKRGetResource("/mario/bmd/yoshi_tongue.bmd"),
+	    J3DMLF_MaterialPEFull | (4 << J3DMLF_TevStageNumShift));
 
 	mYoshi = yoshi;
 	mModel = new J3DModel(modelData, 0x10000, 1);
@@ -39,7 +39,8 @@ void TYoshiTongue::init(TYoshi* yoshi)
 
 	mTipModel = new J3DModel(
 	    J3DModelLoaderDataBase::load(
-	        JKRGetResource("/mario/bmd/yoshi_tongue_tip.bmd"), 0x10040000),
+	        JKRGetResource("/mario/bmd/yoshi_tongue_tip.bmd"),
+	        J3DMLF_MaterialPEFull | (4 << J3DMLF_TevStageNumShift)),
 	    0x10000, 1);
 
 	J3DModelData* modelData3 = mTipModel->getModelData();
@@ -67,7 +68,7 @@ void TYoshiTongue::init(TYoshi* yoshi)
 	unkD4             = 0;
 
 	initHitActor(0x08000083U, 5U, 0x70000000, 1000.0f, 500.0f, 50.0f, 500.0f);
-	unk64 &= ~1;
+	offHitFlag(HIT_FLAG_NO_COLLISION);
 }
 
 void TYoshiTongue::initInLoadAfter()
@@ -230,7 +231,7 @@ void TYoshiTongue::movement()
 	default:
 		mAttackRadius = 300.0f;
 		calcEntryRadius();
-		unk64 &= ~0x2;
+		offHitFlag(HIT_FLAG_CANNOT_ATTACK);
 		break;
 
 	case STATE_EXTENDING:

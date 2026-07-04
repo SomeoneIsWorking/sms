@@ -147,12 +147,23 @@ public:
 
 	void setUnk190(f32 x, f32 y, f32 z) { mScale.set(x, y, z); }
 
+	// fabricated
+	void setScale2(JGeometry::TVec3<f32> scale)
+	{
+		mScale.x = scale.x, mScale.y = scale.y, mScale.z = scale.z;
+	}
+
 	void setRotation(s16 x, s16 y, s16 z)
 	{
 		unk16C.x = x;
 		unk16C.y = y;
 		unk16C.z = z;
 		JPAGetXYZRotateMtx(unk16C.x, unk16C.y, unk16C.z, unk124);
+	}
+
+	void setRotation(const JGeometry::TVec3<f32>& rot)
+	{
+		setRotation(rot.x, rot.y, rot.z);
 	}
 
 	void setParamColor(u8 r, u8 g, u8 b)

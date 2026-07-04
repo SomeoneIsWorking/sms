@@ -105,7 +105,7 @@ void CPolarSubCamera::calcInHouseNo_(bool param_1)
 bool CPolarSubCamera::isNeedGroundCheck_()
 {
 	bool result = true;
-	if (mMode == CAMERA_MODE_COUNT
+	if (mMode == CAMERA_MODE_REPRODUCE_DEMO
 	    || (isLButtonCameraSpecifyMode(mMode) && !isNowInbetween() ? true
 	                                                               : false)
 	    || isRailCameraSpecifyMode(mMode) || mMode == CAMERA_MODE_MULTI_PLAYER
@@ -121,8 +121,8 @@ bool CPolarSubCamera::isNeedGroundCheck_()
 			b = a;
 		if (distY > 1.25f * b) {
 			result = false;
-			if (unk278 < 0x78)
-				unk278 = 0x78;
+			if (unk278 < 120)
+				unk278 = 120;
 		}
 	}
 	return result;
@@ -132,7 +132,7 @@ bool CPolarSubCamera::isNeedRoofCheck_() const
 {
 	bool result = true;
 	// TODO: inline for the ternary thing
-	if (mMode == CAMERA_MODE_COUNT
+	if (mMode == CAMERA_MODE_REPRODUCE_DEMO
 	    || (isLButtonCameraSpecifyMode(mMode) && !isNowInbetween() ? true
 	                                                               : false)
 	    || isRailCameraSpecifyMode(mMode) || mMode == CAMERA_MODE_MULTI_PLAYER
@@ -145,11 +145,11 @@ bool CPolarSubCamera::isNeedRoofCheck_() const
 bool CPolarSubCamera::isNeedWallCheck_() const
 {
 	bool result = true;
-	if (mMode == CAMERA_MODE_COUNT || isLButtonCameraSpecifyMode(mMode)
+	if (mMode == CAMERA_MODE_REPRODUCE_DEMO || isLButtonCameraSpecifyMode(mMode)
 	    || isLButtonCameraInbetween() || isTalkCameraSpecifyMode(mMode)
 	    || isTalkCameraInbetween() || isRailCameraSpecifyMode(mMode)
 	    || mMode == CAMERA_MODE_MULTI_PLAYER
-	    || mMode == CAMERA_MODE_UNDER_GROUND || (unk64 & 4U)) {
+	    || mMode == CAMERA_MODE_UNDER_GROUND || (unk64 & CAMERA_FLAG_UNK4)) {
 		result = false;
 	}
 	return result;
