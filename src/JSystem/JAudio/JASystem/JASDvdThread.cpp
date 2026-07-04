@@ -91,6 +91,11 @@ void Dvd::dvdProcInit()
 }
 void* Dvd::dvdProc(void* param)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// JASystem's DVD streamer thread — buffer-fills BGM streams. Aurora reads
+	// synchronously; native audio owns streaming.
+	return nullptr;
+#endif
 	void* cs;
 	u8* buf;
 
