@@ -1,6 +1,7 @@
 #include <System/TimeRec.hpp>
 #include <System/DrawSyncManager.hpp>
 #include <dolphin/gx/GXManage.h>
+#include <dolphin/gx/GXPerf.h>  // GXSetDrawSync (draw-sync token)
 #include <dolphin/os.h>
 #include <types.h>
 
