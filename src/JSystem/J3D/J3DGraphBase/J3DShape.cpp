@@ -56,7 +56,7 @@ void J3DShapeMtx::calcNBTScale(const Vec& param_1, float (*param_2)[3][3],
 static void dummy(J3DShapeMtx* mtx) { mtx->~J3DShapeMtx(); }
 
 void J3DShapeMtxDL::load() const {
-#ifndef SMS_NATIVE_PLATFORM
+#ifndef SMS_AURORA
 	GXCallDisplayList(mDisplayList, 0x20);
 #endif
 }
@@ -90,7 +90,7 @@ J3DShapeDraw::J3DShapeDraw(const u8* list, u32 size)
 
 void J3DShapeDraw::draw() const
 {
-#ifndef SMS_NATIVE_PLATFORM
+#ifndef SMS_AURORA
 	GXCallDisplayList((void*)mDisplayList, mDisplayListSize);
 #endif
 }
@@ -245,14 +245,14 @@ void J3DShape::draw() const
 		return;
 	}
 #endif
-#ifndef SMS_NATIVE_PLATFORM
+#ifndef SMS_AURORA
 	GXCallDisplayList(mGDCommands, 0xC0);
 #else
-	// mGDCommands is baked by the J3D model loader via the J3DGDSet* helpers.
-	// Those are stubbed to no-op on the Aurora path (see sdk_gap_stubs.cpp),
-	// so the buffer is uninitialized -- calling GXCallDisplayList on it
-	// causes Aurora to read garbage opcodes ("unsupported primitive type 224",
-	// "Unknown Aurora subcommand: BC3B"). Skip until we port the bakers.
+	// AURORA-specific: Aurora extends the GX fifo format with GX_AURORA
+	// subcommand + explicit size/le payload on GXSetArray/AURORA_LOAD_TEXOBJ
+	// etc. Display lists baked by J3D's J3DGDSet* helpers -- currently
+	// no-op stubs on the Aurora path -- cannot replay through
+	// GXCallDisplayList. Skip until we port the bakers.
 #endif
 
 	J3DShapeMtx::currentPipeline = unk8 >> 2 & 3;
