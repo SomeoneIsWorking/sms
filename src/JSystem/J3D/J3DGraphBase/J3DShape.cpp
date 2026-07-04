@@ -3,6 +3,7 @@
 #include <JSystem/J3D/J3DGraphBase/J3DTevs.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DTransform.hpp>
 #include <JSystem/JRenderer.hpp>
+#include <dolphin/os.h>
 #include <dolphin/gx.h>
 #include <dolphin/gd.h>
 
@@ -54,7 +55,11 @@ void J3DShapeMtx::calcNBTScale(const Vec& param_1, float (*param_2)[3][3],
 // ~J3DShapeMtx is included in the binary and must go *here*
 static void dummy(J3DShapeMtx* mtx) { mtx->~J3DShapeMtx(); }
 
-void J3DShapeMtxDL::load() const { GXCallDisplayList(mDisplayList, 0x20); }
+void J3DShapeMtxDL::load() const {
+#ifndef SMS_NATIVE_PLATFORM
+	GXCallDisplayList(mDisplayList, 0x20);
+#endif
+}
 
 void J3DShapeMtxMulti::load() const
 {
@@ -85,7 +90,9 @@ J3DShapeDraw::J3DShapeDraw(const u8* list, u32 size)
 
 void J3DShapeDraw::draw() const
 {
+#ifndef SMS_NATIVE_PLATFORM
 	GXCallDisplayList((void*)mDisplayList, mDisplayListSize);
+#endif
 }
 
 void J3DShape::initialize()
@@ -238,10 +245,36 @@ void J3DShape::draw() const
 		return;
 	}
 #endif
+#ifndef SMS_NATIVE_PLATFORM
 	GXCallDisplayList(mGDCommands, 0xC0);
+#else
+	// mGDCommands is baked by the J3D model loader via the J3DGDSet* helpers.
+	// Those are stubbed to no-op on the Aurora path (see sdk_gap_stubs.cpp),
+	// so the buffer is uninitialized -- calling GXCallDisplayList on it
+	// causes Aurora to read garbage opcodes ("unsupported primitive type 224",
+	// "Unknown Aurora subcommand: BC3B"). Skip until we port the bakers.
+#endif
 
 	J3DShapeMtx::currentPipeline = unk8 >> 2 & 3;
 	loadVtxArray();
+
+#ifdef SMS_NATIVE_PLATFORM
+	// mDrawMatrices/mNormMatrices are populated by the owning J3DShapePacket::
+	// draw() from mDrawMtxBuf[1]/mNrmMtxBuf[1]. A shape whose owning J3DModel
+	// hasn't yet had update() called (e.g. TMarDirector::setup2's early
+	// perform(0xffffffff) fires drawHead before any actor perform(0x200) has
+	// run update on its model) reaches here with null buffers. Skip cleanly
+	// -- the next frame's update->draw cycle will supply them.
+	static int s_skipDbg = -1;
+	if (mDrawMatrices == nullptr || mNormMatrices == nullptr) {
+		if (s_skipDbg < 0)
+			s_skipDbg = getenv("SB_J3DSHAPE_SKIP_DBG") ? 1 : 0;
+		if (s_skipDbg)
+			OSReport("[SBDBG] J3DShape::draw skipping shape=%p mIndex=%u mDraw=%p mNrm=%p (owner J3DModel never updated)\n",
+			         (void*)this, (unsigned)mIndex, (void*)mDrawMatrices, (void*)mNormMatrices);
+		return;
+	}
+#endif
 
 	j3dSys.setModelDrawMtx(mDrawMatrices[*mCurrentViewNo]);
 	j3dSys.setModelNrmMtx(mNormMatrices[*mCurrentViewNo]);
