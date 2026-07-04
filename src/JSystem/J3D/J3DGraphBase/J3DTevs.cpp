@@ -43,7 +43,7 @@ const u16 j3dDefaultZModeID       = 0x17;
 
 void J3DLoadArrayBasePtr(GXAttr attr, void* ptr)
 {
-#ifdef TARGET_PC
+#ifdef SMS_AURORA
 	// Aurora rejects the raw CP_REG_ARRAYBASE_ID write (32-bit truncated host
 	// pointer). Emit the Aurora-native GX_AURORA_LOAD_ARRAYBASE opcode via
 	// its extended framing: [GX_AURORA(0x50)][u16 cmd=0x0010|a][u64 ptr]
