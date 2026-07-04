@@ -60,9 +60,13 @@ void TMenuDirector::setup(JDrama::TDisplay* param_1, TMarioGamePad* param_2)
 	unk14         = new JDrama::TDStageGroup(param_1);
 	unk2C         = param_2;
 	unk2C->mFlags = 1;
+#ifdef SMS_NATIVE_PLATFORM
+	setupThreadFunc(this);
+#else
 	OSCreateThread(&gSetupThread, &setupThreadFunc, this,
 	               gpSetupThreadStack + 0x10000, 0x10000, 0x11, 0);
 	OSResumeThread(&gSetupThread);
+#endif
 }
 
 int TMenuDirector::rsetup()

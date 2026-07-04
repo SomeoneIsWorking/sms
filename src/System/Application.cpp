@@ -288,9 +288,15 @@ void TApplication::initialize()
 	mAppState = APP_STATE_BOOT;
 
 	mHeap->becomeCurrentHeap();
+#ifdef SMS_NATIVE_PLATFORM
+	// Single-threaded PC engine: /data/nintendo.arc has to be in memory before
+	// gameLoop's OSIsThreadTerminated(&gSetupThread) check fires. Run inline.
+	SetupThreadFuncBoot(this);
+#else
 	OSCreateThread(&gSetupThread, &SetupThreadFuncBoot, this,
 	               gpSetupThreadStack + 0x10000, 0x10000, 0x11, 0);
 	OSResumeThread(&gSetupThread);
+#endif
 }
 
 void* TApplication::setupThreadFuncLogo()
@@ -386,9 +392,13 @@ void TApplication::initialize_bootAfter()
 
 	mHeap->becomeCurrentHeap();
 
+#ifdef SMS_NATIVE_PLATFORM
+	SetupThreadFuncLogo(this);
+#else
 	OSCreateThread(&gSetupThread, SetupThreadFuncLogo, this,
 	               gpSetupThreadStack + 0x10000, 0x10000, 0x11, 0);
 	OSResumeThread(&gSetupThread);
+#endif
 }
 
 void TApplication::initialize_nlogoAfter()
