@@ -132,7 +132,9 @@ static void initCountObjDegree(f32, f32) { }
 
 static void drawShape(J3DShape* shape)
 {
+#ifndef SMS_AURORA
 	GXCallDisplayList(shape->getDrawList(), 0xC0);
+#endif
 	shape->loadVtxArray();
 	for (u16 k = 0; k < shape->getMtxGroupNum(); ++k) {
 		shape->getShapeDraw(k)->draw();

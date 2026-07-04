@@ -401,7 +401,9 @@ void SMS_DrawCube(const JGeometry::TVec3<f32>&, const JGeometry::TVec3<f32>&) {
 void SMS_SettingDrawShape(J3DModelData* param_1, u16 param_2)
 {
 	J3DShape* shape = param_1->getShapeNodePointer(param_2);
+#ifndef SMS_AURORA
 	GXCallDisplayList(shape->getDrawList(), 0xC0);
+#endif
 	J3DVertexData& data = param_1->getVertexData();
 	j3dSys.unk10C       = data.getVtxPosArray();
 	j3dSys.unk110       = data.getVtxNormArray();

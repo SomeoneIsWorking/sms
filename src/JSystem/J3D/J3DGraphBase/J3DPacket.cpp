@@ -25,7 +25,7 @@ void J3DDisplayListObj::swapBuffer()
 }
 
 void J3DDisplayListObj::callDL() {
-#ifndef SMS_NATIVE_PLATFORM
+#ifndef SMS_AURORA
 	GXCallDisplayList(unk0, unk8);
 #endif
 }
@@ -66,7 +66,7 @@ J3DDrawPacket::J3DDrawPacket()
 J3DDrawPacket::~J3DDrawPacket() { }
 
 void J3DDrawPacket::draw() {
-#ifndef SMS_NATIVE_PLATFORM
+#ifndef SMS_AURORA
 	GXCallDisplayList(unk30->unk0, unk30->unk8);
 #endif
 }
