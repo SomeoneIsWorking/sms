@@ -10,7 +10,10 @@
 // Pure-logic unit shared with the unit test (spec-derived expected values live there).
 // See sms_boot_sunglass.h for the semantics comments. This shipping port calls into the
 // helpers rather than duplicating the fade math — same discipline as ShadowUtil.cpp.
+// Path-B-only: the Aurora Path A build takes the original GC path below unmodified.
+#ifdef SMS_NATIVE_PLATFORM
 #include "sms_boot_sunglass.h"
+#endif
 
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>

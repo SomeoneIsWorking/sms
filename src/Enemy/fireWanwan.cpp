@@ -1,3 +1,10 @@
+// DEG_TO_RAD is defined by the MWERKS MSL math.h in reference/sms/include/
+// PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/math.h. Under Path A (Aurora) we
+// use glibc's <math.h> which doesn't ship it. Provide it locally.
+#ifndef DEG_TO_RAD
+#define DEG_TO_RAD(degrees) ((degrees) * (3.14159265358979323846f / 180.0f))
+#endif
+
 #include <Enemy/FireWanwan.hpp>
 #include <JSystem/JDrama/JDRNameRefGen.hpp>
 #include <System/MarDirector.hpp>
