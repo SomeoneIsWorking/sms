@@ -1,7 +1,12 @@
 #include <JSystem/JMath.hpp>
 #include <dolphin/mtx.h>
 #include <dolphin/types.h>
+// Under Path A (Aurora, TARGET_PC), MSL math.h collides with glibc + our
+// Aurora <dolphin/ppc_math.h> shims (__frsqrte etc.). Only include the MSL
+// header under the original MWERKS/Path-B build.
+#ifndef TARGET_PC
 #include <PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/math.h>
+#endif
 
 u16 jmaSinTableSize;
 u32 jmaSinShift;
