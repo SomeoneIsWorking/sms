@@ -43,10 +43,25 @@ const u16 j3dDefaultZModeID       = 0x17;
 
 void J3DLoadArrayBasePtr(GXAttr attr, void* ptr)
 {
+#ifdef TARGET_PC
+	// Aurora rejects the raw CP_REG_ARRAYBASE_ID write (32-bit truncated host
+	// pointer). Emit the Aurora-native GX_AURORA_LOAD_ARRAYBASE opcode via
+	// its extended framing: [GX_AURORA(0x50)][u16 cmd=0x0010|a][u64 ptr]
+	// [u32 size][u8 le]. Size is unknown here (this is a base-ptr-only
+	// update; strides/counts set separately), so pass 0. Host assets are
+	// pre-swapped (bmd_swap.cpp) so le=true.
+	u32 a = attr == GX_VA_NBT ? 1 : attr - 9;
+	GXCmd1u8(0x50);            // GX_AURORA
+	GXCmd1u16((u16)(0x0010u | a));
+	GXCmd1u64((u64)(uintptr_t)ptr);
+	GXCmd1u32(0);              // size (0 = trust)
+	GXCmd1u8(1);               // little-endian
+#else
 	u32 a = attr == GX_VA_NBT ? 1 : attr - 9;
 	GXCmd1u8(8);
 	GXCmd1u8(a + 0xA0);
 	GXCmd1u32((u32)((uintptr_t)ptr & 0x7fffffff));
+#endif
 }
 
 void J3DSetVtxAttrFmtv(GXVtxFmt vtxfmt, GXVtxAttrFmtList* list, bool param_3)
