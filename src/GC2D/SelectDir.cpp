@@ -70,9 +70,13 @@ void TSelectDir::setup(JDrama::TDisplay* display, TMarioGamePad* pad, unsigned c
 	mGamePad = pad;
 	mStage   = stage;
 	// (DOL also resets a RumbleMgr here — irrelevant to rendering, deferred.)
+#ifdef SMS_NATIVE_PLATFORM
+	setupThreadFunc(this);
+#else
 	OSCreateThread(&gSetupThread, &setupThreadFunc, this,
 	               gpSetupThreadStack + 0x10000, 0x10000, 0x11, 0);
 	OSResumeThread(&gSetupThread);
+#endif
 }
 
 // setupThreadFunc @0x801773e0 — just runs rsetup on the worker thread.

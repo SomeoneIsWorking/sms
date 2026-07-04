@@ -65,7 +65,11 @@ public:
 	OSThread* getThreadRecord() const { return mThreadRecord; }
 	void* getStack() const { return mStackMemory; }
 
+#ifdef SMS_NATIVE_PLATFORM
+	void resume() {}
+#else
 	void resume() { OSResumeThread(mThreadRecord); }
+#endif
 	void jamMessageBlock(OSMessage msg)
 	{
 		OSJamMessage(&mMesgQueue, msg, OS_MESSAGE_BLOCK);
