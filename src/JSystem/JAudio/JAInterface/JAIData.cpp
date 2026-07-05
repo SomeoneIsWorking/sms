@@ -609,9 +609,18 @@ void JAIData::initData()
 	unk180 = (JAISeqUpdateData*)unk1F4->allocHeap(
 	    JAIGlobalParameter::seqPlayTrackMax * sizeof(JAISeqUpdateData));
 	for (int i = 0; i < JAIGlobalParameter::seqPlayTrackMax; ++i) {
+		// Original decomp hardcodes 0x7BC (= 33 * 0x3C, i.e. (seqTrackMax + 1) *
+		// sizeof(FabricatedUnk4CStruct) with LP32 struct sizes: TTrack* (4) +
+		// TPortArgs (0x28) + TPortCmd (0x10) = 0x3C bytes per slot). On LP64
+		// the struct is ~0x58 bytes each, so 0x7BC only holds ~22 slots and
+		// rootInit's `unk4C[seqTrackMax]` write at slot 32 overruns into the
+		// next heap allocation, stomping data->unk4[0] (the per-scene track-
+		// count table pointer). Compute the size from sizeof() so it is right
+		// on both LP32 and LP64.
 		unk180[i].unk4C
 		    = (JAISeqUpdateData::FabricatedUnk4CStruct*)unk1F4->allocHeap(
-		        0x7BC);
+		        (JAIGlobalParameter::seqTrackMax + 1)
+		        * sizeof(JAISeqUpdateData::FabricatedUnk4CStruct));
 		unk1E0[i]       = 0;
 		unk180[i].unk0  = 0;
 		unk180[i].unk1  = 0;
@@ -648,7 +657,12 @@ void JAIData::initData()
 	if (unk1F4->unk68) {
 		unk4 = unk1F4->unk68;
 	} else {
-		unk4 = (u8**)unk1F4->allocHeap(JAIGlobalParameter::soundSceneMax * 4);
+		// Original decomp had `soundSceneMax * 4` — the hardcoded 4 assumes a
+		// 32-bit pointer (LP32 / PPC), so on LP64 this allocation is HALF the
+		// size actually needed for the u8*[soundSceneMax] table, and the
+		// loop below writes past the block into whatever the JAI heap put
+		// next. Use sizeof(u8*) so the alloc is right on both LP32 and LP64.
+		unk4 = (u8**)unk1F4->allocHeap(JAIGlobalParameter::soundSceneMax * sizeof(u8*));
 		for (int i = 0; i < JAIGlobalParameter::soundSceneMax; ++i)
 			unk4[i] = JAIConst::sCInfos_0;
 	}
