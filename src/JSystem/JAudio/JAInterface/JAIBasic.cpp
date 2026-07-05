@@ -1143,7 +1143,19 @@ u8 JAIBasic::getSoundPrioity(void* param)
 
 u32 JAIBasic::getSoundSwBit(void* param)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// JAISoundInfo lives inline in the AAF blob (big-endian on-disc), pointed at
+	// directly by initInfoDataWork; unk0 is stored BE and must be byte-swapped
+	// to native. Without this, the JAI init sound (id 0x80000800) reads swBit as
+	// 0x12000000 instead of 0x12, so checkSwBit(0x10) returns 0, checkEntriedSeq
+	// takes the wrong (auto-heap) alloc branch, its size (58880) exceeds the
+	// autoHeapRoomSize slot (0xa2ff = 41727), calls (*sound)->stop(0), which
+	// nulls JAIBasic::unk38 via clearMainSoundPPointer -- and processFrameWork
+	// then null-derefs unk38 on the next tick.
+	return __builtin_bswap32(((JAISoundInfo*)param)->unk0);
+#else
 	return ((JAISoundInfo*)param)->unk0;
+#endif
 }
 
 void JAIBasic::setSeExtParameter(JAISound* sound)
