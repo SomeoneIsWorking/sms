@@ -165,6 +165,15 @@ namespace AudioThread {
 			OSCreateThread(&jac_audioThread, &audioproc, 0,
 			               jac_audioStack + 0x1000, 0x1000, jac_pri, 1);
 			OSResumeThread(&jac_audioThread);
+#else
+			// Native: no background audio thread, but Driver::init() must
+			// still run once — it calls ChGlobal::init() which allocates the
+			// 256-entry TChannel pool + GLOBAL_CHANNEL manager. Without it,
+			// checkReadSeq -> setSeqData -> initAllocChannel -> ChGlobal::alloc
+			// dereferences a null GLOBAL_CHANNEL on the first BGM/SE and SEGVs.
+			// The DSP sub-init inside Driver::init (DSPBuf/DSPInterface/
+			// TDSPChannel/DSPQueue) is stubbed on native, so this is safe.
+			Driver::init();
 #endif
 		}
 

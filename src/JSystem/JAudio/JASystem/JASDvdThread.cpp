@@ -444,16 +444,17 @@ int Dvd::registerFastOpen(char* path)
 s32 Dvd::openDvd(char* path, DVDFileInfo* fileInfo)
 {
 	s32 entryNum = registerFastOpen(path);
+	// On PPC (MWERKS): the function falls off the end and r3 holds whatever the
+	// last DVDOpen/DVDFastOpen returned - i.e. the BOOL success/failure - which
+	// is exactly what the caller wants (loadToDramDvdTMain uses `if(!openDvd)`
+	// as an error branch). A prior "fix" returned entryNum, but entryNum==-1
+	// for a missing file is truthy, so the caller SKIPPED the error path and
+	// proceeded with an uninitialized DVDFileInfo, later dereferencing an
+	// arbitrary pointer inside aurora's DvdWorker::readFromHandle. Return the
+	// open result so `if(!openDvd)` correctly triggers doError() on failure.
 	if (entryNum == -1)
-		DVDOpen(path, fileInfo);
-	else
-		DVDFastOpen(entryNum, fileInfo);
-	// The decomp matches MWERKS by falling off the end with no return: on PPC
-	// r3 still held entryNum so callers worked by luck. On a host -O2 build the
-	// missing return is UB — execution falls through into the adjacent function
-	// (re-entering loadToDramDvdTMain -> infinite recursion -> stack overflow).
-	// Return the value the PPC r3 carried; this is the documented intent.
-	return entryNum;
+		return DVDOpen(path, fileInfo);
+	return DVDFastOpen(entryNum, fileInfo);
 }
 
 static void* Dvd::getCallStack()
