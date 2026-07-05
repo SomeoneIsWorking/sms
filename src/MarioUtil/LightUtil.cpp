@@ -2,6 +2,7 @@
 #include <MarioUtil/DrawUtil.hpp>
 #include <MarioUtil/ReinitGX.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DSys.hpp>
+#include <JSystem/JDrama/JDRDrawBufObj.hpp>
 #include <JSystem/JDrama/JDRLighting.hpp>
 #include <JSystem/JDrama/JDRNameRefGen.hpp>
 #include <cstdio>
@@ -374,11 +375,31 @@ void TLightMario::setLight(const JDrama::TGraphics* graphics, int idx)
 	TLightCommon::setLight(graphics, idx);
 }
 
-TLightDrawBuffer::TLightDrawBuffer(int, u32, const char* name)
+TLightDrawBuffer::TLightDrawBuffer(int lightIdx, u32 flags, const char* name)
     : JDrama::TViewObj(name)
 {
-	if (cue & CUE_LIGHT)
-		setLight(graphics, *gpMarioLightID);
+	mOwnerLight = nullptr;
+	// Port from PPC __ct__16TLightDrawBufferFiUlPCc (GMSJ01 @0x800C46C0, size
+	// 0x12C, ~75 insns): allocate mOpaDrawBuf + mXluDrawBuf as owned
+	// TDrawBufObj sub-objects so TLightWithDBSet::perform/changeLightDrawBuffer
+	// can dispatch through them. The `flags` arg (0x100 for the three
+	// non-Player subclasses' makeDrawBuffer, 0x80 for TPlayerLightWithDBSet)
+	// forwards to TDrawBufObj's u32 param_1 = unk18 (the render-phase mask).
+	// Draw-buffer size 0x400 matches TSmJ3DScn's per-scene draw buffers
+	// (JDRSmJ3DScn.cpp:16) and JDrama scenes generally. Names disambiguate
+	// the pair so the SB_ENTRY_MAT registry (JDRDrawBufObj.cpp:37+) tags
+	// packets correctly. Full byte-exact RE of the ctor requires Ghidra on a
+	// GMSJ01 DOL (0x12C bytes hosts additional per-buffer state in the
+	// unk1C[0x64] payload); this implementation covers the observed HW
+	// contract (both sub-objects non-null, correctly parameterised) so
+	// TLightWithDBSet's perform/changeLightDrawBuffer paths work.
+	mOpaDrawBuf = new JDrama::TDrawBufObj(flags, 0x400, "<TLightDrawBuffer::Opa>");
+	mXluDrawBuf = new JDrama::TDrawBufObj(flags, 0x400, "<TLightDrawBuffer::Xlu>");
+	mLightIndex = lightIdx;
+	// Zero the intermediate per-buffer state slots so first perform() does not
+	// consume garbage. Real ctor may populate specific values here; TBD via RE.
+	for (int i = 0; i < static_cast<int>(sizeof(unk1C)); ++i)
+		unk1C[i] = 0;
 }
 
 // Native port of TLightDrawBuffer::perform (@0x802292c0, 17 insns). Same phase
