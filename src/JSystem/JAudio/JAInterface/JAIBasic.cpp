@@ -563,21 +563,6 @@ void JAIBasic::startFrameInterfaceWork() { processFrameWork(); }
 void JAIBasic::processFrameWork()
 {
 	checkDummyPositionBuffer();
-#ifdef SMS_NATIVE_PLATFORM
-	// STOPGAP: proper fix = port SEQ init-sound wave loading (JAI checkEntriedSeq
-	// path pulls the 0x80000800 init sound's waves from the WSYS bank, then
-	// initSoundParameter re-writes JAIBasic::unk38). Because native WSYS
-	// wave-load isn't landed yet, checkEntriedSeq's fallback stops the init
-	// sound, which nulls unk38 via clearMainSoundPPointer -> *unk34 = null.
-	// On real HW unk38 is guaranteed non-null once init completes, so the
-	// upstream decomp of processFrameWork dereferences unk38 unconditionally.
-	// Skip work until we actually have a live init sound so the game boot
-	// continues to render_gc (Aurora). Remove once WSYS/SEQ loading works.
-	if (unk38 == nullptr) {
-		++unk20;
-		return;
-	}
-#endif
 
 	if (unk38->unk1 == 3 && !unk1C.flag2 && unk54) {
 		for (int i = 0; unk54[i].unk0; ++i)
