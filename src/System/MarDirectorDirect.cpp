@@ -68,7 +68,21 @@ int TMarDirector::direct()
 		if (!OSIsThreadTerminated(&gSetupThread))
 			return 0;
 
-		void* local_40;
+		// Original decomp read `void* local_40;` uninitialized, and MWERKS on
+		// PPC happened to place the register that OSJoinThread's out-param
+		// wrote into over that slot -- so the test `if (local_40) return 4`
+		// was actually testing OSJoinThread's own out-value. On x86-64 the
+		// stack slot is genuinely uninitialized, and the "APP_STATE_DONE (4)
+		// on garbage" branch fires immediately: the game enters GAMEPLAY,
+		// TMarDirector::direct() returns 4 on the very first tick, gameLoop
+		// exits, proc() cycles GAMEPLAY -> DONE -> MOVIE -> GAMEPLAY forever
+		// (movie 9 keeps re-loading, watchdog fires with no forward progress).
+		// The (correct) intent of the test is "did the setup thread report a
+		// nonzero exit value?" -- on native the setup body ran synchronously
+		// on the caller (see TMarDirector::setup) and OSJoinThread finds no
+		// backing NativeThread so it leaves `local_40` untouched. Default it
+		// to nullptr so the check reads "setup succeeded".
+		void* local_40 = nullptr;
 		OSJoinThread(&gSetupThread, &local_40);
 		if (local_40)
 			return 4;
