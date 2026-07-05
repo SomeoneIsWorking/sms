@@ -91,6 +91,17 @@ u32 TMarDirector::setup(JDrama::TDisplay* param_1, TMarioGamePad** param_2,
 #endif
 #ifdef SMS_NATIVE_PLATFORM
 	setupThreadFunc(this);
+	// The native port runs setupThreadFunc synchronously (no OSCreateThread),
+	// so gSetupThread has no backing NativeThread and OSIsThreadTerminated()
+	// would answer FALSE forever. Mark the OSThread's state as MORIBUND so
+	// TMarDirector::direct()'s `if (unk260 == 0) { if (!OSIsThreadTerminated
+	// (&gSetupThread)) return 0; }` guard actually falls through to
+	// setupObjects() and the game loop starts making per-frame progress —
+	// without this the game thread returns 0 every frame and TApplication::
+	// proc's outer while loop keeps recreating the TMarDirector, hitting
+	// loadResource repeatedly, leaking the JKR heap and eventually OOMing on
+	// mountFixed while the Aurora presenter watchdog fires.
+	gSetupThread.state = OS_THREAD_STATE_MORIBUND;
 #else
 	OSCreateThread(&gSetupThread, &setupThreadFunc, this,
 	               (void*)(gpSetupThreadStack + 0x10000), 0x10000, 0x11, 0);
