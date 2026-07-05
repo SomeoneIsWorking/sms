@@ -409,8 +409,8 @@ void TLightWithDBSet::perform(u32 flag, JDrama::TGraphics* graphics)
 		for (int i = 0; i < mBufferCount; ++i) {
 			TLightDrawBuffer* buf = mDrawBuffers[i];
 			buf->perform(0x20, graphics);
-			if (do_unk14_8 && buf->mOpaDrawBuf) buf->mOpaDrawBuf->perform(8, graphics);
-			if (do_unk18_8 && buf->mXluDrawBuf) buf->mXluDrawBuf->perform(8, graphics);
+			if (do_unk14_8) buf->mOpaDrawBuf->perform(8, graphics);
+			if (do_unk18_8) buf->mXluDrawBuf->perform(8, graphics);
 		}
 	}
 
@@ -421,8 +421,8 @@ void TLightWithDBSet::perform(u32 flag, JDrama::TGraphics* graphics)
 	if (flag & 0x400) {
 		for (int i = 0; i < mBufferCount; ++i) {
 			TLightDrawBuffer* buf = mDrawBuffers[i];
-			if (buf->mOpaDrawBuf) buf->mOpaDrawBuf->perform(0x480, graphics);
-			if (buf->mXluDrawBuf) buf->mXluDrawBuf->perform(0x480, graphics);
+			buf->mOpaDrawBuf->perform(0x480, graphics);
+			buf->mXluDrawBuf->perform(0x480, graphics);
 		}
 	}
 }
@@ -444,17 +444,6 @@ void TLightWithDBSet::changeLightDrawBuffer(int param_1)
 	// has been retired — makeDrawBuffer × 4 subclass is fully ported and
 	// verified via SB_LMGR_PROBE at settled title, 2026-07-04.)
 	if (!mDrawBuffers)
-		return;
-	// Same null-tolerance as TLightWithDBSet::perform above: TLightDrawBuffer's
-	// 3-arg ctor doesn't yet allocate its own mOpaDrawBuf / mXluDrawBuf sub-
-	// objects (port gap — original PPC ctor constructs them). perform() null-
-	// guards each read; changeLightDrawBuffer must too, else MActor::entry
-	// crashes on the first per-frame actor draw. Leaving the redirect a no-op
-	// falls through to the caller's default Chr draw buffer, which matches the
-	// behavior when mDrawBuffers is null. PROPER FIX: port the ctor to build
-	// mOpaDrawBuf/mXluDrawBuf as `new TDrawBufObj(...)` matching PPC.
-	TLightDrawBuffer* dbuf = mDrawBuffers[param_1];
-	if (!dbuf || !dbuf->mOpaDrawBuf || !dbuf->mXluDrawBuf)
 		return;
 #endif
 
