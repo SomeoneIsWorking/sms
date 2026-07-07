@@ -6,6 +6,11 @@
 
 using namespace JDrama;
 
+#ifdef SMS_NATIVE_PLATFORM
+// PC single-thread frame boundary — sms-boot/runtime/frame_seam.cpp.
+extern "C" void sb_frame_present(unsigned retraces);
+#endif
+
 TVideo::TVideo()
 {
 	mCurFrameBuffer   = nullptr;
@@ -30,6 +35,22 @@ void TVideo::setNextXFB(const void* fb) { mNextFrameBuffer = fb; }
 
 void TVideo::waitForRetrace(u16 param_1)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// PC single-thread frame boundary. This is the game's once-per-frame
+	// scan-out point; sb_frame_present (sms-boot/runtime/frame_seam.cpp)
+	// ends the Aurora frame (GX fifo drain + present), pumps events, begins
+	// the next frame, and paces to param_1 NTSC fields of wall clock. The
+	// VI dance below (XFB pointers, TV-mode settle) has no host meaning —
+	// Aurora owns scan-out — but VIConfigure still forwards the render mode.
+	if (!IsEqualRenderModeVIParams(mCurRenderMode, mNextRenderMode))
+		VIConfigure(&mNextRenderMode);
+	mCurRenderMode  = mNextRenderMode;
+	mCurFrameBuffer = mNextFrameBuffer;
+	sb_frame_present(param_1 ? param_1 : 1);
+	mLastRetraceTime  = OSGetTick();
+	mNextRetraceIndex = param_1 + VIGetRetraceCount();
+	return;
+#endif
 	while (mNextRetraceIndex - (int)VIGetRetraceCount() > 1)
 		VIWaitForRetrace();
 
