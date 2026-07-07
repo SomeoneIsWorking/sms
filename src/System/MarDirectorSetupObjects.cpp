@@ -407,6 +407,23 @@ bool TMarDirector::setupObjects()
 	    ->mSortType
 	    = J3DDrawBuffer::SORT_MAT_ANM;
 	gpLightManager->addChildGroupObj(drawBufferGroup);
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_J3D_DBG: the scene draw hinges on this one entry — "Draw Buffer
+	// Group" performed with bit 8 is what reaches TSmJ3DScn::perform(8)
+	// (entry + J3DDrawBuffer::draw of the whole 3D scene). Dump the group and
+	// its children so a silent search miss / empty group is visible.
+	if (const char* e = getenv("SB_J3D_DBG"); e && e[0] && e[0] != '0') {
+		fprintf(stderr, "[setupObjects] drawBufferGroup=%p children:\n", (void*)drawBufferGroup);
+		if (drawBufferGroup) {
+			int n = 0;
+			for (auto it = drawBufferGroup->getChildren().begin();
+			     it != drawBufferGroup->getChildren().end(); ++it, ++n)
+				fprintf(stderr, "  [%d] %p '%s'\n", n, (void*)*it,
+				        (*it && (*it)->getName()) ? (*it)->getName() : "?");
+			fprintf(stderr, "  total=%d\n", n);
+		}
+	}
+#endif
 	unk40->push_back(drawBufferGroup, 8);
 	initECTGft(unk38, unk3C, perfEventGroup, normalScene);
 	initECTMir(mPerformListGX, perfEventGroup);

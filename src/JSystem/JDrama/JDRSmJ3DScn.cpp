@@ -2,6 +2,10 @@
 #include <JSystem/J3D/J3DGraphBase/J3DDrawBuffer.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DSys.hpp>
 #include <JSystem/JDrama/JDRLighting.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 
 using namespace JDrama;
 
@@ -21,6 +25,23 @@ void TSmJ3DScn::perform(u32 param_1, TGraphics* param_2)
 	if (param_1 & 3) {
 		TViewObjPtrListT::perform(param_1, param_2);
 	}
+
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_J3D_DBG: is the scene draw bit (8) ever delivered, and to which scene?
+	{
+		static int dbg = -1;
+		if (dbg < 0) { const char* e = getenv("SB_J3D_DBG"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
+		if (dbg) {
+			static long calls = 0, draws = 0;
+			++calls;
+			if (param_1 & 8) ++draws;
+			if ((calls % 400) == 0 || ((param_1 & 8) && draws <= 3))
+				fprintf(stderr, "[smj3dscn] this=%p '%s' calls=%ld draws(bit8)=%ld param=0x%x bufs=%d\n",
+				        (void*)this, getName() ? getName() : "?", calls, draws, param_1,
+				        (int)mDrawBufferCount);
+		}
+	}
+#endif
 
 	if (param_1 & 8) {
 		if (mLightMap)
