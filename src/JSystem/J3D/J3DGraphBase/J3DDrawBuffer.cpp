@@ -291,19 +291,32 @@ void J3DDrawBuffer::draw() const
 	// discriminator between "buffer never filled" (count 0 while entry runs)
 	// and "packets drawn but invisible" (count > 0; chase GX state instead).
 	{
-		static int dbg = -1;
-		if (dbg < 0) { const char* e = getenv("SB_DRAWBUF_STATS"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
-		if (dbg) {
+		static long dbgStart = -2;
+		if (dbgStart == -2) {
+			const char* e = getenv("SB_DRAWBUF_STATS"); // =<startCall>; buffer-draws run ~26/frame
+			dbgStart = (e && e[0] && e[0] != '0') ? atol(e) : -1;
+			if (dbgStart >= 0 && dbgStart < 200) dbgStart = 200;
+		}
+		if (dbgStart >= 0) {
 			static long s_call = 0;
 			++s_call;
-			if (s_call > 200 && s_call <= 260) { // one steady-state window, every buffer draw
-				u32 pkts = 0;
+			if (s_call > dbgStart && s_call <= dbgStart + 60) { // one window, every buffer draw
+				u32 pkts = 0, shpTotal = 0, shpEnabled = 0, shpNullShape = 0;
 				for (u32 i = 0; i < mSize; i++)
-					for (J3DPacket* p = mBuffer[i]; p; p = p->getNextPacket())
+					for (J3DPacket* p = mBuffer[i]; p; p = p->getNextPacket()) {
 						++pkts;
+						for (J3DShapePacket* sp = ((J3DMatPacket*)p)->getShapePacket(); sp;
+						     sp = (J3DShapePacket*)sp->unk4) {
+							++shpTotal;
+							if (sp->unk30 != 0) ++shpEnabled;
+							if (sp->unk14 == nullptr) ++shpNullShape;
+						}
+					}
 				const char* nm = sb_boot_drawbuf_name((const void*)this);
-				fprintf(stderr, "[bufstat] call=%ld buf=%p '%s' packets=%u\n",
-				        s_call, (const void*)this, nm ? nm : "?", pkts);
+				fprintf(stderr,
+				        "[bufstat] call=%ld buf=%p '%s' packets=%u shp=%u enabled=%u nullShape=%u\n",
+				        s_call, (const void*)this, nm ? nm : "?", pkts, shpTotal, shpEnabled,
+				        shpNullShape);
 			}
 		}
 	}
