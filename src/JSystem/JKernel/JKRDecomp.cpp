@@ -78,6 +78,29 @@ JKRDecomp::prepareCommand(u8* srcBuffer, u8* dstBuffer, u32 srcLength,
 
 void JKRDecomp::sendCommand(JKRDecompCommand* command)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// PC engine: the worker thread is gone; run one iteration of its loop
+	// body (run() above) inline. The old stubbed path posted to
+	// sMessageQueue with no consumer, silently skipping the decode.
+	decode(command->mSrcBuffer, command->mDstBuffer, command->mSrcLength,
+	       command->mDstLength);
+	if (command->field_0x20 != 0) {
+		if (command->field_0x20 == 1)
+			JKRAramPiece::sendCommand(command->mAMCommand);
+		return;
+	}
+	if (command->mCallback) {
+		(*command->mCallback)((u32)(uintptr_t)command);
+		return;
+	}
+	if (command->field_0x1c) {
+		OSSendMessage(command->field_0x1c, (OSMessage)1, OS_MESSAGE_NOBLOCK);
+	} else {
+		OSSendMessage(&command->mMessageQueue, (OSMessage)1,
+		              OS_MESSAGE_NOBLOCK);
+	}
+	return;
+#endif
 	OSSendMessage(&sMessageQueue, command, OS_MESSAGE_BLOCK);
 }
 
