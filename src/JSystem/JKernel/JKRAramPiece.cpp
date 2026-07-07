@@ -38,9 +38,24 @@ JKRAMCommand* JKRAramPiece::orderAsync(int direction, uintptr_t source,
 		OSPanic(__FILE__, 102, "Abort.");
 	}
 
-	Message* message      = new (JKRHeap::getSystemHeap(), -4) Message();
 	JKRAMCommand* command = JKRAramPiece::prepareCommand(
 	    direction, source, destination, length, block, callback);
+
+#ifdef SMS_NATIVE_PLATFORM
+	// PC engine: the JKRAram worker thread is gone; run the DMA inline.
+	// Aurora's ARQPostRequest is a synchronous memcpy that invokes doneDMA
+	// before returning, so the command is complete (and its completion
+	// message queued) when this call returns. The old stubbed path posted
+	// to JKRAram::sMessageQueue with no consumer, silently skipping the
+	// transfer (and leaking the Message).
+	if (command->mCallback != nullptr) {
+		sAramPieceCommandList.append(&command->mPieceLink);
+	}
+	startDMA(command);
+	unlock();
+	return command;
+#else
+	Message* message = new (JKRHeap::getSystemHeap(), -4) Message();
 	message->field_0x00 = 1;
 	message->command    = command;
 
@@ -51,6 +66,7 @@ JKRAMCommand* JKRAramPiece::orderAsync(int direction, uintptr_t source,
 
 	unlock();
 	return command;
+#endif
 }
 
 bool JKRAramPiece::sync(JKRAMCommand* command, int is_non_blocking)
