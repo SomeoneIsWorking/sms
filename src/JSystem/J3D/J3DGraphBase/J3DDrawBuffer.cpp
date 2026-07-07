@@ -280,8 +280,34 @@ bool J3DDrawBuffer::entryImm(J3DPacket* packet, u16 index)
 	return true;
 }
 
+#ifdef SMS_NATIVE_PLATFORM
+extern "C" const char* sb_boot_drawbuf_name(const void* buf);
+#endif
+
 void J3DDrawBuffer::draw() const
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_DRAWBUF_STATS=1: sampled per-buffer packet counts at draw time — the
+	// discriminator between "buffer never filled" (count 0 while entry runs)
+	// and "packets drawn but invisible" (count > 0; chase GX state instead).
+	{
+		static int dbg = -1;
+		if (dbg < 0) { const char* e = getenv("SB_DRAWBUF_STATS"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
+		if (dbg) {
+			static long s_call = 0;
+			++s_call;
+			if (s_call > 200 && s_call <= 260) { // one steady-state window, every buffer draw
+				u32 pkts = 0;
+				for (u32 i = 0; i < mSize; i++)
+					for (J3DPacket* p = mBuffer[i]; p; p = p->getNextPacket())
+						++pkts;
+				const char* nm = sb_boot_drawbuf_name((const void*)this);
+				fprintf(stderr, "[bufstat] call=%ld buf=%p '%s' packets=%u\n",
+				        s_call, (const void*)this, nm ? nm : "?", pkts);
+			}
+		}
+	}
+#endif
 	drawFunc func = drawFuncTable[mDrawType];
 	(this->*func)();
 }
