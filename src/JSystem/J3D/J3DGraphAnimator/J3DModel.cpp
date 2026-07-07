@@ -2,6 +2,7 @@
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
 #include <cstdlib>
+#include <execinfo.h>
 extern "C" void sb_gx_get_projection(int*, float*, float*);
 #endif
 #include <JSystem/J3D/J3DGraphAnimator/J3DJoint.hpp>
@@ -803,6 +804,43 @@ void J3DModel::calc()
 	mModelData->unk14->init(unk14, unk20);
 	j3dSys.setTexture(mModelData->getTexture());
 	mModelData->unk14->recursiveCalc(mModelData->mRootNode);
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_CALC_DBG=1: base matrix in vs root anm matrix out — localizes where a
+	// zero/garbage rotation enters (actor base vs the joint-tree recursion).
+	{
+		static int dbg = -1;
+		if (dbg < 0) { const char* e = getenv("SB_CALC_DBG"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
+		if (dbg) {
+			static long n = 0;
+			++n;
+			if ((n % 400) == 0 || n <= 12) {
+				const float* b = (const float*)unk20; // mBaseMtx
+				const float* a = (const float*)getAnmMtx(0);
+				fprintf(stderr,
+				        "[calc-dbg] n=%ld model=%p base0=[%.3f %.3f %.3f %.1f] baseS=(%g %g %g) anm0=[%.3f %.3f %.3f %.1f] mtxCalc=%p\n",
+				        n, (void*)this, b[0], b[1], b[2], b[3], unk14.x, unk14.y, unk14.z,
+				        a[0], a[1], a[2], a[3], (void*)mModelData->unk14);
+			}
+			// One-shot backtrace per model whose base matrix has a zero rotation
+			// row — names the actor perform() path that failed to build it.
+			{
+				const float* b = (const float*)unk20;
+				if (fabsf(b[0]) < 1e-20f && fabsf(b[1]) < 1e-20f && fabsf(b[2]) < 1e-20f) {
+					static const void* seen[8];
+					static int nseen = 0;
+					bool novel = true;
+					for (int i = 0; i < nseen; ++i) if (seen[i] == (void*)this) { novel = false; break; }
+					if (novel && nseen < 8) {
+						seen[nseen++] = (void*)this;
+						fprintf(stderr, "[calc-zero-base] model=%p row0=(%g %g %g) trans=(%.1f %.1f %.1f) backtrace:\n",
+						        (void*)this, b[0], b[1], b[2], b[3], b[7], b[11]);
+						void* fr[24]; int nf = backtrace(fr, 24); backtrace_symbols_fd(fr, nf, 2);
+					}
+				}
+			}
+		}
+	}
+#endif
 
 	calcWeightEnvelopeMtx();
 
@@ -859,6 +897,32 @@ void J3DModel::viewCalc()
 		}
 	} else {
 		MtxPtr viewMtx = j3dSys.getViewMtx();
+#ifdef SMS_NATIVE_PLATFORM
+		// SB_VIEWCALC_DBG=1: print the concat inputs (view matrix row 0 +
+		// node matrix 0 row 0) — discriminates "view rotation is zero" from
+		// "anm/node matrices are zero" when draw matrices come out degenerate.
+		{
+			static int dbg = -1;
+			if (dbg < 0) { const char* e = getenv("SB_VIEWCALC_DBG"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
+			if (dbg) {
+				static long n = 0;
+				++n;
+				if ((n % 400) == 0 || n <= 20) {
+					const float* v = (const float*)viewMtx;
+					const float* a = (const float*)mNodeMatrices;
+					const J3DTransformInfo& ti
+					    = mModelData->getJointNodePointer(0)->getTransformInfo();
+					fprintf(stderr,
+					        "[viewcalc] n=%ld model=%p view0=[%.3f %.3f %.3f %.1f] view1=[%.3f %.3f %.3f %.1f] "
+					        "anm0=[%.3f %.3f %.3f %.1f] j0Scale=(%g %g %g) j0Rot=(%d %d %d) j0T=(%g %g %g)\n",
+					        n, (void*)this, v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7],
+					        a[0], a[1], a[2], a[3], ti.mScale.x, ti.mScale.y, ti.mScale.z,
+					        (int)ti.mRotation.x, (int)ti.mRotation.y, (int)ti.mRotation.z,
+					        ti.mTranslate.x, ti.mTranslate.y, ti.mTranslate.z);
+				}
+			}
+		}
+#endif
 		if (mModelData->getDrawFullWgtMtxNum() != 0) {
 			J3DMTXConcatArrayIndexedSrc(
 			    viewMtx, mNodeMatrices, mModelData->mDrawMtxData.mDrawMtxIndex,

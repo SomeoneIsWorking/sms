@@ -1,6 +1,9 @@
 #include <JSystem/J3D/J3DGraphBase/J3DTransform.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DStruct.hpp>
 #include <JSystem/JMath.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#endif
 
 J3DTransformInfo const j3dDefaultTransformInfo
     = { { 1.0f, 1.0f, 1.0f }, { 0, 0, 0 }, { 0.0f, 0.0f, 0.0f } };
@@ -69,6 +72,19 @@ bool J3DPSCalcInverseTranspose(MtxPtr src, ROMtxPtr dst)
 
 void J3DGetTranslateRotateMtx(const J3DTransformInfo& tx, Mtx dst)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// One-shot sanity check of the JMath sin/cos table: cos(0) must be 1.
+	// A zero/garbled table zeroes every J3D joint rotation while leaving
+	// translation intact (the invisible-backdrop signature).
+	{
+		static int checked = 0;
+		if (!checked) {
+			checked = 1;
+			fprintf(stderr, "[jmath-check] jmaSinShift=%u cos(0)=%f sin(0)=%f sin(0x4000)=%f table=%p\n",
+			        jmaSinShift, JMASCos(0), JMASSin(0), JMASSin(0x4000), (void*)jmaSinTable);
+		}
+	}
+#endif
 	f32 sx = JMASSin(tx.mRotation.x), cx = JMASCos(tx.mRotation.x);
 	f32 sy = JMASSin(tx.mRotation.y), cy = JMASCos(tx.mRotation.y);
 	f32 sz = JMASSin(tx.mRotation.z), cz = JMASCos(tx.mRotation.z);
