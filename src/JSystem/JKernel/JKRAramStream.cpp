@@ -153,8 +153,18 @@ JKRAramStream::write_StreamToAram_Async(JSUFileInputStream* stream, u32 addr,
 	command->mTransferBufferSize = transSize;
 
 	OSInitMessageQueue(&command->mMessageQueue, &command->mMessage, 1);
+#ifdef SMS_NATIVE_PLATFORM
+	// PC engine: the ARAM stream worker thread is gone; run its WRITE
+	// dispatch inline. writeToAram completes the DVD->ARAM copy and posts
+	// writtenLength to command->mMessageQueue, so the caller's sync()
+	// receives it immediately. (The old no-op queue stubs silently skipped
+	// this send — every streamed ARAM archive load was a silent no-op.)
+	writeToAram(command);
+	return command;
+#else
 	OSSendMessage(&sMessageQueue, command, OS_MESSAGE_BLOCK);
 	return command;
+#endif
 }
 
 /* 802B6624-802B66B8       .text sync__13JKRAramStreamFP20JKRAramStreamCommandi
