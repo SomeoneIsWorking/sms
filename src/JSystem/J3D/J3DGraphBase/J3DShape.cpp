@@ -86,6 +86,26 @@ J3DShapeDraw::J3DShapeDraw(const u8* list, u32 size)
 
 void J3DShapeDraw::draw() const
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_SHAPEDRAW_DBG=1: per-call trace of the geometry display lists
+	// entering the fifo (ptr/size + first opcode bytes) — pairs with aurora's
+	// [draw-stats] to tell "DL never reaches fifo" from "fifo drops it".
+	{
+		static int dbg = -1;
+		if (dbg < 0) { const char* e = getenv("SB_SHAPEDRAW_DBG"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
+		if (dbg) {
+			static long n = 0;
+			++n;
+			if ((n % 500) == 0 || n <= 30) {
+				const u8* d = (const u8*)mDisplayList;
+				fprintf(stderr, "[shapedraw] n=%ld dl=%p size=%u first=[%02x %02x %02x %02x %02x %02x %02x %02x]\n",
+				        n, (void*)mDisplayList, mDisplayListSize,
+				        d ? d[0] : 0, d ? d[1] : 0, d ? d[2] : 0, d ? d[3] : 0,
+				        d ? d[4] : 0, d ? d[5] : 0, d ? d[6] : 0, d ? d[7] : 0);
+			}
+		}
+	}
+#endif
 	GXCallDisplayList((void*)mDisplayList, mDisplayListSize);
 }
 
