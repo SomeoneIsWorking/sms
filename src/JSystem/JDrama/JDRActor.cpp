@@ -17,6 +17,23 @@ void JDrama::TActor::load(JSUMemoryInputStream& stream)
 	stream.read(&mScaling.x, sizeof(f32));
 	stream.read(&mScaling.y, sizeof(f32));
 	stream.read(&mScaling.z, sizeof(f32));
+#ifdef SMS_NATIVE_PLATFORM
+	// Scene data is big-endian and stream.read() raw-copies without swapping
+	// (same bug class as TPlacement::load's mPosition, already fixed there).
+	// A BE 1.0 scale reads back as a ~4.6e-41 denormal -> the model's base
+	// scale collapses every joint rotation row to ~0 -> geometry degenerates
+	// to a point and never rasterizes (invisible title backdrop, 2026-07-07).
+	{
+		f32* comps[6] = { &mRotation.x, &mRotation.y, &mRotation.z,
+			              &mScaling.x, &mScaling.y, &mScaling.z };
+		for (int i = 0; i < 6; ++i) {
+			u32 b;
+			__builtin_memcpy(&b, comps[i], 4);
+			b = __builtin_bswap32(b);
+			__builtin_memcpy(comps[i], &b, 4);
+		}
+	}
+#endif
 
 	char str[0x50];
 	stream.readString(str, 0x50);
