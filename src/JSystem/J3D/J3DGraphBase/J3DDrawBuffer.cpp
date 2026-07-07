@@ -282,10 +282,21 @@ bool J3DDrawBuffer::entryImm(J3DPacket* packet, u16 index)
 
 #ifdef SMS_NATIVE_PLATFORM
 extern "C" const char* sb_boot_drawbuf_name(const void* buf);
+#ifdef SMS_AURORA
+#include <dolphin/gx/GXAurora.h>
+#endif
 #endif
 
 void J3DDrawBuffer::draw() const
 {
+#ifdef SMS_AURORA
+	// Draw-identity marker: every GX draw the fifo processes after this
+	// belongs to THIS buffer until the next marker (SB_DRAW_DUMP prints it).
+	{
+		const char* nm = sb_boot_drawbuf_name((const void*)this);
+		GXInsertDebugMarker(nm ? nm : "buf?");
+	}
+#endif
 #ifdef SMS_NATIVE_PLATFORM
 	// SB_DRAWBUF_STATS=1: sampled per-buffer packet counts at draw time — the
 	// discriminator between "buffer never filled" (count 0 while entry runs)

@@ -29,9 +29,10 @@ J3DModelData* J3DModelLoaderDataBase::load(const void* i_data, u32 i_flags)
 	// multibyte field (incl. the 'J3D2' fourcc) by raw struct cast, so on a
 	// little-endian host the magic check below would fail and load() would return
 	// null -> a null J3DModelData deref in J3DModel::entryModelData. Produce a
-	// host-endian copy at load: bmd_swap_to_host swaps the structural fields and
-	// deliberately leaves DL / vertex-array / texel byte-streams big-endian (the
-	// render path consumes those as BE). FAIL FAST if any present block lacks a
+	// host-endian copy at load: bmd_swap_to_host swaps the structural fields AND
+	// the VTX1 vertex scalar arrays (Aurora fetches them as host-endian storage);
+	// the shape display-list stream and texel data stay big-endian (the fifo
+	// processor / texture converter consume those as BE). FAIL FAST if any present block lacks a
 	// real swapper rather than feeding the loader half-swapped data.
 	{
 		const uint8_t* raw    = (const uint8_t*)i_data;
