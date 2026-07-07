@@ -3,6 +3,10 @@
 
 #include <JSystem/JRenderer.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DStruct.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 
 extern const J3DTevSwapModeInfo j3dDefaultTevSwapMode;
 extern const J3DTevStageInfo j3dDefaultTevStageInfo;
@@ -150,8 +154,40 @@ public:
 	void load(u32) const
 	{
 		GDOverflowCheck(10);
+#ifdef SMS_NATIVE_PLATFORM
+		// The BP command lives as 4 ordered BYTES: [regId][op][AB][CD].
+		// The GC build's *(u32*)& read is big-endian (regId at bits 24-31);
+		// on a little-endian host that same read rotates the regId into
+		// bits 0-7, so every TEV env write landed on a garbage BP register
+		// (e.g. stage-1 alpha -> BP 0x50 = copy-clear GB). Compose the
+		// word explicitly instead.
+		u32 colorCmd = (u32)mTevColorReg << 24 | (u32)mTevColorOp << 16
+		               | (u32)mTevColorAB << 8 | mTevColorCD;
+		u32 alphaCmd = (u32)mTevAlphaReg << 24 | (u32)mTevAlphaOp << 16
+		               | (u32)mTevAlphaAB << 8 | mTevSwapModeInfo;
+		// SB_TEV_DBG=1: prove which writer emits the TEV env words (this
+		// composed path vs a second, still-rotated path), and verify the
+		// bytes that actually landed in the GD stream (write-side ground
+		// truth — separates "writer broken" from "stream corrupted later").
+		u8* wrote = __GDCurrentDL ? __GDCurrentDL->ptr : nullptr;
+		J3DGDWriteBPCmd(colorCmd);
+		J3DGDWriteBPCmd(alphaCmd);
+		if (getenv("SB_TEV_DBG")) {
+			static long n = 0;
+			++n;
+			if (wrote != nullptr && (wrote[0] != 0x61 || wrote[5] != 0x61)) {
+				fprintf(stderr,
+				        "[tevstage-load] n=%ld CORRUPT-AT-WRITE ptr=%p bytes=%02x %02x %02x %02x %02x %02x\n",
+				        n, (void*)wrote, wrote[0], wrote[1], wrote[2], wrote[3], wrote[4], wrote[5]);
+			}
+			if (n <= 12)
+				fprintf(stderr, "[tevstage-load] n=%ld color=%08x alpha=%08x gdptr=%p\n",
+				        n, colorCmd, alphaCmd, (void*)wrote);
+		}
+#else
 		J3DGDWriteBPCmd(*(u32*)&mTevColorReg);
 		J3DGDWriteBPCmd(*(u32*)&mTevAlphaReg);
+#endif
 	}
 
 public:
