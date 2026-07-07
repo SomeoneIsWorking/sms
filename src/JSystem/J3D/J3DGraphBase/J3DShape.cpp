@@ -288,6 +288,36 @@ void J3DShape::draw() const
 	JRNLoadCurrentMtx(0, unk3C[0], unk3C[1], unk3C[2], unk3C[3], unk3C[4],
 	                  unk3C[5], unk3C[6], unk3C[7]);
 
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_SHAPE_STATS=1: once per shape, log the element (mtx-group) fan-out and
+	// each element's display-list size — decides "strips lost at LOAD (too few
+	// elements / truncated DLs)" vs "strips lost in the fifo parse".
+	{
+		static int dbg = -1;
+		if (dbg < 0) { const char* e = getenv("SB_SHAPE_STATS"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
+		if (dbg) {
+			static const J3DShape* seen[512];
+			static int nSeen = 0;
+			bool isNew = true;
+			for (int s = 0; s < nSeen; ++s)
+				if (seen[s] == this) { isNew = false; break; }
+			if (isNew && nSeen < 512) {
+				seen[nSeen++] = this;
+				u32 total = 0;
+				char sizes[256]; int sp = 0;
+				for (u16 i = 0; i < mElementCount; ++i) {
+					u32 sz = mDraws[i] ? mDraws[i]->getDisplayListSize() : 0;
+					total += sz;
+					if (sp < (int)sizeof(sizes) - 16)
+						sp += snprintf(sizes + sp, sizeof(sizes) - sp, " %u%s", sz, mMatrices[i] ? "" : "/nomtx");
+				}
+				fprintf(stderr, "[shape-stats] shape=%p idx=%u elems=%u dlbytes=%u sizes=[%s ]\n",
+				        (void*)this, (unsigned)mIndex, (unsigned)mElementCount, total, sizes);
+			}
+		}
+	}
+#endif
+
 	for (u16 i = 0; i < mElementCount; ++i) {
 		if (mMatrices[i])
 			mMatrices[i]->load();
