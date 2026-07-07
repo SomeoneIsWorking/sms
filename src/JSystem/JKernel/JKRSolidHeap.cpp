@@ -91,11 +91,14 @@ void* JKRSolidHeap::allocFromHead(u32 size, int align)
 		ret = alignedStart;
 	} else {
 #ifdef SMS_NATIVE_PLATFORM
-		// FAIL FAST diagnostic: name the heap + dump the exact shortfall so an LP64
-		// heap-sizing fix is precise (pointer arrays are 2x larger on the 64-bit host,
-		// so 32-bit-sized SolidHeaps overflow — e.g. J3DDrawBuffer's J3DPacket*[size]).
-		OSReport("[jkr] SolidHeap %p OUT OF MEMORY: requiredSize=0x%x (size=0x%x align=%d) "
-		         "mFreeSize=0x%x short=0x%x span mStart=%p mEnd=%p\n",
+		// Diagnostic: name the heap + dump the exact shortfall so an LP64 heap-sizing
+		// fix is precise (pointer arrays are 2x larger on the 64-bit host, so
+		// 32-bit-sized SolidHeaps overflow — e.g. J3DDrawBuffer's J3DPacket*[size]).
+		// NOT FATAL: JKRSolidHeap::alloc overflows to host memory on failure (and
+		// sb_rarc_swap_to_host has its own heap fallback chain), so this line alone
+		// never explains a crash — it flags an LP64 sizing gap worth fixing someday.
+		OSReport("[jkr] SolidHeap %p full, overflowing to host: requiredSize=0x%x "
+		         "(size=0x%x align=%d) mFreeSize=0x%x short=0x%x span mStart=%p mEnd=%p\n",
 		         this, requiredSize, size, align, mFreeSize,
 		         requiredSize - mFreeSize, mStart, mEnd);
 		// SB_JKR_BT=1: one-shot caller backtrace for the per-frame leak hunt. The NPC-on scene
