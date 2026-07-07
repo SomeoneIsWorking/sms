@@ -2,9 +2,36 @@
 #include <dolphin/gx/GXTexture.h>
 #include <dolphin/os/OSCache.h>
 
+#ifdef SMS_NATIVE_PLATFORM
+#include "timg_swap.h" // big-endian ResTIMG header -> host (JPA TEX1 blocks)
+#include <cstdio>
+#include <cstdlib>
+
+// The .jpa swapper (sb_jpa_swap_to_host) leaves TEX1 block bodies untouched;
+// the embedded ResTIMG header must go host-endian at ITS load site, like every
+// other ResTIMG consumer (JKRFileLoader/JUTResource/SelectMenu). Without this,
+// JUTTexture::initTexObj feeds BE width/height (64 -> 0x4000) into
+// GXInitTexObj. restimg_swap_to_host is idempotent per pointer.
+static const ResTIMG* sb_jpa_timg_to_host(const void* rawData)
+{
+	const ResTIMG* timg = (const ResTIMG*)((const u8*)rawData + 0x20);
+	if (getenv("SB_JPA_TEXDBG")) {
+		const u8* w = (const u8*)timg + 2;
+		fprintf(stderr, "[jpatex] name='%.20s' preWidthBytes=%02x%02x ptr=%p\n",
+		        (const char*)rawData + 0xC, w[0], w[1], (const void*)timg);
+	}
+	smsport::assets::restimg_swap_to_host(timg);
+	return timg;
+}
+#endif
+
 JPATexture::JPATexture(const u8* data, JKRHeap* heap)
     : JPADataBlock(data, heap)
+#ifdef SMS_NATIVE_PLATFORM
+    , unk8(sb_jpa_timg_to_host(mRawData), 0)
+#else
     , unk8((ResTIMG*)((u8*)mRawData + 0x20), 0)
+#endif
 {
 }
 
