@@ -9,10 +9,19 @@
 #include <M3DUtil/MActor.hpp>
 #include <M3DUtil/MActorUtil.hpp>
 #include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
+#include <JSystem/J3D/J3DGraphBase/J3DTexture.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 
 // rogue includes needed for matching sinit & bss
 #include <MSound/MSSetSound.hpp>
 #include <MSound/MSoundBGM.hpp>
+
+#ifdef SMS_NATIVE_PLATFORM
+int g_sbXhSkyInitDL = 0;
+#endif
 
 void TSky::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
@@ -99,9 +108,33 @@ void TSky::load(JSUMemoryInputStream& stream)
 	        | (2 << J3DMLF_TevStageNumShift));
 
 	if (gpMapObjManager->unk68) {
+#ifdef SMS_NATIVE_PLATFORM
+		if (getenv("SB_XH_SKY_DBG")) {
+			fprintf(stderr, "[xh-sky] pre-setMaterialTable modelData->getTexture()=%p num=%u matTable=%p matTableTex=%p matTableTexNum=%u\n",
+			    (void*)unk44->getModel()->getModelData()->getTexture(),
+			    unk44->getModel()->getModelData()->getTexture() ? unk44->getModel()->getModelData()->getTexture()->getNum() : 0,
+			    (void*)gpMapObjManager->getUnk68(),
+			    (void*)gpMapObjManager->getUnk68()->getTexture(),
+			    gpMapObjManager->getUnk68()->getTexture() ? gpMapObjManager->getUnk68()->getTexture()->getNum() : 0);
+		}
+#endif
 		unk44->getModel()->getModelData()->setMaterialTable(
 		    gpMapObjManager->getUnk68(), J3DMatCopyFlag_All);
+#ifdef SMS_NATIVE_PLATFORM
+		if (getenv("SB_XH_SKY_DBG")) {
+			fprintf(stderr, "[xh-sky] post-setMaterialTable modelData->getTexture()=%p num=%u\n",
+			    (void*)unk44->getModel()->getModelData()->getTexture(),
+			    unk44->getModel()->getModelData()->getTexture() ? unk44->getModel()->getModelData()->getTexture()->getNum() : 0);
+		}
+#endif
+#ifdef SMS_NATIVE_PLATFORM
+		extern int g_sbXhSkyInitDL;
+		if (getenv("SB_XH_SKY_DBG")) g_sbXhSkyInitDL = 1;
+#endif
 		unk44->initDL();
+#ifdef SMS_NATIVE_PLATFORM
+		if (getenv("SB_XH_SKY_DBG")) g_sbXhSkyInitDL = 0;
+#endif
 	}
 
 	if (gpMarDirector->mMap != 15)
