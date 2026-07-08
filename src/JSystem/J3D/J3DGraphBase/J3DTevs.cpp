@@ -381,7 +381,9 @@ void J3DTexMtx::load(u32 id) const
 #ifdef SMS_AURORA
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 extern "C" const char* sb_gx_last_marker();
+extern "C" const char* sb_cpu_drawbuf_name();
 // ResTIMG::imageDataOffset is a 32-bit field holding the offset from the
 // ResTIMG header to its image data. For most TIMGs it is a small POSITIVE
 // offset. But shared/mirror textures rebase it as a POINTER DELTA
@@ -480,6 +482,60 @@ void loadTexNo(u32 param_1, const u16& param_2)
 			    "[cloud-dbg] map=%u dims=%ux%u fmt=%u wrapS=%u wrapT=%u mipCount=%u minFilt=%u magFilt=%u mark='%s'\n",
 			    param_1, img->width, img->height, img->format & 0xf, img->wrapS, img->wrapT,
 			    img->mipmapCount, img->minFilter, img->magFilter, sb_gx_last_marker());
+	}
+	// TEMP crosshatch-hunt: dump the exact bytes + owning J3DTexture identity for
+	// the two phantom texobjs (16x16 fmt0, 64x64 fmt1) so we can tell whether the
+	// header content is corrupt or texNo is indexing into the wrong table.
+	{
+		extern int g_sbXhSkyInitDL;
+		if (g_sbXhSkyInitDL) {
+			static long n = 0;
+			if (++n <= 40) {
+				const u8* raw = (const u8*)img;
+				fprintf(stderr,
+				    "[xh-skyinit] texNo=%u map=%u tex=%p num=%u img=%p hex=",
+				    param_2, param_1, (void*)j3dSys.getTexture(),
+				    j3dSys.getTexture() ? j3dSys.getTexture()->getNum() : 0, (void*)img);
+				for (int i = 0; i < 0x20; i++) fprintf(stderr, "%02x", raw[i]);
+				fprintf(stderr, "\n");
+			}
+		}
+	}
+	if (getenv("SB_XH_MIRROR_DBG") && img->wrapS == 2 && img->wrapT == 2) {
+		static long n = 0;
+		if (++n <= 60) {
+			const u8* raw = (const u8*)img;
+			fprintf(stderr,
+			    "[xh-mirror] texNo=%u map=%u tex=%p num=%u img=%p caller=%p hex=",
+			    param_2, param_1, (void*)j3dSys.getTexture(),
+			    j3dSys.getTexture() ? j3dSys.getTexture()->getNum() : 0, (void*)img,
+			    __builtin_return_address(1));
+			for (int i = 0; i < 0x20; i++) fprintf(stderr, "%02x", raw[i]);
+			fprintf(stderr, "\n");
+		}
+	}
+	if (getenv("SB_XH_DBG")) {
+		const char* mk = sb_cpu_drawbuf_name();
+		if (getenv("SB_XH_ALL") && mk && strstr(mk, "Sky") != nullptr) {
+			static long an = 0;
+			if (++an <= 400)
+				fprintf(stderr, "[xh-all] map=%u dims=%ux%u fmt=%u mk='%s'\n", param_1,
+				    img->width, img->height, img->format & 0xf, mk ? mk : "(null)");
+		}
+		bool hit = mk && strstr(mk, "Sky Xlu") != nullptr;
+		if (hit) {
+			static long n = 0;
+			if (++n <= 200) {
+				const u8* raw = (const u8*)img;
+				fprintf(stderr,
+				    "[xh-dbg] texNo=%u map=%u tex=%p num=%u img=%p mark='%s' hex=",
+				    param_2, param_1, (void*)j3dSys.getTexture(),
+				    j3dSys.getTexture() ? j3dSys.getTexture()->getNum() : 0,
+				    (void*)img, sb_gx_last_marker());
+				for (int i = 0; i < 0x20; i++) fprintf(stderr, "%02x", raw[i]);
+				fprintf(stderr, "\n");
+			}
+		}
 	}
 #endif
 	J3DGDSetTexImgAttr((GXTexMapID)param_1, img->width, img->height,
