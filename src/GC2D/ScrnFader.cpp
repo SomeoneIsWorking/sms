@@ -387,7 +387,13 @@ void TSMSFader::load(JSUMemoryInputStream& stream)
 	startFadein(local_1c);
 
 	u32 local_18;
-	stream >> local_18;
+	stream.read(&local_18, 4);
+#ifdef SMS_NATIVE_PLATFORM
+	// Raw 4-byte read of a big-endian RGBA dword; the shift decomposition
+	// below assumes BE — swap to host first (same raw-JSU-read class as
+	// TViewport/TPerformList/TActor).
+	local_18 = __builtin_bswap32(local_18);
+#endif
 
 	setColor(JUtility::TColor(local_18 >> 24, local_18 >> 16 & 0xFF,
 	                          local_18 >> 8 & 0xFF, local_18 & 0xFF));
