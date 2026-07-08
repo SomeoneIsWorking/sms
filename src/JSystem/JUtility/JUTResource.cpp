@@ -3,7 +3,8 @@
 #include <JSystem/JSupport/JSUInputStream.hpp>
 #include <string.h>
 #ifdef SMS_NATIVE_PLATFORM
-#include "timg_swap.h"   // big-endian ResTIMG header -> host endianness (J2D archive textures)
+#include "timg_swap.h"    // big-endian ResTIMG header -> host endianness (J2D archive textures)
+#include "restlut_swap.h" // big-endian ResTLUT header -> host endianness (J2D indexed pane palettes)
 #endif
 
 void* JUTResReference::getResource(JSUInputStream* stream, u32 resType,
@@ -44,6 +45,12 @@ void* JUTResReference::getResource(u32 resType, JKRArchive* archive)
 	// correctly (the textured-2D render path decodes these directly). Idempotent per ptr.
 	if (res && resType == 'TIMG')
 		smsport::assets::restimg_swap_to_host(res);
+	// A 'TLUT' resource is the standalone big-endian palette for an indexed (C4/C8)
+	// J2DPicture pane; swap its numColors header field so JUTPalette::storeTLUT sizes
+	// the GXInitTlutObj/GXLoadTlut upload correctly instead of reading a byte-swapped
+	// garbage count. Idempotent per ptr.
+	if (res && resType == 'TLUT')
+		smsport::assets::restlut_swap_to_host(res);
 #endif
 	return res;
 }
