@@ -281,6 +281,16 @@ void J2DPicture::drawFullSet(int x, int y, int w, int h, J2DBinding binding,
                              J2DMirror mirror, bool flip, J2DWrapmode wrap_hor,
                              J2DWrapmode wrap_vert, Mtx* mtx)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	if (std::getenv("SB_J2D_DRAW_DUMP") != nullptr && mTextures[0]) {
+		std::fprintf(stderr,
+		    "[j2d-fullset] this=%p x=%d y=%d w=%d h=%d binding=%d mirror=%d flip=%d "
+		    "wrapH=%d wrapV=%d texW=%d texH=%d mBlack=%08x mWhite=%08x\n",
+		    (void*)this, x, y, w, h, (int)binding, (int)mirror, (int)flip,
+		    (int)wrap_hor, (int)wrap_vert, (int)mTextures[0]->getWidth(),
+		    (int)mTextures[0]->getHeight(), (unsigned)mBlack, (unsigned)mWhite);
+	}
+#endif
 	int renderX = x;
 	int renderY = y;
 	if (wrap_hor == 0) {
@@ -378,6 +388,18 @@ void J2DPicture::draw(int x, int y, int param_3, int param_4, bool param_5,
                       bool param_6, bool param_7)
 {
 	char trash[0x8];
+
+#ifdef SMS_NATIVE_PLATFORM
+	if (std::getenv("SB_J2D_DRAW_DUMP") != nullptr && mTextureNum > 0 && mTextures[0]) {
+		static long n = 0;
+		if ((++n % 1) == 0) {
+			std::fprintf(stderr,
+			    "[j2d-draw] this=%p tex0=%p x=%d y=%d w=%d h=%d visible=%d alpha=%u mBlack=%08x mWhite=%08x\n",
+			    (void*)this, (void*)mTextures[0], x, y, param_3, param_4, (int)mVisible,
+			    (unsigned)mAlpha, (unsigned)mBlack, (unsigned)mWhite);
+		}
+	}
+#endif
 
 	if (!mVisible)
 		return;
