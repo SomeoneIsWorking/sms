@@ -287,6 +287,17 @@ extern "C" const char* sb_boot_drawbuf_name(const void* buf);
 #endif
 #endif
 
+// TEMP crosshatch-hunt: CPU-side "which drawbuf is entry()-ing right now" name,
+// distinct from sb_gx_last_marker() (that one only updates when aurora's FIFO
+// parser later PROCESSES the GXInsertDebugMarker command, i.e. at end-of-frame
+// drain — it lags a whole frame behind the CPU-side material/loadTexNo calls
+// made here, so it can't be used to attribute a loadTexNo() call to the
+// DrawBuf that issued it). This one is set synchronously, in CPU order.
+#ifdef SMS_NATIVE_PLATFORM
+static const char* g_sbCpuDrawBufName = "";
+extern "C" const char* sb_cpu_drawbuf_name() { return g_sbCpuDrawBufName; }
+#endif
+
 void J3DDrawBuffer::draw() const
 {
 #ifdef SMS_AURORA
@@ -294,6 +305,7 @@ void J3DDrawBuffer::draw() const
 	// belongs to THIS buffer until the next marker (SB_DRAW_DUMP prints it).
 	{
 		const char* nm = sb_boot_drawbuf_name((const void*)this);
+		g_sbCpuDrawBufName = nm ? nm : "buf?";
 		GXInsertDebugMarker(nm ? nm : "buf?");
 	}
 #endif
