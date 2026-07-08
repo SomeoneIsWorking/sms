@@ -219,6 +219,12 @@ void J3DShape::makeVtxArrayCmd()
 
 void J3DShape::makeVcdVatCmd()
 {
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_MAKEVCD_DBG")) {
+		static long n = 0;
+		if (n < 20) { ++n; fprintf(stderr, "[makevcdvat] #%ld this=%p mVtxDescList=%p\n", n, (void*)this, (void*)mVtxDescList); }
+	}
+#endif
 	GDLObj list;
 
 	GDInitGDLObj(&list, mGDCommands, 0xC0);
