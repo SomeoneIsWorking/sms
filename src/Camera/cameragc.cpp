@@ -256,6 +256,22 @@ void CPolarSubCamera::loadAfter()
 
 	MTXCopy(unk1EC, unk21C);
 
+#ifdef SMS_NATIVE_PLATFORM
+	{
+		static int sCamDbg = -1;
+		if (sCamDbg < 0) { const char* e = getenv("SB_CAM_DBG"); sCamDbg = (e && *e && *e != '0') ? 1 : 0; }
+		static int sCamCalls = 0;
+		sCamCalls++;
+		if (sCamDbg && sCamCalls <= 30) {
+			JGeometry::TVec3<f32> mp = SMS_GetMarioPos();
+			fprintf(stderr, "[cam] pos=(%.1f,%.1f,%.1f) target=(%.1f,%.1f,%.1f) fovy=%.1f near=%.1f far=%.1f mario=(%.1f,%.1f,%.1f)\n",
+			        mPosition.x, mPosition.y, mPosition.z,
+			        mTarget.x, mTarget.y, mTarget.z,
+			        mFovy, mNear, mFar, mp.x, mp.y, mp.z);
+		}
+	}
+#endif
+
 	fabricatedInline2();
 
 	if ((unk64 & CAMERA_FLAG_JET_COASTER_SCENE) && gpMarDirector->unk7D == 1) {
