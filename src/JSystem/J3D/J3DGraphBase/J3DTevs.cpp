@@ -378,6 +378,42 @@ void J3DTexMtx::load(u32 id) const
 	                   (GXTexMtxType)mProjection);
 }
 
+#ifdef SMS_AURORA
+#include <cstdio>
+// GD-context emitter of the Aurora extended texture-object command. The GC
+// BP writes below (image attr/ptr/lookup mode) carry wrap/filter state that
+// Aurora parses, but the TEXTURE DATA binding needs the host pointer + dims
+// + format via GX_AURORA_LOAD_TEXOBJ (34-byte payload, big-endian, matching
+// aurora's handle_aurora). texObjId=0 selects Aurora's uncached texture path.
+static void sb_gd_load_texobj_aurora(u32 map, const ResTIMG* img)
+{
+	if (img->isIndexTexture) {
+		// CI textures also need GX_AURORA_LOAD_TLUT plumbing (J3DGDLoadTlut's
+		// raw BP 0x64/0x65 stream is not parsed by Aurora) — separate arc.
+		static int warned = 0;
+		if (!warned) {
+			warned = 1;
+			fprintf(stderr, "[sb] loadTexNo: CI texture bound without Aurora TLUT metadata (fmt=%d)\n",
+			        img->format);
+		}
+	}
+	const void* data = (const u8*)img + img->imageDataOffset;
+	GDOverflowCheck(37);
+	J3DGDWrite_u8(0x50);                     // GX_AURORA opcode
+	J3DGDWrite_u16(0x0030);                  // GX_AURORA_LOAD_TEXOBJ
+	J3DGDWrite_u8((u8)map);
+	J3DGDWrite_u32((u32)((u64)(uintptr_t)data >> 32));  // ptr hi (BE u64)
+	J3DGDWrite_u32((u32)(uintptr_t)data);               // ptr lo
+	J3DGDWrite_u32(img->width);
+	J3DGDWrite_u32(img->height);
+	J3DGDWrite_u32(img->format & 0xf);
+	J3DGDWrite_u32(img->isIndexTexture ? map : 0);      // GXTlut slot
+	J3DGDWrite_u8(img->mipmapCount > 1 ? 1 : 0);        // has_mips
+	J3DGDWrite_u32(0);                                  // texObjId (uncached)
+	J3DGDWrite_u32(0);                                  // texDataVersion
+}
+#endif
+
 void loadTexNo(u32 param_1, const u16& param_2)
 {
 	ResTIMG* img = &j3dSys.getTexture()->mResources[param_2];
@@ -402,6 +438,9 @@ void loadTexNo(u32 param_1, const u16& param_2)
 		J3DGDSetTexTlut((GXTexMapID)param_1, (param_1 << 15) + 0xC0000,
 		                (GXTlutFmt)img->colorFormat);
 	}
+#ifdef SMS_AURORA
+	sb_gd_load_texobj_aurora(param_1, img);
+#endif
 }
 
 void loadDither(u8) { }
