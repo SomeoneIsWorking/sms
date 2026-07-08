@@ -380,6 +380,8 @@ void J3DTexMtx::load(u32 id) const
 
 #ifdef SMS_AURORA
 #include <cstdio>
+#include <cstdlib>
+extern "C" const char* sb_gx_last_marker();
 // ResTIMG::imageDataOffset is a 32-bit field holding the offset from the
 // ResTIMG header to its image data. For most TIMGs it is a small POSITIVE
 // offset. But shared/mirror textures rebase it as a POINTER DELTA
@@ -466,6 +468,20 @@ void loadTexNo(u32 param_1, const u16& param_2)
 	ResTIMG* img = &j3dSys.getTexture()->mResources[param_2];
 	J3DSys::sTexCoordScaleTable[param_1].field_0x00 = img->width;
 	J3DSys::sTexCoordScaleTable[param_1].field_0x02 = img->height;
+#ifdef SMS_AURORA
+	// SB_CLOUD_DBG: root-cause tool for the sky/cloud crosshatch. Ground truth
+	// (scratch/oracle/cloud_ground_truth.txt) says GC binds the 8x8 I4 cloud
+	// puff texture with wrapS=wrapT=Clamp(0). Isolate by texture dims so this
+	// doesn't spam every material bind.
+	if (getenv("SB_CLOUD_DBG") && img->width == 8 && img->height == 8) {
+		static long n = 0;
+		if (++n <= 60)
+			fprintf(stderr,
+			    "[cloud-dbg] map=%u dims=%ux%u fmt=%u wrapS=%u wrapT=%u mipCount=%u minFilt=%u magFilt=%u mark='%s'\n",
+			    param_1, img->width, img->height, img->format & 0xf, img->wrapS, img->wrapT,
+			    img->mipmapCount, img->minFilter, img->magFilter, sb_gx_last_marker());
+	}
+#endif
 	J3DGDSetTexImgAttr((GXTexMapID)param_1, img->width, img->height,
 	                   (GXTexFmt)(img->format & 0xf));
 #ifdef SMS_AURORA
