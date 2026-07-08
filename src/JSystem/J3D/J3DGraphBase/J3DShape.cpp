@@ -245,6 +245,27 @@ void J3DShape::loadVtxArray() const
 		J3DLoadArrayBasePtr(GX_VA_NRM, l);
 	}
 	J3DLoadArrayBasePtr(GX_VA_CLR0, j3dSys.unk114);
+
+#ifdef SMS_NATIVE_PLATFORM
+	// TEX0-7 array bases are STATIC per-shape (unlike POS/NRM/CLR0 above, which
+	// are swapped per-frame for skinning/color-anim via j3dSys.unk10C/110/114),
+	// so on real GC hardware they are baked ONCE into this shape's own
+	// mGDCommands display list at model-load time (makeVcdVatCmd ->
+	// makeVtxArrayCmd -> GDSetArray) and replayed every draw when
+	// GXCallDisplayList(mGDCommands, 0xC0) runs above in draw(). On this port
+	// makeVcdVatCmd is never invoked (confirmed 0 calls via SB_MAKEVCD_DBG --
+	// the J3DModelLoader::load -> makeHierarchy path that would call it isn't
+	// exercised the way this decomp expects), so mGDCommands never bakes those
+	// array-base writes: g_gxState.arrays[GX_VA_TEX0..TEX7] stay whatever a
+	// PREVIOUS, unrelated shape's draw last left bound there -- the root cause
+	// of the title lens-flare "crosshatch" (indexed TEX0 fetch reading stale
+	// bytes from another shape's storage-buffer range). FIX: refresh TEX0-7
+	// live here too, from the same mVertexData source makeVtxArrayCmd reads,
+	// so every draw call gets ITS OWN shape's texcoord array bound -- matching
+	// the per-frame refresh already proven correct for POS/NRM/CLR0 just above.
+	for (u8 i = 0; i < 8; ++i)
+		J3DLoadArrayBasePtr((GXAttr)(GX_VA_TEX0 + i), mVertexData->getVtxTexCoordArray(i));
+#endif
 }
 
 #ifdef SMS_NATIVE_PLATFORM
