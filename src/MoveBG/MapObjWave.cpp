@@ -79,9 +79,21 @@ TMapObjWave::TMapObjWave(const char* name)
 	WAVE_LOG("[wave] ctor this=%p name=%s\n", (void*)this, name ? name : "?");
 }
 
-void TMapObjWave::load(JSUMemoryInputStream&)
+void TMapObjWave::load(JSUMemoryInputStream& stream)
 {
-	// @0x801dcc08. Fixed grid + tex parameters; wave coeffs selected by the stage's BG type.
+	// @0x801dcc08. First instruction is FUN_802fa69c(this, stream) == TNameRef::load(stream)
+	// (Ghidra-confirmed: reads u16 keycode + name string into the TNameRef header) -- every
+	// sibling load() in this codebase chains to a base load that does this (TActor::load ->
+	// TPlacement::load -> TNameRef::load; TViewObjPtrListT::loadSuper -> TNameRef::load
+	// directly). This port dropped it, so mName stayed at the ctor default ("波の表現")
+	// instead of being overwritten by the scene data's actual instance name ("波"), and
+	// TNameRefGen::search<TViewObj>("波") in both PerformList Movement and PerformList GX
+	// Post (loaded from /data/PerformLists.bin) came back null -> the sea's perform()
+	// (updateTime + draw) was never dispatched, though load() itself ran fine (texture and
+	// coeffs load correctly -- confirmed by SB_WAVE_DBG's "[wave] load" line).
+	JDrama::TNameRef::load(stream);
+
+	// Fixed grid + tex parameters; wave coeffs selected by the stage's BG type.
 	mExtentBase    = 5200.0f;            // SDA2[-0x2510]
 	mGridStep      = 200.0f;             // SDA2[-0x250c]
 #ifdef SMS_NATIVE_PLATFORM
