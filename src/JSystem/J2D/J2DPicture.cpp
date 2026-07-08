@@ -4,6 +4,11 @@
 #include <JSystem/JUtility/JUTResource.hpp>
 #include <JSystem/JSupport/JSURandomInputStream.hpp>
 #include <dolphin/gx.h>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#endif
 
 J2DPicture::J2DPicture(J2DPane* parent, JSURandomInputStream* stream,
                        bool is_ex)
@@ -17,9 +22,30 @@ J2DPicture::J2DPicture(J2DPane* parent, JSURandomInputStream* stream,
 	ResTLUT* tlut;
 
 	if (is_ex) {
+#ifdef SMS_NATIVE_PLATFORM
+		const s32 dbgPosStart = stream->getPosition();
+		if (std::getenv("SB_J2D_PIC_HEXDUMP") != nullptr) {
+			u8 buf[48] = {};
+			const s32 dumpFrom = dbgPosStart >= 16 ? dbgPosStart - 16 : 0;
+			stream->seek(dumpFrom, JSUStreamSeekFrom_SET);
+			stream->read(buf, sizeof(buf));
+			stream->seek(dbgPosStart, JSUStreamSeekFrom_SET);
+			std::fprintf(stderr, "[j2d-pic-hex] pos0=%d dumpFrom=%d:", dbgPosStart, dumpFrom);
+			for (u8 b : buf)
+				std::fprintf(stderr, " %02x", b);
+			std::fprintf(stderr, "\n");
+		}
+#endif
 		u8 fields = stream->readU8();
+#ifdef SMS_NATIVE_PLATFORM
+		const u8 dbgFieldsRaw = fields;
+#endif
 
 		timg = (ResTIMG*)res.getResource(stream, 'TIMG', nullptr);
+#ifdef SMS_NATIVE_PLATFORM
+		char dbgTimgName[0x100];
+		std::memcpy(dbgTimgName, res.getDebugName(), sizeof(dbgTimgName));
+#endif
 		tlut = (ResTLUT*)res.getResource(stream, 'TLUT', nullptr);
 
 		mBinding = (J2DBinding)stream->readU8();
@@ -64,6 +90,16 @@ J2DPicture::J2DPicture(J2DPane* parent, JSURandomInputStream* stream,
 		}
 
 		stream->align(4);
+#ifdef SMS_NATIVE_PLATFORM
+		if (std::getenv("SB_J2D_PIC_DUMP") != nullptr) {
+			std::fprintf(stderr,
+			             "[j2d-pic] pos0=%d fieldsRaw=%u name='%s' mBlack=%08x mWhite=%08x "
+			             "corner=[%08x %08x %08x %08x]\n",
+			             dbgPosStart, dbgFieldsRaw, dbgTimgName, (unsigned)mBlack, (unsigned)mWhite,
+			             (unsigned)mCornerColor[0], (unsigned)mCornerColor[1],
+			             (unsigned)mCornerColor[2], (unsigned)mCornerColor[3]);
+		}
+#endif
 	} else {
 		timg = (ResTIMG*)res.getResource(stream, 'TIMG', nullptr);
 		tlut = (ResTLUT*)res.getResource(stream, 'TLUT', nullptr);
