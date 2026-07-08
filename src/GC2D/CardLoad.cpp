@@ -688,6 +688,33 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 			}
 			s_lastProg = unk1C;
 		}
+		// SB_TITLE_PANE_DBG: per-frame (rate-limited) telemetry of the PRESS START
+		// ('titl'/'nint', unkF0/unkF4) fade-in and the intro-overlay (unk1D4[13])
+		// fade-out driven by titleDraw() case 2, plus unk18/mState/mIntroChaseTimer.
+		// Root-cause investigation: the port never appears to reach unk18==4 (steady
+		// state) - this traces WHY without guessing.
+		static const char* s_titleDbg = getenv("SB_TITLE_PANE_DBG");
+		if (s_titleDbg && (mState == 3 || mState == 8 || mState == 9)) {
+			static long s_tframe = 0;
+			++s_tframe;
+			if ((s_tframe % 30) == 0 || s_tframe <= 5) {
+				u8 aF0 = unkF0 ? unkF0->getPane()->getAlpha() : 0;
+				u8 aF4 = unkF4 ? unkF4->getPane()->getAlpha() : 0;
+				bool visF0 = unkF0 && unkF0->getPane()->isVisible();
+				int nDone = 0;
+				for (int i = 0; i < 13; ++i) {
+					if (!unk1D4[i]) continue;
+					u8 a = unk1D4[i]->getPane()->getAlpha();
+					if (a == 0) ++nDone;
+				}
+				fprintf(stderr,
+				    "[titlepane] frame=%ld mState=%d unk18=%d unkBC=%d introChase=%d "
+				    "F0alpha=%d F4alpha=%d F0vis=%d overlay@0=%d/13\n",
+				    s_tframe, mState, unk18, unkBC,
+				    gpCameraOption ? gpCameraOption->mIntroChaseTimer : -1,
+				    (int)aF0, (int)aF4, (int)visF0, nDone);
+			}
+		}
 	}
 #endif
 	if (param_1 & 1) {
@@ -1064,6 +1091,18 @@ bool TCardLoad::titleDraw()
 	case 2: {
 		u16 alpha = unkF0->getPane()->getAlpha() + 1;
 		if (alpha > 255) {
+			// RE'd against the US retail binary (TCardLoad::perform case 2 @
+			// 0x8016c060, Ghidra decompile): `uVar9 = 0xff;` clamps the alpha
+			// BEFORE the unconditional store below. Without this clamp, alpha
+			// wraps 0->256 (truncated to 0 by J2DPane::setAlpha(u8)) every
+			// frame it's NOT saturated, so the "any" completion check below
+			// (which drives BOTH the intro-overlay fade-out via
+			// unk1D4[i]->update() and the unk18==4 transition that unlocks
+			// the PRESS START flip-book, unkF8[11]) only runs once per ~256
+			// frames instead of every frame once saturated -- ~256x slower
+			// than retail (title_parts overlay stuck visible; PRESS START
+			// never reached in any normal play/test session).
+			alpha = 255;
 			bool any = true;
 			for (int i = 0; i < 13; ++i)
 				any &= unk1D4[i]->update();
