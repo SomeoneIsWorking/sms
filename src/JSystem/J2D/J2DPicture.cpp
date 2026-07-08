@@ -534,9 +534,12 @@ void J2DPicture::setTevMode()
 		if ((++n % 30) == 0 || n <= 5) {
 			std::fprintf(stderr,
 			    "[tev-name] setTevMode this=%p tex0=%p mBlack=%08x mWhite=%08x "
-			    "mColorAlpha=%u duotone=%d\n",
+			    "mColorAlpha=%u duotone=%d textureNum=%u tex0Transparency=%d tex0Fmt=%d\n",
 			    (void*)this, (void*)mTextures[0], (unsigned)mBlack, (unsigned)mWhite,
-			    (unsigned)mColorAlpha, (mBlack != 0x0 || mWhite != 0xffffffff) ? 1 : 0);
+			    (unsigned)mColorAlpha, (mBlack != 0x0 || mWhite != 0xffffffff) ? 1 : 0,
+			    (unsigned)mTextureNum,
+			    mTextures[0] ? (int)mTextures[0]->getTransparency() : -1,
+			    mTextures[0] ? (int)mTextures[0]->getFormat() : -1);
 		}
 	}
 #endif
