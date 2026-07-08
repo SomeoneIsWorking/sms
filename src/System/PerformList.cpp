@@ -56,6 +56,17 @@ void TPerformList::load(JSUMemoryInputStream& stream)
 		if (dbg)
 			fprintf(stderr, "[plload] list='%s' entry='%s' filter=0x%x eff=0x%x found=%d\n",
 			        getName() ? getName() : "?", acStack_6c, value, uVar5, obj != nullptr);
+		// FAIL LOUD (not fail fast -- GC ships PerformLists.bin with entries that are
+		// legitimately absent depending on scene/stage config, e.g. optional emitter
+		// groups). Silently dropping a name-search miss here previously hid the TMapObjWave
+		// ("波") registration-order bug for an unbounded number of sessions; log every drop
+		// unconditionally (not gated on SB_PL_DBG) so the next miss is visible without
+		// re-deriving this diagnostic.
+		if (!obj)
+			fprintf(stderr,
+			        "[plload] DROPPED: list='%s' entry='%s' not found in NameRef tree "
+			        "-- perform-list load will not dispatch to it\n",
+			        getName() ? getName() : "?", acStack_6c);
 #endif
 		if (obj)
 			push_back(obj, uVar5);
