@@ -380,6 +380,20 @@ void J3DTexMtx::load(u32 id) const
 
 #ifdef SMS_AURORA
 #include <cstdio>
+// ResTIMG::imageDataOffset is a 32-bit field holding the offset from the
+// ResTIMG header to its image data. For most TIMGs it is a small POSITIVE
+// offset. But shared/mirror textures rebase it as a POINTER DELTA
+// ((uintptr_t)&src + src.imageDataOffset - (uintptr_t)&dst, MapMirror.cpp:321)
+// which is NEGATIVE when src precedes dst. Stored in a u32 and added to a
+// 64-bit host pointer without sign extension, a negative delta becomes ~+4GB
+// and reads out of bounds (crashes aurora convert_texture). Sign-extend the
+// 32-bit delta so the add is the intended displacement. Same LP64 class as
+// [[fileselect-cap-texture-setrestimg-lp64]]. (No-op for normal positive
+// offsets: bit 31 clear.)
+static inline intptr_t sb_timg_image_offset(const ResTIMG* img)
+{
+	return (intptr_t)(s32)img->imageDataOffset;
+}
 // GD-context emitter of the Aurora extended texture-object command. The GC
 // BP writes below (image attr/ptr/lookup mode) carry wrap/filter state that
 // Aurora parses, but the TEXTURE DATA binding needs the host pointer + dims
@@ -397,7 +411,23 @@ static void sb_gd_load_texobj_aurora(u32 map, const ResTIMG* img)
 			        img->format);
 		}
 	}
-	const void* data = (const u8*)img + img->imageDataOffset;
+	// imageDataOffset is a 32-bit field. For most TIMGs it is a small positive
+	// offset from the ResTIMG header to its image data. But MapMirror rebases
+	// it as a POINTER DELTA ((uintptr_t)&src + off - (uintptr_t)&dst) truncated
+	// to u32 (MapMirror.cpp:321) — negative on LP64 when src precedes dst, so
+	// the stored u32 is ~4GB and `img + (u32)off` lands 4GB out of bounds
+	// (crashes convert_texture). Sign-extend the 32-bit delta so the add is the
+	// intended negative displacement. Same LP64 class as
+	// [[fileselect-cap-texture-setrestimg-lp64]].
+	const void* data = (const u8*)img + sb_timg_image_offset(img);
+	if (getenv("SB_TEXOBJ_DBG")) {
+		static long n = 0;
+		bool hi = (img->imageDataOffset & 0x80000000u) != 0;
+		if (hi || ++n <= 60)
+			fprintf(stderr, "[texobj] map=%u img=%p off=%08x data=%p %ux%u fmt=%u mips=%u ci=%u%s\n", map,
+			        (void*)img, img->imageDataOffset, data, img->width, img->height, img->format & 0xf,
+			        img->mipmapCount, img->isIndexTexture, hi ? " <BIT31>" : "");
+	}
 	GDOverflowCheck(37);
 	J3DGDWrite_u8(0x50);                     // GX_AURORA opcode
 	J3DGDWrite_u16(0x0030);                  // GX_AURORA_LOAD_TEXOBJ
@@ -421,7 +451,13 @@ void loadTexNo(u32 param_1, const u16& param_2)
 	J3DSys::sTexCoordScaleTable[param_1].field_0x02 = img->height;
 	J3DGDSetTexImgAttr((GXTexMapID)param_1, img->width, img->height,
 	                   (GXTexFmt)(img->format & 0xf));
+#ifdef SMS_AURORA
+	// Same signed-delta reconstruction as the LOAD_TEXOBJ emit (this BP write
+	// is inert under Aurora, but keep the pointer arithmetic consistent).
+	J3DGDSetTexImgPtr((GXTexMapID)param_1, (u8*)img + sb_timg_image_offset(img));
+#else
 	J3DGDSetTexImgPtr((GXTexMapID)param_1, (u8*)img + img->imageDataOffset);
+#endif
 
 	J3DGDSetTexLookupMode(
 	    (GXTexMapID)param_1, (GXTexWrapMode)img->wrapS,
