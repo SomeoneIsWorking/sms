@@ -438,13 +438,24 @@ static void sb_gd_load_texobj_aurora(u32 map, const ResTIMG* img)
 	J3DGDWrite_u32(img->height);
 	J3DGDWrite_u32(img->format & 0xf);
 	J3DGDWrite_u32(img->isIndexTexture ? map : 0);      // GXTlut slot
-	// has_mips=0: aurora derives mip_count() from max_lod() (texobj mode0),
-	// which this GD-context emit does not write — a stale mode0 would make
-	// new_static_texture_2d loop bogus mip levels off the end of the image
-	// buffer. LOD state isn't plumbed through the GD stream, so bind mip 0
-	// only (faithful for the title's non-mipmapped materials; LOD is a named
-	// follow-up alongside the CI/TLUT path).
-	J3DGDWrite_u8(0);                                    // has_mips
+	// Mip level count, straight from the TIMG header (mipmapCount==1 means
+	// "base level only", matching aurora's GXTexObj_::mip_count() convention
+	// exactly -- see JUTTexture.cpp/MapMirror.cpp, which set this field to 1
+	// for their synthetic no-mip textures). Previously hardcoded to 0 ("no
+	// mips") for every GD-context texture bind regardless of the source
+	// asset's real mip chain: aurora derives mip_count() from
+	// has_mips()/max_lod() (texobj mode0/mode1), and this GD-context emit
+	// wrote neither, so every material texture bound this way -- including
+	// small, heavily-tiled ones like the sky's 8x8 I4 cloud texture -- was
+	// uploaded with exactly 1 level. Minifying a repeating pattern without
+	// mip filtering aliases into a fine regular moire/crosshatch; the tiny
+	// cloud texture (tiled many times across the sky dome) is the
+	// worst-case instance of this general gap. The BMD's mip data (when
+	// mipmapCount>1) is stored contiguously after the base level in the
+	// same tiled format, which is exactly what
+	// GX_AURORA_LOAD_TEXOBJ's raw pointer + width/height/format triggers
+	// aurora's DecodeTiled<>() to walk (see command_processor.cpp).
+	J3DGDWrite_u8(img->mipmapCount);                    // mip level count
 	J3DGDWrite_u32(0);                                  // texObjId (uncached)
 	J3DGDWrite_u32(0);                                  // texDataVersion
 }
