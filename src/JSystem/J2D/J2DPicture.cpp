@@ -20,6 +20,9 @@ J2DPicture::J2DPicture(J2DPane* parent, JSURandomInputStream* stream,
 
 	ResTIMG* timg;
 	ResTLUT* tlut;
+#ifdef SMS_NATIVE_PLATFORM
+	char dbgTimgNameForLog[0x100] = "(non-ex)";
+#endif
 
 	if (is_ex) {
 #ifdef SMS_NATIVE_PLATFORM
@@ -45,6 +48,7 @@ J2DPicture::J2DPicture(J2DPane* parent, JSURandomInputStream* stream,
 #ifdef SMS_NATIVE_PLATFORM
 		char dbgTimgName[0x100];
 		std::memcpy(dbgTimgName, res.getDebugName(), sizeof(dbgTimgName));
+		std::memcpy(dbgTimgNameForLog, dbgTimgName, sizeof(dbgTimgNameForLog));
 #endif
 		tlut = (ResTLUT*)res.getResource(stream, 'TLUT', nullptr);
 
@@ -93,9 +97,11 @@ J2DPicture::J2DPicture(J2DPane* parent, JSURandomInputStream* stream,
 #ifdef SMS_NATIVE_PLATFORM
 		if (std::getenv("SB_J2D_PIC_DUMP") != nullptr) {
 			std::fprintf(stderr,
-			             "[j2d-pic] pos0=%d fieldsRaw=%u name='%s' mBlack=%08x mWhite=%08x "
+			             "[j2d-pic] pos0=%d fieldsRaw=%u name='%s' dims=%ux%u mBlack=%08x mWhite=%08x "
 			             "corner=[%08x %08x %08x %08x]\n",
-			             dbgPosStart, dbgFieldsRaw, dbgTimgName, (unsigned)mBlack, (unsigned)mWhite,
+			             dbgPosStart, dbgFieldsRaw, dbgTimgName,
+			             timg ? (unsigned)timg->width : 0u, timg ? (unsigned)timg->height : 0u,
+			             (unsigned)mBlack, (unsigned)mWhite,
 			             (unsigned)mCornerColor[0], (unsigned)mCornerColor[1],
 			             (unsigned)mCornerColor[2], (unsigned)mCornerColor[3]);
 		}
@@ -143,6 +149,17 @@ J2DPicture::J2DPicture(J2DPane* parent, JSURandomInputStream* stream,
 	unk114[2] = 1.0;
 	unk114[3] = 1.0;
 	setBlendKonstAlpha();
+
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_TEV_NAME_DBG: correlate this J2DPicture's mTextures[0] pointer with the
+	// name it was constructed from, so a later setTevMode() dump (which only has
+	// the pointer, via aurora's GXTexObj) can be matched back to a texture name.
+	// Root-cause tool for the title-logo duotone-stage investigation.
+	if (std::getenv("SB_TEV_NAME_DBG") != nullptr) {
+		std::fprintf(stderr, "[tev-name] this=%p tex0=%p name='%s'\n", (void*)this,
+		             (void*)mTextures[0], dbgTimgNameForLog);
+	}
+#endif
 }
 
 J2DPicture::~J2DPicture()
@@ -465,6 +482,18 @@ void J2DPicture::drawTexCoord(int x, int y, int w, int h, float u1, float v1,
 
 void J2DPicture::setTevMode()
 {
+#ifdef SMS_NATIVE_PLATFORM
+	if (std::getenv("SB_TEV_NAME_DBG") != nullptr) {
+		static long n = 0;
+		if ((++n % 30) == 0 || n <= 5) {
+			std::fprintf(stderr,
+			    "[tev-name] setTevMode this=%p tex0=%p mBlack=%08x mWhite=%08x "
+			    "mColorAlpha=%u duotone=%d\n",
+			    (void*)this, (void*)mTextures[0], (unsigned)mBlack, (unsigned)mWhite,
+			    (unsigned)mColorAlpha, (mBlack != 0x0 || mWhite != 0xffffffff) ? 1 : 0);
+		}
+	}
+#endif
 	u8 i;
 	for (i = 0; i < mTextureNum; ++i) {
 		GXSetTexCoordGen2((GXTexCoordID)i, GX_TG_MTX2x4, GX_TG_TEX0, 0x3c, 0,
