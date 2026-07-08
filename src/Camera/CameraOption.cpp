@@ -72,6 +72,23 @@ void CPolarSubCamera::ctrlOptionCamera_()
 	unk148.y = mTarget.y;
 	unk148.z = mTarget.z;
 	mFovy    = gpCameraOption->mFovy;
+
+#ifdef SMS_NATIVE_PLATFORM
+	{
+		static int sCamDbg = -1;
+		if (sCamDbg < 0) { const char* e = getenv("SB_CAM_DBG"); sCamDbg = (e && *e && *e != '0') ? 1 : 0; }
+		static int sCalls = 0; sCalls++;
+		if (sCamDbg && (sCalls <= 5 || sCalls % 100 == 0)) {
+			fprintf(stderr, "[camopt] n=%d pos=(%.1f,%.1f,%.1f) target=(%.1f,%.1f,%.1f) introTimer=%d loadTimer=%d cubeTimer=%d updownTimer=%d flags=0x%x fovy=%.1f destPos=(%.1f,%.1f,%.1f)\n",
+			        sCalls, mPosition.x, mPosition.y, mPosition.z,
+			        mTarget.x, mTarget.y, mTarget.z,
+			        gpCameraOption->mIntroChaseTimer, gpCameraOption->mLoadPanTimer,
+			        gpCameraOption->mCubePanTimer, gpCameraOption->mUpDownPanTimer,
+			        gpCameraOption->mFlags, mFovy,
+			        gpCameraOption->mDestPos->x, gpCameraOption->mDestPos->y, gpCameraOption->mDestPos->z);
+		}
+	}
+#endif
 }
 
 TCameraOption::TCameraOption(JGeometry::TVec3<f32> param1,
