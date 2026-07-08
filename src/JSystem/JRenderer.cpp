@@ -1,4 +1,14 @@
 #include <JSystem/JRenderer.hpp>
+
+#ifdef SMS_NATIVE_PLATFORM
+// GC SDK BP register-id tables for texture maps 0-7 (defined in J3DTevs.cpp;
+// the reference dolphin/ headers that declare them are excluded from staging).
+extern u8 GXTexImage0Ids[8];
+extern u8 GXTexImage1Ids[8];
+extern u8 GXTexImage2Ids[8];
+extern u8 GXTexImage3Ids[8];
+extern u8 GXTexTlutIds[8];
+#endif
 #include <dolphin/os.h>
 
 void J3DGDLoadTexMtxImm(MtxPtr mtx, u32 i, GXTexMtxType type)
@@ -275,7 +285,10 @@ void J3DGDSetTexImgPtr(GXTexMapID param_1, void* param_2)
 {
 	// clang-format off
 	u32 reg =
-		(u32) ((uintptr_t)OSPhysicalToCached(param_2) >> 5) |
+		// Host build: OSPhysicalToCached is a GC address-space macro; the
+		// truncated host pointer here is inert for Aurora (textures bind via
+		// GX_AURORA_LOAD_TEXOBJ), kept only for BP-stream shape fidelity.
+		(u32) (((uintptr_t)param_2) >> 5) |
 		(u32) GXTexImage3Ids[param_1] << 24;
 	// clang-format on
 
@@ -306,7 +319,7 @@ void J3DGDLoadTlut(void* param_1, u32 param_2, GXTlutSize param_3)
 	GDOverflowCheck(5);
 	// clang-format off
 	J3DGDWriteBPCmd(
-		(u32) ((uintptr_t)OSPhysicalToCached(param_1) >> 5) |
+		(u32) (((uintptr_t)param_1) >> 5) |
 		(u32) 0x64 << 24
 	);
 	// clang-format on
@@ -549,6 +562,15 @@ void JRNISetTevOrder(GXTevStageID param_1, GXTexCoordID param_2,
 		param_5 = GX_TEXCOORD0;
 	}
 
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_TEVORDER_DBG=1: log the raw TevOrder args reaching the TREF writer.
+	if (getenv("SB_TEVORDER_DBG")) {
+		static long n = 0;
+		if (++n <= 400)
+			fprintf(stderr, "[tevorder] n=%ld stage=%d texCoord=%d texMap=%d colorChan=%d\n",
+			        n, (int)param_1, (int)param_2, (int)param_3, (int)param_4);
+	}
+#endif
 	// clang-format off
 	u32 reg =
 		(u32)(param_3 & 0x7) |
