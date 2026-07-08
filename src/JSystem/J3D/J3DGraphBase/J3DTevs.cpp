@@ -438,7 +438,13 @@ static void sb_gd_load_texobj_aurora(u32 map, const ResTIMG* img)
 	J3DGDWrite_u32(img->height);
 	J3DGDWrite_u32(img->format & 0xf);
 	J3DGDWrite_u32(img->isIndexTexture ? map : 0);      // GXTlut slot
-	J3DGDWrite_u8(img->mipmapCount > 1 ? 1 : 0);        // has_mips
+	// has_mips=0: aurora derives mip_count() from max_lod() (texobj mode0),
+	// which this GD-context emit does not write — a stale mode0 would make
+	// new_static_texture_2d loop bogus mip levels off the end of the image
+	// buffer. LOD state isn't plumbed through the GD stream, so bind mip 0
+	// only (faithful for the title's non-mipmapped materials; LOD is a named
+	// follow-up alongside the CI/TLUT path).
+	J3DGDWrite_u8(0);                                    // has_mips
 	J3DGDWrite_u32(0);                                  // texObjId (uncached)
 	J3DGDWrite_u32(0);                                  // texDataVersion
 }
