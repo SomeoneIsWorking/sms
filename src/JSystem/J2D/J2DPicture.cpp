@@ -98,16 +98,26 @@ J2DPicture::J2DPicture(J2DPane* parent, JSURandomInputStream* stream,
 		if (std::getenv("SB_J2D_PIC_DUMP") != nullptr) {
 			std::fprintf(stderr,
 			             "[j2d-pic] pos0=%d fieldsRaw=%u name='%s' dims=%ux%u mBlack=%08x mWhite=%08x "
-			             "corner=[%08x %08x %08x %08x]\n",
+			             "corner=[%08x %08x %08x %08x] tlut=%p tlutNumColors=%u tlutFmt=%u "
+			             "timgIsIndex=%u timgColorFmt=%u timgNumColors=%u\n",
 			             dbgPosStart, dbgFieldsRaw, dbgTimgName,
 			             timg ? (unsigned)timg->width : 0u, timg ? (unsigned)timg->height : 0u,
 			             (unsigned)mBlack, (unsigned)mWhite,
 			             (unsigned)mCornerColor[0], (unsigned)mCornerColor[1],
-			             (unsigned)mCornerColor[2], (unsigned)mCornerColor[3]);
+			             (unsigned)mCornerColor[2], (unsigned)mCornerColor[3],
+			             (void*)tlut, tlut ? (unsigned)tlut->numColors : 0u,
+			             tlut ? (unsigned)tlut->format : 0u,
+			             timg ? (unsigned)timg->isIndexTexture : 0u,
+			             timg ? (unsigned)timg->colorFormat : 0u,
+			             timg ? (unsigned)timg->numColors : 0u);
 		}
 #endif
 	} else {
 		timg = (ResTIMG*)res.getResource(stream, 'TIMG', nullptr);
+#ifdef SMS_NATIVE_PLATFORM
+		char dbgTimgName2[0x100];
+		std::memcpy(dbgTimgName2, res.getDebugName(), sizeof(dbgTimgName2));
+#endif
 		tlut = (ResTLUT*)res.getResource(stream, 'TLUT', nullptr);
 
 		mBinding     = (J2DBinding)stream->readU8();
@@ -122,6 +132,20 @@ J2DPicture::J2DPicture(J2DPane* parent, JSURandomInputStream* stream,
 		mWhite = 0xffffffff;
 
 		setCornerColor(0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff);
+#ifdef SMS_NATIVE_PLATFORM
+		if (std::getenv("SB_J2D_PIC_DUMP") != nullptr) {
+			std::fprintf(stderr,
+			             "[j2d-pic-nonex] name='%s' dims=%ux%u tlut=%p tlutNumColors=%u tlutFmt=%u "
+			             "timgIsIndex=%u timgColorFmt=%u timgNumColors=%u\n",
+			             dbgTimgName2,
+			             timg ? (unsigned)timg->width : 0u, timg ? (unsigned)timg->height : 0u,
+			             (void*)tlut, tlut ? (unsigned)tlut->numColors : 0u,
+			             tlut ? (unsigned)tlut->format : 0u,
+			             timg ? (unsigned)timg->isIndexTexture : 0u,
+			             timg ? (unsigned)timg->colorFormat : 0u,
+			             timg ? (unsigned)timg->numColors : 0u);
+		}
+#endif
 	}
 
 	mTextures[0] = nullptr;
