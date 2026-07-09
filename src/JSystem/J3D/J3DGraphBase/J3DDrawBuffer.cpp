@@ -402,9 +402,14 @@ void J3DDrawBuffer::drawHead() const
 			std::fprintf(stderr, "[dbhead-mat] phase=6 buf=%p packets=%ld mats=%s\n",
 			             (const void*)this, np, mats);
 		}
-		if (np > 0)
-			std::fprintf(stderr, "[dbhead] phase=%d buf=%p packets=%ld\n",
-			             sb_boot_capture_phase(), (const void*)this, np);
+		if (np > 0) {
+			const char* bn = (&sb_boot_drawbuf_name)
+			                     ? sb_boot_drawbuf_name((const void*)this)
+			                     : nullptr;
+			std::fprintf(stderr, "[dbhead] phase=%d buf=%p packets=%ld name=\"%s\"\n",
+			             sb_boot_capture_phase(), (const void*)this, np,
+			             bn ? bn : "(unknown)");
+		}
 	}
 	// SB_DBHEAD_PKT=1: at each flush of a buffer that holds the sea-mask material (c97c48), print the
 	// live GXSetColorUpdate/AlphaUpdate + every packet's (phase, model, modelData, material) so ph1 vs
