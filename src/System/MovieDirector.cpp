@@ -265,7 +265,13 @@ int TMovieDirector::direct()
 		if (!OSIsThreadTerminated(&gSetupThread))
 			return 0;
 
-		void* errc;
+		// Same uninitialized-out-param bug fixed in TMarDirector::direct()
+		// (see the long comment there): native OSJoinThread is a no-op that
+		// never writes `errc`, so this garbage stack slot made every movie
+		// (incl. the title idle-attract autodemoA) bounce straight back to
+		// APP_STATE_GAMEPLAY, rebuilding TMarDirector in a tight loop.
+		// Default to nullptr = "setup thread reported success".
+		void* errc = nullptr;
 		OSJoinThread(&gSetupThread, &errc);
 		if (errc)
 			return 5;
