@@ -468,10 +468,33 @@ void TApplication::initialize_nlogoAfter()
 	JKRGetRootHeap()->getSize(spGameHeapBlock);
 
 	JKRMemArchive* this_00 = new JKRMemArchive(arcBufMario, 0, MBF_0);
+#ifdef SMS_NATIVE_PLATFORM
+	// The US disc (GMSE01) ships /common/card/mariobnr.bti, not the JP-only
+	// "mariobnr_jpn.bti" (confirmed by extracting+RARC-parsing the disc's
+	// /data/common.szs -> scratch/arc/data/common.arc: card/ dir contains
+	// mariobnr.bti + mario_icon.bti, no *_jpn variant). getResource() returns
+	// nullptr for the missing JP name; the original code below unconditionally
+	// adds 1 (sizeof(ResTIMG)==0x20) to the result, turning a real null into
+	// (ResTIMG*)0x20 -- which defeats buildHeader_'s `if (mBanner)` null guard
+	// (CardManager.cpp) and segfaults on the memcpy. Null-check each lookup
+	// before the +1 so a genuinely-missing resource stays null.
+	{
+		void* icon = piVar2->getResource("/card/mario_icon.bti");
+		gpCardManager->mIcons = icon ? (ResTIMG*)icon + 1 : nullptr;
+		if (!icon)
+			OSReport("[cardmgr] missing /card/mario_icon.bti in common.arc\n");
+
+		void* banner = piVar2->getResource("/card/mariobnr.bti");
+		gpCardManager->mBanner = banner ? (ResTIMG*)banner + 1 : nullptr;
+		if (!banner)
+			OSReport("[cardmgr] missing /card/mariobnr.bti in common.arc\n");
+	}
+#else
 	gpCardManager->mIcons
 	    = (ResTIMG*)piVar2->getResource("/card/mario_icon.bti") + 1;
 	gpCardManager->mBanner
 	    = (ResTIMG*)piVar2->getResource("/card/mariobnr_jpn.bti") + 1;
+#endif
 
 	int status;
 	while ((status = gpCardManager->getLastStatus()) == -1)
