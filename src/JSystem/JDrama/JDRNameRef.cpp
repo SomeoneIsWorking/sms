@@ -85,6 +85,11 @@ TNameRef* TNameRef::genObject(JSUMemoryInputStream& param_1,
 			"SunflowerSManager", "MareJellyFish",
 			// Decorative plaza flag -- TMapObjFlag class is not decompiled.
 			"MapObjFlag",
+			// Delfino Airport (stage 0) -- same STOPGAP as the plaza set above:
+			// unported NPC/creature manager found by SB_GENOBJ_SKIP_ALL survey on
+			// the airport0.arc scene graph. Distinct variant of FruitsBoatManager
+			// above.
+			"FruitsBoatManagerB",
 		};
 		bool known = false;
 		// All individual NPC actor names (NPC*) are deliberately nulled in
