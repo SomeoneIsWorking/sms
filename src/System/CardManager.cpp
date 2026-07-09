@@ -531,12 +531,13 @@ void TCardManager::buildHeader_(HeaderData* header)
 		         auStack_54.mon + 1);
 	}
 #ifdef SMS_NATIVE_PLATFORM
-	// mBanner/mIcons point at /card/mario{bnr_jpn,_icon}.bti resources loaded during
-	// the nlogoAfter boot-init (TApplication, ~Application.cpp:414). A direct stage jump
-	// (SB_STAGE) into the file-select skips that init, leaving them null — and the JPN
-	// banner name also differs on the US (GMSE01) disc. The banner/icon are cosmetic GC
-	// BIOS file-manager metadata, irrelevant to gameplay; write a blank one instead of
-	// memcpy-ing from a null source. (Proper fix: run the .bti resource load before this.)
+	// mBanner/mIcons point at /card/mario{bnr,_icon}.bti resources loaded during
+	// the nlogoAfter boot-init (TApplication::initialize_nlogoAfter, Application.cpp
+	// ~line 470; region-correct US name "mariobnr.bti" resolved and null-guarded there).
+	// A direct stage jump (SB_STAGE) into the file-select skips that init entirely,
+	// leaving these genuinely null. The banner/icon are cosmetic GC BIOS file-manager
+	// metadata, irrelevant to gameplay; write a blank one instead of memcpy-ing from a
+	// null source in that case.
 	if (mBanner)
 		memcpy(header->mBanner, mBanner, sizeof(header->mBanner));
 	else {
