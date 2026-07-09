@@ -146,7 +146,21 @@ JKRHeap* JKRHeap::findFromRoot(void* ptr)
 
 JKRHeap* JKRHeap::find(void* memory) const
 {
-	if ((mStart <= memory) && (memory <= mEnd)) {
+	// mEnd is one-past-the-end (every ctor: mEnd = data + size), so containment
+	// must be exclusive at mEnd. The retail-inclusive `<=` misattributes a buffer
+	// that starts EXACTLY at a saturated child heap's mEnd to that child (bump
+	// allocators place blocks adjacently): particle.arc's 0x200000 load buffer
+	// landed on gpEmitterManager4D2's zero-slack JPABaseField solid heap's mEnd,
+	// so findFromRoot returned the full 10.5 KB field heap -> RARC side-array
+	// alloc OOM'd there + JKRMemArchive::open stored the wrong mHeap for frees.
+	// Retail's `<=` (a latent bug GC allocation order never trips) is kept
+	// off-native for decomp matching.
+#ifdef SMS_NATIVE_PLATFORM
+	const bool belowEnd = memory < mEnd;
+#else
+	const bool belowEnd = memory <= mEnd;
+#endif
+	if ((mStart <= memory) && belowEnd) {
 		if (mChildTree.getNumChildren() != 0) {
 			for (JSUTreeIterator<JKRHeap> iterator(mChildTree.getFirstChild());
 			     iterator != mChildTree.getEndChild(); ++iterator) {
