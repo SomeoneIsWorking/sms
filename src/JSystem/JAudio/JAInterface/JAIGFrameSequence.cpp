@@ -23,6 +23,21 @@ void JAIBasic::stopSeq(JAISound* param_1)
 		}
 	}
 
+#ifdef SMS_NATIVE_PLATFORM
+	// Unported-audio seam (the JAS DSP-frame mixer arc): startSeq recorded this
+	// handle in the BGM track table, but the backend never attached a
+	// JASeqParameter (unk38 stays the ctor's null). GC never sees this state --
+	// a registered handle always has a live sequence. Do the handle-side
+	// cleanup and skip the seq-parameter teardown; delete this guard when the
+	// audio arc lands and startSeq populates real sequences.
+	if (param_1->getSeqParameter() == nullptr) {
+		param_1->unk34 = nullptr;
+		param_1->unk1  = 0;
+		releaseControllerHandle(&unk0->unk210, param_1);
+		unk0->unk180[param_1->unk0].unk48 = nullptr;
+		return;
+	}
+#endif
 	param_1->unk34                      = nullptr;
 	param_1->getSeqParameter()->unk1850 = nullptr;
 	if (param_1->unk1 >= 3) {
