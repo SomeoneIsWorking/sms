@@ -1,9 +1,14 @@
 #include <JSystem/JDrama/JDRViewObj.hpp>
 #ifdef SMS_NATIVE_PLATFORM
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 extern "C" unsigned VIGetRetraceCount(void) __attribute__((weak));
+// Shared cross-instrument sequence counter (sms-boot/runtime/trace_seq.cpp).
+// SB_TRACE_SEQ=1: prefix plist-order lines with seq=N so this family
+// interleaves exactly with the present-boundary/proj/drawbuf-flush logs.
+extern "C" uint64_t sb_trace_seq(void) __attribute__((weak));
 #endif
 
 void JDrama::TViewObj::testPerform(u32 cue, JDrama::TGraphics* graphics)
@@ -54,8 +59,18 @@ void JDrama::TViewObj::testPerform(u32 cue, JDrama::TGraphics* graphics)
 					static long n = 0;
 					++n;
 					const char* nm = getName();
-					std::fprintf(stderr, "[plist-order] n=%ld retrace=%u name=\"%s\" flags=0x%x\n", n, retrace,
-					             nm ? nm : "<null>", param_1);
+					static int traceSeqOn = -1;
+					if (traceSeqOn < 0) {
+						const char* eSeq = getenv("SB_TRACE_SEQ");
+						traceSeqOn = (eSeq && eSeq[0] && eSeq[0] != '0') ? 1 : 0;
+					}
+					if (traceSeqOn && &sb_trace_seq) {
+						std::fprintf(stderr, "[plist-order] seq=%lu n=%ld retrace=%u name=\"%s\" flags=0x%x\n",
+						             (unsigned long)sb_trace_seq(), n, retrace, nm ? nm : "<null>", param_1);
+					} else {
+						std::fprintf(stderr, "[plist-order] n=%ld retrace=%u name=\"%s\" flags=0x%x\n", n, retrace,
+						             nm ? nm : "<null>", param_1);
+					}
 				}
 			}
 		}
