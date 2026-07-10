@@ -12,14 +12,14 @@ BOOL TMario::taking()
 	}
 
 	setAnimation(ANIM_RAISE, 1.0f);
-	if (unk384 != nullptr && mModel->getFrameCtrl(0).checkPass(11.0f)) {
-		if (unk384->receiveMessage(this, HIT_MESSAGE_TAKE) == true) {
+	if (mLastMsgSender != nullptr && mModel->getFrameCtrl(0).checkPass(11.0f)) {
+		if (mLastMsgSender->receiveMessage(this, HIT_MESSAGE_TAKE) == true) {
 			startVoice(MSD_SE_MV15_EXERT_INST_01);
-			mHeldObject = (TTakeActor*)unk384;
+			mHeldObject = (TTakeActor*)mLastMsgSender;
 		} else {
 			return changePlayerStatus(MARIO_STATUS_WAIT, 0, false);
 		}
-		unk384 = nullptr;
+		mLastMsgSender = nullptr;
 	}
 	if (isLast1AnimeFrame()) {
 		mUpperState   = UPPER_STATE_HOLDING_OBJECT;

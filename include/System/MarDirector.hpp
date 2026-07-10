@@ -136,29 +136,29 @@ public:
 
 	// fabricated
 	u8 getCurrentMap() { return mMap; }
-	u8 getCurrentStage() { return unk7D; }
+	u8 getCurrentStage() { return mScenario; }
 	bool checkUnk4CFlag(int flag) { return unk4C & flag; }
 	void onUnk4CFlag(int flag) { unk4C |= flag; }
 	void offUnk4CFlag(int flag) { unk4C &= ~flag; }
 	TGCConsole2* getConsole() { return mConsole; }
 
-	bool isTalkModeNow() const { return unk124 == 1 || unk124 == 2; }
+	bool isTalkModeNow() const { return mGameState == 1 || mGameState == 2; }
 
-	bool isDemoModeNow() const { return unk124 == 3 || unk124 == 4; }
+	bool isDemoModeNow() const { return mGameState == 3 || mGameState == 4; }
 
 	// TODO: better names
-	bool isDemoMode3() const { return unk124 == 3; }
-	bool isDemoMode4() const { return unk124 == 4; }
+	bool isDemoMode3() const { return mGameState == 3; }
+	bool isDemoMode4() const { return mGameState == 4; }
 
 	bool isTalkOrDemoModeNow() const
 	{
 		return isTalkModeNow() || isDemoModeNow();
 	}
 
-	bool isThing() const { return isTalkModeNow() || unk124 == 4; }
+	bool isThing() const { return isTalkModeNow() || mGameState == 4; }
 
 	void* getUnkD4() { return unkD4; }
-	TBaseNPC* getTalkingNPC() { return unkA0; }
+	TBaseNPC* getTalkingNPC() { return mTalkingNPC; }
 
 	int getRestTime()
 	{
@@ -211,13 +211,13 @@ public:
 	/* 0x74 */ TGCConsole2* mConsole;
 	/* 0x78 */ TGuide* unk78;
 	/* 0x7C */ u8 mMap;
-	/* 0x7D */ u8 unk7D; // Scenario
+	/* 0x7D */ u8 mScenario; // Scenario
 	/* 0x7E */ u8 unk7E;
 	/* 0x7F */ u8 unk7F;
 	/* 0x80 */ JDrama::TViewObjPtrListT<JDrama::TViewObj>* unk80;
 	/* 0x84 */ TTalkCursor* unk84;
 	/* 0x88 */ JGadget::TVector_pointer<TBaseNPC> unk88;
-	/* 0xA0 */ TBaseNPC* unkA0; // talking NPC
+	/* 0xA0 */ TBaseNPC* mTalkingNPC; // talking NPC
 	/* 0xA4 */ u32 unkA4;
 	/* 0xA8 */ char unkA8[0x4];
 	/* 0xAC */ TPauseMenu2* unkAC;
@@ -237,9 +237,9 @@ public:
 	/* 0xE4 */ u32 unkE4;
 	/* 0xE8 */ OSStopwatch unkE8;
 	/* 0x120 */ int unk120;
-	/* 0x124 */ u8 unk124; // Game state, paused, shine animation, 2=talking
+	/* 0x124 */ u8 mGameState; // paused, shine animation, 2=talking
 	/* 0x125 */ u8 unk125;
-	/* 0x126 */ u8 unk126; // Next game state
+	/* 0x126 */ u8 mNextGameState; // Next game state
 	/* 0x128 */ u16 unk128;
 	/* 0x12C */ TDemoInfo unk12C[8];
 	/* 0x24C */ u8 unk24C;

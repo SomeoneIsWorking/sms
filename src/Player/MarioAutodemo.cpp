@@ -25,8 +25,8 @@ BOOL TMario::winDemo()
 		}
 		gpConductor->killEnemiesWithin(mPosition, 2000.0f);
 		if (jumpProcess(0) == TRUE) {
-			gpMarDirector->fireGetStar((TShine*)unk384);
-			unk384->receiveMessage(this, HIT_MESSAGE_TAKE);
+			gpMarDirector->fireGetStar((TShine*)mLastMsgSender);
+			mLastMsgSender->receiveMessage(this, HIT_MESSAGE_TAKE);
 			mStatusState = 1;
 		}
 		break;
@@ -45,7 +45,7 @@ BOOL TMario::readBillboard()
 	// Missing stack space
 	// volatile u32 padding[16];
 
-	TBaseNPC* talkingNpc = gpMarDirector->unkA0;
+	TBaseNPC* talkingNpc = gpMarDirector->mTalkingNPC;
 	switch (mStatusState) {
 	case 0: {
 		const JGeometry::TVec3<f32>& targetPos = talkingNpc->getPosition();
@@ -74,13 +74,13 @@ BOOL TMario::readBillboard()
 		                  mAutoDemoParams.mReadRotSp.get());
 		mFaceAngle.y = convAngle;
 		if (attackAngle == mFaceAngle.y) {
-			gpMarDirector->unk126 = 2;
+			gpMarDirector->mNextGameState = 2;
 			mStatusState          = 2;
 		}
 		break;
 	}
 	case 2:
-		if (gpMarDirector->unk124 == 0 || gpMarDirector->unk124 == 5) {
+		if (gpMarDirector->mGameState == 0 || gpMarDirector->mGameState == 5) {
 			changePlayerStatus(MARIO_STATUS_WAIT, 0, true);
 		}
 		break;
@@ -159,8 +159,8 @@ BOOL TMario::warpIn()
 	// Missing stack space
 	// volatile u32 padding[10];
 	mStatusTimer += 1;
-	const JGeometry::TVec3<f32>& gatePosOffset = ((TModelGate*)mHolder)->unkAC;
-	JGeometry::TVec3<f32> holderPosOffset(((TModelGate*)mHolder)->unkAC);
+	const JGeometry::TVec3<f32>& gatePosOffset = ((TModelGate*)mHolder)->mHoldOffset;
+	JGeometry::TVec3<f32> holderPosOffset(((TModelGate*)mHolder)->mHoldOffset);
 	holderPosOffset.y -= 80.0f;
 	switch (mStatusState) {
 	case 0: {
@@ -169,7 +169,7 @@ BOOL TMario::warpIn()
 				getOffYoshi(true);
 			}
 			TModelGate* gate  = (TModelGate*)mHolder;
-			MtxPtr nodeMatrix = gate->unk78->getModel()->getAnmMtx(gate->unk72);
+			MtxPtr nodeMatrix = gate->mGateModel->getModel()->getAnmMtx(gate->mCenterBoneIndex);
 			mWarpInDir.x      = nodeMatrix[0][3] - gatePosOffset.x;
 			mWarpInDir.y      = nodeMatrix[1][3] - gatePosOffset.y;
 			mWarpInDir.z      = nodeMatrix[2][3] - gatePosOffset.z;
@@ -177,7 +177,7 @@ BOOL TMario::warpIn()
 			warpInLight();
 
 			u8 nextStage   = 2;
-			u8 destination = ((TModelGate*)mHolder)->unk71;
+			u8 destination = ((TModelGate*)mHolder)->mDestStage;
 			switch (destination) {
 			case 0:
 				nextStage = 2;
@@ -277,7 +277,7 @@ bool TMario::isUnUsualStageStart()
 			    (TWaterGun::TNozzleType)mWaterGun->mSecondNozzle, true);
 
 		if (mCap != nullptr)
-			mCap->unk4 |= 2;
+			mCap->mCapModelFlag |= 2;
 
 		changePlayerStatus(MARIO_STATUS_DIVE, 0, true);
 		return TRUE;

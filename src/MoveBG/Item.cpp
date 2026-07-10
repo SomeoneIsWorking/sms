@@ -629,7 +629,7 @@ void TEggYoshi::decideRandomLoveFruit()
 {
 	u8 map = gpMarDirector->mMap;
 
-	if (map == 7 && gpMarDirector->unk7D == 1) {
+	if (map == 7 && gpMarDirector->mScenario == 1) {
 		unk14C = 0x40000392;
 		return;
 	}

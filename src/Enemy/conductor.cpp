@@ -381,7 +381,7 @@ void TConductor::perform(u32 cue, JDrama::TGraphics* graphics)
 		}
 	}
 #endif
-	if ((param_1 & 1) && gpMarDirector->unk124 == 0)
+	if ((param_1 & 1) && gpMarDirector->mGameState == 0)
 		genEnemyFromPollution();
 
 	for (int i = 1; i >= 0; --i) {

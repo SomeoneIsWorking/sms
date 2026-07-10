@@ -8,12 +8,12 @@ public:
 	TNozzleTrigger(const char* name, const char* prm, TWaterGun* fludd)
 	    : TNozzleBase(name, prm, fludd)
 	{
-		unk38C = 0xffffffff;
-		unk384 = false;
-		unk385 = INACTIVE;
+		mSoundID = 0xffffffff;
+		mRumbleOnCharge = false;
+		mSprayState = INACTIVE;
 		unk36C = 0;
 		unk386 = 0;
-		unk388 = 0.0f;
+		mTriggerFill = 0.0f;
 	}
 
 	virtual void init();
@@ -26,11 +26,11 @@ public:
 	// depressed
 	enum SPRAYSTATE { INACTIVE = 0, ACTIVE = 1, DEAD = 2 };
 
-	/* 0x384 */ bool unk384; // mRumbleOnCharge
-	/* 0x385 */ s8 unk385;   // mSprayState, Current spray state
+	/* 0x384 */ bool mRumbleOnCharge;
+	/* 0x385 */ s8 mSprayState;   // Current spray state
 	/* 0x386 */ s16 unk386;  // Quarter frames left of spray (i think)
-	/* 0x388 */ f32 unk388;  // mTriggerFill - How far the trigger has gotten
-	/* 0x38C */ u32 unk38C;  // mSoundID - The sound to play when triggering
+	/* 0x388 */ f32 mTriggerFill;  // How far the trigger has gotten
+	/* 0x38C */ u32 mSoundID;  // The sound to play when triggering
 };
 
 #endif

@@ -611,11 +611,11 @@ static int MarioHeadCtrl(J3DNode* param_1, int param_2)
 	Mtx transform;
 	if (param_2 == 0) {
 		if (gpMarioForCallBack->mStatus == MARIO_STATUS_READ_BILLBOARD) {
-			if (gpMarDirector->unkA0 == nullptr)
+			if (gpMarDirector->mTalkingNPC == nullptr)
 				return 0;
 
 			JGeometry::TVec3<f32> npcResetToPos;
-			gpMarDirector->unkA0->resetToPosition(npcResetToPos);
+			gpMarDirector->mTalkingNPC->resetToPosition(npcResetToPos);
 			JGeometry::TVec3<f32> pos;
 			pos.x = gpMarioForCallBack->mPosition.x;
 			pos.y = gpMarioForCallBack->mPosition.y + 112.0f;
@@ -1265,7 +1265,7 @@ f32 TMario::setAnimation(int anm_id, f32 rate)
 
 			mAnmSound->initAnmSound(mAnmSoundTbl[r0], unk, 0.0f);
 
-			changeHand(gMarioAnimeData[anm_id].unk5);
+			changeHand(gMarioAnimeData[anm_id].mHandId);
 		}
 	}
 	getMotionFrameCtrl().setRate(rate * 0.5f);
@@ -1411,11 +1411,11 @@ void TMario::initModel()
 
 	char buffer[0x10C];
 	for (int i = 0; i < 199; ++i) {
-		snprintf(buffer, 0xff, "/mario/bck/ma_%s.bck", marioAnimeFiles[i].unk4);
+		snprintf(buffer, 0xff, "/mario/bck/ma_%s.bck", marioAnimeFiles[i].mAnimFileName);
 		J3DAnmTransform** trans = &anmTransform[i];
 		loadAnm(trans, buffer);
 
-		snprintf(buffer, 0xff, "/mario/bas/ma_%s.bas", marioAnimeFiles[i].unk4);
+		snprintf(buffer, 0xff, "/mario/bas/ma_%s.bas", marioAnimeFiles[i].mAnimFileName);
 		loadBas((void**)&mAnmSoundTbl[i], buffer);
 	}
 
@@ -1521,7 +1521,7 @@ void TMario::initModel()
 
 	mSurfGesso = nullptr;
 	if (gpMarDirector->mMap == 58) {
-		if (gpMarDirector->unk7D == 0 || gpMarDirector->unk7D == 1) {
+		if (gpMarDirector->mScenario == 0 || gpMarDirector->mScenario == 1) {
 			MActorAnmData* anmData = new MActorAnmData();
 			anmData->init("/scene/map/map/Torocco", nullptr);
 			mTorocco = new MActor(anmData);
@@ -1535,7 +1535,7 @@ void TMario::initModel()
 			            J3DMLF_MaterialPEFull | (4 << J3DMLF_TevStageNumShift)),
 			        0, 1),
 			    0);
-			if (gpMarDirector->unk7D == 0) {
+			if (gpMarDirector->mScenario == 0) {
 				mRailType              = 0;
 				MActorAnmData* anmData = new MActorAnmData();
 				anmData->init("/scene/map/map/Pinna_rail", nullptr);
@@ -1560,7 +1560,7 @@ void TMario::initModel()
 				mPinaRail->getModel()->setBaseTRMtx(
 				    mTorocco->getModel()->getAnmMtx(0));
 			}
-			if (gpMarDirector->unk7D == 1) {
+			if (gpMarDirector->mScenario == 1) {
 				mRailType              = 1;
 				MActorAnmData* anmData = new MActorAnmData();
 				anmData->init("/scene/map/map/Koopa_rail", nullptr);
@@ -2156,8 +2156,8 @@ void TMario::calcAnim(u32 param_1, JDrama::TGraphics* graphics)
 	if (mCap != nullptr) {
 		MtxPtr m = mModel->unk8->getAnmMtx(mJointIdMHead);
 		mCap->unkC->setBaseTRMtx(m);
-		mCap->unk10[2]->setBaseTRMtx(mModel->unk8->getAnmMtx(mJointIdHead));
-		mCap->unk10[3]->setBaseTRMtx(m);
+		mCap->mCapModels[2]->setBaseTRMtx(mModel->unk8->getAnmMtx(mJointIdHead));
+		mCap->mCapModels[3]->setBaseTRMtx(m);
 		mCap->perform(2, graphics);
 #ifdef SMS_NATIVE_PLATFORM
 		// SB_MARIO_DBG: head-joint matrix translation + anim id. NaN here = the J3D

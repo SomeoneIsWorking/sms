@@ -477,8 +477,8 @@ void TMario::warpInEffect()
 	gpMarioParticleManager->emitAndBindToMtx(
 	    0x1D6,
 	    ((TModelGate*)mHolder)
-	        ->unk78->getModel()
-	        ->getAnmMtx(((TModelGate*)mHolder)->unk72),
+	        ->mGateModel->getModel()
+	        ->getAnmMtx(((TModelGate*)mHolder)->mCenterBoneIndex),
 	    2, mHolder);
 }
 

@@ -31,7 +31,7 @@ public:
 	char unk4294[10];
 	TEMario* mEMario; // 0x42A0
 	char unk42A4[12];
-	f32 unk42B0; // distance for a collision check
+	f32 mCollisionCheckDist; /* 0x42B0 */ // distance for a collision check
 	char unk42B4[94];
 };
 

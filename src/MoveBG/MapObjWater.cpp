@@ -50,7 +50,7 @@ void TMapObjWaterFilter::perform(u32 cue, JDrama::TGraphics* graphics)
 {
 	// TODO: mother of all intern codes...
 
-	if (!unk44 || gpMarDirector->unk124 != 0)
+	if (!unk44 || gpMarDirector->mGameState != 0)
 		return;
 
 	bool bVar1 = true;

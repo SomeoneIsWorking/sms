@@ -36,8 +36,8 @@ void M3UModelMario::updateInMotion()
 		if (next != nullptr)
 			next->setFrame(getFrameCtrl(info.unk8).getFrame());
 
-		unk20->unk18[info.unk3].unk54 = prev;
-		unk20->unk18[info.unk3].unk58 = next;
+		unk20->unk18[info.unk3].mAnmTransformNew = prev;
+		unk20->unk18[info.unk3].mAnmTransformOld = next;
 		jnt->setMtxCalc(&unk20->unk18[info.unk3]);
 	}
 }

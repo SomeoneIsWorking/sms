@@ -31,8 +31,8 @@ void TMotionBlendCtrl::execSimpleMotionBlend()
 		fVar1 = 0.0f;
 	} else {
 		fVar1 = unk8->unk50 - unk4;
-		if (unk8->unk58)
-			unk8->unk58->setFrame(unk8->unk60);
+		if (unk8->mAnmTransformOld)
+			unk8->mAnmTransformOld->setFrame(unk8->unk60);
 	}
 	unk8->unk50 = fVar1;
 }
@@ -44,12 +44,12 @@ void TMotionBlendCtrl::setMotionBlendRatio(f32 value) { unk8->unk50 = value; }
 void TMotionBlendCtrl::keepCurAnm(J3DAnmTransform* param_1, f32 param_2)
 {
 	unk8->unk60 = param_2;
-	unk8->unk58 = param_1;
+	unk8->mAnmTransformOld = param_1;
 }
 
 void TMotionBlendCtrl::setNewAnm(J3DAnmTransform* param_1)
 {
-	unk8->unk54 = param_1;
+	unk8->mAnmTransformNew = param_1;
 	if (!(unk0 & 1))
 		return;
 	unk8->unk50 = 1.0f;
@@ -57,12 +57,12 @@ void TMotionBlendCtrl::setNewAnm(J3DAnmTransform* param_1)
 
 J3DAnmTransform* TMotionBlendCtrl::getOldMotionBlendAnmPtr() const
 {
-	return unk8->unk58;
+	return unk8->mAnmTransformOld;
 }
 
 void TMotionBlendCtrl::setOldMotionBlendAnmPtr(J3DAnmTransform* param_1)
 {
-	unk8->unk58 = param_1;
+	unk8->mAnmTransformOld = param_1;
 }
 
 f32 TMotionBlendCtrl::getOldMotionBlendFrame() const { return unk8->unk60; }
