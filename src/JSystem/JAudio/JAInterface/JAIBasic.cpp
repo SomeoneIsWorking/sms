@@ -824,9 +824,26 @@ void JAIBasic::releaseControllerHandle(JAILinkBuffer* buffer, JAISound* sound)
 	sound->unk38 = 0;
 	sound->unk34 = nullptr;
 	if (buffer->unk4 != sound) {
+#ifdef SMS_NATIVE_PLATFORM
+		// STOPGAP: the unported JAS audio arc (JAIGFrameSequence.cpp's
+		// stopSeq native early-out, same rationale) can route a handle here
+		// that was never actually spliced into this buffer's in-use list --
+		// on GC, sound->unk2C is only null when sound IS the list head
+		// (buffer->unk4 == sound, the other branch below), because every
+		// handle reaches here via getControllerHandle's real splice. Guard
+		// the deref instead of crashing on the unlinked case; delete
+		// alongside the stopSeq guard when the audio arc lands and every
+		// handle here is genuinely list-linked again.
+		if (sound->unk2C != nullptr) {
+			sound->unk2C->unk30 = sound->unk30;
+			if (sound->unk30)
+				sound->unk30->unk2C = sound->unk2C;
+		}
+#else
 		sound->unk2C->unk30 = sound->unk30;
 		if (sound->unk30)
 			sound->unk30->unk2C = sound->unk2C;
+#endif
 	} else {
 		*ptr = sound->unk30;
 		if (sound->unk30)

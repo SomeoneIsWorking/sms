@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+extern "C" unsigned VIGetRetraceCount(void) __attribute__((weak));
 #endif
 
 void JDrama::TViewObj::testPerform(u32 param_1, JDrama::TGraphics* param_2)
@@ -31,6 +32,34 @@ void JDrama::TViewObj::testPerform(u32 param_1, JDrama::TGraphics* param_2)
 	}
 	param_1 &= ~unkC.get();
 	if (param_1) {
+#ifdef SMS_NATIVE_PLATFORM
+		// SB_PLIST_ORDER_DBG(_AFTER=<retrace>): per-dispatch order trace -- names the
+		// exact TViewObj (by NameRef name) about to run its perform() virtual, so a
+		// GXSetProjection callback captured elsewhere (e.g. SB_PROJ_DBG_AFTER's
+		// backtrace, which only resolves generically to
+		// TPerformList::forEachPerform/testPerform, not the dispatched object) can be
+		// correlated to WHICH scene object issued it, in exact perform-list order.
+		{
+			static int dbg = -1;
+			static long afterThresh = -1;
+			if (dbg < 0) {
+				const char* e = getenv("SB_PLIST_ORDER_DBG");
+				dbg = (e && e[0] && e[0] != '0') ? 1 : 0;
+				const char* eAfter = getenv("SB_PLIST_ORDER_DBG_AFTER");
+				afterThresh = (eAfter && eAfter[0]) ? atol(eAfter) : -1;
+			}
+			if (dbg || afterThresh >= 0) {
+				unsigned retrace = (&VIGetRetraceCount) ? VIGetRetraceCount() : 0;
+				if (dbg || static_cast<long>(retrace) >= afterThresh) {
+					static long n = 0;
+					++n;
+					const char* nm = getName();
+					std::fprintf(stderr, "[plist-order] n=%ld retrace=%u name=\"%s\" flags=0x%x\n", n, retrace,
+					             nm ? nm : "<null>", param_1);
+				}
+			}
+		}
+#endif
 		perform(param_1, param_2);
 	}
 }
