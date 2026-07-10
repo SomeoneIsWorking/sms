@@ -1,3 +1,4 @@
+#include <JSystem/JSupport/JSUInputStream.hpp> // JSU_BE32 / JSU_BE32_INPLACE
 #include <Map/MapWarp.hpp>
 #include <Map/MapModel.hpp>
 #include <Map/Map.hpp>
@@ -130,9 +131,13 @@ void TMapWarp::init(JSUMemoryInputStream& stream)
 			++needle;
 
 		u32 idx = point_name_table[needle].unk4;
-		stream >> local_130[idx].x;
-		stream >> local_130[idx].y;
-		stream >> local_130[idx].z;
+		stream.read(&local_130[idx].x, 4);
+		stream.read(&local_130[idx].y, 4);
+		stream.read(&local_130[idx].z, 4);
+		// BE floats on disc; raw read(&x,4) does not swap (JSU raw-read class).
+		JSU_BE32_INPLACE(&local_130[idx].x);
+		JSU_BE32_INPLACE(&local_130[idx].y);
+		JSU_BE32_INPLACE(&local_130[idx].z);
 
 		u32 dummy;
 		stream >> dummy;

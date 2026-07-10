@@ -1,3 +1,4 @@
+#include <JSystem/JSupport/JSUInputStream.hpp> // JSU_BE32 / JSU_BE32_INPLACE
 #include <MoveBG/Item.hpp>
 #include <MoveBG/ItemManager.hpp>
 #include <Map/MapMirror.hpp>
@@ -585,20 +586,21 @@ void TShine::loadBeforeInit(JSUMemoryInputStream& stream)
 		unk154 = 1;
 	}
 
-	int wait_time;
-	stream.read(&wait_time, 4);
-	if (wait_time == -1)
-		wait_time = 0x78;
-	unk134 = static_cast<u32>(wait_time);
+	s32 eventId;
+	stream.read(&eventId, 4);
+	// BE dword on disc; raw read(&x,4) does not swap (JSU raw-read class).
+	eventId = (s32)JSU_BE32((u32)eventId);
+	if (eventId == -1)
+		eventId = 120;
+	setEventId(eventId);
 
-	int toggle;
-	stream.read(&toggle, 4);
-	// Byte-exact RE: if (toggle+1) < 2 (signed), keep toggle;
-	// else pin toggle to -1. Then unk190 = (u8)(toggle+1).
-	// Effect: toggle∈{-1,0} → unk190∈{0,1}; anything else → 0.
-	if (toggle + 1 >= 2)
-		toggle = -1;
-	unk190 = static_cast<u8>(toggle + 1);
+	s32 v;
+	stream.read(&v, 4);
+	v       = (s32)JSU_BE32((u32)v);
+	eventId = v;
+	if (v + 1 >= 2)
+		eventId = -1;
+	unk190 = eventId + 1;
 }
 
 TShine::TShine(const char* name)
