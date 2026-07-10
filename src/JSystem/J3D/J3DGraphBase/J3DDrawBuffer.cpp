@@ -26,6 +26,9 @@ extern "C" const char* sb_boot_drawbuf_name(const void* buf) __attribute__((weak
 // interleaves exactly with the present-boundary/plist-order/proj logs.
 extern "C" uint64_t sb_trace_seq(void) __attribute__((weak));
 extern "C" unsigned VIGetRetraceCount(void) __attribute__((weak));
+// SB_DBHEAD_DBG lifecycle instrument (defined near g_sbCpuDrawBufName below): forward-declared
+// here so frameInit() (which appears earlier in this file) can arm the per-buffer marker.
+namespace { void sb_dbfill_note_clear(const void* buf); void sb_dbfill_first_print(const void* buf, const char* how); }
 #endif
 
 J3DDrawBuffer::sortFunc J3DDrawBuffer::sortFuncTable[6] = {
@@ -88,12 +91,44 @@ void J3DDrawBuffer::frameInit()
 		mBuffer[i] = nullptr;
 
 	mCallBackPacket = nullptr;
+
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_DBHEAD_DBG: per-buffer CLEAR event, same gate/seq/name style as the [dbhead] flush
+	// print below and the [dbfill-first] entry print in entryMatSort — together these three
+	// pin down clear-vs-fill-vs-flush ordering for the lifecycle timeline.
+	{
+		static long s_dbheadAfter2 = -2;
+		if (s_dbheadAfter2 == -2) {
+			const char* eAfter = std::getenv("SB_DBHEAD_DBG_AFTER");
+			s_dbheadAfter2 = (eAfter && eAfter[0]) ? std::atol(eAfter) : -1;
+		}
+		bool dbheadOn2 = false;
+		if (const char* e = std::getenv("SB_DBHEAD_DBG"); e && e[0] && e[0] != '0') dbheadOn2 = true;
+		if (s_dbheadAfter2 >= 0 && &VIGetRetraceCount && static_cast<long>(VIGetRetraceCount()) >= s_dbheadAfter2)
+			dbheadOn2 = true;
+		if (dbheadOn2) {
+			const char* bn = (&sb_boot_drawbuf_name) ? sb_boot_drawbuf_name((const void*)this) : nullptr;
+			sb_dbfill_note_clear((const void*)this);
+			if (&sb_trace_seq) {
+				std::fprintf(stderr, "[dbclear] seq=%lu buf=%p name=\"%s\"\n",
+				             (unsigned long)sb_trace_seq(), (const void*)this, bn ? bn : "(unknown)");
+			} else {
+				std::fprintf(stderr, "[dbclear] buf=%p name=\"%s\"\n", (const void*)this, bn ? bn : "(unknown)");
+			}
+		}
+	}
+#endif
 }
 
 bool J3DDrawBuffer::entryMatSort(J3DMatPacket* packet)
 {
 	packet->drawClear();
 	packet->getShapePacket()->drawClear();
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_DBHEAD_DBG: [dbfill-first] — the FIRST packet entered into this buffer since its
+	// last frameInit() clear. See sb_dbfill_first_print below; every entry* sort path calls it.
+	sb_dbfill_first_print((const void*)this, "matSort");
+#endif
 #ifdef SMS_NATIVE_PLATFORM
 	// SB_ENTRY_MAT=1: backtrace the entry of the b76 mask material's packet → names the scene object
 	// that enters it into THIS buffer (and which buffer = `this`). The target material ptr comes from
@@ -192,6 +227,9 @@ bool J3DDrawBuffer::entryMatAnmSort(J3DMatPacket* packet)
 	} else {
 		packet->drawClear();
 		packet->getShapePacket()->drawClear();
+#ifdef SMS_NATIVE_PLATFORM
+		sb_dbfill_first_print((const void*)this, "matAnmSort");  // SB_DBHEAD_DBG lifecycle
+#endif
 		if (mBuffer[slot] == NULL) {
 			mBuffer[slot] = packet;
 			return true;
@@ -215,6 +253,9 @@ bool J3DDrawBuffer::entryZSort(J3DMatPacket* packet)
 {
 	packet->drawClear();
 	packet->getShapePacket()->drawClear();
+#ifdef SMS_NATIVE_PLATFORM
+	sb_dbfill_first_print((const void*)this, "zSort");  // SB_DBHEAD_DBG lifecycle
+#endif
 
 	Vec tmp;
 	tmp.x = mZMtx[0][3];
@@ -245,6 +286,9 @@ bool J3DDrawBuffer::entryModelSort(J3DMatPacket* packet)
 {
 	packet->drawClear();
 	packet->getShapePacket()->drawClear();
+#ifdef SMS_NATIVE_PLATFORM
+	sb_dbfill_first_print((const void*)this, "modelSort");  // SB_DBHEAD_DBG lifecycle
+#endif
 
 	if (mCallBackPacket != nullptr) {
 		mCallBackPacket->addChildPacket(packet);
@@ -258,6 +302,9 @@ bool J3DDrawBuffer::entryInvalidSort(J3DMatPacket* packet)
 {
 	packet->drawClear();
 	packet->getShapePacket()->drawClear();
+#ifdef SMS_NATIVE_PLATFORM
+	sb_dbfill_first_print((const void*)this, "invalidSort");  // SB_DBHEAD_DBG lifecycle
+#endif
 
 	if (mCallBackPacket != nullptr) {
 		mCallBackPacket->addChildPacket(packet->getShapePacket());
@@ -271,6 +318,9 @@ bool J3DDrawBuffer::entryNonSort(J3DMatPacket* packet)
 {
 	packet->drawClear();
 	packet->getShapePacket()->drawClear();
+#ifdef SMS_NATIVE_PLATFORM
+	sb_dbfill_first_print((const void*)this, "nonSort");  // SB_DBHEAD_DBG lifecycle
+#endif
 
 	packet->setNextPacket(mBuffer[0]);
 	mBuffer[0] = packet;
@@ -280,6 +330,9 @@ bool J3DDrawBuffer::entryNonSort(J3DMatPacket* packet)
 
 bool J3DDrawBuffer::entryImm(J3DPacket* packet, u16 index)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	sb_dbfill_first_print((const void*)this, "imm");  // SB_DBHEAD_DBG lifecycle
+#endif
 	packet->setNextPacket(mBuffer[index]);
 	mBuffer[index] = packet;
 
@@ -302,6 +355,60 @@ extern "C" const char* sb_boot_drawbuf_name(const void* buf);
 #ifdef SMS_NATIVE_PLATFORM
 static const char* g_sbCpuDrawBufName = "";
 extern "C" const char* sb_cpu_drawbuf_name() { return g_sbCpuDrawBufName; }
+
+// SB_DBHEAD_DBG lifecycle instrument: per-buffer "cleared, not yet filled this frame" marker
+// so entryMatSort can print [dbfill-first] exactly once per buffer per clear (avoids flooding
+// stderr with one line per shape/packet entered — a single scene buffer can hold hundreds).
+namespace {
+	struct DbFillMark { const void* buf; bool pendingFirstFill; };
+	constexpr int kDbFillMax = 64;
+	DbFillMark g_dbfill[kDbFillMax];
+	int g_dbfill_n = 0;
+	// frameInit() calls this on every clear: arms the marker so the next entry into this
+	// buffer prints [dbfill-first].
+	void sb_dbfill_note_clear(const void* buf) {
+		for (int i = 0; i < g_dbfill_n; ++i)
+			if (g_dbfill[i].buf == buf) { g_dbfill[i].pendingFirstFill = true; return; }
+		if (g_dbfill_n < kDbFillMax) { g_dbfill[g_dbfill_n].buf = buf; g_dbfill[g_dbfill_n].pendingFirstFill = true; ++g_dbfill_n; }
+	}
+	// Every entry* sort path calls this on every packet add: returns true (and disarms) only
+	// the FIRST time it's called since the buffer's last clear.
+	bool sb_dbfill_check_and_clear_first(const void* buf) {
+		for (int i = 0; i < g_dbfill_n; ++i)
+			if (g_dbfill[i].buf == buf) {
+				if (g_dbfill[i].pendingFirstFill) { g_dbfill[i].pendingFirstFill = false; return true; }
+				return false;
+			}
+		// Buffer never seen a frameInit() clear under this instrument (e.g. constructed
+		// before the gate turned on) — treat first entry seen at all as "first fill".
+		if (g_dbfill_n < kDbFillMax) { g_dbfill[g_dbfill_n].buf = buf; g_dbfill[g_dbfill_n].pendingFirstFill = false; ++g_dbfill_n; }
+		return true;
+	}
+	// SB_DBHEAD_DBG (same gates as the [dbhead] flush print): one [dbfill-first] line per
+	// buffer per clear window, tagged with WHICH entry sort path filled it first. Composes
+	// with [dbclear]/[dbhead] into a clear→fill→flush lifecycle timeline without flooding
+	// stderr (a scene buffer can take hundreds of entries per frame).
+	void sb_dbfill_first_print(const void* buf, const char* how) {
+		bool on = false;
+		if (const char* e = std::getenv("SB_DBHEAD_DBG"); e && e[0] && e[0] != '0') on = true;
+		static long s_after = -2;
+		if (s_after == -2) {
+			const char* eAfter = std::getenv("SB_DBHEAD_DBG_AFTER");
+			s_after = (eAfter && eAfter[0]) ? std::atol(eAfter) : -1;
+		}
+		if (s_after >= 0 && &VIGetRetraceCount && static_cast<long>(VIGetRetraceCount()) >= s_after)
+			on = true;
+		if (!on || !sb_dbfill_check_and_clear_first(buf))
+			return;
+		const char* bn = (&sb_boot_drawbuf_name) ? sb_boot_drawbuf_name(buf) : nullptr;
+		if (&sb_trace_seq) {
+			std::fprintf(stderr, "[dbfill-first] seq=%lu buf=%p via=%s name=\"%s\"\n",
+			             (unsigned long)sb_trace_seq(), buf, how, bn ? bn : "(unknown)");
+		} else {
+			std::fprintf(stderr, "[dbfill-first] buf=%p via=%s name=\"%s\"\n", buf, how, bn ? bn : "(unknown)");
+		}
+	}
+}
 #endif
 
 void J3DDrawBuffer::draw() const
