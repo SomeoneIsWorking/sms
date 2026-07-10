@@ -277,6 +277,14 @@ void J2DPicture::drawSelf(int x, int y, Mtx* mtx)
 	if (const char* e = std::getenv("SB_SKIP_DUOTONE");
 	    e && e[0] && e[0] != '0' && (mBlack != 0x0 || mWhite != 0xffffffff))
 		return;
+	// SB_SKIP_MBLACK=<hex>: drop pictures whose mBlack == that value, to bisect
+	// which duotone layer dilutes the title logo (e.g. 0000ff00 sparkles vs
+	// ffffff00 overlay letters).
+	if (const char* e = std::getenv("SB_SKIP_MBLACK"); e && e[0]) {
+		unsigned v = (unsigned)std::strtoul(e, nullptr, 16);
+		if ((unsigned)mBlack == v)
+			return;
+	}
 #endif
 
 	drawFullSet(mGlobalBounds.x1 + x, mGlobalBounds.y1 + y, mBounds.getWidth(),
