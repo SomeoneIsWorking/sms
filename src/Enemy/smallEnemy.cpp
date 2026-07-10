@@ -1,3 +1,4 @@
+#include <JSystem/JSupport/JSUInputStream.hpp> // JSU_BE32 / JSU_BE32_INPLACE
 #include <Enemy/SmallEnemy.hpp>
 #include <Enemy/Graph.hpp>
 #include <Enemy/Conductor.hpp>
@@ -212,7 +213,9 @@ void TSmallEnemy::init(TLiveManager* param_1)
 void TSmallEnemy::load(JSUMemoryInputStream& stream)
 {
 	TSpineEnemy::load(stream);
-	stream >> mCoinId;
+	stream.read(&mCoinId, 4);
+	// BE dword on disc; raw read(&x,4) does not swap (JSU raw-read class).
+	mCoinId = (int)JSU_BE32((u32)mCoinId);
 	if (mCoinId != 0x65)
 		unk18C = 1;
 	reset();

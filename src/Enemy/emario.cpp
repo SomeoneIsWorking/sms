@@ -1,3 +1,4 @@
+#include <JSystem/JSupport/JSUInputStream.hpp> // JSU_BE32 / JSU_BE32_INPLACE
 #include <Enemy/Conductor.hpp>
 #include <Enemy/Emario.hpp>
 #include <Enemy/Enemy.hpp>
@@ -29,10 +30,15 @@ void TEMario::load(JSUMemoryInputStream& stream)
 {
 	TSpineEnemy::load(stream);
 
-	stream >> unk154;
-	stream >> unk158;
-	stream >> unk15C;
-	stream >> unk160;
+	stream.read(&unk154, 4);
+	stream.read(&unk158, 4);
+	stream.read(&unk15C, 4);
+	stream.read(&unk160, 4);
+	// BE dword on disc; raw read(&x,4) does not swap (JSU raw-read class).
+	unk154 = JSU_BE32(unk154);
+	unk158 = JSU_BE32(unk158);
+	unk15C = JSU_BE32(unk15C);
+	unk160 = JSU_BE32(unk160);
 
 	stream.readU32();
 	stream.readU32();

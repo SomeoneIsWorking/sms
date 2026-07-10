@@ -1,3 +1,4 @@
+#include <JSystem/JSupport/JSUInputStream.hpp> // JSU_BE32 / JSU_BE32_INPLACE
 #include <Enemy/Launcher.hpp>
 #include <Enemy/Conductor.hpp>
 #include <Enemy/Graph.hpp>
@@ -252,7 +253,9 @@ void TCommonLauncher::load(JSUMemoryInputStream& stream)
 {
 	TSpineEnemy::load(stream);
 	unk164 = stream.readString();
-	stream >> mLaunchPeriod;
+	stream.read(&mLaunchPeriod, 4);
+	// BE dword on disc; raw read(&x,4) does not swap (JSU raw-read class).
+	mLaunchPeriod = (int)JSU_BE32((u32)mLaunchPeriod);
 }
 
 void TCommonLauncher::changeBck(int param_1)

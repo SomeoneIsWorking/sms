@@ -1,3 +1,4 @@
+#include <JSystem/JSupport/JSUInputStream.hpp> // JSU_BE32 / JSU_BE32_INPLACE
 #include <Enemy/EnemyManager.hpp>
 #include <Enemy/Conductor.hpp>
 #include <Enemy/Enemy.hpp>
@@ -107,7 +108,9 @@ void TEnemyManager::load(JSUMemoryInputStream& stream)
 {
 	TLiveManager::load(stream);
 	createModelData();
-	stream >> unk44;
+	stream.read(&unk44, 4);
+	// BE dword on disc; raw read(&x,4) does not swap (JSU raw-read class).
+	unk44 = JSU_BE32(unk44);
 }
 
 TSpineEnemy* TEnemyManager::createEnemyInstance() { return nullptr; }

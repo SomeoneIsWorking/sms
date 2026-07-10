@@ -1,3 +1,4 @@
+#include <JSystem/JSupport/JSUInputStream.hpp> // JSU_BE32 / JSU_BE32_INPLACE
 #include <JSystem/J2D/J2DPane.hpp>
 #include <JSystem/J2D/J2DOrthoGraph.hpp>
 #include <JSystem/JSupport/JSURandomInputStream.hpp>
@@ -97,6 +98,9 @@ J2DPane::J2DPane(J2DPane* p_parent, JSURandomInputStream* p_stream, bool isEx)
 {
 	if (isEx) {
 		p_stream->read(&mKind, sizeof(mKind));
+		// FourCC stored big-endian; raw read doesn't swap (JSU raw-read class)
+		// -- getKind() comparisons against 'XXX1' literals need host order.
+		mKind = JSU_BE32(mKind);
 		p_stream->skip(4);
 		u8 fields;
 		p_stream->read(&fields, sizeof(fields));
@@ -141,6 +145,8 @@ J2DPane::J2DPane(J2DPane* p_parent, JSURandomInputStream* p_stream, bool isEx)
 		p_stream->align(4);
 	} else {
 		p_stream->read(&mInfoTag, sizeof(mInfoTag));
+		// FourCC stored big-endian; raw read doesn't swap (JSU raw-read class).
+		mInfoTag = JSU_BE32(mInfoTag);
 		p_stream->read(&mVisible, sizeof(mVisible));
 		p_stream->skip(1);
 		mUserInfoTag = p_stream->readU32();
