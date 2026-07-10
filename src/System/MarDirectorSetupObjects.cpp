@@ -306,6 +306,18 @@ bool TMarDirector::setupObjects()
 		void* tables = JKRGetResource("/scene/map/tables.bin");
 		if (tables) {
 			u32 size = unkB8->getResSize(tables);
+#ifdef SMS_NATIVE_PLATFORM
+			// SB_TABLES_DUMP: sibling of SB_SCENE_DUMP above, for tables.bin.
+			if (const char* e = getenv("SB_TABLES_DUMP"); e && e[0] && e[0] != '0') {
+				if (FILE* f = fopen(e, "wb")) {
+					fwrite(tables, 1, size, f);
+					fclose(f);
+					fprintf(stderr, "[tablesdump] wrote %u bytes to %s\n", size, e);
+				} else {
+					fprintf(stderr, "[tablesdump] FAILED to open %s for write\n", e);
+				}
+			}
+#endif
 			JSUMemoryInputStream stream(tables, size);
 			JSUMemoryInputStream leftoversStream(nullptr, 0);
 			JDrama::TViewObj* obj
@@ -321,6 +333,22 @@ bool TMarDirector::setupObjects()
 	{
 		void* scene = JKRGetResource("/scene/map/scene.bin");
 		u32 size    = unkB8->getResSize(scene);
+#ifdef SMS_NATIVE_PLATFORM
+		// SB_SCENE_DUMP: dump the decompressed per-stage scene.bin blob to
+		// scratch/ so its declared node types (Draw Buffer Group members etc.)
+		// can be decoded offline -- see tools/oracle/decode_performlists.py for
+		// the sibling PerformLists.bin decoder using the same TNameRef wire
+		// format. Diagnostic only; never runs off native platform.
+		if (const char* e = getenv("SB_SCENE_DUMP"); e && e[0] && e[0] != '0') {
+			if (FILE* f = fopen(e, "wb")) {
+				fwrite(scene, 1, size, f);
+				fclose(f);
+				fprintf(stderr, "[scenedump] wrote %u bytes to %s\n", size, e);
+			} else {
+				fprintf(stderr, "[scenedump] FAILED to open %s for write\n", e);
+			}
+		}
+#endif
 		JSUMemoryInputStream stream(scene, size);
 		JSUMemoryInputStream leftoversStream(nullptr, 0);
 		JDrama::TViewObj* obj = (JDrama::TViewObj*)JDrama::TNameRef::genObject(
