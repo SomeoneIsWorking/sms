@@ -825,15 +825,16 @@ void JAIBasic::releaseControllerHandle(JAILinkBuffer* buffer, JAISound* sound)
 	sound->unk34 = nullptr;
 	if (buffer->unk4 != sound) {
 #ifdef SMS_NATIVE_PLATFORM
-		// STOPGAP: the unported JAS audio arc (JAIGFrameSequence.cpp's
-		// stopSeq native early-out, same rationale) can route a handle here
-		// that was never actually spliced into this buffer's in-use list --
-		// on GC, sound->unk2C is only null when sound IS the list head
-		// (buffer->unk4 == sound, the other branch below), because every
-		// handle reaches here via getControllerHandle's real splice. Guard
-		// the deref instead of crashing on the unlinked case; delete
-		// alongside the stopSeq guard when the audio arc lands and every
-		// handle here is genuinely list-linked again.
+		// STOPGAP (unported JAS audio arc): a double-released handle can
+		// still reach here through the STREAM path (stopSoundHandle's
+		// 0xC0000000/param==0 branch releases unconditionally; a stale
+		// game-side stream cache stopping twice re-splices, unk2C stale or
+		// null). Retail US 0x803024dc has no membership check -- on GC the
+		// stale-unk2C splice writes into another pool handle silently. The
+		// seq-handle double-release no longer routes here (stopSeq's
+		// already-released early-out is now a list no-op, 2026-07-10); guard
+		// the null deref for the stream case. Delete when the audio arc
+		// lands and every handle here is genuinely list-linked again.
 		if (sound->unk2C != nullptr) {
 			sound->unk2C->unk30 = sound->unk30;
 			if (sound->unk30)

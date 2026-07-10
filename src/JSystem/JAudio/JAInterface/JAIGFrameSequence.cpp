@@ -24,17 +24,25 @@ void JAIBasic::stopSeq(JAISound* param_1)
 	}
 
 #ifdef SMS_NATIVE_PLATFORM
-	// Unported-audio seam (the JAS DSP-frame mixer arc): startSeq recorded this
-	// handle in the BGM track table, but the backend never attached a
-	// JASeqParameter (unk38 stays the ctor's null). GC never sees this state --
-	// a registered handle always has a live sequence. Do the handle-side
-	// cleanup and skip the seq-parameter teardown; delete this guard when the
-	// audio arc lands and startSeq populates real sequences.
+	// STOPGAP (unported JAS audio arc): unk38 == null here means this handle
+	// was ALREADY RELEASED -- releaseControllerHandle nulls unk38, and
+	// JAISeqEntry::storeBuffer guarantees unk38 non-null before a handle is
+	// ever registered (the earlier "backend never attached a JASeqParameter"
+	// reading was wrong). We get here when a stale game-side cache (e.g.
+	// MSBgm::smBgmInTrack[i]->unk14 left dangling by a release path that
+	// couldn't clear it) stops the handle a second time. Retail (US
+	// 0x803068d8, decompiled 2026-07-10) has NO liveness check: on GC the
+	// second release blindly writes *(null+0x1850), splices the free handle
+	// onto the free list again (self-loop), and clobbers a stale track slot
+	// -- all silently absorbed by unprotected guest RAM. We can't reproduce
+	// that absorption, so converge to retail's OBSERVABLE behavior instead:
+	// the second stop must be a no-op on the lists (handle-side fields only).
+	// Re-releasing here (the previous stopgap) self-looped the free list and
+	// corrupted sibling pool handles via the stale unk2C splice. Delete when
+	// the audio arc lands and no release path leaves game-side caches stale.
 	if (param_1->getSeqParameter() == nullptr) {
 		param_1->unk34 = nullptr;
 		param_1->unk1  = 0;
-		releaseControllerHandle(&unk0->unk210, param_1);
-		unk0->unk180[param_1->unk0].unk48 = nullptr;
 		return;
 	}
 #endif
