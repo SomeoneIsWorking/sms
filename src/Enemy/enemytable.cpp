@@ -1,3 +1,4 @@
+#include <JSystem/JSupport/JSUInputStream.hpp> // JSU_BE32 / JSU_BE32_INPLACE
 #include <Enemy/EnemyTable.hpp>
 #include <Enemy/Conductor.hpp>
 #include <stdlib.h>
@@ -9,8 +10,11 @@ void TStageEnemyInfo::load(JSUMemoryInputStream& stream)
 	stream.readString(buffer, 256);
 	mManagerName = new char[1 + strlen(buffer)];
 	strcpy(mManagerName, buffer);
-	stream >> mFlags;
-	stream >> mWeight;
+	stream.read(&mFlags, 4);
+	stream.read(&mWeight, 4);
+	// BE dword on disc; raw read(&x,4) does not swap (JSU raw-read class).
+	mFlags  = (s32)JSU_BE32((u32)mFlags);
+	mWeight = JSU_BE32(mWeight);
 }
 
 TStageEnemyInfoTable::TStageEnemyInfoTable(const char* name)

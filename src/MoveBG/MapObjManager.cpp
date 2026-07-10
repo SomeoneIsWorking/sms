@@ -1,3 +1,4 @@
+#include <JSystem/JSupport/JSUInputStream.hpp> // JSU_BE32 / JSU_BE32_INPLACE
 #include <MoveBG/MapObjManager.hpp>
 #include <MoveBG/MapObjBase.hpp>
 #include <MoveBG/Item.hpp>
@@ -485,8 +486,11 @@ int TMapObjBaseManager::getObjNumWithActorType(u32 param_1) const
 void TMapObjBaseManager::load(JSUMemoryInputStream& stream)
 {
 	TLiveManager::load(stream);
-	stream >> unk38;
-	stream >> unk3C;
+	stream.read(&unk38, sizeof(unk38));
+	stream.read(&unk3C, sizeof(unk3C));
+	// BE floats on disc; raw read(&x,4) does not swap (JSU raw-read class).
+	JSU_BE32_INPLACE(&unk38);
+	JSU_BE32_INPLACE(&unk3C);
 }
 
 TMapObjBaseManager::TMapObjBaseManager(const char* name)
