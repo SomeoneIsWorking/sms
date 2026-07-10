@@ -2,6 +2,10 @@
 #include <JSystem/JDrama/JDREfbSetting.hpp>
 #include <dolphin/gx.h>
 #include <macros.h>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 
 using namespace JDrama;
 
@@ -79,6 +83,15 @@ void TEfbCtrlTex::setTexAttb(const GXTexObj& param_1)
 
 void TEfbCtrlTex::perform(u32 param_1, TGraphics* param_2)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	if (const char* e = getenv("SB_EFBTEX_DBG"); e && e[0] && e[0] != '0') {
+		static int n = 0;
+		if (n++ < 40)
+			fprintf(stderr, "[efbtex] name='%s' param_1=0x%x mImagePtr=%p mWidth=%u mHeight=%u draw(0x8)=%d\n",
+			        getName() ? getName() : "?", param_1, (void*)mImagePtr, mWidth, mHeight,
+			        (param_1 & 0x8) != 0);
+	}
+#endif
 	if (param_1 & 0x80) {
 		IssueGXPixelFormatSetting(unk20.check(0x800), unk20.check(0x8),
 		                          unk20.check(0x10), false, false);
