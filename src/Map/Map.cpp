@@ -170,6 +170,12 @@ static void initStageCommon()
 
 static void initStage()
 {
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_INITSTAGE_DBG"))
+		fprintf(stderr, "[initStage] currentStage=%d currentMap=%d earlyReturn(>9)=%d\n",
+		        gpMarDirector->getCurrentStage(), gpMarDirector->getCurrentMap(),
+		        (int)(gpMarDirector->getCurrentStage() > 9));
+#endif
 	if (gpMarDirector->getCurrentStage() > 9)
 		return;
 
