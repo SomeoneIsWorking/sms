@@ -114,6 +114,16 @@ J2DPane::J2DPane(J2DPane* p_parent, JSURandomInputStream* p_stream, bool isEx)
 		mBounds.y1   = p_stream->readS16();
 		mBounds.x2   = mBounds.x1 + p_stream->readS16();
 		mBounds.y2   = mBounds.y1 + p_stream->readS16();
+#ifdef SMS_NATIVE_PLATFORM
+		if (const char* e = getenv("SB_BLO_BOUNDS_DBG"); e && e[0] && e[0] != '0') {
+			static int n = 0;
+			if (n++ < 3000)
+				fprintf(stderr, "[blo-pane] kind=%c%c%c%c tag=%08x bounds=(%d,%d)-(%d,%d) w=%d h=%d\n",
+				        (char)(mKind>>24),(char)(mKind>>16),(char)(mKind>>8),(char)mKind,
+				        (unsigned)mUserInfoTag, mBounds.x1, mBounds.y1, mBounds.x2, mBounds.y2,
+				        mBounds.x2-mBounds.x1, mBounds.y2-mBounds.y1);
+		}
+#endif
 		fields -= 6;
 		if (fields != 0) {
 			mRotation = p_stream->readU16();
@@ -157,6 +167,16 @@ J2DPane::J2DPane(J2DPane* p_parent, JSURandomInputStream* p_stream, bool isEx)
 		mBounds.y1   = p_stream->readS16();
 		mBounds.x2   = mBounds.x1 + p_stream->readS16();
 		mBounds.y2   = mBounds.y1 + p_stream->readS16();
+#ifdef SMS_NATIVE_PLATFORM
+		if (const char* e = getenv("SB_BLO_BOUNDS_DBG"); e && e[0] && e[0] != '0') {
+			static int n2 = 0;
+			if (n2++ < 3000)
+				fprintf(stderr, "[blo-pane2] info=%c%c%c%c tag=%08x bounds=(%d,%d)-(%d,%d) w=%d h=%d\n",
+				        (char)(mInfoTag>>24),(char)(mInfoTag>>16),(char)(mInfoTag>>8),(char)mInfoTag,
+				        (unsigned)mUserInfoTag, mBounds.x1, mBounds.y1, mBounds.x2, mBounds.y2,
+				        mBounds.x2-mBounds.x1, mBounds.y2-mBounds.y1);
+		}
+#endif
 		setBasePosition(J2DBasePosition_0);
 		mRotation          = 0.0f;
 		mAlpha             = 0xff;
