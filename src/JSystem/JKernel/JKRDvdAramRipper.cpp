@@ -294,7 +294,17 @@ static int decompSZS_subroutine(u8* src, u32 dest)
 		return -1;
 	}
 
+#ifdef SMS_NATIVE_PLATFORM
+	// Yaz0 header length is big-endian on disc; the struct-member load is a
+	// host-LE misread. Same fix as JKRDvdRipper.cpp's decompSZS_subroutine
+	// (c9438d50) — assemble the field big-endian instead of trusting the
+	// host-LE struct load, which can silently truncate decompression.
+	u32 yaz0Length = ((u32)src[4] << 24) | ((u32)src[5] << 16)
+	                | ((u32)src[6] << 8) | (u32)src[7];
+	endAddr = dest + (yaz0Length - fileOffset);
+#else
 	endAddr = dest + (((SYaz0Header*)src)->length - fileOffset);
+#endif
 	if (endAddr > dest + maxDest) {
 		endAddr = dest + maxDest;
 	}
