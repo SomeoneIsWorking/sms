@@ -22,6 +22,7 @@ JPAEmitterManager* gpEmitterManager4D2;
 
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdlib>
+#include <cstdio>
 static inline int SB_LR_FAIL(int code, const char* what) {
 	if (getenv("SB_MOVIE_DBG") || getenv("SB_JKR_DBG"))
 		OSReport("[loadres] FAIL step %d: %s -> return 1\n", code, what);
@@ -77,6 +78,23 @@ int TMarDirector::loadResource()
             JKRDvdRipper::ALLOC_DIRECTION_FORWARD, 0, nullptr);
 		if (gpSceneCmnDat == nullptr)
 			return SB_LR_FAIL(3, "scenecmn loadToMainRAM");
+#ifdef SMS_NATIVE_PLATFORM
+		// SB_SCENECMN_DUMP: dump /data/scenecmn.bin (the stage-independent
+		// common NameRef tree -- "Root View Obj", "ゲームオブジェクト", and
+		// "Draw Buffer Group" all live here, NOT in the per-stage scene.bin/
+		// tables.bin) so its declared node types can be decoded offline with
+		// tools/oracle/decode_scene_bin.py.
+		if (const char* e = getenv("SB_SCENECMN_DUMP"); e && e[0] && e[0] != '0') {
+			if (FILE* f = fopen(e, "wb")) {
+				fwrite(gpSceneCmnDat, 1, gpSceneCmnDatSize, f);
+				fclose(f);
+				fprintf(stderr, "[scenecmndump] wrote %d bytes to %s\n",
+				        gpSceneCmnDatSize, e);
+			} else {
+				fprintf(stderr, "[scenecmndump] FAILED to open %s for write\n", e);
+			}
+		}
+#endif
 	}
 
 	void* paramsBlob = new (0x20) char[0x80000];
