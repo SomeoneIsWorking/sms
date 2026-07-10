@@ -203,7 +203,7 @@ TMario::TMario()
 	unk378                   = 0.0f;
 	mPumpCooldown            = 0;
 	mUpperState              = UPPER_STATE_IDLE;
-	unk384                   = 0;
+	mLastMsgSender                   = 0;
 	unk388                   = 6;
 	unk390                   = 0;
 	unk394                   = nullptr;

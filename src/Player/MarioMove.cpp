@@ -1516,7 +1516,7 @@ void TMario::checkController(JDrama::TGraphics*)
 					if (!checkFlag(MARIO_FLAG_FLUDD_EMITTING)
 					    && ((TNozzleTrigger*)((const TWaterGun*)mWaterGun)
 					            ->getCurrentNozzle())
-					               ->unk385
+					               ->mSprayState
 					           == TNozzleTrigger::ACTIVE) {
 						onFlag(MARIO_FLAG_FLUDD_EMITTING);
 						startSoundActor(MSD_SE_PO_SNIPER_TRIGGER);
@@ -1556,7 +1556,7 @@ void TMario::checkController(JDrama::TGraphics*)
 			// TODO: wrong??? Correct offset is 0x714 which is way past
 			// the end of a TNozzleTrigger???
 			((TNozzleTrigger*)((const TWaterGun*)mWaterGun)->getCurrentNozzle())
-			    ->unk388
+			    ->mTriggerFill
 			    = propRot;
 		}
 	}
@@ -2305,7 +2305,7 @@ void TMario::thinkParams()
 			mHotTimerMax = mDeParams.mHotTimer.get();
 		} else {
 			if (mCap) {
-				if (!(mCap->unk4 & 1 ? true : false)) {
+				if (!(mCap->mCapModelFlag & 1 ? true : false)) {
 					mHotTimer += 1;
 					if (mHotTimer > mHotTimerMax) {
 						decHP(1);
@@ -2507,7 +2507,7 @@ void TMario::playerControl(JDrama::TGraphics* param_1)
 	unk29C = mPosition;
 	offUnk114(UNK114_FLAG_PROFILE);
 
-	if (gpMarDirector->unk124 == 1 && mStatus != MARIO_STATUS_READ_BILLBOARD)
+	if (gpMarDirector->mGameState == 1 && mStatus != MARIO_STATUS_READ_BILLBOARD)
 		changePlayerStatus(MARIO_STATUS_READ_BILLBOARD, 0, false);
 
 	if (gpMarioOriginal == this) {
@@ -2516,7 +2516,7 @@ void TMario::playerControl(JDrama::TGraphics* param_1)
 		             >= (MARIO_STATUS_HANGING & MARIO_STATUS_TYPE_AND_ID_MASK)
 		         && (MARIO_STATUS_HANG_JUMPING & MARIO_STATUS_TYPE_AND_ID_MASK)
 		                >= (mStatus & MARIO_STATUS_TYPE_AND_ID_MASK))
-		    && gpMarDirector->unk124 != 1) {
+		    && gpMarDirector->mGameState != 1) {
 			mFaceAngle.y = (gpCamera->getUnk258() + 0x8000)
 			               - gpCamera->getOffsetAngleY();
 		}

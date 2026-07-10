@@ -166,10 +166,19 @@ void TEnemyAttachment::perform(u32 cue, JDrama::TGraphics* graphics)
 		return;
 	}
 
-	if (!SMSGetMarDirector()->isDemoModeNow()
-	    && SMSGetMarDirector()->isTalkModeNow()) {
-		performOnlyDraw(cue, graphics);
-		return;
+	// TODO: wtf is this inline???
+	bool bVar2 = true;
+	if (gpMarDirector->mGameState != 3 && gpMarDirector->mGameState != 4) {
+		bVar2 = false;
+	}
+	if (!bVar2) {
+		bVar2 = true;
+		if (gpMarDirector->mGameState != 1 && gpMarDirector->mGameState != 2)
+			bVar2 = false;
+		if (bVar2) {
+			performOnlyDraw(param_1, param_2);
+			return;
+		}
 	}
 
 	if (cue & CUE_MOVE)

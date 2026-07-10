@@ -31,7 +31,7 @@ bool SMS_isExMap()
 
 bool SMS_isMultiPlayerMap()
 {
-	return (gpMarDirector->mMap == 12 && gpMarDirector->unk7D == 0);
+	return (gpMarDirector->mMap == 12 && gpMarDirector->mScenario == 0);
 }
 
 bool SMS_isDivingMap()

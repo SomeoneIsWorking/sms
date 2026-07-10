@@ -111,7 +111,7 @@ void TMarDirector::setup2()
 	gpMSound->setCameraInfo(&gpCamera->unk124, gpCamera->unk13C,
 	                        gpCamera->unk1EC, 0);
 
-	unk258 = MSStage::init(mMap, unk7D);
+	unk258 = MSStage::init(mMap, mScenario);
 
 	JDrama::TGraphics graphics;
 	graphics.unkFE = 0;
@@ -164,7 +164,7 @@ TMarDirector::~TMarDirector()
 		arch->unmountFixed();
 
 	unk18[0]->offFlag(0x20);
-	if (mMap == 1 || (mMap == 0 && unk7D == 0)) {
+	if (mMap == 1 || (mMap == 0 && mScenario == 0)) {
 		THPPlayerStop();
 		THPPlayerClose();
 		THPPlayerQuit();

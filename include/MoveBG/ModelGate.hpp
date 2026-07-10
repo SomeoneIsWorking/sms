@@ -19,10 +19,10 @@ public:
 public:
 	// Size 0x118
 	/* 0x70 */ u8 unk70;
-	/* 0x71 */ u8 unk71;  // Destination stage
-	/* 0x72 */ u16 unk72; // center bone index
+	/* 0x71 */ u8 mDestStage;  // Destination stage
+	/* 0x72 */ u16 mCenterBoneIndex; // center bone index
 	/* 0x74 */ u32 unk74;
-	/* 0x78 */ MActor* unk78; // Gate model actor
+	/* 0x78 */ MActor* mGateModel; // Gate model actor
 	/* 0x7C */ u32 unk7C;
 	/* 0x80 */ u32 unk80;
 	/* 0x84 */ u32 unk84;
@@ -35,7 +35,7 @@ public:
 	/* 0xA0 */ u32 unkA0;
 	/* 0xA4 */ u32 unkA4;
 	/* 0xA8 */ u32 unkA8;
-	/* 0xAC */ JGeometry::TVec3<f32> unkAC; // Mario hold offset
+	/* 0xAC */ JGeometry::TVec3<f32> mHoldOffset; // Mario hold offset
 	/* 0xB8 */ u32 unkB8;
 	/* 0xBC */ u32 unkBC;
 	/* 0xC0 */ u32 unkC0;

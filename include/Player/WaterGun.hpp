@@ -125,7 +125,7 @@ public:
 
 		if (self->getCurrentNozzle()->getNozzleKind() == 1) {
 			TNozzleTrigger* trig = (TNozzleTrigger*)self->getCurrentNozzle();
-			if (trig->unk385 == TNozzleTrigger::ACTIVE)
+			if (trig->mSprayState == TNozzleTrigger::ACTIVE)
 				return true;
 			return false;
 		}
@@ -241,7 +241,7 @@ public:
 
 		if (getCurrentNozzle()->getNozzleKind() == 1) {
 			TNozzleTrigger* triggerNozzle = (TNozzleTrigger*)getCurrentNozzle();
-			if (triggerNozzle->unk385 == TNozzleTrigger::ACTIVE)
+			if (triggerNozzle->mSprayState == TNozzleTrigger::ACTIVE)
 				return true;
 
 			return false;
@@ -280,7 +280,7 @@ public:
 	// Fabricated
 	bool checkCurrentNozzleTriggerSprayState(s32 pState) const
 	{
-		return ((TNozzleTrigger*)getCurrentNozzle())->unk385 == pState;
+		return ((TNozzleTrigger*)getCurrentNozzle())->mSprayState == pState;
 	}
 
 	// Fabricated (maybe should be indexed?)
@@ -317,12 +317,12 @@ public:
 	/* 0x1CC2 */ s16 unk1CC2;
 	/* 0x1CC4 */ s16 unk1CC4;
 	/* 0x1CC6 */ s16 unk1CC6;
-	/* 0x1CC8 */ f32 unk1CC8; // mNozzleSpeedY
-	/* 0x1CCC */ f32 unk1CCC; // mNozzleSpeedZ
+	/* 0x1CC8 */ f32 mNozzleSpeedY;
+	/* 0x1CCC */ f32 mNozzleSpeedZ;
 	/* 0x1CD0 */ s16 unk1CD0;
 	/* 0x1CD2 */ s16 unk1CD2;
 	/* 0x1CD4 */ MActor* mFluddModel;
-	/* 0x1CD8 */ u8 unk1CD8; // mCurFluddTransformIdx
+	/* 0x1CD8 */ u8 mCurFluddTransformIdx;
 	/* 0x1CD9 */ u8 unk1CD9;
 	/* 0x1CDA */ u16 unk1CDA;
 	/* 0x1CDC */ TMultiMtxEffect* unk1CDC;

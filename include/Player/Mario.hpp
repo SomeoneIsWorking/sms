@@ -1687,7 +1687,7 @@ public:
 	};
 
 	/* 0x380 */ u32 mUpperState;
-	/* 0x384 */ THitActor* unk384; // Last receiveMessage sender
+	/* 0x384 */ THitActor* mLastMsgSender; // Last receiveMessage sender
 	/* 0x388 */ u8 unk388;
 	enum {
 		SURF_GESSO_TYPE_RED,

@@ -101,7 +101,7 @@ void TMario::hitPool(THitActor*) { }
 void TMario::wantToTakeActor(THitActor* actor)
 {
 	if (canTake(actor)) {
-		unk384 = actor;
+		mLastMsgSender = actor;
 		changePlayerStatus(MARIO_STATUS_TAKE, 0, false);
 	}
 }
