@@ -271,6 +271,13 @@ void J2DPicture::drawSelf(int x, int y, Mtx* mtx)
 	char trash[0x4]; // probably getter for mGlobalBounds or something?
 	if (!mTextures[0])
 		return;
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_SKIP_DUOTONE=1 (diagnostic): drop duotone (mBlack!=0/mWhite!=white) pictures
+	// — the fly-in glyph/highlight layers — to see the base logo texture alone.
+	if (const char* e = std::getenv("SB_SKIP_DUOTONE");
+	    e && e[0] && e[0] != '0' && (mBlack != 0x0 || mWhite != 0xffffffff))
+		return;
+#endif
 
 	drawFullSet(mGlobalBounds.x1 + x, mGlobalBounds.y1 + y, mBounds.getWidth(),
 	            mBounds.getHeight(), mBinding, mMirror, unk130, mWrapmodeHor,
