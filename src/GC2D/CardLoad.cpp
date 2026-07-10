@@ -78,6 +78,9 @@ TCardLoad::TCardLoad(const char* name)
     , mCursorSparkle(nullptr)
     , unkB8(0)
     , unkBC(0)
+    , unkC0(0)  // attract-idle frame counter; CardLoad.cpp:940 gates the 45s
+                // attract-movie fire on unkC0/120.0f > 45.0f -- uninitialized on
+                // the JKR heap made the gate fire within a few frames
     , unk25C(nullptr)
     , unk270(nullptr)
     , unk274(0)
@@ -686,8 +689,9 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 		// SB_TITLE_PANE_DBG: per-frame (rate-limited) telemetry of the PRESS START
 		// ('titl'/'nint', unkF0/unkF4) fade-in and the intro-overlay (unk1D4[13])
 		// fade-out driven by titleDraw() case 2, plus unk18/mState/mIntroChaseTimer.
-		// Root-cause investigation: the port never appears to reach unk18==4 (steady
-		// state) - this traces WHY without guessing.
+		// 2026-07-10: RESOLVED - with unkC0 initialized (see ctor) the title reaches
+		// unk18==4 steady state and holds the 45s attract window (mState 3 -> 10
+		// transitions log unk18=4). Trace kept as a diagnostic.
 		static const char* s_titleDbg = getenv("SB_TITLE_PANE_DBG");
 		if (s_titleDbg && (mState == 3 || mState == 8 || mState == 9)) {
 			static long s_tframe = 0;
