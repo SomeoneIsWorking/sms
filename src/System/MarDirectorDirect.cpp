@@ -33,10 +33,15 @@
 #include <dolphin/gx.h>
 
 #ifdef SMS_NATIVE_PLATFORM
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 extern "C" bool sb_boot_drive_scene();   // native/src/scene_drive.cpp
 extern "C" void sb_boot_capture_set_phase(int);  // sms-boot/runtime/phase_track.cpp — tag the current perform-list phase
+// Shared cross-instrument sequence counter (sms-boot/runtime/trace_seq.cpp).
+// SB_TRACE_SEQ=1: prefix [dir-br] lines with seq=N so this family interleaves
+// exactly with the present-boundary/proj/drawbuf-flush/plist-order logs.
+extern "C" uint64_t sb_trace_seq(void) __attribute__((weak));
 static bool sb_dir_dbg() {
 	static int v = -1;
 	if (v < 0) { const char* e = getenv("SB_J3D_DBG"); v = (e && e[0] && e[0] != '0') ? 1 : 0; }
@@ -47,6 +52,16 @@ static int sb_pl_count(TPerformList* l) {
 	int n = 0;
 	for (auto it = l->getChildren().begin(); it != l->getChildren().end(); ++it) ++n;
 	return n;
+}
+// SB_DIRECT_BR=1: one line per TMarDirector::direct() call reporting which
+// branch(es) of the entry-vs-render alternation (line ~147/~273 below) ran
+// inside that single call, plus the unk54 tick accumulator and unk4C gate
+// bits before/after -- the instrument this task was scoped to build. Does
+// not alter control flow.
+static bool sb_direct_br_dbg() {
+	static int v = -1;
+	if (v < 0) { const char* e = getenv("SB_DIRECT_BR"); v = (e && e[0] && e[0] != '0') ? 1 : 0; }
+	return v != 0;
 }
 #endif
 
@@ -122,6 +137,19 @@ int TMarDirector::direct()
 	unk54 += vsyncRate;
 
 #ifdef SMS_NATIVE_PLATFORM
+	// SB_DIRECT_BR=1 diagnostic state (see step 2 of the alternation-gate
+	// investigation): capture the gate values as they stand at call entry,
+	// and track which of the two sub-branches below (line ~162 ENTRY-side,
+	// line ~275 RENDER-side/else) actually execute during THIS call.
+	static long sDirectBrCall = 0;
+	long directBrCall     = 0;
+	u16  directBrUnk4CIn   = unk4C;
+	int  directBrUnk54In   = unk54;
+	bool directBrDidEntry  = false;
+	bool directBrDidRender = false;
+	if (sb_direct_br_dbg())
+		directBrCall = ++sDirectBrCall;
+
 	if (sb_dir_dbg()) {
 		static bool once = false;
 		if (!once) {
@@ -266,6 +294,7 @@ int TMarDirector::direct()
 					if ((++n % 200) == 0 || n <= 2)
 						fprintf(stderr, "[dir] unk34->perform (ENTRY pass) n=%ld\n", n);
 				}
+				directBrDidEntry = true;
 #endif
 				unk34->perform(0xffffffff, &local_140);
 				break;
@@ -277,6 +306,7 @@ int TMarDirector::direct()
 				if ((++n % 200) == 0 || n <= 2)
 					fprintf(stderr, "[dir] RENDER-else branch n=%ld\n", n);
 			}
+			directBrDidRender = true;
 #endif
 			local_140.unk2 = 0;
 #ifdef SMS_NATIVE_PLATFORM
@@ -318,6 +348,30 @@ int TMarDirector::direct()
 		desiredAppState = changeState();
 		unk4C &= ~0x6000;
 	}
+
+#ifdef SMS_NATIVE_PLATFORM
+	if (sb_direct_br_dbg()) {
+		const char* branch = directBrDidEntry && directBrDidRender ? "both"
+		                     : directBrDidEntry                    ? "entry"
+		                     : directBrDidRender                   ? "render"
+		                                                            : "none";
+		bool traceSeqOn = (&sb_trace_seq) && getenv("SB_TRACE_SEQ")
+		                  && getenv("SB_TRACE_SEQ")[0] && getenv("SB_TRACE_SEQ")[0] != '0';
+		if (traceSeqOn) {
+			fprintf(stderr,
+			        "[dir-br] seq=%lu call=%ld branch=%s vsyncRate=%d unk54_in=%d unk54_out=%d "
+			        "unk4C_in=0x%x unk4C_out=0x%x mState=%d\n",
+			        (unsigned long)sb_trace_seq(), directBrCall, branch, vsyncRate,
+			        directBrUnk54In, unk54, directBrUnk4CIn, unk4C, mState);
+		} else {
+			fprintf(stderr,
+			        "[dir-br] call=%ld branch=%s vsyncRate=%d unk54_in=%d unk54_out=%d "
+			        "unk4C_in=0x%x unk4C_out=0x%x mState=%d\n",
+			        directBrCall, branch, vsyncRate,
+			        directBrUnk54In, unk54, directBrUnk4CIn, unk4C, mState);
+		}
+	}
+#endif
 
 	gpMSound->unkA8 = bVar2;
 
