@@ -362,7 +362,7 @@ void TFireWanwanManager::checkShineAppear()
 	if (mShineAppeared)
 		return;
 
-	if (mWanwansKilled == getActiveObjNum() && gpMarDirector->unk124 != 3
+	if (mWanwansKilled == getActiveObjNum() && gpMarDirector->mGameState != 3
 	    && gpMarDirector->getConsole()->unk10 == 0) {
 		mShineAppeared = true;
 		gpItemManager->makeShineAppearWithDemo(

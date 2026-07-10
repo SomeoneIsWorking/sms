@@ -178,8 +178,7 @@ void TSmallEnemy::init(TLiveManager* param_1)
 	setMActorAndKeeper();
 
 	onLiveFlag(LIVE_FLAG_DEAD);
-	if (SMSGetMarDirector()->getCurrentMap() == 2
-	    && SMSGetMarDirector()->getCurrentStage() == 0)
+	if (gpMarDirector->mMap == 2 && gpMarDirector->mScenario == 0)
 		onLiveFlag(LIVE_FLAG_UNK2000);
 	onHitFlag(HIT_FLAG_NO_COLLISION);
 	unk158 = 1.0f;
@@ -789,7 +788,7 @@ void TSmallEnemy::kill()
 bool TSmallEnemy::isFindMario(float param_1)
 {
 	bool b = true;
-	if (gpMarDirector->unk124 != 3 && gpMarDirector->unk124 != 4)
+	if (gpMarDirector->mGameState != 3 && gpMarDirector->mGameState != 4)
 		b = false;
 	if (b)
 		return false;
@@ -948,12 +947,12 @@ void TSmallEnemy::perform(u32 cue, JDrama::TGraphics* graphics)
 {
 	// TODO: wtf is this inline???
 	bool bVar2 = true;
-	if (gpMarDirector->unk124 != 3 && gpMarDirector->unk124 != 4) {
+	if (gpMarDirector->mGameState != 3 && gpMarDirector->mGameState != 4) {
 		bVar2 = false;
 	}
 	if (!bVar2) {
 		bVar2 = true;
-		if (gpMarDirector->unk124 != 1 && gpMarDirector->unk124 != 2)
+		if (gpMarDirector->mGameState != 1 && gpMarDirector->mGameState != 2)
 			bVar2 = false;
 		if (bVar2) {
 			performOnlyDraw(cue, graphics);

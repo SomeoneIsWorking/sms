@@ -211,7 +211,7 @@ bool TMarDirector::setupObjects()
 	u32 bVar28 = SMS_getShineStage(gpApplication.mCurrArea.unk0);
 	TFlagManager::getInstance()->setBool(true, 0x103A5 + bVar28);
 
-	MSMainProc::setMSoundEnterStage(mMap, unk7D);
+	MSMainProc::setMSoundEnterStage(mMap, mScenario);
 	if (!TFlagManager::getInstance()->getBool(0x30007)) {
 		TFlagManager::getInstance()->setBool(true, 0x30007);
 		gpMSound->loadWave(MS_WAVE_DEFAULT);

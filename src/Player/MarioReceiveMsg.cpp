@@ -236,7 +236,7 @@ BOOL TMario::receiveMessage(THitActor* sender, u32 message)
 		case 0x20000013: // 1-up shroom / pickup-action
 			if (message == HIT_MESSAGE_ATTACK
 			    && mStatus != MARIO_STATUS_WIN_DEMO) {
-				unk384          = sender;
+				mLastMsgSender          = sender;
 				mPosition.x     = sender->mPosition.x;
 				mPosition.z     = sender->mPosition.z;
 				mFaceAngle.y    = DEG2SHORTANGLE(*(f32*)((u8*)sender + 0x11C));

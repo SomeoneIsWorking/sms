@@ -95,8 +95,8 @@ M3UMtxCalcSIAnmBlendQuat::M3UMtxCalcSIAnmBlendQuat(bool param_1)
 {
 	unk50 = 0.0f;
 	unk60 = 0.0f;
-	unk58 = nullptr;
-	unk54 = nullptr;
+	mAnmTransformOld = nullptr;
+	mAnmTransformNew = nullptr;
 	unk5C = param_1;
 }
 
@@ -142,24 +142,24 @@ void M3UMtxCalcSIAnmBlendQuat::calc(u16 param_1)
 
 	j3dSys.setCurrentMtxCalc(this);
 
-	if ((unk54 == nullptr && unk58 == nullptr)
-	    || (unk54 == nullptr && unk50 == 0.0f)
-	    || (unk58 == nullptr && unk50 == 1.0f)) {
+	if ((mAnmTransformNew == nullptr && mAnmTransformOld == nullptr)
+	    || (mAnmTransformNew == nullptr && unk50 == 0.0f)
+	    || (mAnmTransformOld == nullptr && unk50 == 1.0f)) {
 		info = j3dSys.getModel()
 		           ->getModelData()
 		           ->getJointNodePointer(param_1)
 		           ->getTransformInfo();
 		calcTransform(param_1, info);
-	} else if (unk50 == 0.0f || unk58 == nullptr) {
-		unk54->getTransform(param_1, &info);
+	} else if (unk50 == 0.0f || mAnmTransformOld == nullptr) {
+		mAnmTransformNew->getTransform(param_1, &info);
 		calcTransform(param_1, info);
-	} else if (unk50 == 1.0f || unk54 == nullptr) {
-		unk58->getTransform(param_1, &info);
+	} else if (unk50 == 1.0f || mAnmTransformNew == nullptr) {
+		mAnmTransformOld->getTransform(param_1, &info);
 		calcTransform(param_1, info);
 	} else {
-		unk54->getTransform(param_1, &infoNew);
+		mAnmTransformNew->getTransform(param_1, &infoNew);
 		J3DTransformInfo* ptr = &infoOld;
-		unk58->getTransform(param_1, ptr);
+		mAnmTransformOld->getTransform(param_1, ptr);
 		M3UMtxCalcBlendAux(param_1, &infoNew, &infoOld, unk50, unk5C);
 	}
 }

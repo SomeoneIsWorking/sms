@@ -272,7 +272,7 @@ void TMarDirector::loadParticle()
 	// gpEmitterManager4D2->unkA4 = gpResourceManager;
 	this_00->unmountFixed();
 
-	if (mMap == 4 && unk7D == 2) {
+	if (mMap == 4 && mScenario == 2) {
 		void* hanachanJpaArch = SMSLoadArchive("/data/bosshanachanJpa.arc",
 		                                       pvVar1, 0x200000, nullptr);
 		this_00->mountFixed(hanachanJpaArch, MBF_0);

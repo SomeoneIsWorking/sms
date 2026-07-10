@@ -355,11 +355,11 @@ void TBossGessoMtxCalc::joinAnm(int param_1)
 	    = mOwner->getActorKeeper()->getMActorAnmData()->getUnk2C()->getAnmPtr(
 	        param_1);
 
-	if (unk54 == anm)
+	if (mAnmTransformNew == anm)
 		return;
 
-	unk58 = unk54;
-	unk54 = anm;
+	mAnmTransformOld = mAnmTransformNew;
+	mAnmTransformNew = anm;
 	unk50 = 1.0f;
 }
 
@@ -726,7 +726,7 @@ f32 TBossGesso::inSight()
 
 BOOL TBossGesso::is2ndFightNow() const
 {
-	return gpMarDirector->unk7D == 4 ? true : false;
+	return gpMarDirector->mScenario == 4 ? true : false;
 }
 
 void TBossGesso::stopIfRoll()
@@ -914,7 +914,7 @@ void TBossGesso::doAttackSingle()
 		return;
 	}
 
-	if (gpMarDirector->unk7D == 4 ? 1 : 0) {
+	if (gpMarDirector->mScenario == 4 ? 1 : 0) {
 
 		JGeometry::TVec3<f32> delta = SMS_GetMarioPos();
 
@@ -948,7 +948,7 @@ void TBossGesso::doAttackSingle()
 		if (mTimeInCurrentAttackMode <= getSaveParam()->mSLUnisonInter.get())
 			return;
 
-		if (gpMarDirector->unk7D != 4)
+		if (gpMarDirector->mScenario != 4)
 			return;
 
 		changeAttackMode(ASTATE_ROLL);
@@ -1579,7 +1579,7 @@ DEFINE_NERVE(TNerveBGDie, TLiveActor)
 			gpMarDirector->fireStartDemoCamera("bgeso_fall_camera3", nullptr,
 			                                   -1, 0.0f, true, nullptr, 0,
 			                                   nullptr, JDrama::TFlagT<u16>(0));
-		} else if (gpMarDirector->unk7D == 4) {
+		} else if (gpMarDirector->mScenario == 4) {
 			gpMarDirector->fireStartDemoCamera("bgeso_fall_camera2", nullptr,
 			                                   -1, 0.0f, true, nullptr, 0,
 			                                   nullptr, JDrama::TFlagT<u16>(0));
@@ -1647,7 +1647,7 @@ DEFINE_NERVE(TNerveBGDie, TLiveActor)
 		self->onLiveFlag(LIVE_FLAG_UNK10);
 	}
 
-	if (self->isReachedToGoal() && gpMarDirector->unk124 != 3) {
+	if (self->isReachedToGoal() && gpMarDirector->mGameState != 3) {
 
 		self->changeAllTentacleState(0);
 		self->kill();

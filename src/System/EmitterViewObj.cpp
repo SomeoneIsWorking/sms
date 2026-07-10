@@ -606,7 +606,7 @@ void SMSSetEmitterPolColor(JPABaseEmitter* param_1, int param_2)
 	if (param_2 == 6) {
 		switch (gpMarDirector->mMap) {
 		case 1:
-			if (gpMarDirector->unk7D == 5) {
+			if (gpMarDirector->mScenario == 5) {
 				value = 3;
 				break;
 			}

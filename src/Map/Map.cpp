@@ -166,15 +166,21 @@ static void initStageCommon()
 // ported faithfully below.
 void TMap::update()
 {
-	if (gpMarDirector->unk124 != 0)
-		return; // talk/demo mode — no immersion tracking
+	switch (gpMarDirector->mMap) {
+	case 3:
+		updateRicco();
+		break;
 
-	CPolarSubCamera* cam = gpCamera;
+	case 8: // Monte
+		updateMonte();
+		break;
 
-	bool skipImmersion = true;
-	if (!cam->isSimpleDemoCamera() && cam->mMode != CAMERA_MODE_COUNT)
-		skipImmersion = false;
-	if (skipImmersion)
+	case 7:
+		updateDelfino();
+		break;
+	}
+
+	if (gpMarDirector->mGameState != 0)
 		return;
 
 	u8 mapId = gpMarDirector->mMap;

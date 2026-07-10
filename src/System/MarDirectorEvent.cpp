@@ -77,7 +77,7 @@ TBaseNPC* TMarDirector::findNearestTakeNPC()
 void TMarDirector::movement_game()
 {
 	unk84->associateNPC(nullptr);
-	if ((int)unk124 == 0)
+	if ((int)mGameState == 0)
 		return;
 
 	unk18[0]->offFlag(0x2);
@@ -91,12 +91,12 @@ void TMarDirector::movement_game()
 		} else {
 			TBaseNPC* talkNpc = findNearestTalkNPC();
 			if (talkNpc != nullptr) {
-				unkA0 = talkNpc;
+				mTalkingNPC = talkNpc;
 				unk84->associateNPC(talkNpc);
 				unk18[0]->onFlag(4);
 				unk128 |= 0x1;
 				if ((unk128 & 2) && (unk18[0]->mEnabledFrameMeaning & 0x800))
-					unk126 = 1;
+					mNextGameState = 1;
 			}
 		}
 	}
