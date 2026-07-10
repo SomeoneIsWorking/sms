@@ -497,11 +497,11 @@ void J3DModel::initialize()
 	mModelData  = nullptr;
 	mDeformData = 0;
 	mSkinDeform = nullptr;
-	unk14.x     = 1.0;
-	unk14.y     = 1.0;
-	unk14.z     = 1.0;
+	mBaseScale.x     = 1.0;
+	mBaseScale.y     = 1.0;
+	mBaseScale.z     = 1.0;
 
-	MTXIdentity(unk20);
+	MTXIdentity(mBaseMtx);
 
 	mScaleFlagArr       = nullptr;
 	mEvlpScaleFlagArr   = nullptr;
@@ -754,8 +754,8 @@ void J3DModel::update()
 	if (unk94 != nullptr)
 		unk94->calc(this);
 
-	j3dSys.setCurrentMtxCalc(mModelData->getMtxCalc());
-	mModelData->getMtxCalc()->init(unk14, unk20);
+	j3dSys.setCurrentMtxCalc(mModelData->unk14);
+	mModelData->unk14->init(mBaseScale, mBaseMtx);
 
 	j3dSys.setTexture(mModelData->getTexture());
 	mModelData->getMtxCalc()->recursiveUpdate(mModelData->getRootNode());
@@ -816,8 +816,8 @@ void J3DModel::calc()
 	if (unk94 != nullptr)
 		unk94->calc(this);
 
-	j3dSys.setCurrentMtxCalc(mModelData->getMtxCalc());
-	mModelData->getMtxCalc()->init(unk14, unk20);
+	j3dSys.setCurrentMtxCalc(mModelData->unk14);
+	mModelData->unk14->init(mBaseScale, mBaseMtx);
 	j3dSys.setTexture(mModelData->getTexture());
 	mModelData->unk14->recursiveCalc(mModelData->mRootNode);
 #ifdef SMS_NATIVE_PLATFORM
@@ -830,17 +830,17 @@ void J3DModel::calc()
 			static long n = 0;
 			++n;
 			if ((n % 400) == 0 || n <= 12) {
-				const float* b = (const float*)unk20; // mBaseMtx
+				const float* b = (const float*)mBaseMtx; // mBaseMtx
 				const float* a = (const float*)getAnmMtx(0);
 				fprintf(stderr,
 				        "[calc-dbg] n=%ld model=%p base0=[%.3f %.3f %.3f %.1f] baseS=(%g %g %g) anm0=[%.3f %.3f %.3f %.1f] mtxCalc=%p\n",
-				        n, (void*)this, b[0], b[1], b[2], b[3], unk14.x, unk14.y, unk14.z,
+				        n, (void*)this, b[0], b[1], b[2], b[3], mBaseScale.x, mBaseScale.y, mBaseScale.z,
 				        a[0], a[1], a[2], a[3], (void*)mModelData->unk14);
 			}
 			// One-shot backtrace per model whose base matrix has a zero rotation
 			// row — names the actor perform() path that failed to build it.
 			{
-				const float* b = (const float*)unk20;
+				const float* b = (const float*)mBaseMtx;
 				if (fabsf(b[0]) < 1e-20f && fabsf(b[1]) < 1e-20f && fabsf(b[2]) < 1e-20f) {
 					static const void* seen[8];
 					static int nseen = 0;
