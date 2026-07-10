@@ -1,3 +1,4 @@
+#include <JSystem/JSupport/JSUInputStream.hpp> // JSU_BE32 / JSU_BE32_INPLACE
 #include <MoveBG/MapObjPollution.hpp>
 #include <MoveBG/MapObjManager.hpp>
 #include <Map/PollutionManager.hpp>
@@ -102,6 +103,8 @@ void TMapObjRevivalPollution::load(JSUMemoryInputStream& stream)
 {
 	JDrama::TViewObj::load(stream);
 	stream.read(&unk10, 4);
+	// BE dword on disc; raw read(&x,4) does not swap (JSU raw-read class).
+	unk10 = (s32)JSU_BE32((u32)unk10);
 	unk14 = new TRevivalPolluter[unk10];
 	for (int i = 0; i < unk10; ++i)
 		unk14[i].loadInfo(stream);

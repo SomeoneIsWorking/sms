@@ -1,3 +1,4 @@
+#include <JSystem/JSupport/JSUInputStream.hpp> // JSU_BE32 / JSU_BE32_INPLACE
 #include <MoveBG/MapObjGrass.hpp>
 #include <System/MarDirector.hpp>
 #include <Camera/Camera.hpp>
@@ -85,6 +86,8 @@ void TMapObjGrassGroup::load(JSUMemoryInputStream& stream)
 {
 	THitActor::load(stream);
 	stream.read(&unk68, 4);
+	// BE dword on disc; raw read(&x,4) does not swap (JSU raw-read class).
+	unk68 = (s32)JSU_BE32((u32)unk68);
 	unk6C = new JGeometry::TVec3<f32>[unk68];
 	unk70 = new JGeometry::TVec3<s16>[unk68];
 	unk74 = new s16[unk68];

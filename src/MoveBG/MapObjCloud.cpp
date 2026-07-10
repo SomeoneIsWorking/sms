@@ -1,3 +1,4 @@
+#include <JSystem/JSupport/JSUInputStream.hpp> // JSU_BE32 / JSU_BE32_INPLACE
 #include <MoveBG/MapObjCloud.hpp>
 #include <Map/MapCollisionEntry.hpp>
 #include <Map/MapCollisionManager.hpp>
@@ -81,6 +82,12 @@ void TRideCloud::load(JSUMemoryInputStream& stream)
 	stream.read(&g, 4);
 	stream.read(&b, 4);
 	stream.read(&a, 4);
+	// BE dwords on disc; raw read(&x,4) does not swap (JSU raw-read class) —
+	// unswapped, & 0xff picks the wrong (high) byte of each channel.
+	r        = JSU_BE32(r);
+	g        = JSU_BE32(g);
+	b        = JSU_BE32(b);
+	a        = JSU_BE32(a);
 	unk16E.r = r & 0xff;
 	unk16E.g = g & 0xff;
 	unk16E.b = b & 0xff;
@@ -89,6 +96,10 @@ void TRideCloud::load(JSUMemoryInputStream& stream)
 	stream.read(&g, 4);
 	stream.read(&b, 4);
 	stream.read(&a, 4);
+	r        = JSU_BE32(r);
+	g        = JSU_BE32(g);
+	b        = JSU_BE32(b);
+	a        = JSU_BE32(a);
 	unk176.r = r & 0xff;
 	unk176.g = g & 0xff;
 	unk176.b = b & 0xff;

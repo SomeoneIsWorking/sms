@@ -1,3 +1,4 @@
+#include <JSystem/JSupport/JSUInputStream.hpp> // JSU_BE32 / JSU_BE32_INPLACE
 #include <MoveBG/MapObjRailBlock.hpp>
 #include <Map/MapCollisionManager.hpp>
 #include <Map/MapCollisionEntry.hpp>
@@ -264,6 +265,8 @@ void TNormalLift::load(JSUMemoryInputStream& stream)
 	TRailMapObj::load(stream);
 
 	stream.read(&unk154, 4);
+	// BE float on disc; raw read(&x,4) does not swap (JSU raw-read class).
+	JSU_BE32_INPLACE(&unk154);
 	if (unk154 > 0.0f && mMapCollisionManager) {
 		TMapCollisionBase* col = mMapCollisionManager->getUnk8();
 		col->setAllBGType(7);
@@ -391,7 +394,9 @@ void TRollBlock::load(JSUMemoryInputStream& stream)
 	unkF4 = stream.readString();
 	int local_18;
 	stream.read(&local_18, 4);
-	unk13C = local_18 * 0.01f;
+	// BE dword on disc; raw read(&x,4) does not swap (JSU raw-read class).
+	local_18 = (int)JSU_BE32((u32)local_18);
+	unk13C   = local_18 * 0.01f;
 	initMapObj();
 	makeObjAppeared();
 }
@@ -521,6 +526,12 @@ void TWoodBlock::load(JSUMemoryInputStream& stream)
 	stream.read(&local_24, 4);
 	stream.read(&local_28, 4);
 	stream.read(&local_2C, 4);
+	// BE dwords on disc; raw read(&x,4) does not swap (JSU raw-read class) —
+	// unswapped, & 0xff picks the wrong (high) byte of each channel.
+	local_20 = (int)JSU_BE32((u32)local_20);
+	local_24 = (int)JSU_BE32((u32)local_24);
+	local_28 = (int)JSU_BE32((u32)local_28);
+	local_2C = (int)JSU_BE32((u32)local_2C);
 	unk164.r = local_20 & 0xff;
 	unk164.g = local_24 & 0xff;
 	unk164.b = local_28 & 0xff;

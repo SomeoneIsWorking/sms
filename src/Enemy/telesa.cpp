@@ -1,3 +1,4 @@
+#include <JSystem/JSupport/JSUInputStream.hpp> // JSU_BE32 / JSU_BE32_INPLACE
 #include <Enemy/Telesa.hpp>
 #include <JSystem/J3D/J3DGraphLoader/J3DModelLoader.hpp>
 #include <JSystem/J3D/J3DGraphAnimator/J3DCluster.hpp>
@@ -955,6 +956,8 @@ void TMarioModokiTelesa::load(JSUMemoryInputStream& stream)
 	TSmallEnemy::load(stream);
 
 	stream.read(&mImitationIndex, 0x4);
+	// BE dword on disc; raw read(&x,4) does not swap (JSU raw-read class).
+	mImitationIndex = (int)JSU_BE32((u32)mImitationIndex);
 
 	SDLModelData* modelToUse = ((TTelesaManager*)mManager)->mModokiTelesaModel;
 	switch (mImitationIndex) {

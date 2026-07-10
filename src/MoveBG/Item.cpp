@@ -1,3 +1,4 @@
+#include <JSystem/JSupport/JSUInputStream.hpp> // JSU_BE32 / JSU_BE32_INPLACE
 #include <MoveBG/Item.hpp>
 #include <MoveBG/ItemManager.hpp>
 #include <Map/MapMirror.hpp>
@@ -839,12 +840,15 @@ void TShine::loadBeforeInit(JSUMemoryInputStream& stream)
 
 	s32 eventId;
 	stream.read(&eventId, 4);
+	// BE dword on disc; raw read(&x,4) does not swap (JSU raw-read class).
+	eventId = (s32)JSU_BE32((u32)eventId);
 	if (eventId == -1)
 		eventId = 120;
 	setEventId(eventId);
 
 	s32 v;
 	stream.read(&v, 4);
+	v       = (s32)JSU_BE32((u32)v);
 	eventId = v;
 	if (v + 1 >= 2)
 		eventId = -1;

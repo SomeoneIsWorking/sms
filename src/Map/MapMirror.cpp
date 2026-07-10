@@ -1,3 +1,4 @@
+#include <JSystem/JSupport/JSUInputStream.hpp> // JSU_BE32 / JSU_BE32_INPLACE
 #include <Map/MapMirror.hpp>
 #include <Map/MapData.hpp>
 #include <M3DUtil/MActor.hpp>
@@ -338,6 +339,10 @@ void TMirrorModelManager::load(JSUMemoryInputStream& stream)
 	stream.read(&local_28, 4);
 	stream.read(&local_2C, 4);
 	stream.read(&local_30, 4);
+	// BE dword on disc; raw read(&x,4) does not swap (JSU raw-read class).
+	local_28 = (int)JSU_BE32((u32)local_28);
+	local_2C = (int)JSU_BE32((u32)local_2C);
+	local_30 = (int)JSU_BE32((u32)local_30);
 	mTotalMirrorSlots = local_28 + local_2C + local_30 * 2;
 
 	if (mTotalMirrorSlots != 0) {

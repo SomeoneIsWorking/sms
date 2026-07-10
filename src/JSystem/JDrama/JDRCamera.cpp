@@ -1,3 +1,4 @@
+#include <JSystem/JSupport/JSUInputStream.hpp> // JSU_BE32 / JSU_BE32_INPLACE
 #include <JSystem/JDrama/JDRCamera.hpp>
 #include <dolphin/mtx.h>
 #include <dolphin/gx.h>
@@ -118,6 +119,11 @@ void TOrthoProj::load(JSUMemoryInputStream& stream)
 	stream.read(&mField[1], sizeof(float));
 	stream.read(&mField[2], sizeof(float));
 	stream.read(&mField[3], sizeof(float));
+	// BE floats on disc; raw read(&x,4) does not swap (JSU raw-read class).
+	JSU_BE32_INPLACE(&mField[0]);
+	JSU_BE32_INPLACE(&mField[1]);
+	JSU_BE32_INPLACE(&mField[2]);
+	JSU_BE32_INPLACE(&mField[3]);
 }
 void TOrthoProj::perform(u32 param_1, TGraphics* param_2)
 {

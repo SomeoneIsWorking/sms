@@ -1,3 +1,4 @@
+#include <JSystem/JSupport/JSUInputStream.hpp> // JSU_BE32 / JSU_BE32_INPLACE
 #include <Map/MapEventSink.hpp>
 #include <Map/PollutionManager.hpp>
 #include <Map/MapCollisionEntry.hpp>
@@ -143,8 +144,19 @@ void TMapEventSink::initBuilding(int index, JSUMemoryInputStream& stream)
 {
 	u32 value;
 	stream.read(&value, 4);
+#ifdef SMS_NATIVE_PLATFORM
+	// Event data stores these as big-endian dwords; the raw read(&value,4)
+	// copies bytes unswapped (only typed readU32 swaps). On GC the u32 is
+	// truncated into the u16 field (low 16 bits of the BE value), so swap to
+	// host THEN truncate. unk0/unk2 are pollution layer/child indices —
+	// unswapped they truncate to 0/garbage and index the wrong pollution obj.
+	value = __builtin_bswap32(value);
+#endif
 	unk60[index].unk0 = value;
 	stream.read(&value, 4);
+#ifdef SMS_NATIVE_PLATFORM
+	value = __builtin_bswap32(value);
+#endif
 	unk60[index].unk2 = value;
 	unk58[index]
 	    = TMapObjBase::newAndInitBuildingCollisionWarp(index + 1, nullptr);
@@ -156,6 +168,13 @@ void TMapEventSink::initWithBuildingNum(JSUMemoryInputStream& stream)
 {
 	u32 value;
 	stream.read(&value, 4);
+#ifdef SMS_NATIVE_PLATFORM
+	// Same raw-read class as TMapCollisionData::init: the dword is big-endian
+	// on disc and read(&value,4) does not swap. Unswapped, BE 1 becomes
+	// 0x01000000 and getBuilding(0) in startControl indexes child 16,777,216
+	// -> kill() on null this (airport setupObjects SEGV). Swap before use.
+	value = __builtin_bswap32(value);
+#endif
 	unk24 = value;
 	unk50 = new JGeometry::TVec3<f32>[mBuildingNum];
 	unk58 = new TMapCollisionWarp*[mBuildingNum];
@@ -376,6 +395,11 @@ void TMapEventSinkBianco::load(JSUMemoryInputStream& stream)
 	int dummy;
 	stream.read(&dummy, 4);
 	stream.read(&unk78, 4);
+	// BE floats on disc; raw read(&x,4) does not swap (JSU raw-read class).
+	JSU_BE32_INPLACE(&unk6C.x);
+	JSU_BE32_INPLACE(&unk6C.y);
+	JSU_BE32_INPLACE(&unk6C.z);
+	JSU_BE32_INPLACE(&unk78);
 
 	SMS_LoadParticle("/scene/map/map/ms_objup_slope_a.jpa", 0x59);
 	SMS_LoadParticle("/scene/map/map/ms_objup_slope_b.jpa", 0x1E1);
