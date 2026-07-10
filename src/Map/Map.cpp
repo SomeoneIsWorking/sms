@@ -328,7 +328,8 @@ void TMap::perform(u32 cue, JDrama::TGraphics* graphics)
 				             param_1,
 				             (param_1 & 0x2000000) ? "changeXluJoint(1)"
 				             : (param_1 & 0x4000000) ? "changeXluJoint(0)" : "changeNormalJoint",
-				             mXlu ? mXlu->unk0 : -1, sb_boot_capture_phase()); }
+				             mXlu ? mXlu->getPrioGroupNum() : -1,
+				             (&sb_boot_capture_phase) ? sb_boot_capture_phase() : -1); }
 		}
 #endif
 		if ((param_1 & 0x2000000)) {
