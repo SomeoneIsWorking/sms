@@ -706,12 +706,18 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 					u8 a = unk1D4[i]->getPane()->getAlpha();
 					if (a == 0) ++nDone;
 				}
+				u8 s0 = unkF8[0] ? unkF8[0]->getPane()->getAlpha() : 0;
+				u8 s5 = unkF8[5] ? unkF8[5]->getPane()->getAlpha() : 0;
+				u8 s10 = unkF8[10] ? unkF8[10]->getPane()->getAlpha() : 0;
 				fprintf(stderr,
 				    "[titlepane] frame=%ld mState=%d unk18=%d unkBC=%d introChase=%d "
-				    "F0alpha=%d F4alpha=%d F0vis=%d overlay@0=%d/13\n",
+				    "F0alpha=%d F4alpha=%d F0vis=%d overlay@0=%d/13 "
+				    "s_0[0]a=%d st=%d s_0[5]a=%d st=%d s_0[10]a=%d st=%d u258=%d\n",
 				    s_tframe, mState, unk18, unkBC,
 				    gpCameraOption ? gpCameraOption->mIntroChaseTimer : -1,
-				    (int)aF0, (int)aF4, (int)visF0, nDone);
+				    (int)aF0, (int)aF4, (int)visF0, nDone,
+				    (int)s0, (int)unk222[0], (int)s5, (int)unk222[5],
+				    (int)s10, (int)unk222[10], (int)unk258);
 			}
 		}
 	}
@@ -1139,7 +1145,17 @@ bool TCardLoad::titleDraw()
 				if (unk20C[i] > 500) {
 					JUTRect bounds = unkF8[i]->getPane()->getBounds();
 					unkF8[i]->setPaneAlpha(25, 0, 255);
-					unk222[i] = 3;
+					// Retail (TCardLoad::perform @0x8016c060, Ghidra: state-1
+					// >500 sets `*pbVar20 = 2`) routes to state 2, which waits
+					// for the fade-out to COMPLETE via update() then resets
+					// unk20C=0 before state 3's 300-frame faded hold. The port
+					// set state 3 directly, so unk20C stayed ~501 (>300) and
+					// state 3 expired the SAME frame — the sparkle (s_0X/unkF8)
+					// panes never stayed faded, permanently diluting the blue
+					// title logo (measured [148,176,235] vs oracle [81,133,215];
+					// SB_SKIP_DUOTONE base-only = oracle-exact). See
+					// debug_journal/2026-07-10_title_pixel_diagnosis.md.
+					unk222[i] = 2;
 				}
 				break;
 
