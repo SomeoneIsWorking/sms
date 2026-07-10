@@ -188,7 +188,28 @@ void TMapStaticObj::calcUnique(JPABaseEmitter* emitter)
 
 void TMapStaticObj::perform(u32 cue, JDrama::TGraphics* graphics)
 {
-	if (cue & CUE_CALC_ANIM) {
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_SEA_DBG: trace the "sea"/reflective static objects — which perform flag, whether the
+	// 0x80 (DrawBuf AfterIndirect) enter branch fires, and the model shape count. The pass-3
+	// indirect reflective sea is a flag-0x80 static obj entered into DrawBuf AfterIndirect.
+	static int s_seaDbg0 = -1;
+	if (s_seaDbg0 < 0) { const char* e = getenv("SB_SEA_DBG"); s_seaDbg0 = (e && e[0] && e[0] != '0') ? 1 : 0; }
+	if (s_seaDbg0) {
+		if (mActorName && (strcmp(mActorName, "sea") == 0
+		    || strcmp(mActorName, "SeaIndirect") == 0
+		    || strcmp(mActorName, "ReflectSky") == 0
+		    || strcmp(mActorName, "ReflectParts") == 0)) {
+			static int sn = 0;
+			if (sn < 60) { ++sn;
+				fprintf(stderr, "[sea] '%s' perform(0x%x) mFlags=0x%x model=%p enter80=%d\n",
+				        mActorName, param_1,
+				        mActorData ? mActorData->mFlags : 0, (void*)mMActor,
+				        (int)((param_1 & 0x200) && mActorData && (mActorData->mFlags & 0x80)));
+			}
+		}
+	}
+#endif
+	if (param_1 & 2) {
 		if (mSoundId != -1)
 			SMSGetMSound()->startSoundActor(mSoundId, &mPosition, 0, nullptr, 0,
 			                                4);
@@ -235,7 +256,22 @@ void TMapStaticObj::perform(u32 cue, JDrama::TGraphics* graphics)
 			unk70->getModel()->setBaseScale(mScaling);
 		}
 
-		if ((cue & CUE_ENTRY)
+#ifdef SMS_NATIVE_PLATFORM
+		{
+			static int s_seaDbg = -1;
+			if (s_seaDbg < 0) { const char* e = getenv("SB_SEA_DBG"); s_seaDbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
+			if (s_seaDbg && mActorData) {
+				static int sn = 0;
+				if (sn < 200) { ++sn;
+					fprintf(stderr, "[sea-perform] '%s' param_1=0x%x mFlags=0x%x UNK80=%d has200=%d\n",
+					        mActorName ? mActorName : "?", param_1, mActorData->mFlags,
+					        (int)((mActorData->mFlags & TActorData::FLAG_UNK80) != 0),
+					        (int)((param_1 & 0x200) != 0));
+				}
+			}
+		}
+#endif
+		if ((param_1 & 0x200)
 		    && (mActorData->mFlags & TActorData::FLAG_UNK80)) {
 			J3DDrawBuffer* oldOpaBuf = j3dSys.getDrawBuffer(0);
 			J3DDrawBuffer* oldXluBuf = j3dSys.getDrawBuffer(1);
