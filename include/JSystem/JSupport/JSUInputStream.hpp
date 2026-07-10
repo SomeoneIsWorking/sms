@@ -18,6 +18,21 @@
 #define JSU_BE64(x) (x)
 #endif
 
+// In-place host-endian swap of a 4-byte scalar filled by the raw read(&x,4)
+// idiom. Use this for f32 fields (an integer-typed JSU_BE32 round-trip would
+// need a memcpy dance at every site); no-op on big-endian targets.
+inline void JSU_BE32_INPLACE(void* p)
+{
+#ifdef SMS_NATIVE_PLATFORM
+	u32 b;
+	__builtin_memcpy(&b, p, 4);
+	b = __builtin_bswap32(b);
+	__builtin_memcpy(p, &b, 4);
+#else
+	(void)p;
+#endif
+}
+
 class JSUInputStream : public JSUIosBase {
 public:
 	virtual ~JSUInputStream();
