@@ -117,6 +117,15 @@ void TShimmer::load(JSUMemoryInputStream& stream)
 	                                     J3DMLF_MaterialPEFull
 	                                         | J3DMLF_MaterialUseIndirect
 	                                         | (1 << J3DMLF_TevStageNumShift));
+#ifdef SMS_NATIVE_PLATFORM
+	// FAIL FAST: a corrupt/missing resource makes load() return null model
+	// data, then `new J3DModel(unk44, ...)` derefs null. Name the path so a
+	// heap-corruption bug upstream (bad bytes at the resolved offset, not a
+	// lookup bug) surfaces here instead of segfaulting deeper in J3DModel.
+	if (unk44 == nullptr)
+		OSPanic(__FILE__, __LINE__,
+		        "TShimmer::load: model data load failed for %s", buffer);
+#endif
 	unk48 = new J3DModel(unk44, 0, 1);
 	snprintf(buffer, 64, "/scene/mapObj/%s.btk", modelName);
 	unk54 = (J3DAnmTextureSRTKey*)J3DAnmLoaderDataBase::load(

@@ -269,7 +269,19 @@ static int decompSZS_subroutine(u8* src, u8* dest)
 		return -1;
 	}
 
+#ifdef SMS_NATIVE_PLATFORM
+	// Yaz0 header length is big-endian on disc; the struct-member load is a
+	// host-LE misread. When the swapped value is SMALLER than the truth (true
+	// low byte 0x00, e.g. airport0.arc 0x4B1300 -> 0x134B00) decompression
+	// silently truncates and reports success — most files survived only
+	// because a HUGE bogus value clamps down to maxDest by accident.
+	// JKRDecompExpandSize already reads this same field BE-correctly.
+	u32 yaz0Length = ((u32)src[4] << 24) | ((u32)src[5] << 16)
+	                | ((u32)src[6] << 8) | (u32)src[7];
+	endPtr = dest + (yaz0Length - fileOffset);
+#else
 	endPtr = dest + (((SYaz0Header*)src)->length - fileOffset);
+#endif
 	if (endPtr > dest + maxDest) {
 		endPtr = dest + maxDest;
 	}
