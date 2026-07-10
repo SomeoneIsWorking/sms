@@ -284,11 +284,12 @@ void J2DPicture::drawFullSet(int x, int y, int w, int h, J2DBinding binding,
 #ifdef SMS_NATIVE_PLATFORM
 	if (std::getenv("SB_J2D_DRAW_DUMP") != nullptr && mTextures[0]) {
 		std::fprintf(stderr,
-		    "[j2d-fullset] tag=%08x info=%c%c%c%c mBoundsW=%d mBoundsH=%d x=%d y=%d w=%d h=%d "
-		    "texW=%d texH=%d mBlack=%08x\n",
-		    (unsigned)mUserInfoTag, (char)(mInfoTag>>24),(char)(mInfoTag>>16),(char)(mInfoTag>>8),(char)mInfoTag,
-		    mBounds.getWidth(), mBounds.getHeight(), x, y, w, h,
-		    (int)mTextures[0]->getWidth(), (int)mTextures[0]->getHeight(), (unsigned)mBlack);
+		    "[j2d-fullset] tag=%08x mBoundsW=%d mBoundsH=%d w=%d h=%d "
+		    "texW=%d texH=%d binding=%d wrapH=%d wrapV=%d mBlack=%08x\n",
+		    (unsigned)mUserInfoTag,
+		    mBounds.getWidth(), mBounds.getHeight(), w, h,
+		    (int)mTextures[0]->getWidth(), (int)mTextures[0]->getHeight(),
+		    (int)binding, (int)wrap_hor, (int)wrap_vert, (unsigned)mBlack);
 	}
 #endif
 	int renderX = x;
