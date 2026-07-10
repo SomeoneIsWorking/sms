@@ -9,6 +9,7 @@
 #include <JSystem/J3D/J3DGraphBase/Blocks/J3DTevBlocks.hpp>
 #include <JSystem/J3D/J3DGraphBase/Blocks/J3DPEBlocks.hpp>
 #include <JSystem/J3D/J3DGraphBase/Components/J3DBlend.hpp>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <execinfo.h>   // SB_ENTRY_MAT entry backtrace
@@ -20,6 +21,11 @@ extern "C" int sb_boot_capture_phase() __attribute__((weak));   // SB_DBHEAD_DBG
 extern "C" void* sb_b76_material() __attribute__((weak));       // SB_ENTRY_MAT: the b76 mask material ptr (published by capture)
 extern "C" void sb_gx_get_color_alpha_update(int*, int*);  // SB_DBHEAD_PKT: live cU/aU at flush
 extern "C" const char* sb_boot_drawbuf_name(const void* buf) __attribute__((weak));  // SB_ENTRY_MAT: name of the draw buffer entry lands in
+// Shared cross-instrument sequence counter (sms-boot/runtime/trace_seq.cpp).
+// SB_TRACE_SEQ=1: prefix dbhead flush lines with seq=N so this family
+// interleaves exactly with the present-boundary/plist-order/proj logs.
+extern "C" uint64_t sb_trace_seq(void) __attribute__((weak));
+extern "C" unsigned VIGetRetraceCount(void) __attribute__((weak));
 #endif
 
 J3DDrawBuffer::sortFunc J3DDrawBuffer::sortFuncTable[6] = {
@@ -386,7 +392,20 @@ void J3DDrawBuffer::drawHead() const
 	// SB_DBHEAD_DBG: trace each drawHead flush — buffer ptr + phase + packet count. Cross-ref the
 	// buffer ptr with SB_DRAWBUF_INV to see WHICH named buffer (e.g. MapXlu) is flushed in WHICH pass.
 	// This nails the MapXlu-mask pass-routing divergence (native flushes it in ph1+ph6; GC in main).
-	if (const char* e = std::getenv("SB_DBHEAD_DBG"); e && e[0] && e[0] != '0') {
+	// SB_DBHEAD_DBG_AFTER=<retrace>: same threshold pattern as SB_PROJ_DBG_AFTER/
+	// SB_PLIST_ORDER_DBG_AFTER — unthresholded this fires every flush of every buffer every
+	// frame from frame 0, which floods stderr heavily enough to dominate a paced run's
+	// wall-clock. Set alone (without SB_DBHEAD_DBG) to get only the settled window.
+	static long s_dbheadAfter = -2;
+	if (s_dbheadAfter == -2) {
+		const char* eAfter = std::getenv("SB_DBHEAD_DBG_AFTER");
+		s_dbheadAfter = (eAfter && eAfter[0]) ? std::atol(eAfter) : -1;
+	}
+	bool dbheadOn = false;
+	if (const char* e = std::getenv("SB_DBHEAD_DBG"); e && e[0] && e[0] != '0') dbheadOn = true;
+	if (s_dbheadAfter >= 0 && &VIGetRetraceCount && static_cast<long>(VIGetRetraceCount()) >= s_dbheadAfter)
+		dbheadOn = true;
+	if (dbheadOn) {
 		long np = 0; for (u32 i = 0; i < mSize; i++)
 			for (J3DPacket* p = mBuffer[i]; p; p = p->getNextPacket()) ++np;
 		// SB_DBHEAD_MAT=1: also print each packet's J3DMaterial low-24 bits (cast to J3DMatPacket) so the
@@ -406,9 +425,21 @@ void J3DDrawBuffer::drawHead() const
 			const char* bn = (&sb_boot_drawbuf_name)
 			                     ? sb_boot_drawbuf_name((const void*)this)
 			                     : nullptr;
-			std::fprintf(stderr, "[dbhead] phase=%d buf=%p packets=%ld name=\"%s\"\n",
-			             (&sb_boot_capture_phase) ? sb_boot_capture_phase() : -1, (const void*)this, np,
-			             bn ? bn : "(unknown)");
+			static int traceSeqOn = -1;
+			if (traceSeqOn < 0) {
+				const char* eSeq = std::getenv("SB_TRACE_SEQ");
+				traceSeqOn = (eSeq && eSeq[0] && eSeq[0] != '0') ? 1 : 0;
+			}
+			if (traceSeqOn && &sb_trace_seq) {
+				std::fprintf(stderr, "[dbhead] seq=%lu phase=%d buf=%p packets=%ld name=\"%s\"\n",
+				             (unsigned long)sb_trace_seq(),
+				             (&sb_boot_capture_phase) ? sb_boot_capture_phase() : -1, (const void*)this, np,
+				             bn ? bn : "(unknown)");
+			} else {
+				std::fprintf(stderr, "[dbhead] phase=%d buf=%p packets=%ld name=\"%s\"\n",
+				             (&sb_boot_capture_phase) ? sb_boot_capture_phase() : -1, (const void*)this, np,
+				             bn ? bn : "(unknown)");
+			}
 		}
 	}
 	// SB_DBHEAD_PKT=1: at each flush of a buffer that holds the sea-mask material (c97c48), print the
