@@ -319,6 +319,17 @@ int TMarDirector::direct()
 			// a plain global write consumed by the phase getter (sms-boot/runtime/phase_track.cpp).
 			sb_boot_capture_set_phase(1);
 #endif
+#ifdef SMS_NATIVE_PLATFORM
+			// SB_SKIP_GHOST=1 (diagnostic): skip the phase-1 Draw-Buffer-Group draw
+			// (unk40, the only thing unk40 holds). This is the suspected phase-1 "ghost"
+			// pass that draws the whole 3D scene under the stale ortho projection carried
+			// from the prior frame's GXPost 2D tail. Toggle to see if the overexposed-title
+			// blowout is the ghost double-draw and whether mPerformListGX alone renders the
+			// scene. Not a fix — a probe.
+			static int s_skipGhost = -1;
+			if (s_skipGhost < 0) { const char* e = getenv("SB_SKIP_GHOST"); s_skipGhost = (e && e[0] && e[0] != '0') ? 1 : 0; }
+			if (!s_skipGhost)
+#endif
 			unk40->perform(0xffffffff, &local_140);
 #ifdef SMS_NATIVE_PLATFORM
 			sb_boot_capture_set_phase(2);
