@@ -166,7 +166,7 @@ int TMarDirector::direct()
 		static long dc = 0;
 		if ((++dc % 200) == 0 || (unk4C & 0x000f))
 			fprintf(stderr, "[dir] direct() call %ld entry-state unk4C=0x%x mState=%d unk124=%d\n",
-			        dc, unk4C, mState, (int)unk124);
+			        dc, unk4C, mState, (int)mGameState);
 	}
 #endif
 
@@ -685,7 +685,7 @@ void TMarDirector::currentStateFinalize(u8 next_state)
 		break;
 
 	case STATE_UNK4:
-		if (unk124 == 0)
+		if (mGameState == 0)
 			OSStopStopwatch(&unkE8);
 		unk18[0]->mFlags &= ~0x2;
 		break;
@@ -904,7 +904,7 @@ void TMarDirector::nextStateInitialize(u8 next_state)
 			setMario();
 			unk50 |= 1;
 		}
-		if (!unk124)
+		if (!mGameState)
 			OSStartStopwatch(&unkE8);
 		unk18[0]->onFlag(0x2);
 		break;
@@ -986,7 +986,7 @@ u8 TMarDirector::updateGameMode()
 {
 	u8 r29 = mState;
 
-	switch (unk124) {
+	switch (mGameState) {
 	case 0:
 #ifdef SMS_NATIVE_PLATFORM
 		if (sb_dir_dbg()) {
@@ -1031,7 +1031,7 @@ u8 TMarDirector::updateGameMode()
 
 			if (unk4C & 0x1) {
 				unk4C &= ~0x1;
-				unk126 = 3;
+				mNextGameState = 3;
 
 				TGCConsole2* console = gpMarDirector->mConsole;
 				console->unk94->startAppearShineGet();
@@ -1048,7 +1048,7 @@ u8 TMarDirector::updateGameMode()
 			}
 
 			if (unk4C & 0x40) {
-				unk126 = 3;
+				mNextGameState = 3;
 				break;
 			}
 
@@ -1061,7 +1061,7 @@ u8 TMarDirector::updateGameMode()
 			if (unk4C & 0x8) {
 				unk4C &= ~0x8;
 				unk4C |= 0x2;
-				unk126 = 3;
+				mNextGameState = 3;
 				if (gpApplication.mNextArea.getStage() == 5) {
 					fireStartDemoCamera("hodai_dpt_pinna1", nullptr, -1, 0.0f,
 					                    false, nullptr, 0, nullptr, 0);
@@ -1088,7 +1088,7 @@ u8 TMarDirector::updateGameMode()
 			if (unk4C & 0x4) {
 				unk4C &= ~0x4;
 				unk4C |= 0x2;
-				unk126 = 3;
+				mNextGameState = 3;
 				fireStartDemoCamera(nullptr, nullptr, -1, 0.0f, false, nullptr,
 				                    0, mTransitionActor, 0);
 				break;
@@ -1104,10 +1104,10 @@ u8 TMarDirector::updateGameMode()
 
 	case 2:
 		if (unk4C & 0x40) {
-			unk126 = 4;
+			mNextGameState = 4;
 		} else {
-			if (unkB0->unk248 == 0)
-				unk126 = 0;
+			if (unkB0->mTalkMode == 0)
+				mNextGameState = 0;
 		}
 		break;
 
@@ -1142,7 +1142,7 @@ u8 TMarDirector::updateGameMode()
 					(*info->unk14)(info->unk18, 0);
 			} else {
 				unk4C &= ~0x40;
-				unk126 = unk124 == 4 ? 2 : 0;
+				mNextGameState = mGameState == 4 ? 2 : 0;
 				if (uVar15 != 0)
 					gpCamera->endDemoCamera();
 				if (unk12C[prev].unk14 != nullptr)
@@ -1155,13 +1155,13 @@ u8 TMarDirector::updateGameMode()
 	if (unk24D == unk24C)
 		unk4C &= ~0x80;
 
-	unk125 = unk124;
+	unk125 = mGameState;
 
-	if (unk124 != unk126) {
-		switch (unk124) {
+	if (mGameState != mNextGameState) {
+		switch (mGameState) {
 		case 2:
-			if (unk126 == 0) {
-				unkA0 = 0;
+			if (mNextGameState == 0) {
+				mTalkingNPC = 0;
 				unkA4 = 0;
 				unk18[0]->mFlags &= ~0x2;
 				OSStartStopwatch(&unkE8);
@@ -1170,8 +1170,8 @@ u8 TMarDirector::updateGameMode()
 
 		case 3:
 		case 4:
-			if (unk124 == 4)
-				MSMainProc::fromTalkingCameraDemo(unk124 == 4);
+			if (mGameState == 4)
+				MSMainProc::fromTalkingCameraDemo(mGameState == 4);
 			else
 				MSMainProc::fromInnerCameraDemo();
 			unk18[0]->mFlags &= ~0x80;
@@ -1179,25 +1179,25 @@ u8 TMarDirector::updateGameMode()
 			break;
 		}
 
-		switch (unk126) {
+		switch (mNextGameState) {
 		case 0:
 			break;
 
 		case 1:
-			unkA0->onLiveFlag(LIVE_FLAG_UNK40000);
-			unkA0->unkC.off(0x3);
+			mTalkingNPC->onLiveFlag(LIVE_FLAG_UNK40000);
+			mTalkingNPC->unkC.off(0x3);
 			unk18[0]->mFlags |= 0x8;
 			OSStopStopwatch(&unkE8);
 			break;
 
 		case 2:
-			if (unk124 == 1)
-				unkB0->openTalkWindow(unkA0);
+			if (mGameState == 1)
+				unkB0->openTalkWindow(mTalkingNPC);
 			break;
 
 		case 3:
 		case 4:
-			if (unk124 == 4)
+			if (mGameState == 4)
 				MSMainProc::toTalkingCameraDemo();
 			else
 				MSMainProc::toInnerCameraDemo();
@@ -1216,7 +1216,7 @@ u8 TMarDirector::updateGameMode()
 			break;
 		}
 
-		unk124 = unk126;
+		mGameState = mNextGameState;
 	}
 
 	if (unk128 & 0x1) {

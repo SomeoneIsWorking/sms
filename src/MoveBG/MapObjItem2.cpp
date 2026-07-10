@@ -232,8 +232,8 @@ void TJumpBase::calcRootMatrix()
 	if (getHolder() != nullptr) {
 		J3DModel* model = getModel();
 		MtxPtr mtx      = getHolder()->getTakingMtx();
-		MTXCopy(mtx, model->unk20);
-		model->unk14 = mScaling;
+		MTXCopy(mtx, model->mBaseMtx);
+		model->mBaseScale = mScaling;
 		mPosition.set(mtx[0][3], mtx[1][3], mtx[2][3]);
 		return;
 	}

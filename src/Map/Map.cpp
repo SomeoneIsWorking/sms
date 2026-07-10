@@ -258,7 +258,7 @@ void TMap::update()
 		break;
 	}
 
-	if (gpMarDirector->unk124 != 0)
+	if (gpMarDirector->mGameState != 0)
 		return;
 
 	if (gpCamera->isDemoCamera())

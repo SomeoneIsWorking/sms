@@ -37,7 +37,7 @@ TMarDirector::TMarDirector()
     , unk68(0)
     , unk6C(120.0f)
     , unk80(nullptr)
-    , unkA0(nullptr)
+    , mTalkingNPC(nullptr)
     , unkB8(nullptr)
     , unkBC(nullptr)
     , unkC8(0)
@@ -57,9 +57,9 @@ TMarDirector::TMarDirector()
 	mState        = STATE_UNK0;
 	unk88.reserve(100);
 	initLoadParticle();
-	unk126 = 0;
+	mNextGameState = 0;
 	unk125 = 0;
-	unk124 = 0;
+	mGameState = 0;
 	OSInitStopwatch(&unkE8, "イベント用ストップウォッチ");
 }
 
@@ -82,7 +82,7 @@ u32 TMarDirector::setup(JDrama::TDisplay* param_1, TMarioGamePad** param_2,
 	unkC0 = param_1;
 	unk18 = param_2;
 	mMap  = param_3;
-	unk7D = param_4;
+	mScenario = param_4;
 #ifdef SMS_NATIVE_PLATFORM
 	if (getenv("SB_JKR_DBG") || getenv("SB_MOVIE_DBG"))
 		OSReport("[mardir] TMarDirector::setup spawning setup thread "

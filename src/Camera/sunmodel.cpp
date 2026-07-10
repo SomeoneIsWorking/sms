@@ -245,7 +245,7 @@ void TSunModel::perform(u32 flags, JDrama::TGraphics*)
 			MsMtxSetTRS(mtx, unk198.x, unk198.y, unk198.z, mRotation.x,
 			            mRotation.y, mRotation.z, mScaling.x, mScaling.y,
 			            mScaling.z);
-			MTXCopy(mtx, unk48->unk20);
+			MTXCopy(mtx, unk48->mBaseMtx);
 			unk48->calc();
 		}
 	}

@@ -28,20 +28,20 @@ public:
 	void addDirty();
 
 	// Fabricated
-	bool isModelActive(u16 type) { return unk4 & type ? true : false; }
+	bool isModelActive(u16 type) { return mCapModelFlag & type ? true : false; }
 
 	// Fabricated
-	void setModelActive(u16 type) { unk4 |= type; }
+	void setModelActive(u16 type) { mCapModelFlag |= type; }
 
 	// Fabricated
-	void setModelInactive(u16 type) { unk4 &= ~type; }
+	void setModelInactive(u16 type) { mCapModelFlag &= ~type; }
 
 public:
-	/* 0x4 */ u16 unk4; // E_CAP_MODEL flag
+	/* 0x4 */ u16 mCapModelFlag; // E_CAP_MODEL flag
 	/* 0x6 */ u16 unk6;
 	/* 0x8 */ TMario* mMario;
 	/* 0xC */ J3DModel* unkC;      // current model?
-	/* 0x10 */ J3DModel* unk10[4]; // ma_cap1.bmd model
+	/* 0x10 */ J3DModel* mCapModels[4]; // ma_cap1.bmd model
 	/* 0x20 */ TMultiMtxEffect* unk20;
 	/* 0x24 */ TMultiMtxEffect* unk24;
 	/* 0x28 */ TMirrorActor* unk28[2];

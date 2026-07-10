@@ -221,7 +221,7 @@ void TEMario::perform(u32 flags, JDrama::TGraphics* gfx)
 		switch (mCollisions[i]->mActorType) {
 		case (s32)0x80000001: {
 			const f32 d = vecDist(mPosition, mCollisions[i]->getPosition());
-			if (d < mEnemyMario->unk42B0) {
+			if (d < mEnemyMario->mCollisionCheckDist) {
 				mCollisions[i]->receiveMessage(this, HIT_MESSAGE_ATTACK);
 			}
 		} break;

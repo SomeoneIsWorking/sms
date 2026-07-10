@@ -50,13 +50,13 @@ bool TMapObjBase::isHideObj(THitActor* param_1)
 bool TMapObjBase::isDemo()
 {
 	bool b1 = true;
-	if (gpMarDirector->unk124 != 1 && gpMarDirector->unk124 != 2)
+	if (gpMarDirector->mGameState != 1 && gpMarDirector->mGameState != 2)
 		b1 = false;
 
 	if (!b1) {
 		// TODO: should be OR, but need fancy inlines for that...
 		bool b2 = true;
-		if (gpMarDirector->unk124 != 3 && gpMarDirector->unk124 != 4)
+		if (gpMarDirector->mGameState != 3 && gpMarDirector->mGameState != 4)
 			b2 = false;
 		if (b2) {
 			return true;

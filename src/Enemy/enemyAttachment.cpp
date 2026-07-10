@@ -168,12 +168,12 @@ void TEnemyAttachment::perform(u32 param_1, JDrama::TGraphics* param_2)
 
 	// TODO: wtf is this inline???
 	bool bVar2 = true;
-	if (gpMarDirector->unk124 != 3 && gpMarDirector->unk124 != 4) {
+	if (gpMarDirector->mGameState != 3 && gpMarDirector->mGameState != 4) {
 		bVar2 = false;
 	}
 	if (!bVar2) {
 		bVar2 = true;
-		if (gpMarDirector->unk124 != 1 && gpMarDirector->unk124 != 2)
+		if (gpMarDirector->mGameState != 1 && gpMarDirector->mGameState != 2)
 			bVar2 = false;
 		if (bVar2) {
 			performOnlyDraw(param_1, param_2);

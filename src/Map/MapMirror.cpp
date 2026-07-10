@@ -105,7 +105,7 @@ static u8 getVertexFormat(const J3DModelData* model_data, GXAttr attr)
 
 void TMirrorModel::setPlane()
 {
-	MtxPtr mtx = mMActor->unk4->unk20;
+	MtxPtr mtx = mMActor->unk4->mBaseMtx;
 	MTXMultVec(mtx, &mPlanePoint, &mPlanePoint);
 	MTXMultVecSR(mtx, &mPlaneNormal, &mPlaneNormal);
 	VECNormalize(&mPlaneNormal, &mPlaneNormal);

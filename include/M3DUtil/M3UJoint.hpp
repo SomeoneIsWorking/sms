@@ -15,8 +15,8 @@ public:
 
 public:
 	/* 0x50 */ float unk50;
-	/* 0x54 */ J3DAnmTransform* unk54; // "new"
-	/* 0x58 */ J3DAnmTransform* unk58; // "old"
+	/* 0x54 */ J3DAnmTransform* mAnmTransformNew;
+	/* 0x58 */ J3DAnmTransform* mAnmTransformOld;
 	/* 0x5C */ bool unk5C;
 	/* 0x60 */ float unk60;
 };

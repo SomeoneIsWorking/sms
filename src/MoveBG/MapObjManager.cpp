@@ -117,7 +117,7 @@ void TMapObjManager::load(JSUMemoryInputStream& stream)
 	unk94 = loadMatTable("/scene/mapObj/riccoShip.bmt");
 
 	if ((gpMarDirector->getCurrentMap() == 3
-	     && (gpMarDirector->unk7D == 1 || gpMarDirector->unk7D == 5))
+	     && (gpMarDirector->mScenario == 1 || gpMarDirector->mScenario == 5))
 	    || gpMarDirector->getCurrentMap() == 0x1E) {
 		mSurfGessoModelData = SMS_MakeSDLModelData(
 		    "/scene/mapObj/surfgeso.bmd", J3DMLF_MaterialPEFull
