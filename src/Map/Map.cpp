@@ -135,35 +135,104 @@ static void initStageCommon()
 		indirect->init("SeaIndirect");
 		group->getChildren().push_back(indirect);
 
-// Native port of TMap::update (@0x80189bd0, 612B). Called from TMap::perform
-// when flag&1 is set. Dispatch is on gpMarDirector->mMap:
-//
-//   mMap == 7:   stage-warp target-change dispatch. RE'd but deferred — the
-//                driving singleton at SDA1[-0x70dc] is not yet named (its
-//                field +0x1c holds the "expected warp target id" that
-//                mWarp->unk8 is compared against). Also used by
-//                TLiveManager::setFlagOutOfCube, TelesaManager, and
-//                TMario::perform, so shared stage-info scope.
-//
-//   mMap == 3:   one-shot copy of a rodata Vec3 (1815, 1500, 1550) — read
-//                from SDA2 at -0x446c/-0x4468/-0x4464 — into a .bss cache
-//                (guarded by a file-static u8 flag at SDA1[-0x6324]),
-//                then dispatch MSoundSE::startSoundActor(0x3000, &cache,
-//                0, nullptr, 0, 4) once per frame if MSound::gateCheck
-//                allows. Deferred — needs SDA1[-0x6324] pinned to a
-//                real symbol.
-//
-//   mMap == 8 && unk7D∈{1,3,5,7}: gpMarioParticleManager->emit(0x156,
-//                gpMapObjManager->unk44, 1, this). Deferred — depends on
-//                port of TMarioParticleManager::emit (@0x8028856c) which
-//                is unresolved at ABI level.
-//
-// Water-camera-immersion detection (the only branch that fires at title
-// map==15, gated by unk124==0 not-in-demo-mode + the SDA1[-0x6094] state
-// singleton's first-u32 bit-1 clear + map ≠ 57 and ≠ 16): pin the camera
-// pos against the water surface height, and on air↔water transitions
-// notify MSSeCallBack to raise/lower the water filter timer. This is
-// ported faithfully below.
+		TMapObjWaterFilter* filter
+		    = new TMapObjWaterFilter("水中カメラフィルタ");
+		filter->init();
+		group->getChildren().push_back(filter);
+
+		TMapObjSeaIndirect* sceneIndirect
+		    = new TMapObjSeaIndirect("水中カメラインダイレクト");
+		sceneIndirect->init();
+		group->getChildren().push_back(sceneIndirect);
+	}
+	if (gpMarDirector->mMap == 2) {
+		TMapObjSeaIndirect* sceneIndirect
+		    = new TMapObjSeaIndirect("水中カメラインダイレクト");
+		sceneIndirect->init();
+		group->getChildren().push_back(sceneIndirect);
+	}
+}
+
+static void initStage()
+{
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_INITSTAGE_DBG"))
+		fprintf(stderr, "[initStage] currentStage=%d currentMap=%d earlyReturn(>9)=%d\n",
+		        gpMarDirector->getCurrentStage(), gpMarDirector->getCurrentMap(),
+		        (int)(gpMarDirector->getCurrentStage() > 9));
+#endif
+	if (gpMarDirector->getCurrentStage() > 9)
+		return;
+
+	initStageCommon();
+
+	switch (gpMarDirector->getCurrentMap()) {
+	case 1: { // Bianco
+		if (gpMarDirector->getCurrentStage() == 5
+		    || gpMarDirector->getCurrentStage() == 9)
+			break;
+		TMapObjBase::newAndInitBuildingCollisionWarp(1, nullptr)->setUp();
+		TMapObjBase::newAndInitBuildingCollisionWarp(2, nullptr)->setUp();
+		break;
+	}
+	case 2: // Ricco
+		if (gpMarDirector->getCurrentStage() == 0)
+			break;
+		TMapObjBase::newAndInitBuildingCollisionWarp(1, nullptr)->setUp();
+		TMapObjBase::newAndInitBuildingCollisionWarp(2, nullptr)->setUp();
+		break;
+	case 9: // Mare
+		initMare();
+		break;
+	case 8: // Monte
+		initMonte();
+		break;
+	case 6: // Pinna
+		if (gpMarDirector->getCurrentStage() == 0)
+			break;
+		TMapObjBase::newAndInitBuildingCollisionWarp(1, nullptr)->setUp();
+		break;
+	case 5: // Sirena
+		SMS_LoadParticle("/scene/mapObj/SandSteam.jpa", 0x6A);
+		break;
+	case 13: // Pinna Parco
+		initPinnaParco();
+		break;
+	case 15: { // Option
+		TMapObjOptionWall* wall = new TMapObjOptionWall("オプション用壁");
+		wall->init();
+		TMapObjBase::joinToGroup("マップグループ", wall);
+		break;
+	}
+	}
+}
+
+void TMap::updateDelfino()
+{
+	int cube = gpCubeArea->unk1C;
+	if (cube != mWarp->unk8) {
+		if (cube != -1)
+			mWarp->changeModel(cube);
+		else if (gpMarDirector->getCurrentStage() != 0)
+			mWarp->changeModel(3);
+	}
+}
+
+void TMap::updateMonte()
+{
+	if (gpMarDirector->getCurrentStage() == 1
+	    || gpMarDirector->getCurrentStage() == 3
+	    || gpMarDirector->getCurrentStage() == 5
+	    || gpMarDirector->getCurrentStage() == 7)
+		gpMarioParticleManager->emit(0x156, &gpMapObjManager->unk44, 1, this);
+}
+
+static void updateRicco()
+{
+	static JGeometry::TVec3<f32> pos(1815.0f, 1500.0f, 1550.0f);
+	SMSGetMSound()->startSoundActor(0x3000, &pos, 0, nullptr, 0, 4);
+}
+
 void TMap::update()
 {
 	switch (gpMarDirector->mMap) {
