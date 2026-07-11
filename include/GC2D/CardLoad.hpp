@@ -61,7 +61,8 @@ public:
 	/* 0x10 */ int unk10;
 	/* 0x14 */ int mState;   // unk14 — perform() state machine (3=title wait-for-Start,
 	                         //         8=camera pan to file blocks, 0=file/score select)
-	/* 0x18 */ int unk18;
+	/* 0x18 */ int mTitleAnimState;  // titleDraw() state machine: 0→1(assemble)→3(hold-visible)
+	                                //   →2(fade)→4(PRESS START unlocked). return mTitleAnimState-5.
 	/* 0x1C */ TEProgress unk1C;
 	/* 0x20 */ u32 unk20;
 	/* 0x24 */ int unk24;
@@ -87,23 +88,35 @@ public:
 	/* 0xC0 */ int unkC0;
 	/* 0xC4 */ int unkC4;
 	/* 0xC8 */ JUTTexture* unkC8[10];
-	/* 0xF0 */ TExPane* unkF0;
-	/* 0xF4 */ TExPane* unkF4;
-	/* 0xF8 */ TExPane* unkF8[11];
-	/* 0x124 */ JUTRect unk124[11];
-	/* 0x1D4 */ TExPane* unk1D4[13];
+	/* 0xF0 */ TExPane* mTitleLogoPane;       // 'titl' — the blue logo base texture
+	/* 0xF4 */ TExPane* mTitleCopyrightPane;  // 'nint' — the ©2002 NINTENDO line
+	/* 0xF8 */ TExPane* mTitleSparkles[11];   // 's_0X' — sparkle panes (s_01..s_11)
+	/* 0x124 */ JUTRect mSparkleInitialBounds[11];
+	// Title fly-in overlay letter panes ('p_0X'). The JP disc (GMSJ01) defines
+	// p_01..p_13 (13 panes — the JP TCardLoad::titleDraw loops i<13, fn size
+	// 0x948); the US disc (GMSE01) and PAL (GMSP01) define p_01..p_18 (18 panes —
+	// the US titleDraw loops i<0x12=18, fn size 2888; disasm-verified cmpwi
+	// 0x12 + unrolled completion CTR=2×9). Sized to the max (18) so the native
+	// build drives whatever the loaded .blo actually defines; mTitleOverlayCount
+	// is set at load time by probing the .blo (see TCardLoad::load).
+	/* 0x1D4 */ TExPane* mTitleOverlayPanes[18];
+	// Number of 'p_0X' overlay panes the loaded .blo actually defines (13 on JP,
+	// 18 on US/PAL). Set in TCardLoad::load by probing the .blo; titleDraw and the
+	// fade loops iterate [0, mTitleOverlayCount) so every pane the .blo defines is
+	// animated — without this, region-mismatched panes (e.g. US p_14..p_18 under
+	// the JP loop bound) stay at their initial alpha and never fade out.
+	u8 mTitleOverlayCount;
 	/* 0x208 */ J2DPane* unk208;
-	/* 0x20C */ u16 unk20C[11];
-	/* 0x222 */ u8 unk222[11];
-	// These are sized [13] (one per unk1D4[13] pane), not [8]: titleDraw loops
-	// i<13 writing unk22E[i]/unk248[i]. The decomp split them [8]+char-pad; the
-	// padding exactly covered indices 8..12 on GC, but the C-level OOB access is
-	// UB and miscompiled on the LP64 host (the i<13 loop ran past 13 into garbage
-	// unk1D4 -> wild TExPane this). 0x22E + 13*2 = 0x248; 0x248 + 13 = 0x255.
-	/* 0x22E */ s16 unk22E[13];
-	/* 0x248 */ u8 unk248[13];
+	/* 0x20C */ u16 mSparkleTimer[11];      // per-sparkle frame counter (case 4: >500, >300)
+	/* 0x222 */ u8 mSparkleAnimState[11];   // per-sparkle anim state (0..4 in case 4)
+	// Per-overlay-pane state for titleDraw case 1. Sized to the max overlay count
+	// (18) — same LP64-OOB reasoning as mTitleOverlayPanes above. GC byte offsets
+	// in comments are documentation only on the LP64 native build (all access is
+	// via these named fields, never raw offsets — verified).
+	/* 0x22E */ s16 mOverlayDelay[18];      // per-overlay stagger delay (compared < mTitleStepCounter)
+	/* 0x248 */ u8 mOverlayAnimState[18];   // per-overlay anim state (0,1,4 in case 1)
 	/* 0x255 */ char unk255[0x258 - 0x255];
-	/* 0x258 */ u16 unk258;
+	/* 0x258 */ u16 mTitleStepCounter;       // global step counter reused across title states
 	/* 0x25C */ J2DPane* unk25C;
 	/* 0x260 */ JUTRect unk260;
 	/* 0x270 */ J2DPane* unk270;

@@ -125,19 +125,19 @@ void TCardLoad::load(JSUMemoryInputStream& stream)
 	}
 
 	for (int i = 0; i < 11; ++i) {
-		unk20C[i] = 25 * i + 150;
-		unk222[i] = 4;
+		mSparkleTimer[i] = 25 * i + 150;
+		mSparkleAnimState[i] = 4;
 	}
 
-	for (int i = 0; i < 13; ++i) {
-		unk22E[i] = 400 * i;
-		unk248[i] = 4;
+	for (int i = 0; i < mTitleOverlayCount; ++i) {
+		mOverlayDelay[i] = 400 * i;
+		mOverlayAnimState[i] = 4;
 	}
 
 	unk208 = unk34->search('ROOT');
 
-	unkF0 = new TExPane(unk34, 'titl');
-	unkF4 = new TExPane(unk34, 'nint');
+	mTitleLogoPane = new TExPane(unk34, 'titl');
+	mTitleCopyrightPane = new TExPane(unk34, 'nint');
 
 	for (int i = 0; i < 11; ++i) {
 		int key;
@@ -146,23 +146,41 @@ void TCardLoad::load(JSUMemoryInputStream& stream)
 		else
 			key = 's_00' + ((i + 1) / 10) * 0x100 + (i + 1) % 10;
 
-		unkF8[i] = new TExPane(unk34, key);
-		unkF8[i]->getPane()->setAlpha(0);
-		unk124[i] = unkF8[i]->getPane()->getBounds();
+		mTitleSparkles[i] = new TExPane(unk34, key);
+		mTitleSparkles[i]->getPane()->setAlpha(0);
+		mSparkleInitialBounds[i] = mTitleSparkles[i]->getPane()->getBounds();
 	}
 
-	for (int i = 0; i < 13; ++i) {
+	// Create 'p_0X' fly-in overlay letter panes. The JP disc defines p_01..p_13
+	// (13); US/PAL define p_01..p_18 (18). Create up to the max (18) and record
+	// how many the loaded .blo actually provides — titleDraw drives exactly that
+	// many. TExPane tolerates a null pane (search miss), so probing past the last
+	// real pane is harmless; but once a pane is missing we stop, since the .blo
+	// defines a contiguous p_01..p_NN run (a gap means we're past the region's
+	// set). See CardLoad.hpp + debug_journal/2026-07-11_title_overlay_region.md.
+	mTitleOverlayCount = 0;
+	for (int i = 0; i < 18; ++i) {
 		int key;
 		if (i < 9)
 			key = 'p_01' + i;
 		else
 			key = 'p_00' + ((i + 1) / 10) * 0x100 + (i + 1) % 10;
 
-		unk1D4[i] = new TExPane(unk34, key);
+		TExPane* pane = new TExPane(unk34, key);
+#ifdef SMS_NATIVE_PLATFORM
+		// Region-tolerant: stop at the first missing pane (the .blo's p_ run is
+		// contiguous; a null pane means this region's run is shorter than 18).
+		if (!pane->getPane()) {
+			delete pane;
+			break;
+		}
+#endif
+		mTitleOverlayPanes[i] = pane;
+		mTitleOverlayCount = i + 1;
 
-		((J2DPicture*)unk1D4[i]->getPane())->mBlack = 0x01006667;
+		((J2DPicture*)mTitleOverlayPanes[i]->getPane())->mBlack = 0x01006667;
 
-		unk1D4[i]->setPaneAlpha(20, 0xff, 0);
+		mTitleOverlayPanes[i]->setPaneAlpha(20, 0xff, 0);
 	}
 
 	unk25C = unk28->search('yaji');
@@ -515,9 +533,9 @@ void TCardLoad::perform(u32 param_1, JDrama::TGraphics* param_2)
 		static const char* s_selDbg = getenv("SB_SEL_DBG");
 		if (s_selDbg && mState != s_lastState) {
 			fprintf(stderr,
-			    "[cardload] frame~%ld mState %d -> %d (unk18=%d unk1C=%d unkBC=%d "
+			    "[cardload] frame~%ld mState %d -> %d (mTitleAnimState=%d unk1C=%d unkBC=%d "
 			    "introChase=%d loadPan=%d updownPan=%d)\n",
-			    s_perfCount, s_lastState, mState, unk18, unk1C, unkBC,
+			    s_perfCount, s_lastState, mState, mTitleAnimState, unk1C, unkBC,
 			    gpCameraOption ? gpCameraOption->mIntroChaseTimer : -1,
 			    gpCameraOption ? gpCameraOption->mLoadPanTimer : -1,
 			    gpCameraOption ? gpCameraOption->mUpDownPanTimer : -1);
@@ -687,37 +705,37 @@ void TCardLoad::perform(u32 param_1, JDrama::TGraphics* param_2)
 			s_lastProg = unk1C;
 		}
 		// SB_TITLE_PANE_DBG: per-frame (rate-limited) telemetry of the PRESS START
-		// ('titl'/'nint', unkF0/unkF4) fade-in and the intro-overlay (unk1D4[13])
-		// fade-out driven by titleDraw() case 2, plus unk18/mState/mIntroChaseTimer.
+		// ('titl'/'nint', mTitleLogoPane/mTitleCopyrightPane) fade-in and the intro-overlay (mTitleOverlayPanes)
+		// fade-out driven by titleDraw() case 2, plus mTitleAnimState/mState/mIntroChaseTimer.
 		// 2026-07-10: RESOLVED - with unkC0 initialized (see ctor) the title reaches
-		// unk18==4 steady state and holds the 45s attract window (mState 3 -> 10
-		// transitions log unk18=4). Trace kept as a diagnostic.
+		// mTitleAnimState==4 steady state and holds the 45s attract window (mState 3 -> 10
+		// transitions log mTitleAnimState=4). Trace kept as a diagnostic.
 		static const char* s_titleDbg = getenv("SB_TITLE_PANE_DBG");
 		if (s_titleDbg && (mState == 3 || mState == 8 || mState == 9)) {
 			static long s_tframe = 0;
 			++s_tframe;
 			if ((s_tframe % 30) == 0 || s_tframe <= 5) {
-				u8 aF0 = unkF0 ? unkF0->getPane()->getAlpha() : 0;
-				u8 aF4 = unkF4 ? unkF4->getPane()->getAlpha() : 0;
-				bool visF0 = unkF0 && unkF0->getPane()->isVisible();
+				u8 aF0 = mTitleLogoPane ? mTitleLogoPane->getPane()->getAlpha() : 0;
+				u8 aF4 = mTitleCopyrightPane ? mTitleCopyrightPane->getPane()->getAlpha() : 0;
+				bool visF0 = mTitleLogoPane && mTitleLogoPane->getPane()->isVisible();
 				int nDone = 0;
-				for (int i = 0; i < 13; ++i) {
-					if (!unk1D4[i]) continue;
-					u8 a = unk1D4[i]->getPane()->getAlpha();
+				for (int i = 0; i < mTitleOverlayCount; ++i) {
+					if (!mTitleOverlayPanes[i]) continue;
+					u8 a = mTitleOverlayPanes[i]->getPane()->getAlpha();
 					if (a == 0) ++nDone;
 				}
-				u8 s0 = unkF8[0] ? unkF8[0]->getPane()->getAlpha() : 0;
-				u8 s5 = unkF8[5] ? unkF8[5]->getPane()->getAlpha() : 0;
-				u8 s10 = unkF8[10] ? unkF8[10]->getPane()->getAlpha() : 0;
+				u8 s0 = mTitleSparkles[0] ? mTitleSparkles[0]->getPane()->getAlpha() : 0;
+				u8 s5 = mTitleSparkles[5] ? mTitleSparkles[5]->getPane()->getAlpha() : 0;
+				u8 s10 = mTitleSparkles[10] ? mTitleSparkles[10]->getPane()->getAlpha() : 0;
 				fprintf(stderr,
-				    "[titlepane] frame=%ld mState=%d unk18=%d unkBC=%d introChase=%d "
+				    "[titlepane] frame=%ld mState=%d mTitleAnimState=%d unkBC=%d introChase=%d "
 				    "F0alpha=%d F4alpha=%d F0vis=%d overlay@0=%d/13 "
 				    "s_0[0]a=%d st=%d s_0[5]a=%d st=%d s_0[10]a=%d st=%d u258=%d\n",
-				    s_tframe, mState, unk18, unkBC,
+				    s_tframe, mState, mTitleAnimState, unkBC,
 				    gpCameraOption ? gpCameraOption->mIntroChaseTimer : -1,
 				    (int)aF0, (int)aF4, (int)visF0, nDone,
-				    (int)s0, (int)unk222[0], (int)s5, (int)unk222[5],
-				    (int)s10, (int)unk222[10], (int)unk258);
+				    (int)s0, (int)mSparkleAnimState[0], (int)s5, (int)mSparkleAnimState[5],
+				    (int)s10, (int)mSparkleAnimState[10], (int)mTitleStepCounter);
 			}
 		}
 	}
@@ -923,8 +941,8 @@ void TCardLoad::perform(u32 param_1, JDrama::TGraphics* param_2)
 
 		case 3:
 			titleDraw();
-			if (unk18 >= 4) {
-				if (unk18 >= 4 && unkBC >= 100 && gpCameraOption->mIntroChaseTimer == 0
+			if (mTitleAnimState >= 4) {
+				if (mTitleAnimState >= 4 && unkBC >= 100 && gpCameraOption->mIntroChaseTimer == 0
 				    && (mGamePad->checkFrameMeaning(0x20)
 				        || mGamePad->getTrigger() & 0x1000)) {
 					SMSGetMSound()->startSoundSystemSE(MSD_SE_SY_DECIDE, 0,
@@ -933,18 +951,18 @@ void TCardLoad::perform(u32 param_1, JDrama::TGraphics* param_2)
 					gpMarioOriginal->waitingStart(nullptr, 0.0f);
 					mState = 8;
 				}
-				unkF0->update();
-				unkF4->update();
+				mTitleLogoPane->update();
+				mTitleCopyrightPane->update();
 				unkBC += 1;
 			} else if (mGamePad->checkFrameMeaning(0x20)
 			           || mGamePad->getTrigger() & 0x1000) {
-				unkF0->setPaneAlpha(10, 255, unkF0->getPane()->getAlpha());
-				unkF4->setPaneAlpha(10, 255, unkF4->getPane()->getAlpha());
-				for (int i = 0; i < 13; ++i)
-					unk1D4[i]->getPane()->setAlpha(0);
-				unk258 = 0;
-				if (unk18 < 4)
-					unk18 = 4;
+				mTitleLogoPane->setPaneAlpha(10, 255, mTitleLogoPane->getPane()->getAlpha());
+				mTitleCopyrightPane->setPaneAlpha(10, 255, mTitleCopyrightPane->getPane()->getAlpha());
+				for (int i = 0; i < mTitleOverlayCount; ++i)
+					mTitleOverlayPanes[i]->getPane()->setAlpha(0);
+				mTitleStepCounter = 0;
+				if (mTitleAnimState < 4)
+					mTitleAnimState = 4;
 			}
 
 			if (unkC0 / 120.0f > 45.0f) {
@@ -966,13 +984,13 @@ void TCardLoad::perform(u32 param_1, JDrama::TGraphics* param_2)
 
 			if (mGamePad->checkFrameMeaning(0x20)
 			    || mGamePad->getTrigger() & 0x1000) {
-				unkF0->setPaneAlpha(10, 255, unkF0->getPane()->getAlpha());
-				unkF4->setPaneAlpha(10, 255, unkF4->getPane()->getAlpha());
-				for (int i = 0; i < 13; ++i)
-					unk1D4[i]->getPane()->setAlpha(0);
-				unk258 = 0;
+				mTitleLogoPane->setPaneAlpha(10, 255, mTitleLogoPane->getPane()->getAlpha());
+				mTitleCopyrightPane->setPaneAlpha(10, 255, mTitleCopyrightPane->getPane()->getAlpha());
+				for (int i = 0; i < mTitleOverlayCount; ++i)
+					mTitleOverlayPanes[i]->getPane()->setAlpha(0);
+				mTitleStepCounter = 0;
 				unkBC  = 0;
-				unk18  = 4;
+				mTitleAnimState  = 4;
 				mState  = 3;
 			}
 			titleDraw();
@@ -983,10 +1001,10 @@ void TCardLoad::perform(u32 param_1, JDrama::TGraphics* param_2)
 			mGamePad->onFlag(0x1);
 			gpMarioOriginal->offFlag(MARIO_FLAG_GAME_OVER);
 			mState = 9;
-			unk18 = 1;
-			unkF0->getPane()->setAlpha(0);
-			unkF4->getPane()->setAlpha(0);
-			unk258 = 0;
+			mTitleAnimState = 1;
+			mTitleLogoPane->getPane()->setAlpha(0);
+			mTitleCopyrightPane->getPane()->setAlpha(0);
+			mTitleStepCounter = 0;
 			unkC0  = 0;
 			unk208->show();
 			break;
@@ -1029,72 +1047,75 @@ void TCardLoad::perform(u32 param_1, JDrama::TGraphics* param_2)
 
 bool TCardLoad::titleDraw()
 {
-	switch (unk18) {
+	switch (mTitleAnimState) {
 	case 0:
-		unk18 = 1;
+		mTitleAnimState = 1;
 		break;
 
 	case 1:
-		for (int i = 0; i < 13; ++i) {
-			switch (unk248[i]) {
+		for (int i = 0; i < mTitleOverlayCount; ++i) {
+			switch (mOverlayAnimState[i]) {
 			case 4:
-				if (unk22E[i] < unk258) {
-					TExPane* pane = unk1D4[i];
+				if (mOverlayDelay[i] < mTitleStepCounter) {
+					TExPane* pane = mTitleOverlayPanes[i];
 					pane->getPane()->show();
 					JUTRect bounds = pane->getPane()->getBounds();
 					pane->setPaneAlpha(40, 180, 0);
-					unk248[i] = 0;
+					mOverlayAnimState[i] = 0;
 				}
 				break;
 
 			case 0:
-				if (unk1D4[i]->update()) {
-					unk248[i] = 1;
-					unk22E[i] = 0;
+				if (mTitleOverlayPanes[i]->update()) {
+					mOverlayAnimState[i] = 1;
+					mOverlayDelay[i] = 0;
 				}
 				break;
 
 			case 1:
-				if (i == 12) {
-					unk258 = 0;
-					for (int j = 0; j < 13; ++j)
-						unk1D4[j]->setPaneAlpha(40, 255, 180);
-					unk18 = 3;
+				// Retail triggers the assemble→hold transition on the LAST pane
+				// (JP: i==12 for 13 panes; US: i==0x11=17 for 18 panes; disasm
+				// 0x8016c1a0 cmpwi r17,0x11). Drive by count so it's region-correct.
+				if (i == mTitleOverlayCount - 1) {
+					mTitleStepCounter = 0;
+					for (int j = 0; j < mTitleOverlayCount; ++j)
+						mTitleOverlayPanes[j]->setPaneAlpha(40, 255, 180);
+					mTitleAnimState = 3;
 				}
 				break;
 			}
 
-			++unk258;
+			++mTitleStepCounter;
 		}
 		break;
 
 	case 3:
-		if (unk258 > 160) {
+		if (mTitleStepCounter > 160) {
 			bool any = true;
-			for (int i = 0; i < 13; ++i) {
-				any &= unk1D4[i]->update();
+			for (int i = 0; i < mTitleOverlayCount; ++i) {
+				any &= mTitleOverlayPanes[i]->update();
 				JUtility::TColor col
-				    = ((J2DPicture*)unk1D4[i]->getPane())->mBlack;
+				    = ((J2DPicture*)mTitleOverlayPanes[i]->getPane())->mBlack;
 				u16 r = col.r + 7;
 				if (r > 255)
 					r = 255;
 
-				((J2DPicture*)unk1D4[i]->getPane())->mBlack
+				((J2DPicture*)mTitleOverlayPanes[i]->getPane())->mBlack
 				    = (r << 24) + 0xFFFF00;
 			}
 
 			if (any) {
-				for (int i = 0; i < 13; ++i)
-					unk1D4[i]->setPaneAlpha(140, 0, 255);
-				unk258 = 0;
-				unk18  = 2;
+				for (int i = 0; i < mTitleOverlayCount; ++i)
+					mTitleOverlayPanes[i]->setPaneAlpha(140, 0, 255);
+				mTitleStepCounter = 0;
+				mTitleAnimState  = 2;
 			}
 		}
-		++unk258;
+		++mTitleStepCounter;
 		break;
 
 	case 2: {
-		u16 alpha = unkF0->getPane()->getAlpha() + 1;
+		u16 alpha = mTitleLogoPane->getPane()->getAlpha() + 1;
 		if (alpha > 255) {
 			// RE'd against the US retail binary (TCardLoad::perform case 2 @
 			// 0x8016c060, Ghidra decompile): `uVar9 = 0xff;` clamps the alpha
@@ -1102,98 +1123,101 @@ bool TCardLoad::titleDraw()
 			// wraps 0->256 (truncated to 0 by J2DPane::setAlpha(u8)) every
 			// frame it's NOT saturated, so the "any" completion check below
 			// (which drives BOTH the intro-overlay fade-out via
-			// unk1D4[i]->update() and the unk18==4 transition that unlocks
-			// the PRESS START flip-book, unkF8[11]) only runs once per ~256
+			// mTitleOverlayPanes[i]->update() and the mTitleAnimState==4 transition that unlocks
+			// the PRESS START flip-book, mTitleSparkles[11]) only runs once per ~256
 			// frames instead of every frame once saturated -- ~256x slower
 			// than retail (title_parts overlay stuck visible; PRESS START
 			// never reached in any normal play/test session).
 			alpha = 255;
 			bool any = true;
-			for (int i = 0; i < 13; ++i)
-				any &= unk1D4[i]->update();
+			for (int i = 0; i < mTitleOverlayCount; ++i)
+				any &= mTitleOverlayPanes[i]->update();
 			if (any) {
 				unkBC = 0;
-				unk18 = 4;
+				mTitleAnimState = 4;
 			}
 		}
-		unkF0->getPane()->setAlpha(alpha);
-		unkF4->getPane()->setAlpha(alpha);
+		mTitleLogoPane->getPane()->setAlpha(alpha);
+		mTitleCopyrightPane->getPane()->setAlpha(alpha);
 	} break;
 
 	case 4: {
-		// unkF8/unk222/unk20C/unk124 are the 11 coin-digit panes (created by the
-		// i<11 init loops; arrays declared [11]). This loop's bound is 13 (a copy of
-		// the unk1D4[13]-pane cases above) — i=11,12 read garbage TExPane* past the
-		// array -> wild `this` in unkF8[i]->update() -> SEGV (LP64 has no trailing pad
-		// to absorb it). Iterate only the 11 panes that exist on native. Same class as
-		// the TCardLoad unk22E/unk248 [13]-not-[8] sizing fix.
+		// mTitleSparkles/mSparkleAnimState/mSparkleTimer/mSparkleInitialBounds are the
+		// 11 sparkle panes 's_0X' (s_01..s_11; created by the i<11 init loop; arrays
+		// sized [11]). NOTE: the retail GC titleDraw (both JP and US) loops i<13 here
+		// over the SPARKLE array — retail's s_ array is followed in memory by the
+		// overlay state, and the GC layout's padding happened to make i=11,12 land on
+		// harmless overlap. On LP64 those indices read garbage TExPane* past the
+		// [11] array -> wild `this` in mTitleSparkles[i]->update() -> SEGV. Native
+		// iterates only the 11 sparkles that exist. (The overlay vs sparkle counts are
+		// independent: sparkles are 11 in all regions; overlays are 13 JP / 18 US-PAL.)
 #ifdef SMS_NATIVE_PLATFORM
 		for (int i = 0; i < 11; ++i) {
 #else
 		for (int i = 0; i < 13; ++i) {
 #endif
-			switch (unk222[i]) {
+			switch (mSparkleAnimState[i]) {
 			case 0:
-				if (unkF8[i]->update()) {
-					unk222[i] = 1;
-					unk20C[i] = 0;
+				if (mTitleSparkles[i]->update()) {
+					mSparkleAnimState[i] = 1;
+					mSparkleTimer[i] = 0;
 				}
 				break;
 
 			case 1:
-				unk20C[i] += 1;
-				if (unk20C[i] > 500) {
-					JUTRect bounds = unkF8[i]->getPane()->getBounds();
-					unkF8[i]->setPaneAlpha(25, 0, 255);
+				mSparkleTimer[i] += 1;
+				if (mSparkleTimer[i] > 500) {
+					JUTRect bounds = mTitleSparkles[i]->getPane()->getBounds();
+					mTitleSparkles[i]->setPaneAlpha(25, 0, 255);
 					// Retail (TCardLoad::perform @0x8016c060, Ghidra: state-1
 					// >500 sets `*pbVar20 = 2`) routes to state 2, which waits
 					// for the fade-out to COMPLETE via update() then resets
-					// unk20C=0 before state 3's 300-frame faded hold. The port
-					// set state 3 directly, so unk20C stayed ~501 (>300) and
-					// state 3 expired the SAME frame — the sparkle (s_0X/unkF8)
+					// mSparkleTimer=0 before state 3's 300-frame faded hold. The port
+					// set state 3 directly, so mSparkleTimer stayed ~501 (>300) and
+					// state 3 expired the SAME frame — the sparkle (s_0X/mTitleSparkles)
 					// panes never stayed faded, permanently diluting the blue
 					// title logo (measured [148,176,235] vs oracle [81,133,215];
 					// SB_SKIP_DUOTONE base-only = oracle-exact). See
 					// debug_journal/2026-07-10_title_pixel_diagnosis.md.
-					unk222[i] = 2;
+					mSparkleAnimState[i] = 2;
 				}
 				break;
 
 			case 2:
-				if (unkF8[i]->update()) {
-					unk20C[i] = 0;
-					unk222[i] = 3;
+				if (mTitleSparkles[i]->update()) {
+					mSparkleTimer[i] = 0;
+					mSparkleAnimState[i] = 3;
 				}
 				break;
 
 			case 3:
-				++unk20C[i];
-				if (unk20C[i] > 300) {
-					JUTRect local_124 = unkF8[i]->getPane()->getBounds();
+				++mSparkleTimer[i];
+				if (mSparkleTimer[i] > 300) {
+					JUTRect local_124 = mTitleSparkles[i]->getPane()->getBounds();
 
-					unkF8[i]->setCenteredSize(
+					mTitleSparkles[i]->setCenteredSize(
 					    25, local_124.getWidth() * 2, local_124.getHeight() * 2,
 					    local_124.getWidth(), local_124.getHeight());
 
-					unkF8[i]->setPaneAlpha(25, 255, 0);
-					unk222[i] = 0;
+					mTitleSparkles[i]->setPaneAlpha(25, 255, 0);
+					mSparkleAnimState[i] = 0;
 				}
 				break;
 
 			case 4:
-				if (unk258 > unk20C[i]) {
-					JUTRect local_124 = unk124[i];
-					unkF8[i]->setCenteredSize(
+				if (mTitleStepCounter > mSparkleTimer[i]) {
+					JUTRect local_124 = mSparkleInitialBounds[i];
+					mTitleSparkles[i]->setCenteredSize(
 					    25, local_124.getWidth(), local_124.getHeight(),
 					    local_124.getWidth() * 2, local_124.getHeight() * 2);
-					unkF8[i]->setPaneAlpha(25, 255, 0);
-					unk222[i] = 0;
-					unk20C[i] = 0;
+					mTitleSparkles[i]->setPaneAlpha(25, 255, 0);
+					mSparkleAnimState[i] = 0;
+					mSparkleTimer[i] = 0;
 				}
 				break;
 			}
 		}
-		++unk258;
+		++mTitleStepCounter;
 	} break;
 
 	case 5:
@@ -1202,7 +1226,7 @@ bool TCardLoad::titleDraw()
 		break;
 	}
 
-	return unk18 - 5;
+	return mTitleAnimState - 5;
 }
 
 void TCardLoad::makeBuffer(J2DTextBox* text_box, int size)
@@ -2254,7 +2278,8 @@ s8 TCardLoad::selectFunction()
 		// TExPane* and calls ->update() on it — that would fault on real GC
 		// hardware too, so it is a decomp transcription error, not faithful
 		// code. The parallel loop in case 0 correctly uses i < 3. Same
-		// LP64-weaponized OOB class fixed earlier in titleDraw (i<13 over [11]).
+		// LP64-weaponized OOB class fixed earlier in titleDraw (case-4 sparkle loop
+		// over the [11] sparkle array — see titleDraw case 4).
 		for (int i = 0; i < 3; ++i)
 			done &= unk2A4[i]->update();
 		done &= unk33C[mSelectedFile]->update();
