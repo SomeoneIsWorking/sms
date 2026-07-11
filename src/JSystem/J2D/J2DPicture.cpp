@@ -300,11 +300,14 @@ void J2DPicture::drawFullSet(int x, int y, int w, int h, J2DBinding binding,
 	if (std::getenv("SB_J2D_DRAW_DUMP") != nullptr && mTextures[0]) {
 		std::fprintf(stderr,
 		    "[j2d-fullset] tag=%08x mBoundsW=%d mBoundsH=%d w=%d h=%d "
-		    "texW=%d texH=%d binding=%d wrapH=%d wrapV=%d mBlack=%08x\n",
+		    "texW=%d texH=%d binding=%d wrapH=%d wrapV=%d mBlack=%08x "
+		    "mWhite=%08x visible=%d mAlpha=%u mColorAlpha=%u\n",
 		    (unsigned)mUserInfoTag,
 		    mBounds.getWidth(), mBounds.getHeight(), w, h,
 		    (int)mTextures[0]->getWidth(), (int)mTextures[0]->getHeight(),
-		    (int)binding, (int)wrap_hor, (int)wrap_vert, (unsigned)mBlack);
+		    (int)binding, (int)wrap_hor, (int)wrap_vert, (unsigned)mBlack,
+		    (unsigned)mWhite, (int)mVisible, (unsigned)mAlpha,
+		    (unsigned)mColorAlpha);
 	}
 #endif
 	int renderX = x;
