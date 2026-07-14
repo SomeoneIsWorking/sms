@@ -394,6 +394,11 @@ f32 JUTResFont::drawChar_scale(f32 posX, f32 posY, f32 scaleX, f32 scaleY,
 	GXColor1u32(mColor3);
 	GXTexCoord2u16(u1, v2);
 
+	GXEnd(); // decomp dropped this (empty no-op macro on GC, so invisible in the
+	         // DOL); every sibling immediate-mode draw pairs GXBegin/GXEnd, and
+	         // aurora's GX models it as a real balanced pair — omitting it left
+	         // the glyph quad open and OSPanic'd the next GXBegin.
+
 	GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_S16, 0);
 
 	return retval;
