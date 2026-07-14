@@ -82,6 +82,8 @@ void TPollutionLayerWave::draw() const
 			GXPosition3f32(x, h2 - 10.0f, zNext);
 			GXTexCoord2f32(invXSize * (x - mMinX), invZSize * (zNext - mMinZ));
 		}
+		GXEnd(); // decomp dropped the (GC-no-op) GXEnd that closes each
+		         // per-z triangle strip; aurora's GX requires it.
 	}
 }
 
