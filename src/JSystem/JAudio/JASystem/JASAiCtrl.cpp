@@ -124,7 +124,17 @@ namespace Kernel {
 			dacCallbackFunc(lastRspMadep, getDacSize() / 2);
 	}
 
-	void registerDacCallback(void (*callback)(s16*, s32)) { }
+	// NOTE: this was an empty (unimplemented) decomp stub; every other piece of
+	// the mechanism is wired (the dacCallbackFunc field, the null-check + call in
+	// updateDac() below) so an empty setter is a decomp gap, not a documented
+	// design choice — a registerDacCallback() that can never take effect makes no
+	// sense as shipped retail code. Filled in faithfully: store the callback so
+	// updateDac()'s existing call site actually fires it. Real hardware audio
+	// output was never wired through this path (SMS has no caller of
+	// registerDacCallback anywhere in the source), so this cannot regress GC
+	// behavior; it's the seam sb_jas_kernel_frame (jas_kernel_native.cpp) uses to
+	// receive each rendered dac[] buffer natively.
+	void registerDacCallback(void (*callback)(s16*, s32)) { dacCallbackFunc = callback; }
 
 	inline s16 clamp_s32_to_s16(s32 v)
 	{
