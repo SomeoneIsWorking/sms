@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <execinfo.h>   // SB_ENTRY_MAT entry backtrace
+#include <cstring>      // SB_DBFILL_BT name match
 // WEAK: only defined inside the sms-boot executable (native/render/sms_boot_j3d_capture.cpp),
 // not in any linkable library — a debug-only build target that links game logic without the
 // render-capture pipeline (e.g. sms-j3dload_test) must still link cleanly. Safe because every
@@ -406,6 +407,16 @@ namespace {
 			             (unsigned long)sb_trace_seq(), buf, how, bn ? bn : "(unknown)");
 		} else {
 			std::fprintf(stderr, "[dbfill-first] buf=%p via=%s name=\"%s\"\n", buf, how, bn ? bn : "(unknown)");
+		}
+		// SB_DBFILL_BT=<substring>: backtrace the first fill of any buffer whose name
+		// contains the substring — names the code path (actor/group perform) that enters
+		// packets into that buffer. Cap 6 traces per run.
+		if (const char* want = std::getenv("SB_DBFILL_BT"); want && want[0] && bn && ::strstr(bn, want)) {
+			static int s_bt = 0;
+			if (s_bt < 6) {
+				++s_bt;
+				void* fr[40]; int nf = ::backtrace(fr, 40); ::backtrace_symbols_fd(fr, nf, 2);
+			}
 		}
 	}
 }
