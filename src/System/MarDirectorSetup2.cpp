@@ -115,8 +115,8 @@ void TMarDirector::setup2()
 
 	JDrama::TGraphics graphics;
 	graphics.unkFE = 0;
-	unk40->perform(0xffffffff, &graphics);
-	unk38->perform(0xffffffff, &graphics);
+	mPerformListDrawBufGroup->perform(0xffffffff, &graphics);
+	mPerformListGraffito->perform(0xffffffff, &graphics);
 	GXSetDrawDone();
 	GXWaitDrawDone();
 

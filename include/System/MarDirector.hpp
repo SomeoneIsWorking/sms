@@ -169,10 +169,10 @@ public:
 	/* 0x28 */ TPerformList* mPerformListMovement;
 	/* 0x2C */ TPerformList* mPerformListCalcAnim;
 	/* 0x30 */ TPerformList* unk30;
-	/* 0x34 */ TPerformList* unk34;
-	/* 0x38 */ TPerformList* unk38;
-	/* 0x3C */ TPerformList* unk3C;
-	/* 0x40 */ TPerformList* unk40;
+	/* 0x34 */ TPerformList* mPerformListPreEntry;
+	/* 0x38 */ TPerformList* mPerformListGraffito;
+	/* 0x3C */ TPerformList* mPerformListPollution;
+	/* 0x40 */ TPerformList* mPerformListDrawBufGroup;
 	/* 0x44 */ TPerformList* mShinePfLstMov;
 	/* 0x48 */ TPerformList* mShinePfLstAnm;
 	/* 0x4C */ u16 unk4C;

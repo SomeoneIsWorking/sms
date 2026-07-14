@@ -111,7 +111,7 @@ int TMarDirector::direct()
 	// The first loop iteration of every direct() call takes the else-branch
 	// (catch-up render) because unk4C&0x4000 persists from the prior call's
 	// `break` (which skips the line-180 clear). That branch consumes
-	// local_140.mRenderMode before the unk34 path's TFrmGXSet (the only place
+	// local_140.mRenderMode before the mPerformListPreEntry path's TFrmGXSet (the only place
 	// the render mode is copied from the display) runs. On GC local_140 reuses
 	// the same stack slot and still holds the previous frame's (display-derived)
 	// render mode, so it works; on LP64 that slot is eventually clobbered and
@@ -155,10 +155,10 @@ int TMarDirector::direct()
 		if (!once) {
 			once = true;
 			fprintf(stderr,
-			        "[dir] LIST SIZES: unk30=%d unk34(preEntry)=%d unk38=%d unk3C=%d unk40=%d "
+			        "[dir] LIST SIZES: unk30=%d mPerformListPreEntry(preEntry)=%d mPerformListGraffito=%d mPerformListPollution=%d mPerformListDrawBufGroup=%d "
 			        "GX=%d GXPost=%d Silhouette=%d CalcAnim=%d Movement=%d ShineMov=%d ShineAnm=%d\n",
-			        sb_pl_count(unk30), sb_pl_count(unk34), sb_pl_count(unk38), sb_pl_count(unk3C),
-			        sb_pl_count(unk40), sb_pl_count(mPerformListGX), sb_pl_count(mPerformListGXPost),
+			        sb_pl_count(unk30), sb_pl_count(mPerformListPreEntry), sb_pl_count(mPerformListGraffito), sb_pl_count(mPerformListPollution),
+			        sb_pl_count(mPerformListDrawBufGroup), sb_pl_count(mPerformListGX), sb_pl_count(mPerformListGXPost),
 			        sb_pl_count(mPerformListSilhouette), sb_pl_count(mPerformListCalcAnim),
 			        sb_pl_count(mPerformListMovement), sb_pl_count(mShinePfLstMov),
 			        sb_pl_count(mShinePfLstAnm));
@@ -292,11 +292,11 @@ int TMarDirector::direct()
 				if (sb_dir_dbg()) {
 					static long n = 0;
 					if ((++n % 200) == 0 || n <= 2)
-						fprintf(stderr, "[dir] unk34->perform (ENTRY pass) n=%ld\n", n);
+						fprintf(stderr, "[dir] mPerformListPreEntry->perform (ENTRY pass) n=%ld\n", n);
 				}
 				directBrDidEntry = true;
 #endif
-				unk34->perform(0xffffffff, &local_140);
+				mPerformListPreEntry->perform(0xffffffff, &local_140);
 				break;
 			}
 		} else {
@@ -311,7 +311,7 @@ int TMarDirector::direct()
 			local_140.unk2 = 0;
 #ifdef SMS_NATIVE_PLATFORM
 			// SB_DBHEAD_DBG/SB_MAPXLU_DBG phase tag: stamp the current perform-list index
-			// (1=unk40, 2=unk38, 3=unk3C, 4=mPerformListGX, 5=Silhouette, 6=mPerformListGXPost)
+			// (1=mPerformListDrawBufGroup, 2=mPerformListGraffito, 3=mPerformListPollution, 4=mPerformListGX, 5=Silhouette, 6=mPerformListGXPost)
 			// so J3DDrawBuffer::drawHead / TMap::perform diagnostics can attribute a flush to its
 			// source pass. Unconditional — the old sb_own_gxlist()/sb_boot_capture_begin_scene()
 			// gate belonged to the deleted Path-B capture-buffer lock (scene_drive.cpp /
@@ -321,7 +321,7 @@ int TMarDirector::direct()
 #endif
 #ifdef SMS_NATIVE_PLATFORM
 			// SB_SKIP_GHOST=1 (diagnostic): skip the phase-1 Draw-Buffer-Group draw
-			// (unk40, the only thing unk40 holds). This is the suspected phase-1 "ghost"
+			// (mPerformListDrawBufGroup, the only thing mPerformListDrawBufGroup holds). This is the suspected phase-1 "ghost"
 			// pass that draws the whole 3D scene under the stale ortho projection carried
 			// from the prior frame's GXPost 2D tail. Toggle to see if the overexposed-title
 			// blowout is the ghost double-draw and whether mPerformListGX alone renders the
@@ -330,15 +330,15 @@ int TMarDirector::direct()
 			if (s_skipGhost < 0) { const char* e = getenv("SB_SKIP_GHOST"); s_skipGhost = (e && e[0] && e[0] != '0') ? 1 : 0; }
 			if (!s_skipGhost)
 #endif
-			unk40->perform(0xffffffff, &local_140);
+			mPerformListDrawBufGroup->perform(0xffffffff, &local_140);
 #ifdef SMS_NATIVE_PLATFORM
 			sb_boot_capture_set_phase(2);
 #endif
-			unk38->perform(0xffffffff, &local_140);
+			mPerformListGraffito->perform(0xffffffff, &local_140);
 #ifdef SMS_NATIVE_PLATFORM
 			sb_boot_capture_set_phase(3);
 #endif
-			unk3C->perform(0xffffffff, &local_140);
+			mPerformListPollution->perform(0xffffffff, &local_140);
 #ifdef SMS_NATIVE_PLATFORM
 			sb_boot_capture_set_phase(4);
 #endif
