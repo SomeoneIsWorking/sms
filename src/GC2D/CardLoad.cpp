@@ -1205,9 +1205,20 @@ bool TCardLoad::titleDraw()
 				if (mSparkleTimer[i] > 300) {
 					JUTRect local_124 = mTitleSparkles[i]->getPane()->getBounds();
 
+					// TARGET = current size, INITIAL = 2x — the sparkle pops in
+					// big and shrinks back, leaving the bounds unchanged. The
+					// decomp had target/initial SWAPPED here (target = 2x), so
+					// every ~800-frame twinkle cycle DOUBLED the pane: the
+					// PRESS START letters grew exponentially into giant blocky
+					// glyphs the longer the title idled. US disasm 0x8016c6d8+
+					// (TCoord2D::setValue receives target=(w,h), start=(2w,2h);
+					// the immediate J2DPane::resize gets (2w,2h) = the START
+					// size, matching setPaneSize's contract). State 4's call
+					// below always had the correct order — only this site was
+					// swapped. See debug_journal/2026-07-15_sparkle_growth.md.
 					mTitleSparkles[i]->setCenteredSize(
-					    25, local_124.getWidth() * 2, local_124.getHeight() * 2,
-					    local_124.getWidth(), local_124.getHeight());
+					    25, local_124.getWidth(), local_124.getHeight(),
+					    local_124.getWidth() * 2, local_124.getHeight() * 2);
 
 					mTitleSparkles[i]->setPaneAlpha(25, 255, 0);
 					mSparkleAnimState[i] = 0;
