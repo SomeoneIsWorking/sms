@@ -2,16 +2,22 @@
 #define MOVE_BG_MAP_OBJ_TREE_HPP
 
 #include <MoveBG/MapObjGeneral.hpp>
+#include <dolphin/mtx.h>
 
+class TMapCollisionMove;
+
+// One per-tree leaf: a 0x3C-byte record carrying its own moving collision
+// object plus a copy of the model-joint matrix it rides on. Layout + ctor
+// reverse-engineered from US GMSE01 (element ctor @0x801f6ef4), see
+// debug_journal/2026-07-15_mapobjtree_initmapobj_port_re.md.
 class TMapObjLeaf {
 public:
 	TMapObjLeaf();
 
-public:
-	/* 0x0 */ f32 mAngle;
-	/* 0x4 */ f32 mAngularVelocity;
-	/* 0x8 */ TMapCollisionMove* mCollision;
-	/* 0xC */ TMtx34f mTransform;
+	/* 0x00 */ f32 unk0;
+	/* 0x04 */ f32 unk4;
+	/* 0x08 */ TMapCollisionMove* mCollision;
+	/* 0x0C */ Mtx mMtx;
 };
 
 class TMapObjTree : public TMapObjGeneral {
@@ -34,17 +40,20 @@ public:
 	static f32 mMiddleFar;
 	static f32 mBananaTreeJumpPower;
 
-public:
-	/* 0x148 */ f32 mMinCanopyRadius;
-	/* 0x14C */ f32 mMaxCanopyRadius;
-	/* 0x150 */ s32 mLeafNum;
+	// Per-tree-species fields, absent from the upstream decomp header but
+	// proven live by the DOL (initEach @0x801f6a64 writes them, initMapObj
+	// @0x801f68b4 reads mLeafCount/mLeaves). Offsets match the US layout;
+	// only the leaf count/array are load-bearing for the current port, the
+	// f32 params drive controlLeaf/getRadiusAtY (not yet ported).
+	/* 0x148 */ f32 unk148;         // leaf-spread radius param
+	/* 0x14C */ f32 unk14C;         // leaf-spread height param
+	/* 0x150 */ s32 mLeafCount;     // number of leaves (8 or 12 by species)
 	/* 0x154 */ TMapObjLeaf* mLeaves;
-	/* 0x158 */ bool mFreezeLeaves;
-	/* 0x15C */ f32 mLeafTouchImpulse;
-	/* 0x160 */ f32 mLeafHipDropImpulse; // Hip-drop leaf movement speed
-	/* 0x164 */ f32 mLeafStiffness;
-	/* 0x168 */ f32 mLeafDamping;
-	/* 0x16C */ u32 unk16C;
+	/* 0x158 */ u32 unk158;
+	/* 0x15C */ f32 unk15C;         // leaf growth/sway params
+	/* 0x160 */ f32 unk160;
+	/* 0x164 */ f32 unk164;
+	/* 0x168 */ f32 unk168;
 };
 
 class TMapEventSink;
