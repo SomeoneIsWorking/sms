@@ -452,8 +452,8 @@ bool TMarDirector::setupObjects()
 		}
 	}
 #endif
-	unk40->push_back(drawBufferGroup, 8);
-	initECTGft(unk38, unk3C, perfEventGroup, normalScene);
+	mPerformListDrawBufGroup->push_back(drawBufferGroup, 8);
+	initECTGft(mPerformListGraffito, mPerformListPollution, perfEventGroup, normalScene);
 	initECTMir(mPerformListGX, perfEventGroup);
 
 	JDrama::TEfbCtrlTex* normalSceneDrawStage
@@ -552,8 +552,8 @@ bool TMarDirector::setupObjects()
 	mPerformListCalcAnim->push_back(dialogueCursor, CUE_CALC_ANIM);
 	mPerformListCalcAnim->push_back(targetArrow, CUE_CALC_ANIM);
 	setupPerformList_console();
-	mPerformListGXPost->push_back(drawInit, CUE_DRAW_STAGE_END);
-	preEntry(unk34);
+	mPerformListGXPost->push_back(drawInit, 0x100);
+	preEntry(mPerformListPreEntry);
 	setup2();
 	JKRHeap::getCurrentHeap()->freeTail();
 
