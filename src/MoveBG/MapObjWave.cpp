@@ -142,6 +142,15 @@ void TMapObjWave::load(JSUMemoryInputStream& stream)
 	mAmpZ = mCoefB;
 	WAVE_LOG("[wave] load tex=%p mMap=%d coef=%.0f/%.0f strip=%d half=%.0f\n",
 	         (void*)mTexture, (int)bg, mCoefA, mCoefB, mStripCount, mHalfExtent);
+#ifdef SMS_NATIVE_PLATFORM
+	if (sWaveDbg() && mTexture) {
+		std::fprintf(stderr,
+		    "[wave] wave.bti fmt=%u alphaEn=%u w=%u h=%u wrapST=%u/%u mip=%u minF=%u magF=%u imgOff=0x%x\n",
+		    mTexture->format, mTexture->alphaEnabled, mTexture->width, mTexture->height,
+		    mTexture->wrapS, mTexture->wrapT, mTexture->mipmapCount, mTexture->minFilter,
+		    mTexture->magFilter, mTexture->imageDataOffset);
+	}
+#endif
 }
 
 void TMapObjWave::updateTime()
@@ -250,6 +259,18 @@ void TMapObjWave::initDraw()
 	GXSetTevAlphaOp(GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_2, GX_TRUE, GX_TEVPREV);
 
 #ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_WAVE_ALPHA_RASA")) {
+		// Falsifier: replace the TEV alpha chain so final alpha = RASA (vertex
+		// edge-fade) only, bypassing TEXA. If the foam/glint now appears, the
+		// invisibility is the wave.bti TEXTURE alpha reading ~0 (not geometry/
+		// color/blend). Keeps the color chain + real blend intact.
+		GXSetTevAlphaIn(GX_TEVSTAGE0, (GXTevAlphaArg)7 /*ZERO*/, (GXTevAlphaArg)7 /*ZERO*/,
+		                (GXTevAlphaArg)7 /*ZERO*/, (GXTevAlphaArg)5 /*RASA*/);
+		GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+		GXSetTevAlphaIn(GX_TEVSTAGE1, (GXTevAlphaArg)7, (GXTevAlphaArg)7,
+		                (GXTevAlphaArg)7, (GXTevAlphaArg)0 /*APREV*/);
+		GXSetTevAlphaOp(GX_TEVSTAGE1, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
+	}
 	if (getenv("SB_WAVE_SOLID")) {
 		// Isolation test: opaque, no blend — proves whether the grid lands on-screen at all.
 		GXSetBlendMode(GX_BM_NONE, GX_BL_ONE, GX_BL_ZERO, GX_LO_CLEAR);
