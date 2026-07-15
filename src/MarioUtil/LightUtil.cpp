@@ -280,6 +280,18 @@ void TLightCommon::setLight(const JDrama::TGraphics* graphics, int idx)
 		GXInitLightAttn(&obj, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f);
 		GXLoadLightObjImm(&obj, GX_LIGHT2);
 	}
+
+	// setLight tail (@0x80229c64-0x80229c88, US): apply the scene ambient to the
+	// ch0 ambient register. getAmbColor takes the RAW idx (r30), NOT the doubled
+	// light-getter index gi=idx*2 (r31) used for the lights above — verified vs the
+	// US disasm (getLightColor/getLightPosition receive r31; getAmbColor receives
+	// r30). This call was MISSING: ReInitializeGX() at the top of setLight sets
+	// GXSetChanAmbColor(GX_COLOR0A0, black), and without re-applying the scene
+	// ambient here the register stayed 0, so every LightOff opaque map/scene
+	// material (palm trunk, file cubes — all loaded without J3DMLF_MaterialColorLightOn
+	// so their per-material ambient is faithfully discarded) rendered its
+	// not-directly-lit faces black. Faithful RE completion, not a tuning constant.
+	GXSetChanAmbColor(GX_COLOR0A0, getAmbColor(idx));
 }
 
 // Native port of TLightCommon::perform (@0x802298fc). Two independent phase
