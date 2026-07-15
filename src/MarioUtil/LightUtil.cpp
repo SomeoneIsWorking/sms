@@ -23,7 +23,7 @@ JDrama::TAmbAry*   gpTLightCommonAmbAry;
 
 TLightCommon::TLightCommon(const char* name)
     : JDrama::TViewObj(name)
-    , unk10(1.0f)  // final ctor write: SDA2 -0x1770 = 1.0f
+    , mShininess(1.0f)  // final ctor write: SDA2 -0x1770 = 1.0f
     , unk14(0.0f)
     , unk18(0.0f)
     , mAlphaScale(0.0f)
@@ -95,7 +95,7 @@ static JDrama::TAmbAry* sb_amb_ary_or_search()
 // local per-light-color / per-light-position arrays this->mLocalLightColor[4]
 // and this->mLocalPos[4] from Light-Group[unk24..unk24+4], and the local
 // ambient arrays this->mLocalAmbColor[2] from AmbAry->mAmbColors[unk20..+1].
-// Also final-writes this->unk10 = 50.0f (SDA2 -0x1770).
+// Also final-writes this->mShininess = 50.0f (SDA2 -0x1770).
 //
 // gpTLightCommonLightAry / gpTLightCommonAmbAry are the SDA1 caches; the
 // getters (defined earlier in this file) read from them.
@@ -111,7 +111,7 @@ void TLightCommon::loadAfter()
 	gpTLightCommonAmbAry   = ambAry;
 	gpTLightCommonLightAry = lightAry;
 
-	unk10 = 50.0f;  // SDA2 -0x1770
+	mShininess = 50.0f;  // SDA2 -0x1770
 
 	if (!lightAry || !lightAry->mLights) {
 		// Match the RE: even on a partial load, keep going; the getters guard.
@@ -278,7 +278,14 @@ void TLightCommon::setLight(const JDrama::TGraphics* graphics, int idx)
 
 		GXColor col = getLightColor(gi);
 		GXInitLightColor(&obj, col);
-		GXInitLightAttn(&obj, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f);
+		// GX_LIGHT2 SPECULAR attenuation (GMSE01 @0x80229c30-c54): the retail
+		// setLight feeds GXInitLightAttn(0,0,1, s/2,0,1-s/2) — GXInitLightShininess
+		// inlined — with s = this->mShininess (=50.0f after loadAfter, giving
+		// cosAtt=(0,0,1) distAtt=(25,0,-24), verified vs the file-select oracle dff).
+		// The prior port had (1,0,0,1,0,0) = CONSTANT attn (a transcription error),
+		// which under GX_AF_SPEC evaluates to ~1 (full) and adds L2's white color as
+		// a constant → washed Mario (bib/hat pale). Byte-faithful to the disasm.
+		GXInitLightAttn(&obj, 0.0f, 0.0f, 1.0f, mShininess * 0.5f, 0.0f, 1.0f - mShininess * 0.5f);
 		GXLoadLightObjImm(&obj, GX_LIGHT2);
 	}
 
