@@ -72,7 +72,10 @@ public:
 	// @0x80229d78 (getLightColor). All decomp-invisible until now — the
 	// header declared TLightCommon as size sizeof(TViewObj), which was WRONG.
 public:
-	/* 0x10 */ f32 unk10;              // ctor default 50.0f (SDA2 -0x1770) — meaning unresolved
+	/* 0x10 */ f32 mShininess;         // was unk10 — GX_LIGHT2 specular shininess. setLight (@0x80229c30)
+	                                   // feeds it as GXInitLightAttn(0,0,1, s/2,0,1-s/2) (GXInitLightShininess
+	                                   // inlined). Init path sets 50.0f → distAtt=(25,0,-24), matching the
+	                                   // file-select oracle dff. Ctor default 1.0f.
 	/* 0x14 */ f32 unk14;              // = 0.0f
 	/* 0x18 */ f32 unk18;              // = 0.0f
 	/* 0x1C */ f32 mAlphaScale;        // was unk1C — multiplies GXColor.a in getLightColor/getAmbColor group paths
