@@ -14,6 +14,10 @@
 #include <dolphin/gd.h>
 #include <dolphin/os.h>
 #include <macros.h>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 
 void J3DColorBlockLightOff::initialize()
 {
@@ -254,6 +258,14 @@ extern void loadCullMode(u8);
 
 void J3DColorBlockLightOff::load()
 {
+#ifdef SMS_NATIVE_PLATFORM
+	static const bool s_dbg = getenv("SB_DBG_MATAMB") != nullptr;
+	if (s_dbg) {
+		GXColor m = mMatColor[0].color;
+		fprintf(stderr, "[matamb] LightOFF mat0=(%02x,%02x,%02x,%02x) (no amb set)\n",
+		        m.r, m.g, m.b, m.a);
+	}
+#endif
 	for (u32 i = 0; i < ARRAY_COUNT(mMatColor); ++i)
 		J3DGDSetChanMatColor((GXChannelID)(GX_COLOR0A0 + i),
 		                     mMatColor[i].color);
@@ -267,6 +279,14 @@ void J3DColorBlockLightOff::load()
 
 void J3DColorBlockLightOn::load()
 {
+#ifdef SMS_NATIVE_PLATFORM
+	static const bool s_dbg = getenv("SB_DBG_MATAMB") != nullptr;
+	if (s_dbg) {
+		GXColor m = mMatColor[0].color, a = mAmbColor[0].color;
+		fprintf(stderr, "[matamb] LightON  mat0=(%02x,%02x,%02x,%02x) amb0=(%02x,%02x,%02x,%02x)\n",
+		        m.r, m.g, m.b, m.a, a.r, a.g, a.b, a.a);
+	}
+#endif
 	for (u32 i = 0; i < ARRAY_COUNT(mMatColor); ++i)
 		J3DGDSetChanMatColor((GXChannelID)(GX_COLOR0A0 + i),
 		                     mMatColor[i].color);

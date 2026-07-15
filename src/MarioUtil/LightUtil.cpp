@@ -6,6 +6,7 @@
 #include <JSystem/JDrama/JDRLighting.hpp>
 #include <JSystem/JDrama/JDRNameRefGen.hpp>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 TLightWithDBSetManager* gpLightManager;
@@ -293,7 +294,13 @@ void TLightCommon::setLight(const JDrama::TGraphics* graphics, int idx)
 	// material (palm trunk, file cubes — all loaded without J3DMLF_MaterialColorLightOn
 	// so their per-material ambient is faithfully discarded) rendered its
 	// not-directly-lit faces black. Faithful RE completion, not a tuning constant.
-	GXSetChanAmbColor(GX_COLOR0A0, getAmbColor(idx));
+	GXColor sb_amb = getAmbColor(idx);
+	static const bool s_dbgAmb = std::getenv("SB_DBG_MATAMB") != nullptr;
+	if (s_dbgAmb) {
+		std::fprintf(stderr, "[setlight] idx=%d getAmbColor=(%02x,%02x,%02x,%02x) mUseLocalColor=%d mAmbBaseIdx=%d\n",
+		             idx, sb_amb.r, sb_amb.g, sb_amb.b, sb_amb.a, (int)mUseLocalColor, (int)mAmbBaseIdx);
+	}
+	GXSetChanAmbColor(GX_COLOR0A0, sb_amb);
 }
 
 // Native port of TLightCommon::perform (@0x802298fc). Two independent phase
