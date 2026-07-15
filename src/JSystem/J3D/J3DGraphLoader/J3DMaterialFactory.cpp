@@ -250,25 +250,6 @@ J3DGXColor J3DMaterialFactory::newAmbColor(int idx, int stage) const
 
 	J3DMaterialInitData* initData = &mpMaterialInitData[mpMaterialID[idx]];
 
-#ifdef SMS_NATIVE_PLATFORM
-	// SB_AMB_DBG: one-shot trace of ambient-color resolution to root-cause the
-	// file-select under-lighting (native amb=0 vs oracle amb=0.5). Prints the
-	// resolved index and the array entry it points at for the first calls.
-	if (std::getenv("SB_AMB_DBG")) {
-		static int s_n = 0;
-		if (s_n++ < 24) {
-			const u16 ai = initData->mAmbColorIdx[stage];
-			if (ai != 0xFFFF) {
-				const GXColor c = mpAmbColor[ai];
-				std::fprintf(stderr, "[amb-dbg] mat=%d st=%d ambIdx=0x%04x -> arr=(%02x,%02x,%02x,%02x)\n",
-				             idx, stage, ai, c.r, c.g, c.b, c.a);
-			} else {
-				std::fprintf(stderr, "[amb-dbg] mat=%d st=%d ambIdx=0xFFFF -> DEFAULT 0x32\n", idx, stage);
-			}
-		}
-	}
-#endif
-
 	if (initData->mAmbColorIdx[stage] != 0xFFFF)
 		return mpAmbColor[initData->mAmbColorIdx[stage]];
 	else
