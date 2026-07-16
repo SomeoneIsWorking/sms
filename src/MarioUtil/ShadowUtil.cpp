@@ -510,24 +510,33 @@ void TMBindShadowManager::drawShadow(u32 flags, JDrama::TGraphics* g)
 	static int sBisect = -1;
 	if (sBisect < 0) { const char* e = getenv("SB_SHADOW_BISECT"); sBisect = e ? atoi(e) : 0; }
 	if (sBisect == 1) return;
+	// SB_SHADOW_PASSES bitmask (TEMP diagnostic): 1=stamp 2=mark 4=darken 8=type3
+	// 16=restamp; default all on.
+	static int sPasses = -1;
+	if (sPasses < 0) { const char* e = getenv("SB_SHADOW_PASSES"); sPasses = e ? atoi(e) : 0x1f; }
 	SHADOW_LOG("[shadow] drawShadow flags=%08x groups=%d requests=%d\n",
 	           (unsigned)flags, mGroupCount, mRequestCount);
 #endif
 
-	ReInitializeGX();
-	GXSetZCompLoc(GX_TRUE);
-	GXClearVtxDesc();
-	GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
-	GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-	GXSetNumChans(1);
-	GXSetChanCtrl(GX_COLOR0, GX_DISABLE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_NONE, GX_AF_NONE);
-	GXSetChanCtrl(GX_ALPHA0, GX_DISABLE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_NONE, GX_AF_NONE);
-	GXSetChanCtrl(GX_COLOR1A1, GX_DISABLE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_NONE, GX_AF_NONE);
-	GXSetNumTexGens(0);
-	GXSetNumTevStages(1);
-	GXSetTevOp(GX_TEVSTAGE0, GX_PASSCLR);
-	GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
-	GXSetAlphaUpdate(GX_TRUE);
+	// TEMP diagnostic: SB_SHADOW_SETUPN=N executes only the first N setup calls.
+	static int sSetupN = -1;
+	if (sSetupN < 0) { const char* e = getenv("SB_SHADOW_SETUPN"); sSetupN = e ? atoi(e) : 99; }
+	int sc = 0;
+#define SETUP_GATE if (++sc > sSetupN) return
+	SETUP_GATE; ReInitializeGX();
+	SETUP_GATE; GXSetZCompLoc(GX_TRUE);
+	SETUP_GATE; GXClearVtxDesc();
+	SETUP_GATE; GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
+	SETUP_GATE; GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+	SETUP_GATE; GXSetNumChans(1);
+	SETUP_GATE; GXSetChanCtrl(GX_COLOR0, GX_DISABLE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_NONE, GX_AF_NONE);
+	SETUP_GATE; GXSetChanCtrl(GX_ALPHA0, GX_DISABLE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_NONE, GX_AF_NONE);
+	SETUP_GATE; GXSetChanCtrl(GX_COLOR1A1, GX_DISABLE, GX_SRC_REG, GX_SRC_REG, 0, GX_DF_NONE, GX_AF_NONE);
+	SETUP_GATE; GXSetNumTexGens(0);
+	SETUP_GATE; GXSetNumTevStages(1);
+	SETUP_GATE; GXSetTevOp(GX_TEVSTAGE0, GX_PASSCLR);
+	SETUP_GATE; GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
+	SETUP_GATE; GXSetAlphaUpdate(GX_TRUE);
 	{
 		GXColor c = mShadowColor;
 #ifdef SMS_NATIVE_PLATFORM
@@ -574,7 +583,7 @@ void TMBindShadowManager::drawShadow(u32 flags, JDrama::TGraphics* g)
 			}
 		}
 #endif
-		SMS_DrawCube(cubeMin, cubeMax);
+		if (sPasses & 1) SMS_DrawCube(cubeMin, cubeMax);
 
 		// LOD by the head footprint's distance-to-Mario (2e7 = SDA2[-0x1668]).
 		const bool far_ = (2.0e7f <= grp.mFpHead->mReq->unk18);
@@ -587,6 +596,7 @@ void TMBindShadowManager::drawShadow(u32 flags, JDrama::TGraphics* g)
 		GXSetCullMode(GX_CULL_BACK);
 		GXSetBlendMode(GX_BM_BLEND, GX_BL_ONE, GX_BL_ZERO, GX_LO_NOOP);
 		Mtx fpMv;
+		if (sPasses & 2)
 		for (TAlphaShadowQuad* fp = grp.mFpHead; fp != nullptr; fp = fp->mNext) {
 			PSMTXConcat(view, fp->mMtx, fpMv);
 			GXLoadPosMtxImm(fpMv, GX_PNMTX0);
@@ -599,6 +609,7 @@ void TMBindShadowManager::drawShadow(u32 flags, JDrama::TGraphics* g)
 		GXSetCullMode(GX_CULL_FRONT);
 		GXSetDstAlpha(GX_TRUE, 0);
 		GXSetColorUpdate(GX_TRUE);
+		if (sPasses & 4)
 		for (TAlphaShadowQuad* fp = grp.mFpHead; fp != nullptr; fp = fp->mNext) {
 			PSMTXConcat(view, fp->mMtx, fpMv);
 			GXLoadPosMtxImm(fpMv, GX_PNMTX0);
@@ -624,7 +635,7 @@ void TMBindShadowManager::drawShadow(u32 flags, JDrama::TGraphics* g)
 		GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
 		GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
 		GXLoadPosMtxImm(view, GX_PNMTX0);
-		SMS_DrawCube(cubeMin, cubeMax);
+		if (sPasses & 16) SMS_DrawCube(cubeMin, cubeMax);
 
 		if (mDebugCubeFlag != 0) {
 			GXSetColorUpdate(GX_TRUE);
