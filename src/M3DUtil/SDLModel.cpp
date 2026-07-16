@@ -135,7 +135,7 @@ void SDLModel::entryModelDataSDL(SDLModelData* param_1, u32 param_2,
 		mNodeMatrices = new Mtx[md->getJointNum()];
 	}
 	if (md->getWEvlpMtxNum())
-		unk5C = new Mtx[md->getWEvlpMtxNum()];
+		mWEvlpMtx = new Mtx[md->getWEvlpMtxNum()];
 	if (param_3) {
 		for (int i = 0; i < 2; ++i) {
 			mDrawMtxBuf[i] = new Mtx*[param_3];
