@@ -238,6 +238,17 @@ const JGeometry::TVec3<f32>* TLightCommon::getLightPosition(int idx)
 	return &L.mPosition;
 }
 
+// Retail getLightPos (@0x802281b8) returns the global that TLightCommon::
+// loadAfter (@0x80229e30) set to &LightGroup.mLights[0].mPosition — the sun.
+// Host: resolve lazily through the same group search the getters use.
+const JGeometry::TVec3<f32>* TLightWithDBSetManager::getLightPos() const
+{
+	JDrama::TLightAry* la = sb_light_ary_or_search();
+	if (!la || !la->mLights || la->mLightCount < 1)
+		return nullptr;
+	return &la->mLights[0].mPosition;
+}
+
 // Native port of TLightCommon::setLight (@0x80229a30, 156 insns). Broadcasts
 // three GX lights (LIGHT0 positional, LIGHT1 gpLightManager-effect if enabled,
 // LIGHT2 specular-directional) — the real light source the pre-oracle

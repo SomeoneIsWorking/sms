@@ -750,8 +750,20 @@ void TMBindShadowManager::perform(u32 flags, JDrama::TGraphics* g)
 			// until a real position exists.
 			const JGeometry::TVec3<f32>* lp = gpLightManager->getLightPos();
 			if (lp != nullptr
-			    && (lp->x != 0.0f || lp->y != 0.0f || lp->z != 0.0f))
+			    && (lp->x != 0.0f || lp->y != 0.0f || lp->z != 0.0f)) {
 				VECNormalize((const Vec*)lp, (Vec*)&mShadowDir);
+				static int sN = 0;
+				if (sN < 3 && sShadowDbg()) { ++sN;
+					SHADOW_LOG("[shadow] lightPos=(%.0f,%.0f,%.0f) dir=(%.3f,%.3f,%.3f)\n",
+					           lp->x, lp->y, lp->z, mShadowDir.x, mShadowDir.y, mShadowDir.z);
+				}
+			} else {
+				static bool sW = false;
+				if (!sW && sShadowDbg()) { sW = true;
+					SHADOW_LOG("[shadow] lightPos unresolved (lp=%p) -- dir stays (%.1f,%.1f,%.1f)\n",
+					           (const void*)lp, mShadowDir.x, mShadowDir.y, mShadowDir.z);
+				}
+			}
 		}
 		calcVtx();
 	}
