@@ -1,3 +1,6 @@
+#ifdef SMS_NATIVE_PLATFORM
+#include <sb_log.h>
+#endif
 #include <Player/Mario.hpp>
 #include <Player/MarioAnimeData.hpp>
 #include <Player/MarioCap.hpp>
@@ -2400,6 +2403,13 @@ void TMario::addDirty()
 		                             ->getTevKColor(0);
 		konstColor->color.a = mDirty;
 	}
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_LOG=dirty: mDirty is the K0 ALPHA gating the TEXA-compare dirt/goo TEV
+	// stage — nonzero garbage here renders black splotches (file-select patches
+	// suspect; retail settled Mario is clean = 0).
+	SB_LOG_EVERY("dirty", 100, "mDirty=%u pollutionType=%d", (unsigned)mDirty,
+	             (int)mPollutionTypeStandingOn);
+#endif
 
 	if (mHandModels[0][0] != nullptr) {
 		for (int handIdx = 0; handIdx < 2; ++handIdx) {
