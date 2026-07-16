@@ -540,6 +540,23 @@ void J3DModel::entryModelData(J3DModelData* param_1, u32 param_2, u32 param_3)
 			if (param_1->getDrawMtxNum()) {
 				mDrawMtxBuf[i][j] = new (0x20) Mtx[param_1->getDrawMtxNum()];
 				mNrmMtxBuf[i][j]  = new (0x20) Mtx33[param_1->getDrawMtxNum()];
+#ifdef SMS_NATIVE_PLATFORM
+				// SB_LOG=j3dbuf: buffer->model registry, to match aurora's
+				// [pnzero] zero-matrix upload array bases to their model.
+				SB_LOGC("j3dbuf", "model=%p buf[%d][view=%d] draw=%p nrm=%p drawMtxNum=%d joints=%d views=%d",
+				        (void*)this, i, j, (void*)mDrawMtxBuf[i][j], (void*)mNrmMtxBuf[i][j],
+				        (int)param_1->getDrawMtxNum(), (int)param_1->getJointNum(), (int)param_3);
+				// SB_LOG=j3dbt: one-shot creation backtrace per big skinned
+				// model — names WHO creates the extra Mario-body models that
+				// viewCalc without ever running the envelope blend.
+				if (i == 0 && j == 0 && param_1->getDrawMtxNum() > 100 && sb_log_enabled("j3dbt")) {
+					sb_logf("j3dbt", "entryModelData model=%p drawMtxNum=%d backtrace:", (void*)this,
+					        (int)param_1->getDrawMtxNum());
+					void* fr[24];
+					int nf = backtrace(fr, 24);
+					backtrace_symbols_fd(fr, nf, 2);
+				}
+#endif
 			}
 		}
 	}
@@ -706,6 +723,25 @@ void J3DModel::calcWeightEnvelopeMtx()
 					acc[r][c] += w * skin[r][c];
 		}
 		MTXCopy(acc, unk5C[e]);
+#ifdef SMS_NATIVE_PLATFORM
+		// SB_LOG=evlp: per-envelope blend inputs when the result rotation is
+		// zero — splits "no influences / zero weights" from "zero anm joint
+		// matrices" (2026-07-16 Mario black patches: 28 zero envelope-mapped
+		// draw entries).
+		if (acc[0][0] == 0.f && acc[0][1] == 0.f && acc[0][2] == 0.f) {
+			float wsum = 0.f;
+			u32 kk = k - num;
+			int maxIdx = -1;
+			for (u8 j = 0; j < num; ++j) {
+				wsum += mModelData->unk90[kk + j];
+				if (mModelData->unk8C[kk + j] > maxIdx) maxIdx = mModelData->unk8C[kk + j];
+			}
+			SB_LOGC("evlp", "model=%p e=%d/%d num=%d wsum=%.3f maxJntIdx=%d joints=%d anm0[maxIdx]=%.4f",
+			        (void*)this, (int)e, (int)evlpNum, (int)num, wsum, maxIdx,
+			        (int)mModelData->getJointNum(),
+			        maxIdx >= 0 ? getAnmMtx((u16)maxIdx)[0][0] : 0.f);
+		}
+#endif
 	}
 #endif
 }
@@ -939,6 +975,27 @@ void J3DModel::viewCalc()
 			// fullWgt+wEvlpNum ZERO (garbage nrm palette -> black patches on skinned
 			// draws). Use the indexed concat exactly like the joint path above.
 			const u16 fullWgt = mModelData->getDrawFullWgtMtxNum();
+#ifdef SMS_NATIVE_PLATFORM
+			// SB_LOG=drwidx: one-shot dump of the envelope-range DRW1 tables
+			// (flag + index per entry) — checks whether index-mapped envelope
+			// fill reads past the wEvlp array (heap zeros -> black patches).
+			SB_LOG_ONCE("drwidx", "model=%p drawMtxNum=%d fullWgt=%d wEvlp=%d",
+			            (void*)this, (int)mModelData->getDrawMtxNum(), (int)fullWgt,
+			            (int)mModelData->getWEvlpMtxNum());
+			if (sb_log_enabled("drwidx")) {
+				static const void* dumped[8];
+				static int nd = 0;
+				bool seen = false;
+				for (int s = 0; s < nd; ++s) if (dumped[s] == (void*)this) seen = true;
+				if (!seen && nd < 8 && mModelData->getDrawMtxNum() > 60) {
+					dumped[nd++] = (void*)this;
+					for (u16 i = 0; i < mModelData->getDrawMtxNum(); ++i)
+						sb_logf("drwidx", "model=%p entry=%d flag=%d idx=%d", (void*)this, (int)i,
+						        (int)mModelData->getDrawMtxFlag(i),
+						        (int)mModelData->mDrawMtxData.mDrawMtxIndex[i]);
+				}
+			}
+#endif
 			J3DMTXConcatArrayIndexedSrc(
 			    viewMtx, (const float(*)[3][4])getWeightAnmMtx(0),
 			    mModelData->mDrawMtxData.mDrawMtxIndex + fullWgt,
@@ -971,9 +1028,11 @@ void J3DModel::calcNrmMtx()
 			}
 		}
 		if (zeroCnt)
-			SB_LOG_EVERY("nrmmtx", 300, "model=%p zeroDrawMtx=%d/%d first=%d fullWgt=%d wEvlp=%d",
-			             (void*)this, zeroCnt, (int)mModelData->getDrawMtxNum(), firstZero,
-			             (int)mModelData->getDrawFullWgtMtxNum(), (int)mModelData->getWEvlpMtxNum());
+			SB_LOGC("nrmmtx", "model=%p drawMtxBuf=%p zeroDrawMtx=%d/%d first=%d fullWgt=%d wEvlp=%d joints=%d",
+			             (void*)this, (void*)mDrawMtxBuf[1][mCurrentViewNo], zeroCnt,
+			             (int)mModelData->getDrawMtxNum(), firstZero,
+			             (int)mModelData->getDrawFullWgtMtxNum(), (int)mModelData->getWEvlpMtxNum(),
+			             (int)mModelData->getJointNum());
 	}
 #endif
 	for (u16 i = 0; i < mModelData->getDrawMtxNum(); i++) {
