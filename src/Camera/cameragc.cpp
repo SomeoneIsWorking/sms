@@ -1016,6 +1016,12 @@ void CPolarSubCamera::perform(u32 param_1, JDrama::TGraphics* param_2)
 			SB_LOG_EVERY("camlook", 120, "LookAt eye=(%.2f,%.2f,%.2f) up=(%.3f,%.3f,%.3f) tgt=(%.2f,%.2f,%.2f) fovy=%.3f aspect=%.4f mode=%d",
 			             unk124.x, unk124.y, unk124.z, mUp.x, mUp.y, mUp.z,
 			             unk148.x, unk148.y, unk148.z, mFovy, mAspect, mMode);
+			// Unsampled variant: SB_LOG_EVERY aliases when multiple camera
+			// instances call this site (the every-N stride can land on the same
+			// instance each time) — camlookall prints every call with `this`.
+			SB_LOGC("camlookall", "LookAt this=%p eye=(%.2f,%.2f,%.2f) tgt=(%.2f,%.2f,%.2f) mode=%d",
+			        (void*)this, unk124.x, unk124.y, unk124.z,
+			        unk148.x, unk148.y, unk148.z, mMode);
 #endif
 		}
 

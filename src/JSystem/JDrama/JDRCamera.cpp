@@ -5,6 +5,9 @@
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
 #include <cstdlib>
+#ifdef SMS_NATIVE_PLATFORM
+#include <sb_log.h>
+#endif
 static bool sb_cam_dbg() {
 	static int v = -1;
 	if (v < 0) { const char* e = getenv("SB_J3D_DBG"); v = (e && e[0] && e[0] != '0') ? 1 : 0; }
@@ -89,6 +92,11 @@ void TLookAtCamera::perform(u32 param_1, TGraphics* param_2)
 	param_2->mNearPlane = mNear;
 	param_2->mFarPlane  = mFar;
 	C_MTXLookAt(param_2->mViewMtx, &mPosition, &mUp, &mTarget);
+#ifdef SMS_NATIVE_PLATFORM
+	SB_LOGC("camlookall", "JDR TLookAtCamera setView this=%p pos=(%.2f,%.2f,%.2f) tgt=(%.2f,%.2f,%.2f) fovy=%.3f",
+	        (void*)this, mPosition.x, mPosition.y, mPosition.z,
+	        mTarget.x, mTarget.y, mTarget.z, mFovy);
+#endif
 
 	if (param_1 & 0x10)
 		GXSetProjection(projMtx, GX_PERSPECTIVE);
