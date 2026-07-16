@@ -92,7 +92,15 @@ public:
 
 	virtual ~TLightDrawBuffer() { }
 	virtual void perform(u32, JDrama::TGraphics*);
-	virtual void setLight(TLightCommon*) { }
+	// Store the owning light: perform's flag-0x20 phase dispatches
+	// owner->setLight(graphics, mLightIndex) — the per-buffer relight that
+	// re-establishes lights+ambient before the buffer's draws. This was an
+	// empty `{ }` stub, silently discarding the owner every makeDrawBuffer
+	// passed in — the per-buffer relight never ran, so the buffers' draws
+	// inherited whatever ambient the previous node left (found 2026-07-16 as
+	// the black-ambient block tint after the shadow port's faithful mid-frame
+	// ReInitializeGX; the banned silent-success-stub class again).
+	virtual void setLight(TLightCommon* light) { mOwnerLight = light; }
 
 public:
 	/* 0x10 */ TLightCommon* mOwnerLight;                   // was unk10 — perform dispatches setLight through it
