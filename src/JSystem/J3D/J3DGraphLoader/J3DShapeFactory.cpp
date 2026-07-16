@@ -86,4 +86,13 @@ J3DShapeDraw* J3DShapeFactory::newShapeDraw(int shapeNo, int mtxGroupNo,
 void J3DShapeFactory::allocVcdVatCmdBuffer(u32 count)
 {
 	mpVcdVatCmdBuffer = new (0x20) u8[J3DShape::kVcdVatDLSize * count];
+#ifdef SMS_NATIVE_PLATFORM
+	// Zero the whole region: GXCallDisplayList replays a FIXED kVcdVatDLSize
+	// (0xC0) per shape, but makeVcdVatCmd writes less and pads only to 32 bytes
+	// — the tail must be GX NOPs (0x00), not heap garbage (found as a
+	// command-processor desync: "unknown opcode 0xE0" when the shadow-volume
+	// path replayed a baked VcdVat DL, 2026-07-16). GC heaps made this benign
+	// by accident of contents; host heaps do not.
+	memset(mpVcdVatCmdBuffer, 0, J3DShape::kVcdVatDLSize * count);
+#endif
 }
