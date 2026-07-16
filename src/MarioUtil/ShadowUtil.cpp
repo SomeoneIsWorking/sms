@@ -131,13 +131,11 @@ void TMBindShadowManager::load(JSUMemoryInputStream& stream)
 		for (u16 s = 0; s < mModels[i]->getShapeNum(); ++s)
 			mModels[i]->getShapeNodePointer(s)->makeVcdVatCmd();
 		if (sShadowDbg()) {
-			const u8* d = (const u8*)mModels[i]->getShapeNodePointer(0)->getDrawList();
-			std::fprintf(stderr, "[shadow] model %d shapes=%u vcdvat[0]:", i, mModels[i]->getShapeNum());
-			for (int b = 0; b < 0x180; ++b) {
-				if (b % 32 == 0) std::fprintf(stderr, "\n    +%03x:", b);
-				std::fprintf(stderr, " %02x", d[b]);
-			}
-			std::fprintf(stderr, "\n");
+			J3DShape* sh = mModels[i]->getShapeNodePointer(0);
+			std::fprintf(stderr,
+			    "[shadow] model %d shapes=%u bounds min=(%.1f,%.1f,%.1f) max=(%.1f,%.1f,%.1f)\n",
+			    i, mModels[i]->getShapeNum(), sh->unk10.x, sh->unk10.y, sh->unk10.z,
+			    sh->unk1C.x, sh->unk1C.y, sh->unk1C.z);
 		}
 #endif
 	}
@@ -392,11 +390,15 @@ void TMBindShadowManager::calcVtx()
 			mtxSz = 1.0f;
 		}
 
-		// Modelview: TRS at the (possibly original) position, premultiplied by the
-		// current J3D view (guest PSMTXConcat(@0x804045dc == j3dSys.mViewMtx, m, m)).
+		// Retail bakes view*TRS here (PSMTXConcat(@0x804045dc == j3dSys.mViewMtx,
+		// m, m)) — valid on guest because the frame's LAST 3D pass leaves the main
+		// view in j3dSys, so at next frame's calc phase it still holds it. This
+		// port's pipeline doesn't guarantee that (found as garbage view-space
+		// translations -> volumes hovering at the camera). HOST ADAPTATION with
+		// identical output: store the TRS only; drawShadow concats the graphics
+		// view (same source as its own retail view load) at draw time.
 		MsMtxSetTRS(fp.mMtx, mtxX, mtxY, mtxZ, mtxRotX, req.unk14, 0.0f,
 		            mtxSx, mtxSy, mtxSz);
-		PSMTXConcat(j3dSys.getViewMtx(), fp.mMtx, fp.mMtx);
 
 		for (int k = 0; k < 4; ++k) {
 			fp.mCorner[k].x = req.unkC * kCornerDirX[k] + req.unk0.x;
@@ -528,6 +530,13 @@ void TMBindShadowManager::drawShadow(u32 flags, JDrama::TGraphics* g)
 	GXSetAlphaUpdate(GX_TRUE);
 	{
 		GXColor c = mShadowColor;
+#ifdef SMS_NATIVE_PLATFORM
+		// SB_SHADOW_VIZ=1: paint the shadow passes bright red to separate
+		// "my passes write these pixels" from indirect state leakage.
+		static int sViz = -1;
+		if (sViz < 0) { const char* e = getenv("SB_SHADOW_VIZ"); sViz = (e && e[0] && e[0] != '0') ? 1 : 0; }
+		if (sViz) c = { 0xff, 0x00, 0x00, 0xff };
+#endif
 		GXSetChanMatColor(GX_COLOR0A0, c);
 	}
 	GXSetCurrentMtx(GX_PNMTX0);
@@ -552,6 +561,19 @@ void TMBindShadowManager::drawShadow(u32 flags, JDrama::TGraphics* g)
 		TAlphaShadowBlendQuad* box = grp.mBoxHead;
 		JGeometry::TVec3<f32> cubeMin(box->mMinX, box->mY - box->mDy, box->mMinZ);
 		JGeometry::TVec3<f32> cubeMax(box->mMaxX, box->mY + box->mDy, box->mMaxZ);
+#ifdef SMS_NATIVE_PLATFORM
+		{
+			static int sN = 0;
+			if (sN < 12 && sShadowDbg()) { ++sN;
+				const TCircleShadowRequest* rq = grp.mFpHead->mReq;
+				SHADOW_LOG("[shadow] grp%d cube=(%.0f,%.0f,%.0f)-(%.0f,%.0f,%.0f) req pos=(%.0f,%.0f,%.0f) r=(%.1f,%.1f) t=%d sz=%.1f mtxT=(%.0f,%.0f,%.0f)\n",
+				           gi, cubeMin.x, cubeMin.y, cubeMin.z, cubeMax.x, cubeMax.y, cubeMax.z,
+				           rq->unk0.x, rq->unk0.y, rq->unk0.z, rq->unkC, rq->unk10, rq->unk1C,
+				           grp.mFpHead->mSize,
+				           grp.mFpHead->mMtx[0][3], grp.mFpHead->mMtx[1][3], grp.mFpHead->mMtx[2][3]);
+			}
+		}
+#endif
 		SMS_DrawCube(cubeMin, cubeMax);
 
 		// LOD by the head footprint's distance-to-Mario (2e7 = SDA2[-0x1668]).
@@ -564,8 +586,10 @@ void TMBindShadowManager::drawShadow(u32 flags, JDrama::TGraphics* g)
 		GXSetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
 		GXSetCullMode(GX_CULL_BACK);
 		GXSetBlendMode(GX_BM_BLEND, GX_BL_ONE, GX_BL_ZERO, GX_LO_NOOP);
+		Mtx fpMv;
 		for (TAlphaShadowQuad* fp = grp.mFpHead; fp != nullptr; fp = fp->mNext) {
-			GXLoadPosMtxImm(fp->mMtx, GX_PNMTX0);
+			PSMTXConcat(view, fp->mMtx, fpMv);
+			GXLoadPosMtxImm(fpMv, GX_PNMTX0);
 			drawShadowVolume(useNear, fp);
 		}
 
@@ -576,7 +600,8 @@ void TMBindShadowManager::drawShadow(u32 flags, JDrama::TGraphics* g)
 		GXSetDstAlpha(GX_TRUE, 0);
 		GXSetColorUpdate(GX_TRUE);
 		for (TAlphaShadowQuad* fp = grp.mFpHead; fp != nullptr; fp = fp->mNext) {
-			GXLoadPosMtxImm(fp->mMtx, GX_PNMTX0);
+			PSMTXConcat(view, fp->mMtx, fpMv);
+			GXLoadPosMtxImm(fpMv, GX_PNMTX0);
 			drawShadowVolume(useNear, fp);
 		}
 
@@ -587,7 +612,8 @@ void TMBindShadowManager::drawShadow(u32 flags, JDrama::TGraphics* g)
 		GXSetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
 		for (TAlphaShadowQuad* fp = grp.mFpHead; fp != nullptr; fp = fp->mNext) {
 			if (fp->mReq->unk1C == 3) {
-				GXLoadPosMtxImm(fp->mMtx, GX_PNMTX0);
+				PSMTXConcat(view, fp->mMtx, fpMv);
+				GXLoadPosMtxImm(fpMv, GX_PNMTX0);
 				SMS_SettingDrawShape(mModels[3], 0);
 				SMS_DrawShape(mModels[3], 0);
 			}
