@@ -150,9 +150,13 @@ void TMBindShadowManager::calcVtx()
 
 	SHADOW_LOG("[shadow] calcVtx: %d requests -> %d footprints\n",
 	           mRequestCount, mFootprintCount);
+	if (mFootprintCount > 0)
+		SHADOW_LOG("[shadow] fp0 pos=(%.1f,%.1f,%.1f) rad=(%.1f,%.1f) alpha=%d\n",
+		           mFootprints[0].mPos.x, mFootprints[0].mPos.y, mFootprints[0].mPos.z,
+		           mFootprints[0].mRadiusX, mFootprints[0].mRadiusZ, (int)mFootprints[0].mAlpha);
 }
 
-void TMBindShadowManager::drawShadow(u32 /*flags*/, JDrama::TGraphics* /*g*/)
+void TMBindShadowManager::drawShadow(u32 /*flags*/, JDrama::TGraphics* g)
 {
 	if (mFootprintCount == 0) return;
 
@@ -164,7 +168,12 @@ void TMBindShadowManager::drawShadow(u32 /*flags*/, JDrama::TGraphics* /*g*/)
 	GXSetVtxDesc(GX_VA_POS,  GX_DIRECT);
 	GXSetVtxDesc(GX_VA_CLR0, GX_DIRECT);
 
-	GXLoadPosMtxImm(j3dSys.getViewMtx(), GX_PNMTX0);
+	// Retail (0x8022f014) loads the VIEW from the TGraphics param (+0xB4):
+	// GXLoadPosMtxImm(graphics->mViewMtx, GX_PNMTX0). j3dSys.getViewMtx() is
+	// WRONG here — at the '丸影複合型' dispatch point it still holds the MIRROR
+	// pass's Y-reflected view, so the discs rendered mirrored/off-view
+	// (2026-07-16: the invisible-shadow root cause).
+	GXLoadPosMtxImm(g->getUnkB4(), GX_PNMTX0);
 	GXSetCurrentMtx(GX_PNMTX0);
 
 	GXSetNumChans(1);
@@ -185,6 +194,13 @@ void TMBindShadowManager::drawShadow(u32 /*flags*/, JDrama::TGraphics* /*g*/)
 	GXSetAlphaCompare(GX_GEQUAL, 0, GX_AOP_AND, GX_LEQUAL, 255);
 	GXSetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE); // test on, write off (transparent decal)
 	GXSetCullMode(GX_CULL_NONE);
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_SHADOW_VIZ=1 (diagnostic): disable Z-test so the disc always draws,
+	// to separate "not rendering" from "Z-fighting the ground / hidden".
+	static int s_viz = -1;
+	if (s_viz < 0) { const char* e = getenv("SB_SHADOW_VIZ"); s_viz = (e && e[0] && e[0] != '0') ? 1 : 0; }
+	if (s_viz) GXSetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+#endif
 
 	// Soft disc: 12-triangle fan (center + 12 rim vertices, drawn as GX_TRIANGLES).
 	static const int kSteps = 12;
@@ -207,16 +223,21 @@ void TMBindShadowManager::drawShadow(u32 /*flags*/, JDrama::TGraphics* /*g*/)
 		const u8  a  = fp.mAlpha;
 
 		GXBegin(GX_TRIANGLES, GX_VTXFMT0, (u16)(kSteps * 3));
+#ifdef SMS_NATIVE_PLATFORM
+		const u8 cr = s_viz ? 255 : 0;
+#else
+		const u8 cr = 0;
+#endif
 		for (int s = 0; s < kSteps; ++s) {
 			// Center vertex: opaque at requested alpha, dark colour.
 			GXPosition3f32(cx, cy, cz);
-			GXColor4u8(0, 0, 0, a);
+			GXColor4u8(cr, 0, 0, a);
 			// Rim vertex s: alpha 0 (soft radial falloff).
 			GXPosition3f32(cx + rx * sCos[s], cy, cz + rz * sSin[s]);
-			GXColor4u8(0, 0, 0, 0);
+			GXColor4u8(cr, 0, 0, 0);
 			// Rim vertex s+1.
 			GXPosition3f32(cx + rx * sCos[s + 1], cy, cz + rz * sSin[s + 1]);
-			GXColor4u8(0, 0, 0, 0);
+			GXColor4u8(cr, 0, 0, 0);
 		}
 		GXEnd();
 	}
