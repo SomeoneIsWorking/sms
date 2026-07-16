@@ -206,8 +206,8 @@ void SDLModel::entryModelDataSDL(SDLModelData* model_data, u32 flags,
 		mNodeMatrices = new Mtx[md->getJointNum()];
 	}
 	if (md->getWEvlpMtxNum())
-		mWeightEvlpMatrices = new Mtx[md->getWEvlpMtxNum()];
-	if (mtx_num) {
+		mWEvlpMtx = new Mtx[md->getWEvlpMtxNum()];
+	if (param_3) {
 		for (int i = 0; i < 2; ++i) {
 			mDrawMtxBuf[i] = new Mtx*[mtx_num];
 			mNrmMtxBuf[i]  = new Mtx33*[mtx_num];

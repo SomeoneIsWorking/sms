@@ -350,13 +350,13 @@ void J3DModelLoader::readVertex(const J3DVertexBlock* i_block)
 void J3DModelLoader::readEnvelop(const J3DEnvelopBlock* i_block)
 {
 	mpModelData->mWEvlpMtxNum = i_block->mWEvlpMtxNum;
-	mpModelData->unk88
+	mpModelData->mWEvlpMixMtxNum
 	    = JSUConvertOffsetToPtr<u8>(i_block, i_block->mpWEvlpMixMtxNum);
-	mpModelData->unk8C
+	mpModelData->mWEvlpMixIndex
 	    = JSUConvertOffsetToPtr<u16>(i_block, i_block->mpWEvlpMixMtxIndex);
-	mpModelData->unk90
+	mpModelData->mWEvlpMixWeight
 	    = JSUConvertOffsetToPtr<f32>(i_block, i_block->mpWEvlpMixWeight);
-	mpModelData->unk94
+	mpModelData->mInvJointMtx
 	    = JSUConvertOffsetToPtr<Mtx>(i_block, i_block->mpInvJointMtx);
 }
 
