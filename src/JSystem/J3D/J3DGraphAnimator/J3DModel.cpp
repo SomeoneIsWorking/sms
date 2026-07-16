@@ -1,3 +1,6 @@
+#ifdef SMS_NATIVE_PLATFORM
+#include <sb_log.h>
+#endif
 #include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
@@ -929,9 +932,18 @@ void J3DModel::viewCalc()
 			    getDrawMtxPtr(), mModelData->getDrawFullWgtMtxNum());
 		}
 		if (mModelData->getDrawMtxNum() > mModelData->getDrawFullWgtMtxNum()) {
-			J3DPSMtxArrayConcat(viewMtx, getWeightAnmMtx(0),
-			                    getDrawMtx(mModelData->getDrawFullWgtMtxNum()),
-			                    mModelData->getWEvlpMtxNum());
+			// Envelope draw slots [fullWgt, DrawMtxNum) reference the wEvlp envelope
+			// matrices BY INDEX (mDrawMtxIndex, repeats allowed) — Mario has 86
+			// envelope entries over 43 envelope matrices. The previous bulk
+			// sequential ArrayConcat(count=wEvlpNum) left every slot past
+			// fullWgt+wEvlpNum ZERO (garbage nrm palette -> black patches on skinned
+			// draws). Use the indexed concat exactly like the joint path above.
+			const u16 fullWgt = mModelData->getDrawFullWgtMtxNum();
+			J3DMTXConcatArrayIndexedSrc(
+			    viewMtx, (const float(*)[3][4])getWeightAnmMtx(0),
+			    mModelData->mDrawMtxData.mDrawMtxIndex + fullWgt,
+			    getDrawMtxPtr() + fullWgt,
+			    (u32)(mModelData->getDrawMtxNum() - fullWgt));
 		}
 	}
 
@@ -947,6 +959,23 @@ void J3DModel::calcNrmMtx()
 {
 	// TODO: probably a fakematch, the references make 0 sense
 
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_LOG=nrmmtx: report zero draw matrices per model (garbage-nrm suspect).
+	{
+		int zeroCnt = 0, firstZero = -1;
+		for (u16 i = 0; i < mModelData->getDrawMtxNum(); i++) {
+			const float* m = &mDrawMtxBuf[1][mCurrentViewNo][i][0][0];
+			if (m[0] == 0.f && m[1] == 0.f && m[2] == 0.f && m[4] == 0.f && m[5] == 0.f && m[6] == 0.f) {
+				++zeroCnt;
+				if (firstZero < 0) firstZero = i;
+			}
+		}
+		if (zeroCnt)
+			SB_LOG_EVERY("nrmmtx", 300, "model=%p zeroDrawMtx=%d/%d first=%d fullWgt=%d wEvlp=%d",
+			             (void*)this, zeroCnt, (int)mModelData->getDrawMtxNum(), firstZero,
+			             (int)mModelData->getDrawFullWgtMtxNum(), (int)mModelData->getWEvlpMtxNum());
+	}
+#endif
 	for (u16 i = 0; i < mModelData->getDrawMtxNum(); i++) {
 		if (mModelData->getDrawMtxFlag(i) == 0) {
 			if (getScaleFlag(mModelData->getDrawMtxIndex(i)) == 1) {
