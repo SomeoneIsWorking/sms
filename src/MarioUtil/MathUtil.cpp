@@ -156,43 +156,47 @@ static u16 GetAtanTable(f32 param_1, f32 param_2)
 
 s16 matan(f32 param_1, f32 param_2)
 {
-	// matan is an octant-reduced atan2: GetAtanTable(a,b) returns atan(b/a) and is only valid
-	// for b <= a (its index (b/a)*1024 must stay within atntable[0..1024]). Each octant offset
-	// (0x4000/0x8000/-0x4000) below assumes GetAtanTable was handed (larger, smaller) so it
-	// returns atan(smaller/larger) ∈ [0, 0x2000]. The original reconstruction forgot to swap
-	// the args in the four branches where param_1 < param_2 — there it passed (smaller, larger),
-	// making the index (larger/smaller)*1024 > 1024 → OOB table read → SEGV on PC (the
-	// title→file-select camera fed matan(252, 828) and crashed; on GC the OOB read merely
-	// returned adjacent garbage). Swap the args in exactly those branches so the ratio is
-	// always <= 1; the in-range branches (param_1 >= param_2) are unchanged, so the working
-	// title camera is unaffected.
-	if (param_2 >= 0.0f) {
+	// matan is an octant-reduced atan2 (returns the s16 angle of the vector
+	// (param_1, param_2)). GetAtanTable(a,b) = atan(b/a) and is only valid for
+	// b <= a (its index (b/a)*1024 must stay in atntable[0..1024]); every branch
+	// below therefore hands it (larger, smaller) so the ratio is <= 1 — that is
+	// both the correctness AND the OOB-safety property.
+	//
+	// FAITHFUL transcription of retail matan (GMSE01 @0x8022ae08, threshold
+	// SDA2[-0x1768] = 0.0f). A previous "OOB fix" rewrite got the octant offsets
+	// wrong in the two |param_1|>=|param_2| diagonal branches (it emitted
+	// `table + 0x8000` where retail emits `0x8000 - table`, and likewise for the
+	// -Y octants). That reflected the reconstructed yaw, so
+	// CLBRevisionLookatByAngleX (CrossToPolar→clamp→PolarToCross) mirrored the
+	// look target's X around the eye — the file-select camera settled looking
+	// the wrong way (2026-07-16). Retail's branch layout is correct by
+	// construction; reproduce it exactly.
+	if (param_2 < 0.0f) {
+		param_2 = -param_2;
 		if (param_1 >= 0.0f) {
-			if (param_1 >= param_2)
-				result = 0x0000 + GetAtanTable(param_1, param_2);
+			if (param_2 <= param_1)
+				return -(s16)GetAtanTable(param_1, param_2);
 			else
-				return 0x4000 - GetAtanTable(param_2, param_1);
+				return (s16)(0xc000 + GetAtanTable(param_2, param_1));
 		} else {
 			param_1 = -param_1;
 			if (param_1 < param_2)
-				return GetAtanTable(param_2, param_1) + 0x4000;
+				return (s16)(0xc000 - GetAtanTable(param_2, param_1));
 			else
-				result = 0x8000 - GetAtanTable(param_1, param_2);
+				return (s16)(0x8000 + GetAtanTable(param_1, param_2));
 		}
 	} else {
-		param_2 = -param_2;
-
 		if (param_1 < 0.0f) {
 			param_1 = -param_1;
-			if (param_1 <= param_2)
-				return GetAtanTable(param_2, param_1) + 0x8000;
+			if (param_2 <= param_1)
+				return (s16)(0x8000 - GetAtanTable(param_1, param_2));
 			else
-				result = 0xC000 - GetAtanTable(param_2, param_1);
+				return (s16)(0x4000 + GetAtanTable(param_2, param_1));
 		} else {
 			if (param_1 < param_2)
-				return GetAtanTable(param_2, param_1) - 0x4000;
+				return (s16)(0x4000 - GetAtanTable(param_2, param_1));
 			else
-				result = 0x0000 - GetAtanTable(param_1, param_2);
+				return (s16)GetAtanTable(param_1, param_2);
 		}
 	}
 	return result;
