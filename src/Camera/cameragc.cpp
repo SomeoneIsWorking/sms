@@ -1012,6 +1012,11 @@ void CPolarSubCamera::perform(u32 param_1, JDrama::TGraphics* param_2)
 		if (mMode != CAMERA_MODE_REPRODUCE_DEMO) {
 			C_MTXPerspective(unk16C, mFovy, mAspect, mNear, mFar);
 			C_MTXLookAt(unk1EC, unk124, mUp, unk148);
+#ifdef SMS_NATIVE_PLATFORM
+			SB_LOG_EVERY("camlook", 120, "LookAt eye=(%.2f,%.2f,%.2f) up=(%.3f,%.3f,%.3f) tgt=(%.2f,%.2f,%.2f) fovy=%.3f aspect=%.4f mode=%d",
+			             unk124.x, unk124.y, unk124.z, mUp.x, mUp.y, mUp.z,
+			             unk148.x, unk148.y, unk148.z, mFovy, mAspect, mMode);
+#endif
 		}
 
 		bool flag2 = (param_2->unk0 & 2) ? true : false;
