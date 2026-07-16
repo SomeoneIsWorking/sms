@@ -395,13 +395,52 @@ void SMS_DrawBillboardLine(const JDrama::TGraphics*,
 {
 }
 
-void SMS_DrawCube(const JGeometry::TVec3<f32>&, const JGeometry::TVec3<f32>&) {
+// Transcribed from retail 0x80225d00 (scratch/decomp_shadow/80225d00.c): 6 quads,
+// 24 direct-position verts, exact retail vertex order. Load-bearing for the
+// TMBindShadowManager dst-alpha stamp pass (was an empty silent stub — the
+// 2026-07-16 shadow RE map names it as the alpha-stamp emitter).
+void SMS_DrawCube(const JGeometry::TVec3<f32>& min, const JGeometry::TVec3<f32>& max)
+{
+	GXBegin(GX_QUADS, GX_VTXFMT0, 24);
+	// bottom (y = min.y)
+	GXPosition3f32(min.x, min.y, min.z);
+	GXPosition3f32(min.x, min.y, max.z);
+	GXPosition3f32(max.x, min.y, max.z);
+	GXPosition3f32(max.x, min.y, min.z);
+	// near (z = min.z)
+	GXPosition3f32(min.x, min.y, min.z);
+	GXPosition3f32(max.x, min.y, min.z);
+	GXPosition3f32(max.x, max.y, min.z);
+	GXPosition3f32(min.x, max.y, min.z);
+	// left (x = min.x)
+	GXPosition3f32(min.x, min.y, min.z);
+	GXPosition3f32(min.x, max.y, min.z);
+	GXPosition3f32(min.x, max.y, max.z);
+	GXPosition3f32(min.x, min.y, max.z);
+	// top (y = max.y)
+	GXPosition3f32(max.x, max.y, max.z);
+	GXPosition3f32(min.x, max.y, max.z);
+	GXPosition3f32(min.x, max.y, min.z);
+	GXPosition3f32(max.x, max.y, min.z);
+	// far (z = max.z)
+	GXPosition3f32(max.x, max.y, max.z);
+	GXPosition3f32(max.x, min.y, max.z);
+	GXPosition3f32(min.x, min.y, max.z);
+	GXPosition3f32(min.x, max.y, max.z);
+	// right (x = max.x)
+	GXPosition3f32(max.x, max.y, max.z);
+	GXPosition3f32(max.x, max.y, min.z);
+	GXPosition3f32(max.x, min.y, min.z);
+	GXPosition3f32(max.x, min.y, max.z);
+	GXEnd();
 }
 
 void SMS_SettingDrawShape(J3DModelData* param_1, u16 param_2)
 {
 	J3DShape* shape = param_1->getShapeNodePointer(param_2);
-	GXCallDisplayList(shape->getDrawList(), 0xC0);
+	// Retail replays the fixed 0xC0 VcdVat window; on this port the window is
+	// J3DShape::kVcdVatDLSize (Aurora bakes 64-bit array bases — see J3DShape.hpp).
+	GXCallDisplayList(shape->getDrawList(), J3DShape::kVcdVatDLSize);
 	J3DVertexData& data = param_1->getVertexData();
 	j3dSys.unk10C       = data.getVtxPosArray();
 	j3dSys.unk110       = data.getVtxNormArray();

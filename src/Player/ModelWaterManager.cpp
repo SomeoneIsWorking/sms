@@ -1375,6 +1375,25 @@ void TModelWaterManager::drawShineShadowVolume(MtxPtr param_1)
 {
 
 	if (gpMarDirector->getCurrentMap() == 1) {
+#ifdef SMS_NATIVE_PLATFORM
+		// LOUD SEAM (2026-07-16): sphere_glist_p was a scaffold pointing at a
+		// 1-byte dummy static — GXCallDisplayList(&tmp_data, 0x760) replayed
+		// 1888 bytes of ADJACENT .bss as GX commands. That was dormant only
+		// while the linker happened to place zeros (GX NOPs) there; any layout
+		// change turns it into a command-processor desync ("unknown opcode",
+		// found during the TMBindShadowManager volume-shadow port). The real
+		// port needs retail's baked GXDrawSphere display list (0x760 bytes) +
+		// its position array (sphere_pos_t) for the SHINE shadow volume —
+		// tracked RE-frontier debt. Until then: report once and skip the draw
+		// (the shine shadow never rendered from this scaffold anyway).
+		static bool sWarned = false;
+		if (!sWarned) {
+			sWarned = true;
+			OSReport("[STUB-CALLED] TModelWaterManager::drawShineShadowVolume "
+			         "-- sphere DL unported, shine shadow volume skipped\n");
+		}
+		return;
+#endif
 		static bool initialized = false;
 		if (!initialized) {
 			sphere_glist_p = &tmp_data;

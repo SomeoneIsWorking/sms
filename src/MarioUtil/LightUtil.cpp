@@ -935,4 +935,3 @@ void TLightWithDBSetManager::makeDrawBuffer()
 			mLightSets[i]->makeDrawBuffer();
 }
 
-void TLightWithDBSetManager::getLightPos() const { }
