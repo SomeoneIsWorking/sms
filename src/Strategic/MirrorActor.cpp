@@ -81,8 +81,17 @@ void TMirrorActor::perform(u32 cue, JDrama::TGraphics* graphics)
 	if ((param_1 & 4) && mInMirror != 0)
 		mMirrorModel->viewCalc();
 
-	if ((param_1 & 0x200) && mInMirror && !(mFlags & 2))
+	if ((param_1 & 0x200) && mInMirror && !(mFlags & 2)) {
+#ifdef SMS_NATIVE_PLATFORM
+		// SB_NO_MIRROR_ENTRY=1 (diagnostic): suppress the mirror-clone's packet
+		// entry to A/B the "clone overdraws the real Mario in the main view"
+		// hypothesis (2026-07-16 black patches).
+		static int skip = -1;
+		if (skip < 0) { const char* e = getenv("SB_NO_MIRROR_ENTRY"); skip = (e && e[0] && e[0] != '0') ? 1 : 0; }
+		if (skip) return;
+#endif
 		mMirrorModel->entry();
+	}
 }
 
 void TMirrorActor::entryMirrorDrawBufferAlways(J3DModel* model)
