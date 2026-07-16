@@ -97,15 +97,16 @@ public:
 	TLightDrawBuffer(int, u32, const char*);
 
 	virtual ~TLightDrawBuffer() { }
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
-	virtual void setLight(TLightCommon* light)
-	{
-		unk10 = light;
-		unk10->loadAfter();
-	}
-
-	JDrama::TDrawBufObj* getOpaDbo() { return mOpaDrawBufferObject; }
-	JDrama::TDrawBufObj* getXluDbo() { return mXluDrawBufferObject; }
+	virtual void perform(u32, JDrama::TGraphics*);
+	// Store the owning light: perform's flag-0x20 phase dispatches
+	// owner->setLight(graphics, mLightIndex) — the per-buffer relight that
+	// re-establishes lights+ambient before the buffer's draws. This was an
+	// empty `{ }` stub, silently discarding the owner every makeDrawBuffer
+	// passed in — the per-buffer relight never ran, so the buffers' draws
+	// inherited whatever ambient the previous node left (found 2026-07-16 as
+	// the black-ambient block tint after the shadow port's faithful mid-frame
+	// ReInitializeGX; the banned silent-success-stub class again).
+	virtual void setLight(TLightCommon* light) { mOwnerLight = light; }
 
 public:
 	/* 0x10 */ TLightCommon* mOwnerLight;                   // was unk10 — perform dispatches setLight through it

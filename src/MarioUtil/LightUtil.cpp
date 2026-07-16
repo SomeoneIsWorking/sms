@@ -172,7 +172,8 @@ GXColor TLightCommon::getLightColor(int idx) const
 	// "Light Group" when null — see the block above sb_light_ary_or_search()
 	// for why this is required and NOT a functional deviation.
 	JDrama::TLightAry* la = sb_light_ary_or_search();
-	if (!la || !la->mLights) { GXColor c={0,0,0,0xFF}; return c; }
+	if (!la || !la->mLights
+	    || (u32)(idx + mLightBaseIdx) >= (u32)la->mLightCount) { GXColor c={0,0,0,0xFF}; return c; }
 	JDrama::TIdxLight& L  = la->mLights[idx + mLightBaseIdx];
 	GXColor c;
 	GXGetLightColor(&L.unk24, &c);
@@ -193,7 +194,21 @@ GXColor TLightCommon::getAmbColor(int idx) const
 		return c;
 	}
 	JDrama::TAmbAry* aa    = sb_amb_ary_or_search();
-	if (!aa || !aa->mAmbColors) { GXColor c={0,0,0,0xFF}; return c; }
+	if (!aa || !aa->mAmbColors
+	    || (u32)(idx + mAmbBaseIdx) >= (u32)aa->mAmbColorCount) {
+		// LOUD once: an unresolved base idx here means makeDrawBuffer's name
+		// needle missed this scene's Ambient Group — the owner then lights its
+		// buffer with black ambient. Not silent: that miss is a data/lookup
+		// defect to chase, not a rendering choice.
+		static bool sWarned = false;
+		if (!sWarned) {
+			sWarned = true;
+			OSReport("TLightCommon::getAmbColor: base idx %u+%d out of range (count %d) "
+			         "-- ambient falls back to black\n",
+			         mAmbBaseIdx, idx, aa->mAmbColorCount);
+		}
+		GXColor c={0,0,0,0xFF}; return c;
+	}
 	JDrama::TAmbColor& A   = aa->mAmbColors[idx + mAmbBaseIdx];
 	GXColor c              = { A.mColor.r, A.mColor.g, A.mColor.b, A.mColor.a };
 	c.a = static_cast<u8>(static_cast<int>(static_cast<f32>(c.a) * mAlphaScale));
@@ -210,7 +225,12 @@ const JGeometry::TVec3<f32>* TLightCommon::getLightPosition(int idx)
 		return &mLocalPos[idx];
 	}
 	JDrama::TLightAry* la = sb_light_ary_or_search();
-	if (!la || !la->mLights) {
+	// Bounds guard: makeDrawBuffer stores (u32)-1 when its light/ambient name
+	// needle is absent from this scene's arrays (e.g. option scene) — indexing
+	// with it read wild memory once the owner wiring went live (SEGV in
+	// C_MTXMultVec, 2026-07-16). Same policy as the null-ary case: safe zero.
+	if (!la || !la->mLights
+	    || (u32)(idx + mLightBaseIdx) >= (u32)la->mLightCount) {
 		static const JGeometry::TVec3<f32> kZero{0.0f, 0.0f, 0.0f};
 		return &kZero;
 	}
@@ -448,6 +468,16 @@ TLightDrawBuffer::TLightDrawBuffer(int lightIdx, u32 flags, const char* name)
 void TLightDrawBuffer::perform(u32 flag, JDrama::TGraphics* graphics)
 {
 	if (flag & 0x20) {
+#ifdef SMS_NATIVE_PLATFORM
+		{
+			static int dbg = -1;
+			if (dbg < 0) { const char* e = getenv("SB_SHADOW_DBG"); dbg = (e && *e && *e != '0') ? 1 : 0; }
+			static long n = 0;
+			if (dbg && ++n <= 24)
+				std::fprintf(stderr, "[light] TLightDrawBuffer::perform this=%p owner=%p idx=%d\n",
+				             (void*)this, (void*)mOwnerLight, mLightIndex);
+		}
+#endif
 		if (mOwnerLight)
 			mOwnerLight->setLight(graphics, mLightIndex);
 	}
@@ -545,6 +575,18 @@ static int sb_find_named_index(T* arr, int count, const char* needle)
 		const char* n = arr[i].getName();
 		if (n && std::strcmp(n, needle) == 0) return i;
 	}
+#ifdef SMS_NATIVE_PLATFORM
+	// LOUD miss dump (once per needle): show what names the scene actually has,
+	// so a lookup/encoding mismatch is visible instead of a silent -1.
+	{
+		static int sMisses = 0;
+		if (sMisses < 4) { ++sMisses;
+			std::fprintf(stderr, "[light] name-search MISS needle='%s' among %d entries:\n", needle, count);
+			for (int i = 0; i < count; ++i)
+				std::fprintf(stderr, "  [%d] '%s'\n", i, arr[i].getName() ? arr[i].getName() : "(null)");
+		}
+	}
+#endif
 	return -1;
 }
 
@@ -560,12 +602,16 @@ void TIndirectLightWithDBSet::makeDrawBuffer()
 	static const char kAmbNeedle[]
 	    = "\x91\xbe\x97\x7a\x83\x41\x83\x93\x83\x72\x83\x47\x83\x93\x83\x67\x81\x69\x83\x49\x83\x75\x83\x57\x83\x46\x83\x4e\x83\x67\x81\x6a";  // "太陽アンビエント（オブジェクト）"
 
+	// Use the SAME lazy re-search the getters use: the raw globals are still
+	// null at makeDrawBuffer time on this port (the Light/Ambient groups load
+	// after the sets), which left every owner's base indices at -1 (black
+	// ambient once the owner wiring went live, 2026-07-16).
 	int lightIdx = -1;
-	if (JDrama::TLightAry* la = gpTLightCommonLightAry)
+	if (JDrama::TLightAry* la = sb_light_ary_or_search())
 		lightIdx = sb_find_named_index(la->mLights, la->mLightCount, kLightNeedle);
 
 	int ambIdx = -1;
-	if (JDrama::TAmbAry* aa = gpTLightCommonAmbAry)
+	if (JDrama::TAmbAry* aa = sb_amb_ary_or_search())
 		ambIdx = sb_find_named_index(aa->mAmbColors, aa->mAmbColorCount, kAmbNeedle);
 
 	mDrawBuffers = new TLightDrawBuffer*[mBufferCount];
@@ -590,12 +636,16 @@ void TObjectLightWithDBSet::makeDrawBuffer()
 	static const char kAmbNeedle[]
 	    = "\x91\xbe\x97\x7a\x83\x41\x83\x93\x83\x72\x83\x47\x83\x93\x83\x67\x81\x69\x83\x49\x83\x75\x83\x57\x83\x46\x83\x4e\x83\x67\x81\x6a";  // "太陽アンビエント（オブジェクト）"
 
+	// Use the SAME lazy re-search the getters use: the raw globals are still
+	// null at makeDrawBuffer time on this port (the Light/Ambient groups load
+	// after the sets), which left every owner's base indices at -1 (black
+	// ambient once the owner wiring went live, 2026-07-16).
 	int lightIdx = -1;
-	if (JDrama::TLightAry* la = gpTLightCommonLightAry)
+	if (JDrama::TLightAry* la = sb_light_ary_or_search())
 		lightIdx = sb_find_named_index(la->mLights, la->mLightCount, kLightNeedle);
 
 	int ambIdx = -1;
-	if (JDrama::TAmbAry* aa = gpTLightCommonAmbAry)
+	if (JDrama::TAmbAry* aa = sb_amb_ary_or_search())
 		ambIdx = sb_find_named_index(aa->mAmbColors, aa->mAmbColorCount, kAmbNeedle);
 
 	mDrawBuffers = new TLightDrawBuffer*[mBufferCount];
@@ -618,12 +668,16 @@ void TMapObjectLightWithDBSet::makeDrawBuffer()
 	static const char kAmbNeedle[]
 	    = "\x91\xbe\x97\x7a\x83\x41\x83\x93\x83\x72\x83\x47\x83\x93\x83\x67\x81\x69\x83\x49\x83\x75\x83\x57\x83\x46\x83\x4e\x83\x67\x81\x6a";  // "太陽アンビエント（オブジェクト）"
 
+	// Use the SAME lazy re-search the getters use: the raw globals are still
+	// null at makeDrawBuffer time on this port (the Light/Ambient groups load
+	// after the sets), which left every owner's base indices at -1 (black
+	// ambient once the owner wiring went live, 2026-07-16).
 	int lightIdx = -1;
-	if (JDrama::TLightAry* la = gpTLightCommonLightAry)
+	if (JDrama::TLightAry* la = sb_light_ary_or_search())
 		lightIdx = sb_find_named_index(la->mLights, la->mLightCount, kLightNeedle);
 
 	int ambIdx = -1;
-	if (JDrama::TAmbAry* aa = gpTLightCommonAmbAry)
+	if (JDrama::TAmbAry* aa = sb_amb_ary_or_search())
 		ambIdx = sb_find_named_index(aa->mAmbColors, aa->mAmbColorCount, kAmbNeedle);
 
 	mDrawBuffers = new TLightDrawBuffer*[mBufferCount];
@@ -666,10 +720,10 @@ void TPlayerLightWithDBSet::makeDrawBuffer()
 	    = "\x91\xbe\x97\x7a\x83\x41\x83\x93\x83\x72\x83\x47\x83\x93\x83\x67\x81\x69\x83\x76\x83\x8c\x83\x43\x83\x84\x81\x5b\x81\x6a";  // "太陽アンビエント（プレイヤー）"
 
 	int lightIdx = -1;
-	if (JDrama::TLightAry* la = gpTLightCommonLightAry)
+	if (JDrama::TLightAry* la = sb_light_ary_or_search())
 		lightIdx = sb_find_named_index(la->mLights, la->mLightCount, kLightNeedle);
 
-	JDrama::TAmbAry* aa = gpTLightCommonAmbAry;
+	JDrama::TAmbAry* aa = sb_amb_ary_or_search();
 	int ambIdx = -1;
 	if (aa)
 		ambIdx = sb_find_named_index(aa->mAmbColors, aa->mAmbColorCount, kAmbNeedle);
