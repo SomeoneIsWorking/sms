@@ -42,10 +42,10 @@ void J3DModelData::clear()
 	unkAC             = nullptr;
 	unkA4             = 0;
 	mWEvlpMtxNum      = 0;
-	unk88             = nullptr;
-	unk8C             = nullptr;
-	unk90             = nullptr;
-	unk94             = nullptr;
+	mWEvlpMixMtxNum   = nullptr;
+	mWEvlpMixIndex    = nullptr;
+	mWEvlpMixWeight   = nullptr;
+	mInvJointMtx      = nullptr;
 	unkB0             = nullptr;
 	mMaterialName     = nullptr;
 	unkB8             = nullptr;
@@ -496,7 +496,7 @@ void J3DModel::initialize()
 	mScaleFlagArr     = nullptr;
 	mEvlpScaleFlagArr = nullptr;
 	mNodeMatrices     = nullptr;
-	unk5C             = nullptr;
+	mWEvlpMtx             = nullptr;
 
 	mDrawMtxBuf[0] = nullptr;
 	mDrawMtxBuf[1] = nullptr;
@@ -525,7 +525,7 @@ void J3DModel::entryModelData(J3DModelData* param_1, u32 param_2, u32 param_3)
 	}
 
 	if (param_1->getWEvlpMtxNum())
-		unk5C = new Mtx[param_1->getWEvlpMtxNum()];
+		mWEvlpMtx = new Mtx[param_1->getWEvlpMtxNum()];
 
 	if (param_3 != 0) {
 		for (int i = 0; i < 2; ++i) {
@@ -693,36 +693,36 @@ void J3DModel::calcWeightEnvelopeMtx()
 {
 #ifdef SMS_NATIVE_PLATFORM
 	// PORT (decomp coverage): the retail/base body is empty and no other TU writes the weighted
-	// envelope matrices (unk5C) — so envelope-skinned joints stayed at stale/world matrices and a
+	// envelope matrices (mWEvlpMtx) — so envelope-skinned joints stayed at stale/world matrices and a
 	// per-vertex-skinned mesh (Mario's body/FLUDD mount) smeared. The EVP1 data IS loaded by
 	// J3DModelLoader::readEnvelop (unk88=influence count, unk8C=joint index, unk90=weight,
 	// unk94=inverse-bind / mpInvJointMtx). Compute the canonical J3D envelope blend at the existing,
-	// already-wired call site (calc() runs this before viewCalc reads unk5C):
-	//   unk5C[e] = Σ_k weight_k · ( mNodeMatrices[idx_k] · invBind[idx_k] )
+	// already-wired call site (calc() runs this before viewCalc reads mWEvlpMtx):
+	//   mWEvlpMtx[e] = Σ_k weight_k · ( mNodeMatrices[idx_k] · invBind[idx_k] )
 	// (joint world pose × inverse-bind = the skin matrix; the weighted sum is the envelope matrix).
 	if (!mModelData)
 		return;
 	const u16 evlpNum = mModelData->getWEvlpMtxNum();
-	if (evlpNum == 0 || !mModelData->unk88 || !mModelData->unk8C || !mModelData->unk90
-	    || !mModelData->unk94 || !unk5C)
+	if (evlpNum == 0 || !mModelData->mWEvlpMixMtxNum || !mModelData->mWEvlpMixIndex || !mModelData->mWEvlpMixWeight
+	    || !mModelData->mInvJointMtx || !mWEvlpMtx)
 		return;
 	u32 k = 0;   // running index into the flattened index/weight arrays
 	for (u16 e = 0; e < evlpNum; ++e) {
-		const u8 num = mModelData->unk88[e];
+		const u8 num = mModelData->mWEvlpMixMtxNum[e];
 		Mtx acc;
 		for (int r = 0; r < 3; ++r)
 			for (int c = 0; c < 4; ++c)
 				acc[r][c] = 0.0f;
 		for (u8 j = 0; j < num; ++j, ++k) {
-			const u16 mtxIdx = mModelData->unk8C[k];
-			const f32 w      = mModelData->unk90[k];
+			const u16 mtxIdx = mModelData->mWEvlpMixIndex[k];
+			const f32 w      = mModelData->mWEvlpMixWeight[k];
 			Mtx skin;
-			MTXConcat(getAnmMtx(mtxIdx), mModelData->unk94[mtxIdx], skin);
+			MTXConcat(getAnmMtx(mtxIdx), mModelData->mInvJointMtx[mtxIdx], skin);
 			for (int r = 0; r < 3; ++r)
 				for (int c = 0; c < 4; ++c)
 					acc[r][c] += w * skin[r][c];
 		}
-		MTXCopy(acc, unk5C[e]);
+		MTXCopy(acc, mWEvlpMtx[e]);
 #ifdef SMS_NATIVE_PLATFORM
 		// SB_LOG=evlp: per-envelope blend inputs when the result rotation is
 		// zero — splits "no influences / zero weights" from "zero anm joint
@@ -733,8 +733,8 @@ void J3DModel::calcWeightEnvelopeMtx()
 			u32 kk = k - num;
 			int maxIdx = -1;
 			for (u8 j = 0; j < num; ++j) {
-				wsum += mModelData->unk90[kk + j];
-				if (mModelData->unk8C[kk + j] > maxIdx) maxIdx = mModelData->unk8C[kk + j];
+				wsum += mModelData->mWEvlpMixWeight[kk + j];
+				if (mModelData->mWEvlpMixIndex[kk + j] > maxIdx) maxIdx = mModelData->mWEvlpMixIndex[kk + j];
 			}
 			SB_LOGC("evlp", "model=%p e=%d/%d num=%d wsum=%.3f maxJntIdx=%d joints=%d anm0[maxIdx]=%.4f",
 			        (void*)this, (int)e, (int)evlpNum, (int)num, wsum, maxIdx,
@@ -931,7 +931,7 @@ void J3DModel::viewCalc()
 			MTXCopy(getAnmMtx(mModelData->getDrawMtxIndex(i)), getDrawMtx(i));
 		}
 		for (u16 i = 0; i < mModelData->getWEvlpMtxNum(); i++) {
-			MTXCopy(unk5C[i],
+			MTXCopy(mWEvlpMtx[i],
 			        getDrawMtx(mModelData->getDrawFullWgtMtxNum() + i));
 		}
 	} else {

@@ -159,10 +159,10 @@ public:
 	/* 0x80 */ u32 unk80;
 	/* 0x84 */ u16 mWEvlpMtxNum;
 
-	/* 0x88 */ u8* unk88;
-	/* 0x8C */ u16* unk8C;
-	/* 0x90 */ f32* unk90;
-	/* 0x94 */ Mtx* unk94;
+	/* 0x88 */ u8* mWEvlpMixMtxNum;
+	/* 0x8C */ u16* mWEvlpMixIndex;
+	/* 0x90 */ f32* mWEvlpMixWeight;
+	/* 0x94 */ Mtx* mInvJointMtx;
 	/* 0x98 */ J3DDrawMtxData mDrawMtxData;
 
 	/* 0xA4 */ u32 unkA4;
@@ -235,8 +235,8 @@ public:
 	u8 getEnvScaleFlag(int idx) const { return mEvlpScaleFlagArr[idx]; }
 
 	J3DVertexBuffer* getVertexBuffer() { return mVertexBuffer; }
-	MtxPtr getWeightAnmMtx(int idx) { return unk5C[idx]; }
-	void setWeightAnmMtx(int idx, MtxPtr mtx) { MTXCopy(mtx, unk5C[idx]); }
+	MtxPtr getWeightAnmMtx(int idx) { return mWEvlpMtx[idx]; }
+	void setWeightAnmMtx(int idx, MtxPtr mtx) { MTXCopy(mtx, mWEvlpMtx[idx]); }
 
 	bool checkFlag(u32 flag) const { return (unk8 & flag) ? 1 : 0; }
 
@@ -290,7 +290,7 @@ public:
 	/* 0x50 */ u8* mScaleFlagArr;
 	/* 0x54 */ u8* mEvlpScaleFlagArr;
 	/* 0x58 */ Mtx* mNodeMatrices;
-	/* 0x5C */ Mtx* unk5C;
+	/* 0x5C */ Mtx* mWEvlpMtx;
 	/* 0x60 */ Mtx** mDrawMtxBuf[2];
 	/* 0x68 */ Mtx33** mNrmMtxBuf[2];
 	/* 0x70 */ Mtx33*** mBumpMtxArr[2];
