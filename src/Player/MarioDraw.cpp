@@ -1156,6 +1156,15 @@ void TMario::changeHand(int idx)
 f32 TMario::setAnimation(int anm_id, f32 rate)
 {
 	// volatile u32 padding[37];
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_LOG=manim: every animation change with status + the hand-model id it
+	// selects (changeHand source) — pose/glove defects trace to this stream.
+	SB_LOGC("manim", "setAnimation anm=%d rate=%.2f status=0x%x handId=%d frame=%.1f end=%d attr=%d state=%d",
+	        anm_id, (double)rate, (unsigned)mStatus,
+	        (anm_id >= 0 && anm_id < 336) ? (int)gMarioAnimeData[anm_id].mHandId : -1,
+	        (double)getMotionFrameCtrl().getFrame(), (int)getMotionFrameCtrl().getEnd(),
+	        (int)getMotionFrameCtrl().getAttribute(), (int)mStatusState);
+#endif
 	if (onYoshi()) {
 		if (anm_id == ANIM_LOST) {
 			mYoshi->changeAnimation(0x12);

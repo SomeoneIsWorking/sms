@@ -487,6 +487,18 @@ bool TMarDirector::setupObjects()
 		void* performListsData = JKRDvdRipper::loadToMainRAM(
 		    &auStack_1d8, nullptr, EXPAND_SWITCH_DEFAULT, 0, nullptr,
 		    JKRDvdRipper::ALLOC_DIRECTION_FORWARD, 0, nullptr);
+#ifdef SMS_NATIVE_PLATFORM
+		// SB_DUMP_PERFORMLISTS=<path>: tee the raw /data/PerformLists.bin to
+		// disk for offline decoding (tools/oracle/decode_performlists.py).
+		if (const char* pl = getenv("SB_DUMP_PERFORMLISTS"); pl && pl[0]) {
+			if (FILE* f = fopen(pl, "wb")) {
+				fwrite(performListsData, 1, auStack_1d8.getFileSize(), f);
+				fclose(f);
+				fprintf(stderr, "[setupObjects] dumped PerformLists.bin (%ld bytes) -> %s\n",
+				        (long)auStack_1d8.getFileSize(), pl);
+			}
+		}
+#endif
 
 		{
 			JSUMemoryInputStream stream(performListsData,
