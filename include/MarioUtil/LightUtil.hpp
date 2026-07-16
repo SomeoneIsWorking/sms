@@ -27,9 +27,12 @@ public:
 	void calcLightBorder();
 	GXColor getEffectLightColor() const;
 	void setEffectLight(const JDrama::TGraphics*, GXLightObj*);
-	// Retail @0x802281b8 returns the Vec* global @r13-0x6110 (the manager's light/sun
-	// position, published at setup). Host: the position lives in mEffectPos.
-	const JGeometry::TVec3<f32>* getLightPos() const { return &mEffectPos; }
+	// Retail @0x802281b8 returns the Vec* global @r13-0x6110, which
+	// TLightCommon::loadAfter (@0x80229e30) publishes as
+	// &LightGroup.mLights[0].mPosition — the scene's FIRST light (the sun).
+	// (An earlier guess mapped it to mEffectPos, which stays zero at file-select
+	// — that made the shadow direction straight-down instead of sun-slanted.)
+	const JGeometry::TVec3<f32>* getLightPos() const;
 	void makeDrawBuffer();
 	void addChildGroupObj(JDrama::TViewObjPtrListT<JDrama::TViewObj>*);
 
