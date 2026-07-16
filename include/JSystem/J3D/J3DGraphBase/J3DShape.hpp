@@ -85,7 +85,17 @@ public:
 class J3DShape {
 public:
 	enum {
+#ifdef SMS_NATIVE_PLATFORM
+		// GC bakes 32-bit array bases (6 bytes/attr); Aurora's
+		// GX_AURORA_LOAD_ARRAYBASE bakes 64-bit host pointers (15 bytes/attr),
+		// so makeVcdVatCmd needs more than the retail 0xC0 — overflowing the
+		// fixed window truncated a pointer command mid-encode and desynced the
+		// command processor ("unknown opcode 0xE0", 2026-07-16 shadow-volume
+		// port). Replay sites use this constant, so the window stays in sync.
+		kVcdVatDLSize = 0x180,
+#else
 		kVcdVatDLSize = 0xC0,
+#endif
 	};
 
 	J3DShape()

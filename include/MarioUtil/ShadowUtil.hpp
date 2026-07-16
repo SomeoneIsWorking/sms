@@ -2,9 +2,12 @@
 #define MARIO_UTIL_SHADOW_UTIL_HPP
 
 #include <JSystem/JDrama/JDRViewObj.hpp>
+#include <dolphin/mtx.h>
+#include <dolphin/gx.h>
 
 class THitActor;
 class J3DModel;
+class J3DModelData;
 
 class TCircleShadowRequest {
 public:
@@ -60,7 +63,7 @@ public:
 	f32 mScale;
 };
 
-class TAlphaShadowQuad;
+struct TAlphaShadowQuad;
 
 class TMBindShadowManager;
 
@@ -83,33 +86,77 @@ public:
 	void calcVtx();
 
 public:
-	// NATIVE PORT (Ghidra RE, GMSE01): calcVtx @0x8022e0cc, request @0x8022ecec,
-	// forceRequest @0x8022ebbc, drawShadow @0x8022f014, drawShadowGD @0x8022fa40,
-	// drawShadowVolume @0x802305dc, perform @0x80231108, load @0x80231288 (scratch/decomp_shadow/).
-	// The GC original merges/batches overlapping footprints via a hand-rolled linked-list +
-	// TAlphaShadowBlendQuad clustering (conectCubeSame/conectCubeDiffer @0x80230e68/0x80230fac)
-	// to draw each covered pixel's darkening ONCE even under N overlapping circles, implemented
-	// as a Z-buffer-as-pseudo-stencil two-pass trick (GC's GX has no real stencil buffer). We
-	// do NOT replicate that CPU-side batching: it is a rendering-hardware workaround, not game
-	// behavior, and our SDL_GPU renderer draws each footprint as an independent alpha-blended
-	// decal (native/render — see TMBindShadowManager::drawShadow). RESIDUAL: overlapping
-	// footprints double-darken slightly at the overlap (a real, minor, documented gap — not
-	// hidden). The proper fix (matching the original's visual result exactly) is a real GPU
-	// stencil/coverage-mask pass; not built here — SDL_GPU's current depth target
-	// (native/render/gx_sdlgpu.cpp DEPTH_FMT=D32_FLOAT) has no stencil aspect, so this would
-	// need a depth+stencil format switch and a 2-pass pipeline, which is out of scope for the
-	// initial shadow-visibility fix.
-	static constexpr int kMaxRequests = 512;
-	TCircleShadowRequest mRequests[kMaxRequests];
-	int mRequestCount = 0;
+	// NATIVE PORT (Ghidra RE, GMSE01 — full map: debug_journal/2026-07-16_drawshadow_re_map.md;
+	// decompiles scratch/decomp_shadow/): calcVtx @0x8022e0cc, request @0x8022ecec,
+	// forceRequest @0x8022ebbc, drawShadow @0x8022f014 (Z-tested volume + EFB dst-alpha
+	// stencil), drawShadowVolume @0x802305dc, perform @0x80231108, load @0x80231288
+	// (loads the /common/shadow*.bmd volume models), ctor @0x802313e4,
+	// conectCubeSame/Differ @0x80230e68/0x80230fac. The earlier decal simplification is
+	// REPLACED by the faithful implementation (Aurora GX supports GXSetDstAlpha and the
+	// DSTALPHA/INVDSTALPHA blend factors natively). drawShadowGD (@0x8022fa40, GD
+	// display-list variant behind a zero-init debug toggle retail never sets) is routed to
+	// drawShadow — same passes, immediate emission.
+	static constexpr int kMaxRequests = 512; // guest 0x200
+	static constexpr int kMaxGroups   = 256; // guest 0x100
+	static constexpr int kMaxVtx      = 30;  // guest 0x1e
 
-	struct TFootprint {
-		JGeometry::TVec3<f32> mPos;   // ground-projected centre
-		f32 mRadiusX, mRadiusZ;
-		u8 mAlpha;
+	// Guest 0x3c record: the 5-corner slanted prism footprint a close-to-ground
+	// type-1 (body) shadow extrudes into a volume.
+	struct TAlphaShadowVtx {
+		JGeometry::TVec3<f32> p[5];
 	};
-	TFootprint mFootprints[kMaxRequests];
-	int mFootprintCount = 0;
+	// Guest 0x20 record ("TAlphaShadowBlendQuad" per conectCube* symbols): the XZ
+	// cluster box. mKey is compared bit-wise by conectCubeDiffer (retail stores the
+	// request flag word; calcVtx writes 0).
+	struct TAlphaShadowBlendQuad {
+		f32 mMinX, mY, mMinZ, mMaxX, mDy, mMaxZ;
+		u32 mKey;
+		TAlphaShadowBlendQuad* mNext;
+	};
+	// Guest 0x70 record (the drawShadowVolume param type): one projected footprint.
+	struct TShadowGroup {
+		u32 mMask;
+		TAlphaShadowQuad* mFpHead;
+		TAlphaShadowQuad* mFpTail;
+		TAlphaShadowBlendQuad* mBoxHead;
+		TAlphaShadowBlendQuad* mBoxTail;
+	};
+	// Guest 0x14 record filled by request() for type-2 requests (side channel, cap 1).
+	struct TType2Rec {
+		JGeometry::TVec3<f32> mPos;
+		u8 mFar;
+		u8 mOn;
+	};
+
+	TCircleShadowRequest mRequests[kMaxRequests]; // +0x10
+	int mRequestCount = 0;                        // +0x14
+	TAlphaShadowQuad* mQuads = nullptr;           // +0x18 [kMaxRequests]
+	TShadowGroup mGroups[kMaxGroups];             // +0x1c
+	int mGroupCount = 0;                          // +0x20
+	TAlphaShadowBlendQuad* mBoxes = nullptr;      // +0x24 [kMaxRequests]
+	TAlphaShadowVtx mVtxPool[kMaxVtx];            // +0x28
+	int mVtxCount = 0;                            // +0x2c
+	JGeometry::TVec3<f32> mShadowDir;             // +0x30 normalize(light pos), set each perform flag-4
+	J3DModelData* mModels[4] = {};                // +0x3c (guest holds SDLModelData* holders; host stores the modeldata directly)
+	u16 mType2Count = 0;                          // +0x40
+	u8 mDrawDone = 0;                             // +0x49
+	GXColor mShadowColor;                         // +0x5c (stage-dependent, see ctor)
+	f32 mProbeOffset = 30.0f;                     // +0x60
+	u8 mDebugCubeFlag = 0;                        // +0x64
+	u8 mFlag65 = 0;                               // +0x65
+	f32 mAspectLo = 0.5f;                         // +0x68
+	f32 mAspectHi = 1.55f;                        // +0x6c
+	TType2Rec mType2[1];                          // +0x70
+};
+
+// Guest 0x70 footprint record (defined after the manager for the nested types).
+struct TAlphaShadowQuad {
+	f32 mSize;                                          // +0x00 volume height half-extent
+	Mtx mMtx;                                           // +0x04 modelview (view * TRS)
+	JGeometry::TVec3<f32> mCorner[4];                   // +0x34 ground quad corners
+	TMBindShadowManager::TAlphaShadowVtx* mVtx;         // +0x64 prism footprint (or null)
+	TCircleShadowRequest* mReq;                         // +0x68
+	TAlphaShadowQuad* mNext;                            // +0x6c cluster link
 };
 
 #endif
