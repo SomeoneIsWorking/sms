@@ -460,8 +460,29 @@ static void sb_gd_load_texobj_aurora(u32 map, const ResTIMG* img)
 	// GX_AURORA_LOAD_TEXOBJ's raw pointer + width/height/format triggers
 	// aurora's DecodeTiled<>() to walk (see command_processor.cpp).
 	J3DGDWrite_u8(img->mipmapCount);                    // mip level count
-	J3DGDWrite_u32(0);                                  // texObjId (uncached)
-	J3DGDWrite_u32(0);                                  // texDataVersion
+	// texObjId: a STABLE content hash of the texture identity (data ptr + dims
+	// + format + mips). Was hardcoded 0 ("uncached"), which made aurora's
+	// static-texture cache (keyed by texObjId; skipped when 0) MISS on every
+	// bind and re-convert+re-upload the SAME texture once per draw — measured
+	// as ~90% of frame time (resolve_sampled_textures ~150us/draw). A stable id
+	// lets re-binds of the same texture hit the cache, so conversions drop to
+	// ~zero after warmup. In-place content changes at a fixed address are rare
+	// for J3D static textures (animation swaps the bound img pointer, changing
+	// the hash); EFB-copy/dynamic textures bypass this cache (copyTextures
+	// path), so this is safe for them. FNV-1a over the identity fields.
+	{
+		u64 h = 1469598103934665603ull;
+		auto mix = [&h](u64 v) {
+			for (int i = 0; i < 8; ++i) { h ^= (v >> (i * 8)) & 0xff; h *= 1099511628211ull; }
+		};
+		mix((u64)(uintptr_t)data);
+		mix(((u64)img->width << 32) | ((u64)img->height << 16) | (u64)(img->format & 0xf));
+		mix((u64)img->mipmapCount);
+		u32 id = (u32)(h ^ (h >> 32));
+		if (id == 0) id = 1;                            // 0 is the "no id" sentinel
+		J3DGDWrite_u32(id);                             // texObjId (content hash)
+	}
+	J3DGDWrite_u32(1);                                  // texDataVersion
 }
 #endif
 
