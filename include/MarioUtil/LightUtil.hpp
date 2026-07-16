@@ -27,7 +27,9 @@ public:
 	void calcLightBorder();
 	GXColor getEffectLightColor() const;
 	void setEffectLight(const JDrama::TGraphics*, GXLightObj*);
-	Vec* getLightPos() const;
+	// Retail @0x802281b8 returns the Vec* global @r13-0x6110 (the manager's light/sun
+	// position, published at setup). Host: the position lives in mEffectPos.
+	const JGeometry::TVec3<f32>* getLightPos() const { return &mEffectPos; }
 	void makeDrawBuffer();
 	void addChildGroupObj(JDrama::TViewObjPtrListT<JDrama::TViewObj>*);
 

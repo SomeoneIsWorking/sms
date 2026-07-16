@@ -82,6 +82,16 @@ J3DShapeDraw::J3DShapeDraw(const u8* list, u32 size)
 {
 	mDisplayList     = list;
 	mDisplayListSize = size;
+#ifdef SMS_NATIVE_PLATFORM
+	// TEMP probe (shadow-DL desync): first bytes of each constructed draw DL.
+	{
+		static int n = 0;
+		if (n < 40 && getenv("SB_SHAPEDRAW_DBG")) { ++n;
+			fprintf(stderr, "[shapedraw-ctor] #%d dl=%p size=%u first=[%02x %02x %02x %02x]\n",
+			        n, (void*)list, size, list?list[0]:0, list?list[1]:0, list?list[2]:0, list?list[3]:0);
+		}
+	}
+#endif
 }
 
 void J3DShapeDraw::draw() const
@@ -227,7 +237,7 @@ void J3DShape::makeVcdVatCmd()
 #endif
 	GDLObj list;
 
-	GDInitGDLObj(&list, mGDCommands, 0xC0);
+	GDInitGDLObj(&list, mGDCommands, kVcdVatDLSize);
 	__GDCurrentDL = &list;
 	GDSetVtxDescv(mVtxDescList);
 	makeVtxArrayCmd();
@@ -286,7 +296,7 @@ void J3DShape::draw() const
 		return;
 	}
 #endif
-	GXCallDisplayList(mGDCommands, 0xC0);
+	GXCallDisplayList(mGDCommands, kVcdVatDLSize);
 
 	J3DShapeMtx::currentPipeline = unk8 >> 2 & 3;
 	loadVtxArray();
