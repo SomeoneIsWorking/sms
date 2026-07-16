@@ -19,28 +19,28 @@ void TMirrorActor::isInMirror() const { }
 
 void TMirrorActor::checkIsInMirror()
 {
-	if (unk1A & 1) {
-		unk18 = 0;
+	if (mFlags & 1) {
+		mInMirror = 0;
 		return;
 	}
 
-	if (unk1A & 2) {
-		if (!gpMirrorModelManager->isCurrentMirrorPresent() && !(unk1A & 4)) {
-			if (unk14->getShapePacket(0)->unk30 != 0)
-				SMS_HideAllShapePacket(unk14);
-			unk18 = 0;
+	if (mFlags & 2) {
+		if (!gpMirrorModelManager->isCurrentMirrorPresent() && !(mFlags & 4)) {
+			if (mMirrorModel->getShapePacket(0)->unk30 != 0)
+				SMS_HideAllShapePacket(mMirrorModel);
+			mInMirror = 0;
 		} else {
-			if (unk14->getShapePacket(0)->unk30 == 0)
-				SMS_ShowAllShapePacket(unk14);
-			unk18 = 1;
+			if (mMirrorModel->getShapePacket(0)->unk30 == 0)
+				SMS_ShowAllShapePacket(mMirrorModel);
+			mInMirror = 1;
 		}
 
 		return;
 	}
 
-	MtxPtr mtx = unk10->getAnmMtx(0);
+	MtxPtr mtx = mSourceModel->getAnmMtx(0);
 	JGeometry::TVec3<f32> local_18;
-	if (!(unk1A & 4)) {
+	if (!(mFlags & 4)) {
 		local_18.set(mtx[0][3], mtx[1][3], mtx[2][3]);
 	} else {
 		local_18.set(*gpMarioPos);
@@ -48,14 +48,14 @@ void TMirrorActor::checkIsInMirror()
 
 	int uVar4 = gpCubeMirror->getDataNo(gpCubeMirror->getInCubeNo(local_18));
 	if (uVar4 != gpMirrorModelManager->mCurrentMirrorIndex) {
-		unk18 = 0;
-	} else if (!gpMirrorModelManager->isCurrentMirrorPresent() && !(unk1A & 4)) {
-		unk18 = 0;
+		mInMirror = 0;
+	} else if (!gpMirrorModelManager->isCurrentMirrorPresent() && !(mFlags & 4)) {
+		mInMirror = 0;
 	} else if (gpMirrorModelManager->isCurrentMirrorPresent()
 	           && !gpMirrorModelManager->isUpperThanMirrorPlane(local_18)) {
-		unk18 = 0;
+		mInMirror = 0;
 	} else {
-		unk18 = 1;
+		mInMirror = 1;
 	}
 }
 
@@ -63,26 +63,26 @@ void TMirrorActor::perform(u32 cue, JDrama::TGraphics* graphics)
 {
 	if (cue & CUE_CALC_ANIM) {
 		checkIsInMirror();
-		if (unk18 == 0)
+		if (mInMirror == 0)
 			return;
 
-		for (u16 i = 0; i < unk10->getModelData()->getJointNum(); ++i)
-			unk14->setAnmMtx(i, unk10->getAnmMtx(i));
+		for (u16 i = 0; i < mSourceModel->getModelData()->getJointNum(); ++i)
+			mMirrorModel->setAnmMtx(i, mSourceModel->getAnmMtx(i));
 
 		// Retail (0x80224910) bounds this copy by wEvlpMtxNum (modelData+0x84),
 		// NOT jointNum: Mario has 29 joints but 43 weight-envelope matrices, so
 		// a jointNum bound leaves envelopes [29,43) zero in the mirror clone —
 		// zero draw matrices -> garbage normals -> black patches on every
 		// envelope-skinned surface (nose/gloves/legs) at file-select.
-		for (u16 i = 0; i < unk10->getModelData()->getWEvlpMtxNum(); ++i)
-			unk14->setWeightAnmMtx(i, unk10->getWeightAnmMtx(i));
+		for (u16 i = 0; i < mSourceModel->getModelData()->getWEvlpMtxNum(); ++i)
+			mMirrorModel->setWeightAnmMtx(i, mSourceModel->getWeightAnmMtx(i));
 	}
 
-	if ((cue & CUE_CALC_VIEW) && unk18 != 0)
-		unk14->viewCalc();
+	if ((param_1 & 4) && mInMirror != 0)
+		mMirrorModel->viewCalc();
 
-	if ((cue & CUE_ENTRY) && unk18 && !(unk1A & 2))
-		unk14->entry();
+	if ((param_1 & 0x200) && mInMirror && !(mFlags & 2))
+		mMirrorModel->entry();
 }
 
 void TMirrorActor::entryMirrorDrawBufferAlways(J3DModel* model)
@@ -102,14 +102,14 @@ void TMirrorActor::entryMirrorDrawBufferAlways(J3DModel* model)
 
 void TMirrorActor::init(J3DModel* param_1, u16 param_2)
 {
-	unk1A = param_2;
-	unk10 = param_1;
+	mFlags       = param_2;
+	mSourceModel = param_1;
 
-	if (unk1A & 8)
-		unk14 = new SDLModel(((SDLModel*)param_1)->getSDLModelData(), 3, 1);
+	if (mFlags & 8)
+		mMirrorModel = new SDLModel(((SDLModel*)param_1)->getSDLModelData(), 3, 1);
 	else {
-		J3DModelData* modelData = unk10->getModelData();
-		unk14                   = new J3DModel(modelData, 0, 1);
+		J3DModelData* modelData = mSourceModel->getModelData();
+		mMirrorModel            = new J3DModel(modelData, 0, 1);
 	}
 
 	JDrama::TViewObjPtrListT<JDrama::TViewObj>* mirrorScene
@@ -117,15 +117,15 @@ void TMirrorActor::init(J3DModel* param_1, u16 param_2)
 	        JDrama::TViewObjPtrListT<JDrama::TViewObj> >("鏡シーン");
 	mirrorScene->getChildren().push_back(this);
 
-	if (unk1A & 2)
-		entryMirrorDrawBufferAlways(unk14);
+	if (mFlags & 2)
+		entryMirrorDrawBufferAlways(mMirrorModel);
 }
 
 TMirrorActor::TMirrorActor(const char* name)
     : JDrama::TViewObj(name)
-    , unk10(nullptr)
-    , unk14(0)
-    , unk18(0)
-    , unk1A(0)
+    , mSourceModel(nullptr)
+    , mMirrorModel(0)
+    , mInMirror(0)
+    , mFlags(0)
 {
 }

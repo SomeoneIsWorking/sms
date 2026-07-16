@@ -360,7 +360,7 @@ void J3DSkinDeform::deform(J3DModel* model)
 {
 	Mtx* mtxArr[2];
 	mtxArr[0] = model->mNodeMatrices;
-	mtxArr[1] = model->unk5C;
+	mtxArr[1] = model->mWEvlpMtx;
 
 	if (model->checkFlag(0x4)) {
 		model->getVertexBuffer()->swapTransformedVtxPos();

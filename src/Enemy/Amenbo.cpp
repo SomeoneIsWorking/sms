@@ -72,7 +72,7 @@ void TAmenbo::reset() { }
 
 void TAmenbo::kill()
 {
-	unk1E8->unk1A |= 0x1;
+	unk1E8->mFlags |= 0x1;
 	TSmallEnemy::kill();
 }
 
@@ -263,7 +263,7 @@ bool TAmenbo::changeByJuice()
 	if (!TSmallEnemy::changeByJuice())
 		return false;
 
-	unk1E8->unk1A |= 0x1;
+	unk1E8->mFlags |= 0x1;
 	return true;
 }
 

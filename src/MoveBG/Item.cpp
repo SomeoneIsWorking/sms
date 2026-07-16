@@ -224,7 +224,7 @@ void TCoin::makeObjDead()
 {
 	TItem::makeObjDead();
 	if (unk154)
-		unk154->unk1A |= 1;
+		unk154->mFlags |= 1;
 }
 
 void TCoin::appearWithoutSound()
@@ -255,7 +255,7 @@ void TCoin::makeObjAppeared()
 {
 	TItem::makeObjAppeared();
 	if (unk154)
-		unk154->unk1A &= ~1;
+		unk154->mFlags &= ~1;
 }
 
 void TCoin::perform(u32 cue, JDrama::TGraphics* graphics)
