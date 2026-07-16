@@ -3,6 +3,8 @@
 #include <JSystem/JMath.hpp>
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
+#include <cstdlib>
+#include <sb_log.h>
 #endif
 
 J3DTransformInfo const j3dDefaultTransformInfo
@@ -49,8 +51,15 @@ bool J3DPSCalcInverseTranspose(MtxPtr src, ROMtxPtr dst)
 	f32 c02 =  (m10 * m21 - m11 * m20);
 
 	f32 det = m00 * c00 + m01 * c01 + m02 * c02;
-	if (det == 0.0f)
+	if (det == 0.0f) {
+#ifdef SMS_NATIVE_PLATFORM
+		// Diagnostic (SB_LOG=nrmmtx): a det==0 bail leaves the caller's nrm-matrix
+		// slot UNWRITTEN — for calcNrmMtx that slot is un-zeroed heap, i.e. garbage
+		// normals (black-patch suspect on skinned Mario).
+		SB_LOG_EVERY("nrmmtx", 1000, "det==0 bail src0=[%.3f %.3f %.3f]", m00, m01, m02);
+#endif
 		return false;
+	}
 
 	f32 inv = 1.0f / det;
 
@@ -75,15 +84,9 @@ void J3DGetTranslateRotateMtx(const J3DTransformInfo& tx, Mtx dst)
 #ifdef SMS_NATIVE_PLATFORM
 	// One-shot sanity check of the JMath sin/cos table: cos(0) must be 1.
 	// A zero/garbled table zeroes every J3D joint rotation while leaving
-	// translation intact (the invisible-backdrop signature).
-	{
-		static int checked = 0;
-		if (!checked) {
-			checked = 1;
-			fprintf(stderr, "[jmath-check] jmaSinShift=%u cos(0)=%f sin(0)=%f sin(0x4000)=%f table=%p\n",
-			        jmaSinShift, JMASCos(0), JMASSin(0), JMASSin(0x4000), (void*)jmaSinTable);
-		}
-	}
+	// translation intact (the invisible-backdrop signature). SB_LOG=jmath.
+	SB_LOG_ONCE("jmath", "jmaSinShift=%u cos(0)=%f sin(0)=%f sin(0x4000)=%f table=%p",
+	            jmaSinShift, JMASCos(0), JMASSin(0), JMASSin(0x4000), (void*)jmaSinTable);
 #endif
 	f32 sx = JMASSin(tx.mRotation.x), cx = JMASCos(tx.mRotation.x);
 	f32 sy = JMASSin(tx.mRotation.y), cy = JMASCos(tx.mRotation.y);
