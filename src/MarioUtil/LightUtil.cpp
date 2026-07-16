@@ -26,10 +26,17 @@ JDrama::TAmbAry*   gpTLightCommonAmbAry;
 
 TLightCommon::TLightCommon(const char* name)
     : JDrama::TViewObj(name)
-    , mShininess(1.0f)  // final ctor write: SDA2 -0x1770 = 1.0f
-    , unk14(0.0f)
-    , unk18(0.0f)
-    , mAlphaScale(0.0f)
+    // Retail ctor (@0x80229fbc, Ghidra): +0x10 (mShininess) is written twice —
+    // first SDA2[-0x17a4]=0.0f, then finally SDA2[-0x1770]=50.0f; and
+    // +0x14/+0x18/+0x1C (unk14/unk18/mAlphaScale) all = SDA2[-0x17a8]=1.0f.
+    // The previous transcription zeroed all three and set shininess 1.0 —
+    // mAlphaScale=0 scaled EVERY light/ambient ALPHA to 0 (getLightColor/
+    // getAmbColor), so lit-alpha materials rendered fully transparent
+    // (file-select Mario glove-back/chest/leg black patches).
+    , mShininess(50.0f)
+    , unk14(1.0f)
+    , unk18(1.0f)
+    , mAlphaScale(1.0f)
     , mAmbBaseIdx(0)
     , mLightBaseIdx(0)
     , mUseLocalColor(0)
