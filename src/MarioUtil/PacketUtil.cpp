@@ -4,19 +4,32 @@
 #include <JSystem/J3D/J3DGraphBase/J3DShape.hpp>
 #include <JSystem/J3D/J3DGraphBase/Blocks/J3DPEBlocks.hpp>
 
-static void FifoSetChanMatColor(GXChannelID, GXColor) { }
+// Retail (0x80235f04) writes these overrides as raw WGPIPE BP/XF commands
+// mid-shape-draw; the plain GX immediate calls emit the same commands into
+// the fifo at the same point, so they are the faithful native equivalents.
+static void FifoSetChanMatColor(GXChannelID chan, GXColor col) { GXSetChanMatColor(chan, col); }
 
-static void FifoSetTevColorS10(GXTevRegID, GXColorS10) { }
+static void FifoSetTevColorS10(GXTevRegID reg, GXColorS10 col) { GXSetTevColorS10(reg, col); }
 
-static void FifoSetTevKColor(GXTevKColorID, GXColor) { }
+static void FifoSetTevKColor(GXTevKColorID reg, GXColor col) { GXSetTevKColor(reg, col); }
 
-static void FifoSetFogRangeAdj(u8, u16, GXFogAdjTable*) { }
+static void FifoSetFogRangeAdj(u8 enable, u16 center, GXFogAdjTable* table)
+{
+	GXSetFogRangeAdj(enable, center, table);
+}
 
-static void FifoSetFog(GXFogType, float, float, float, float, GXColor) { }
+static void FifoSetFog(GXFogType type, float startZ, float endZ, float nearZ, float farZ, GXColor col)
+{
+	GXSetFog(type, startZ, endZ, nearZ, farZ, col);
+}
 
-static void SetFogBase(const J3DFogInfo*) { }
+static void SetFogBase(const J3DFogInfo* fog)
+{
+	FifoSetFog((GXFogType)fog->mType, fog->mStartZ, fog->mEndZ, fog->mNearZ, fog->mFarZ, fog->mColor);
+	FifoSetFogRangeAdj(fog->mAdjEnable, fog->mCenter, (GXFogAdjTable*)fog->mFogAdjTable);
+}
 
-static void ShapePacketCallBackFunc(J3DCallBackPacket*, int) { }
+static void ShapePacketCallBackFunc(J3DCallBackPacket*, int); // impl at end of file (needs the user-data structs)
 
 static J3DShapePacket* InitPacket_Sub(J3DModel* model, u16 mat_idx)
 {
@@ -316,4 +329,96 @@ void SMS_ShowAllShapePacket(J3DModel* model)
 	u16 mats = model->getModelData()->getMaterialNum();
 	for (u16 i = 0; i < mats; ++i)
 		model->getShapePacket(i)->show();
+}
+
+// Retail ShapePacketCallBackFunc (@0x80235f04, Ghidra 2026-07-16): the
+// per-shape-packet GX override dispatcher installed by every SMS_InitPacket_*
+// above. J3DShapePacket::draw fires it with param 0 BEFORE the shape's
+// display lists (apply the override on top of the — possibly LOCKED — material
+// DL) and param 1 AFTER (restore global fog for the fog-carrying modes).
+//
+// This was an EMPTY STUB until 2026-07-16; with Mario's mat packets LOCKED
+// (SMS_MakeDLAndLock) the baked TEV KONST colors from the BMD (K0.a=0x80)
+// were never overridden by the live material state (TMario::addDirty keeps
+// K0.a=mDirty=0), so the dirt/marking TEXA-compare stage fired over the
+// marking regions -> black glove-back/chest/leg patches at file-select.
+// Retail case order and register usage verified against the decompile:
+// mode 9/10 write GX_KCOLOR0 specifically (0xe0800000 in the BP stream).
+static void ShapePacketCallBackFunc(J3DCallBackPacket* packet, int stage)
+{
+	const u32* data = (const u32*)((J3DShapePacket*)packet)->getUserArea();
+	if (data == nullptr)
+		return;
+
+	if (stage == 0) {
+		switch (*data) {
+		case 0: {
+			const PacketUserData_MatColor* d = (const PacketUserData_MatColor*)data;
+			FifoSetChanMatColor(d->unk4, *d->unk8);
+		} break;
+		case 1: {
+			const PacketUserData_OneTevColor* d = (const PacketUserData_OneTevColor*)data;
+			FifoSetTevColorS10(d->unk4, *d->unk8);
+		} break;
+		case 2: {
+			const PacketUserData_TwoTevColor* d = (const PacketUserData_TwoTevColor*)data;
+			FifoSetTevColorS10(d->unk4, *d->unkC);
+			FifoSetTevColorS10(d->unk8, *d->unk10);
+		} break;
+		case 3: {
+			const PacketUserData_ThreeTevColor* d = (const PacketUserData_ThreeTevColor*)data;
+			FifoSetTevColorS10(d->unk4, *d->unk10);
+			FifoSetTevColorS10(d->unk8, *d->unk14);
+			FifoSetTevColorS10(d->unkC, *d->unk18);
+		} break;
+		case 4: {
+			// Retail: GXCallDisplayList(data[1], data[2]). No SMS_InitPacket_*
+			// setter for this mode survives in the decomp; layout from the
+			// callback decompile.
+			struct CallDL { u32 mode; void* list; u32 size; };
+			const CallDL* d = (const CallDL*)data;
+			GXCallDisplayList(d->list, d->size);
+		} break;
+		case 5: {
+			const PacketUserData_Fog* d = (const PacketUserData_Fog*)data;
+			SetFogBase(d->unk4);
+		} break;
+		case 6: {
+			const PacketUserData_OneTevKColor* d = (const PacketUserData_OneTevKColor*)data;
+			FifoSetTevKColor(d->unk4, *d->unk8);
+		} break;
+		case 7: {
+			const PacketUserData_TwoTevKColor* d = (const PacketUserData_TwoTevKColor*)data;
+			FifoSetTevKColor(d->unk4, *d->unkC);
+			FifoSetTevKColor(d->unk8, *d->unk10);
+		} break;
+		case 8: {
+			const PacketUserData_OneTevKColorAndFog* d = (const PacketUserData_OneTevKColorAndFog*)data;
+			FifoSetTevKColor(d->unk8, *d->unkC);
+			SetFogBase(d->unk14);
+		} break;
+		case 9: {
+			const PacketUserData_OneTevColorAndOneTevKColor* d
+			    = (const PacketUserData_OneTevColorAndOneTevKColor*)data;
+			FifoSetTevColorS10(d->unk4, *d->unk8);
+			FifoSetTevKColor(GX_KCOLOR0, *d->unkC);
+		} break;
+		case 10: {
+			const PacketUserData_TwoTevColorAndOneTevKColor* d
+			    = (const PacketUserData_TwoTevColorAndOneTevKColor*)data;
+			FifoSetTevColorS10(d->unk4, *d->unkC);
+			FifoSetTevColorS10(d->unk8, *d->unk10);
+			FifoSetTevKColor(GX_KCOLOR0, *d->unk14);
+		} break;
+		}
+	} else if (stage == 1) {
+		// Post-draw: fog-carrying modes restore the global fog. Retail reads
+		// SDA2[-0x15a4] (f32 0.0) and SDA2[-0x15a8] (GXColor 0x00000000) —
+		// i.e. fog OFF with a black color.
+		const u32 mode = *data;
+		if (mode == 5 || mode == 8) {
+			GXColor black = { 0, 0, 0, 0 };
+			FifoSetFog(GX_FOG_NONE, 0.0f, 0.0f, 0.0f, 0.0f, black);
+		}
+	}
 }
