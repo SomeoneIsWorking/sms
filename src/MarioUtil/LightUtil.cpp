@@ -228,6 +228,15 @@ const JGeometry::TVec3<f32>* TLightCommon::getLightPosition(int idx)
 // the doubling is transparent, but faithful for future callers.
 void TLightCommon::setLight(const JDrama::TGraphics* graphics, int idx)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	{
+		static int dbg = -1;
+		if (dbg < 0) { const char* e = getenv("SB_SHADOW_DBG"); dbg = (e && *e && *e != '0') ? 1 : 0; }
+		static long n = 0;
+		if (dbg && ++n <= 40)
+			std::fprintf(stderr, "[light] setLight this=%p idx=%d\n", (void*)this, idx);
+	}
+#endif
 	ReInitializeGX();
 	SMS_DrawInit();
 
