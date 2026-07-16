@@ -14,6 +14,9 @@
 // rogue includes needed for matching sinit & bss
 #include <MSound/MSSetSound.hpp>
 #include <MSound/MSoundBGM.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <sb_log.h>
+#endif
 
 // TODO: stuff from other rogue includes
 static JGeometry::TVec3<f32> cDeformedTerrainCenter(0.0f, 5000.0f, 0.0f);
@@ -334,10 +337,9 @@ void TMario::load(JSUMemoryInputStream& stream)
 	else
 		onFlag(MARIO_FLAG_HAS_FLUDD);
 #ifdef SMS_NATIVE_PLATFORM
-	if (getenv("SB_DBG_FLUDD"))
-		fprintf(stderr, "[dbg-fludd] TMario::load unk298=0x%08x local_20=0x%08x -> HAS_FLUDD=%d "
-		        "(pos=%.0f,%.0f,%.0f)\n", (unsigned)unk298, (unsigned)local_20,
-		        (local_20 & 1) ? 0 : 1, mPosition.x, mPosition.y, mPosition.z);
+	SB_LOGC("fludd", "TMario::load unk298=0x%08x local_20=0x%08x -> HAS_FLUDD=%d (pos=%.0f,%.0f,%.0f)",
+	        (unsigned)unk298, (unsigned)local_20, (local_20 & 1) ? 0 : 1,
+	        mPosition.x, mPosition.y, mPosition.z);
 #endif
 	SMS_SetMarioAccessParams();
 	initValues();

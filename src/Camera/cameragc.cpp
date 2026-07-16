@@ -20,6 +20,7 @@
 #include <stdio.h>
 
 #ifdef SMS_NATIVE_PLATFORM
+#include <sb_log.h>
 bool sb_pin_get_camera(float pos[3], float up[3], float tgt[3], float* fovy);  // pin_state.cpp
 #endif
 
@@ -966,17 +967,8 @@ void CPolarSubCamera::ctrlGameCamera_()
 void CPolarSubCamera::perform(u32 cue, JDrama::TGraphics* graphics)
 {
 #ifdef SMS_NATIVE_PLATFORM
-	{
-		static int dbg = -1;
-		if (dbg < 0) { const char* e = getenv("SB_J3D_DBG"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
-		if (dbg) {
-			static long n = 0;
-			if ((++n % 200) == 0 || n <= 4)
-				fprintf(stderr, "[cam-perform] CPolarSubCamera n=%ld param_1=0x%x mMode=%d fovy=%.2f "
-				        "ctrl(b0)=%d gxproj(b10)=%d\n", n, param_1, mMode, mFovy,
-				        (param_1 & 1) != 0, (param_1 & 0x10) != 0);
-		}
-	}
+	SB_LOG_EVERY("cam", 200, "CPolarSubCamera perform param_1=0x%x mMode=%d fovy=%.2f ctrl(b0)=%d gxproj(b10)=%d",
+	             param_1, mMode, mFovy, (param_1 & 1) != 0, (param_1 & 0x10) != 0);
 #endif
 	if (param_1 & 1) {
 		if (param_2->unk0 & 1) {
@@ -1007,14 +999,10 @@ void CPolarSubCamera::perform(u32 cue, JDrama::TGraphics* graphics)
 			// Set NATIVE fields by name (host layout != guest offsets).
 			float pp[3], pu[3], pt[3], pf;
 			if (sb_pin_get_camera(pp, pu, pt, &pf)) {
-				static bool rep = false;
-				if (!rep) {
-					rep = true;
-					fprintf(stderr, "[sb-pin] NATIVE own cam (pre-pin): eye=(%.1f,%.1f,%.1f) "
-					        "tgt=(%.1f,%.1f,%.1f) fovy=%.1f -> pin eye=(%.1f,%.1f,%.1f) tgt=(%.1f,%.1f,%.1f)\n",
-					        unk124.x, unk124.y, unk124.z, unk148.x, unk148.y, unk148.z, mFovy,
-					        pp[0], pp[1], pp[2], pt[0], pt[1], pt[2]);
-				}
+				SB_LOG_ONCE("pin", "NATIVE own cam (pre-pin): eye=(%.1f,%.1f,%.1f) "
+				            "tgt=(%.1f,%.1f,%.1f) fovy=%.1f -> pin eye=(%.1f,%.1f,%.1f) tgt=(%.1f,%.1f,%.1f)",
+				            unk124.x, unk124.y, unk124.z, unk148.x, unk148.y, unk148.z, mFovy,
+				            pp[0], pp[1], pp[2], pt[0], pt[1], pt[2]);
 				unk124.x = pp[0]; unk124.y = pp[1]; unk124.z = pp[2];
 				mUp.x = pu[0];   mUp.y = pu[1];   mUp.z = pu[2];
 				unk148.x = pt[0]; unk148.y = pt[1]; unk148.z = pt[2];

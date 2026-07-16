@@ -1,6 +1,7 @@
 #include <MarioUtil/LightUtil.hpp>
-#include <MarioUtil/DrawUtil.hpp>
-#include <MarioUtil/ReinitGX.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <sb_log.h>
+#endif
 #include <JSystem/J3D/J3DGraphBase/J3DSys.hpp>
 #include <JSystem/JDrama/JDRDrawBufObj.hpp>
 #include <JSystem/JDrama/JDRLighting.hpp>
@@ -302,11 +303,8 @@ void TLightCommon::setLight(const JDrama::TGraphics* graphics, int idx)
 	// so their per-material ambient is faithfully discarded) rendered its
 	// not-directly-lit faces black. Faithful RE completion, not a tuning constant.
 	GXColor sb_amb = getAmbColor(idx);
-	static const bool s_dbgAmb = std::getenv("SB_DBG_MATAMB") != nullptr;
-	if (s_dbgAmb) {
-		std::fprintf(stderr, "[setlight] idx=%d getAmbColor=(%02x,%02x,%02x,%02x) mUseLocalColor=%d mAmbBaseIdx=%d\n",
-		             idx, sb_amb.r, sb_amb.g, sb_amb.b, sb_amb.a, (int)mUseLocalColor, (int)mAmbBaseIdx);
-	}
+	SB_LOGC("setlight", "idx=%d getAmbColor=(%02x,%02x,%02x,%02x) mUseLocalColor=%d mAmbBaseIdx=%d",
+	        idx, sb_amb.r, sb_amb.g, sb_amb.b, sb_amb.a, (int)mUseLocalColor, (int)mAmbBaseIdx);
 	GXSetChanAmbColor(GX_COLOR0A0, sb_amb);
 }
 
