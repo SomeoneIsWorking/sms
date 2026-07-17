@@ -768,7 +768,18 @@ void MSound::setSeExtParameter(JAISound* sound)
 		          : 1.0f;
 		f32 fVar1 = dVar5 * (ptr->unkC / 127.0f);
 		sound->setVolume(fVar1 > 1.0f ? 1.0f : fVar1, 0, 1);
+#ifdef SMS_NATIVE_PLATFORM
+		// JAISoundInfo::unk8 (pitch) is a BE f32 in the AAF blob; swap on read or a BE 1.0f
+		// reads as a denormal ~= 0 -> silence (2026-07-17, see JAIBasic sb_soundinfo_pitch_be).
+		u32 sbRawPitch;
+		__builtin_memcpy(&sbRawPitch, &ptr->unk8, 4);
+		sbRawPitch = __builtin_bswap32(sbRawPitch);
+		f32 sbPitch;
+		__builtin_memcpy(&sbPitch, &sbRawPitch, 4);
+		sound->setPitch(sbPitch, 0, 1);
+#else
 		sound->setPitch(ptr->unk8, 0, 1);
+#endif
 	}
 }
 
