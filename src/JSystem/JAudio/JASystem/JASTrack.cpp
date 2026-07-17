@@ -200,6 +200,11 @@ int TTrack::noteOn(u8 param_1, s32 param_2, s32 param_3, s32 param_4)
 	u32 reg     = readRegDirect(6);
 	u32 physNum = BankMgr::getPhysicalNumber((reg >> 8) & 0xFF);
 
+#ifdef SMS_NATIVE_PLATFORM
+	if (std::getenv("SB_DBG_AUDIO")) { static int nc=0; ++nc; if (nc<=8 || nc%200==0)
+		std::fprintf(stderr, "[audio] TTrack::noteOn #%d reg=0x%x bank=%d prog=%d voice=%d pitch=%d vel=%d\n",
+		             nc, reg, (int)((reg>>8)&0xFF), (int)(reg&0xFF), (int)param_1, (int)param_2, (int)param_3); }
+#endif
 	TChannel* chan
 	    = BankMgr::noteOn(r30, (u8)physNum, (u8)reg, param_2, param_3, param_4);
 
