@@ -27,6 +27,16 @@ namespace Kernel {
 
 	BOOL TPortCmd::setPortCmd(PortCallback func, TPortArgs* args)
 	{
+#ifdef SMS_NATIVE_PLATFORM
+		// If this command is STILL queued, dequeue it first. The decomp just clears unk0
+		// (the queued-flag) below without unlinking; when the sequence-port setup re-arms a
+		// command whose cmd_once entry hasn't drained yet (timing differs on the native DSP
+		// driver), addPortCmd would re-link an already-linked node, corrupting the list into a
+		// wild entry -> portCmdMain derefs freed memory in setSePortParameter (2026-07-17 UAF,
+		// fault at an unmapped `args`). cancelPortCmd (previously a no-op stub) unlinks it.
+		if (unk0 != nullptr)
+			cancelPortCmd(unk0);
+#endif
 		unk8 = func;
 		unkC = args;
 		unk0 = nullptr;
@@ -53,9 +63,37 @@ namespace Kernel {
 		return true;
 	}
 
-	void TPortCmd::cancelPortCmd(TPortHead* head) { }
+	// Unlink `this` from `head`'s singly-linked queue (head->unk0 = first, chained by unk4;
+	// head->unk4 = last). Was an empty no-op stub — nothing ever removed a queued command, so a
+	// re-armed command double-linked and corrupted the list (see setPortCmd). unk0 != nullptr
+	// means "currently queued in that head".
+	void TPortCmd::cancelPortCmd(TPortHead* head)
+	{
+		BOOL enable = OSDisableInterrupts();
+		if (unk0 == nullptr) { // not queued
+			OSRestoreInterrupts(enable);
+			return;
+		}
+		if (head->unk0 == this) {
+			head->unk0 = unk4;
+			if (head->unk4 == this)
+				head->unk4 = nullptr;
+		} else {
+			TPortCmd* prev = head->unk0;
+			while (prev != nullptr && prev->unk4 != this)
+				prev = prev->unk4;
+			if (prev != nullptr) {
+				prev->unk4 = unk4;
+				if (head->unk4 == this)
+					head->unk4 = prev;
+			}
+		}
+		unk4 = nullptr;
+		unk0 = nullptr;
+		OSRestoreInterrupts(enable);
+	}
 
-	void TPortCmd::cancelPortCmdStay() { }
+	void TPortCmd::cancelPortCmdStay() { cancelPortCmd(&cmd_stay); }
 
 	void portCmdProcOnce(TPortHead* head)
 	{
