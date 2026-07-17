@@ -111,3 +111,182 @@ void TCoverFruit::calcRootMatrix()
 	}
 	getModel()->setBaseScale(mScaling);
 }
+
+// Field-order guard: the ball-physics unkNNN fields must stay in ascending order (their
+// /* 0xNNN */ header comments are GUEST offsets; on the LP64 host they sit past the larger
+// base — accessed by NAME, so host offset is irrelevant, but keep them contiguous/ordered).
+#include <cstddef>
+static_assert(offsetof(TMapObjBall, unk190) - offsetof(TMapObjBall, unk148) == 19 * 4 - 4,
+              "TMapObjBall physics fields not contiguous");
+
+// Native port of TMapObjBall::initMapObj (@0x801e3ac8, US GMSE01, size 0x4F4). RE'd from the
+// DOL disasm (wide-RE workflow 2026-07-17; every instruction + SDA2 f32 constant resolved). The
+// keystone for all TMapObjBall subclasses (fruit/coconut/watermelon/durian): chains to the
+// already-ported TMapObjGeneral::initMapObj (which builds the J3D model), seeds mInitialScaling
+// from mScaling, then a switch on mActorType loads that fruit type's physics coefficients
+// (bounce/friction/scale-rates at this+0x148..0x190) and body radius. A tail of independent
+// per-id `if`s (faithful to the disasm's separate tests, not else-if) overrides body radius /
+// unk190 for a few ids.
+void TMapObjBall::initMapObj()
+{
+	TMapObjGeneral::initMapObj();
+
+	mInitialScaling.x = mScaling.x;
+	mInitialScaling.y = mScaling.y;
+	mInitialScaling.z = mScaling.z;
+
+	switch (mActorType) {
+	case 0x400000d0: // does not set unk148
+		unk14C = 4.0f;
+		unk150 = 0.0f;
+		unk154 = 0.0f;
+		unk158 = 0.15f;
+		unk15C = 0.0f;
+		unk160 = 0.9f;
+		unk164 = 0.06f;
+		unk168 = 1.5f;
+		unk16C = 0.5f;
+		unk170 = 0.5f;
+		unk174 = 0.2f;
+		unk178 = 2.5f;
+		unk17C = 0.001f;
+		unk180 = 0.3f;
+		unk184 = 1.5f;
+		unk188 = 1.5f;
+		mBodyRadius = 50.0f * mScaling.y;
+		unk18C      = mBodyRadius / 3.0f;
+		break;
+
+	case 0x40000064:
+		unk148 = 0.6f;
+		unk14C = 2.0f;
+		unk150 = 0.02f;
+		unk154 = 0.0f;
+		unk158 = 0.055f;
+		unk15C = 0.02f;
+		unk160 = 0.83f;
+		unk170 = 0.9f;
+		unk174 = 0.13f;
+		unk178 = 20.0f;
+		unk164 = 0.5f;
+		unk168 = 0.02f;
+		unk16C = 0.5f;
+		unk17C = 1.2f;
+		unk180 = 0.8f;
+		unk184 = 1.0f;
+		unk188 = 1.5f;
+		mBodyRadius = 50.0f * mScaling.y;
+		unk18C      = mBodyRadius / 3.0f;
+		break;
+
+	case 0x40000393:
+		unk148 = 0.6f;
+		unk14C = 0.2f;
+		unk150 = 1.3f;
+		unk154 = 15.0f;
+		unk158 = 0.5f;
+		unk15C = 1.3f;
+		unk160 = 1.0f;
+		unk170 = 0.9f;
+		unk174 = 0.13f;
+		unk178 = 20.0f;
+		unk164 = 2.0f;
+		unk168 = 0.02f;
+		unk16C = 0.3f;
+		unk17C = 0.05f;
+		unk180 = 0.5f;
+		unk184 = 1.0f;
+		unk188 = 1.5f;
+		mBodyRadius = 50.0f * mScaling.y;
+		unk18C      = 50.0f;
+		break;
+
+	case 0x40000390:
+	case 0x40000391:
+	case 0x40000392:
+		unk148 = 0.4f;
+		unk14C = 0.2f;
+		unk150 = 1.3f;
+		unk154 = 0.0f;
+		unk158 = 1.2f;
+		unk15C = 0.8f;
+		unk160 = 0.5f;
+		unk170 = 0.9f;
+		unk174 = 0.13f;
+		unk178 = 20.0f;
+		unk164 = 2.0f;
+		unk168 = 0.02f;
+		unk16C = 0.3f;
+		unk17C = 0.05f;
+		unk180 = 0.5f;
+		unk184 = 1.0f;
+		unk188 = 1.5f;
+		mBodyRadius = 50.0f * mScaling.y;
+		unk18C      = 50.0f;
+		break;
+
+	case 0x40000394:
+		unk148 = 0.2f;
+		unk14C = 0.0f;
+		unk150 = 0.0f;
+		unk154 = 0.0f;
+		unk158 = 0.0f;
+		unk15C = 0.0f;
+		unk160 = 0.0f;
+		unk170 = 0.0f;
+		unk174 = 0.0f;
+		unk178 = 0.0f;
+		unk164 = 0.0f;
+		unk168 = 0.0f;
+		unk16C = 0.0f;
+		unk17C = 0.05f;
+		unk180 = 0.5f;
+		unk184 = 1.0f;
+		unk188 = 1.5f;
+		mBodyRadius = 50.0f * mScaling.y;
+		unk18C      = 50.0f;
+		break;
+
+	case 0x40000395:
+		unk148 = 0.4f;
+		unk14C = 0.2f;
+		unk150 = 1.3f;
+		unk154 = 0.0f;
+		unk158 = 1.2f;
+		unk15C = 0.8f;
+		unk160 = 0.5f;
+		unk170 = 0.9f;
+		unk174 = 0.13f;
+		unk178 = 20.0f;
+		unk164 = 2.0f;
+		unk168 = 0.02f;
+		unk16C = 0.3f;
+		unk17C = 0.05f;
+		unk180 = 0.5f;
+		unk184 = 1.0f;
+		unk188 = 1.5f;
+		mBodyRadius = 50.0f * mScaling.y;
+		unk18C      = 50.0f;
+		break;
+
+	default:
+		break;
+	}
+
+	// Tail: independent per-id overrides (separate `if`s in the disasm, not else-if).
+	if (mActorType == 0x40000393) {
+		mBodyRadius = 45.0f * mScaling.y;
+		unk190      = mBodyRadius;
+	}
+	if (mActorType == 0x40000390) {
+		mBodyRadius = 40.0f * mScaling.y;
+		unk190      = 20.0f;
+	}
+	if (mActorType == 0x40000391) {
+		mBodyRadius = 40.0f * mScaling.y;
+		unk190      = 20.0f;
+	}
+	if (mActorType == 0x40000392) {
+		unk190 = 10.0f;
+	}
+}

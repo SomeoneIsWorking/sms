@@ -28,6 +28,30 @@ public:
 	virtual void calcCurrentMtx();
 
 	void boundByActor(THitActor*);
+
+	// Ball physics coefficients (per-object-id), set by TMapObjBall::initMapObj
+	// (@0x801e3ac8). Offsets verified against the DOL (this+0x148..0x190); a
+	// static_assert on offsetof(unk148)==0x148 in MapObjBall.cpp guards the layout.
+	// Upstream decomp has not named these; kept as unkNNN per convention.
+	/* 0x148 */ f32 unk148;
+	/* 0x14C */ f32 unk14C;
+	/* 0x150 */ f32 unk150;
+	/* 0x154 */ f32 unk154;
+	/* 0x158 */ f32 unk158;
+	/* 0x15C */ f32 unk15C;
+	/* 0x160 */ f32 unk160;
+	/* 0x164 */ f32 unk164;
+	/* 0x168 */ f32 unk168;
+	/* 0x16C */ f32 unk16C;
+	/* 0x170 */ f32 unk170;
+	/* 0x174 */ f32 unk174;
+	/* 0x178 */ f32 unk178;
+	/* 0x17C */ f32 unk17C;
+	/* 0x180 */ f32 unk180;
+	/* 0x184 */ f32 unk184;
+	/* 0x188 */ f32 unk188;
+	/* 0x18C */ f32 unk18C;
+	/* 0x190 */ f32 unk190;
 };
 
 class TResetFruit : public TMapObjBall {
