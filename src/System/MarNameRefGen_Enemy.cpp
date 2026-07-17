@@ -11,6 +11,7 @@
 #include "Enemy/PoiHana.hpp"
 #include "Enemy/RiccoHook.hpp"
 #include "Enemy/Rocket.hpp"
+#include "Enemy/EffectEnemy.hpp"
 #include "Enemy/EggGen.hpp"
 #include "Enemy/Seal.hpp"
 #include "Enemy/SmallEnemy.hpp"
@@ -158,12 +159,12 @@ JDrama::TNameRef* TMarNameRefGen::getNameRef_Enemy(const char* name) const
 		return new TEffectExplosionManager;
 
 	// TODO:
-	// if (strcmp(name, "EffectEnemyManager") == 0)
-	// 	return new TEffectEnemyManager("エネミーマネージャー");
+		if (strcmp(name, "EffectEnemyManager") == 0)
+		return new TEffectEnemyManager("エネミーマネージャー");
 
 	// TODO:
-	// if ( strcmp(name, "EffectEnemy") == 0)
-	//     return new TEffectEnemy("エフェクト敵");
+		if (strcmp(name, "EffectEnemy") == 0)
+		return new TEffectEnemy("エフェクト敵");
 
 	// TODO:
 	// if ( strcmp(name, "HauntLegManager") == 0)
