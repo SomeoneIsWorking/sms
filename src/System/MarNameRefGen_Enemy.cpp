@@ -11,6 +11,7 @@
 #include "Enemy/PoiHana.hpp"
 #include "Enemy/RiccoHook.hpp"
 #include "Enemy/Rocket.hpp"
+#include "Enemy/DebuTelesa.hpp"
 #include "Enemy/EffectEnemy.hpp"
 #include "Enemy/EggGen.hpp"
 #include "Enemy/Seal.hpp"
@@ -318,12 +319,12 @@ JDrama::TNameRef* TMarNameRefGen::getNameRef_Enemy(const char* name) const
 		return new TMarioModokiTelesa;
 
 	// TODO:
-	// if ( strcmp(name, "DebuTelesaManager") == 0)
-	//     return new TDebuTelesaManager("デブテルサマネージャー");
+		if (strcmp(name, "DebuTelesaManager") == 0)
+		return new TDebuTelesaManager("デブテルサマネージャー");
 
 	// TODO:
-	// if ( strcmp(name, "DebuTelesa") == 0)
-	//     return new TDebuTelesa;
+	if (strcmp(name, "DebuTelesa") == 0)
+		return new TDebuTelesa;
 
 	if (strcmp(name, "PoiHanaManager") == 0)
 		return new TPoiHanaManager;

@@ -1,54 +1,45 @@
-#ifndef ENEMY_DEBU_TELESA_HPP
-#define ENEMY_DEBU_TELESA_HPP
+#ifndef ENEMY_DEBUTELESA_HPP
+#define ENEMY_DEBUTELESA_HPP
 
 #include <Enemy/SmallEnemy.hpp>
+#include <JSystem/JGeometry/JGVec3.hpp>
 
-class TDebuTelesaParams : public TSmallEnemyParams {
+// The fat Boo ("デブテルサ" / DebuTelesa). RE'd US GMSE01 (wide-RE sweep 2026-07-17).
+// TDebuTelesa : TSmallEnemy — drools particle effects from its right hand + mouth joints.
+class TDebuTelesaSaveLoadParams : public TSmallEnemyParams {
 public:
-	TDebuTelesaParams(const char* path);
-};
-
-class TDebuTelesa : public TSmallEnemy {
-public:
-	TDebuTelesa(const char* name);
-
-	virtual BOOL receiveMessage(THitActor* sender, u32 message);
-	virtual void init(TLiveManager* manager);
-	virtual void calcRootMatrix();
-	virtual void kill();
-	virtual const char** getBasNameTable() const;
-	virtual void reset();
-	virtual void behaveToWater(THitActor*);
-	virtual bool changeByJuice() { return false; }
-	virtual void attackToMario();
-	virtual bool isCollidMove(THitActor*);
-	virtual bool doKeepDistance();
-
-	void initCollision();
-	void setDeadAnm();
-	void emitEffects();
-	bool isDying() const;
-
-public:
-	/* 0x194 */ u32 unk194;
-	/* 0x198 */ s32 mNullYodareJointIdx;
-	/* 0x19C */ s32 mRightHandJointIdx;
-	/* 0x1A0 */ JGeometry::TVec3<f32> mRightHandPos;
+	TDebuTelesaSaveLoadParams(const char* path);
 };
 
 class TDebuTelesaManager : public TSmallEnemyManager {
 public:
-	TDebuTelesaManager(const char* name);
-
-	virtual void load(JSUMemoryInputStream& stream);
+	TDebuTelesaManager(const char* name = "デブテルサマネージャー");
+	virtual void load(JSUMemoryInputStream&);
 	virtual void createModelData();
-	virtual void clipEnemies(JDrama::TGraphics* graphics);
+	virtual void clipEnemies(JDrama::TGraphics*);
+};
 
-	// fabricated
-	TDebuTelesa* getObj(int idx)
-	{
-		return (TDebuTelesa*)TObjManager::getObj(idx);
-	}
+class TDebuTelesa : public TSmallEnemy {
+public:
+	TDebuTelesa(const char* name = "デブテルサ");
+
+	virtual void init(TLiveManager*);
+	virtual void calcRootMatrix();
+	virtual BOOL receiveMessage(THitActor*, u32);
+	virtual void kill();
+	virtual const char** getBasNameTable() const;
+	virtual void reset();
+	virtual void behaveToWater(THitActor*);
+	virtual bool changeByJuice();
+	virtual void setDeadAnm();
+	virtual void attackToMario();
+	virtual bool isCollidMove(THitActor*);
+	virtual bool doKeepDistance();
+
+public:
+	/* 0x198 */ s32 mYodareJointIdx;
+	/* 0x19C */ s32 mRHandJointIdx;
+	/* 0x1A0 */ JGeometry::TVec3<f32> mRHandPos;
 };
 
 DECLARE_NERVE(TNerveDebuTelesaWait, TLiveActor);
