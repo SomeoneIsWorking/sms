@@ -1,3 +1,8 @@
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#endif
 #include <JSystem/JAudio/JASystem/JASDvdThread.hpp>
 #include <JSystem/JAudio/JASystem/JASSystemHeap.hpp>
 #include <JSystem/JAudio/JASystem/JASCalc.hpp>
@@ -126,10 +131,23 @@ int Dvd::loadToDramDvdTMain(void* param)
 
 	extendPath(path, call->unk4);
 
+#ifdef SMS_NATIVE_PLATFORM
+	const bool dbgDvd = std::getenv("SB_DBG_AUDIO") && std::strstr(call->unk4, "sequence");
+	bool okOpen = openDvd(path, &finfo);
+	if (dbgDvd)
+		std::fprintf(stderr, "[audio] loadToDramDvdTMain path='%s' (from '%s') openDvd=%d len=%d off=%u reqLen=%u\n",
+		             path, call->unk4, okOpen ? 1 : 0, okOpen ? (int)finfo.length : -1,
+		             (unsigned)call->unk28, (unsigned)call->unk2C);
+	if (!okOpen) {
+		doError(call, 0);
+		return -1;
+	}
+#else
 	if (!openDvd(path, &finfo)) {
 		doError(call, 0);
 		return -1;
 	}
+#endif
 
 	if (finfo.length == 0) {
 		doError(call, 1);
