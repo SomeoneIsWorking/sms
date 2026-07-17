@@ -1195,6 +1195,24 @@ u32 JAIBasic::getSoundSwBit(void* param)
 #endif
 }
 
+#ifdef SMS_NATIVE_PLATFORM
+// JAISoundInfo lives inline in the big-endian AAF blob (see getSoundSwBit). unk8 is the
+// per-sound default PITCH, an f32 stored BE and never copied to a native struct, so it must
+// be byte-swapped on read. Volume/fxmix (unkC/unkD) are single bytes and need no swap -- which
+// is why they worked while pitch did not: a BE 1.0f (0x3F800000) read raw on LE is 0x0000803F,
+// a denormal ~= 0, so setPitch(~0) drove the aggregate seq pitch to 0 -> DSP pitch 0 -> silence
+// (2026-07-17). Route-1 (per-sound) pitch multiplier ended up 0, zeroing the whole product.
+static f32 sb_soundinfo_pitch_be(const JAISoundInfo* info)
+{
+	u32 raw;
+	__builtin_memcpy(&raw, &info->unk8, 4);
+	raw = __builtin_bswap32(raw);
+	f32 out;
+	__builtin_memcpy(&out, &raw, 4);
+	return out;
+}
+#endif
+
 void JAIBasic::setSeExtParameter(JAISound* sound)
 {
 	if (!sound)
@@ -1207,7 +1225,11 @@ void JAIBasic::setSeExtParameter(JAISound* sound)
 	if (format & 8)
 		sound->setFxmix(((JAISoundInfo*)sound->unk3C)->unkD / 127.0f, 0, 1);
 	if (format & 2)
+#ifdef SMS_NATIVE_PLATFORM
+		sound->setPitch(sb_soundinfo_pitch_be((JAISoundInfo*)sound->unk3C), 0, 1);
+#else
 		sound->setPitch(((JAISoundInfo*)sound->unk3C)->unk8, 0, 1);
+#endif
 }
 
 u32 JAIBasic::routeToTrack(u32 param)
