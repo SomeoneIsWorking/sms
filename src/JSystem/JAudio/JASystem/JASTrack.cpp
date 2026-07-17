@@ -1110,6 +1110,22 @@ bool TTrack::closeTrack()
 			unk2C4[i] = nullptr;
 		}
 
+#ifdef SMS_NATIVE_PLATFORM
+	// Clear the PARENT's back-reference to this track. The parent only nulls unk2C4[] when IT
+	// closes (loop above); a child that self-closes (cmdCloseTrack / mainProc end) and returns
+	// to the TrackMgr pool otherwise leaves a stale parent ref. getChild() then hands back a
+	// repurposed/freed pool slot, and the per-frame SE-port setup (JAISystemInterface::trackInit
+	// -> outerInit -> args->mTrack) captures it -> portCmdMain/setSePortParameter deref a freed
+	// track -> SIGSEGV (2026-07-17 use-after-free, exposed once real sequences drive SE ports).
+	if (unk2C0) {
+		for (u8 i = 0; i < 16; ++i)
+			if (unk2C0->unk2C4[i] == this) {
+				unk2C0->unk2C4[i] = nullptr;
+				break;
+			}
+	}
+#endif
+
 	unk3C2 = 0;
 
 	if (unk2C0)
