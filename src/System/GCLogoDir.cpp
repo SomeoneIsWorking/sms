@@ -19,10 +19,10 @@
 #include <MSound/MSSetSound.hpp>
 #include <MSound/MSoundBGM.hpp>
 
-void TNintendo2D::perform(u32 cue, JDrama::TGraphics*)
+void TNintendo2D::perform(u32 param_1, JDrama::TGraphics*)
 {
 
-	if (cue & CUE_DRAW) {
+	if (param_1 & 8) {
 		GXSetCullMode(GX_CULL_BACK);
 		Mtx afStack_3c;
 		MTXTrans(afStack_3c, 0.0, 0.0, 0.0);
@@ -111,7 +111,7 @@ void TGCLogoDir::setup(JDrama::TDisplay* param_1, TMarioGamePad* param_2)
 	f32 fVar2 = (480 - h) / 2;
 
 	JDrama::TOrthoProj* proj = new JDrama::TOrthoProj(
-	    -1.0f, 1.0f, fVar3, fVar2, fVar3 + logoRendArea.getWidth(), fVar2 + h);
+	    fVar3, fVar2, fVar3 + logoRendArea.getWidth(), fVar2 + h);
 	group2d->getChildren().push_back(proj);
 
 	JDrama::TScreen* screen = new JDrama::TScreen(logoRendArea, "Screen 2D");

@@ -71,8 +71,7 @@ void TSandBlock::control()
 			setState(STATE_FALLING);
 		}
 		break;
-	case TSandBlock::STATE_FALLING: { // braced: particleScale init must not be
-		                              // crossed by the next case label (C++)
+	case STATE_FALLING: {
 		mScaling.y -= mSandScaleDown;
 		gpMSound->startSoundActor(MSD_SE_OBJ_SANDBLOCK_BREAK, &mPosition, 0,
 		                          nullptr, 0, 0x4);
@@ -87,11 +86,9 @@ void TSandBlock::control()
 			startStateTimer(mSandWaitTime);
 			setState(STATE_GONE);
 		}
-
-		break;
-	}
-	case TSandBlock::STATE_GONE:
-		if (!isAppearTimeFinished()
+	} break;
+	case STATE_GONE:
+		if (!isStateTimerEngaged()
 		    && getDistance(SMS_GetMarioPos()) > mScaling.x * 100.0f) {
 			TMapObjBase::awake();
 			JGeometry::TVec3<f32> scaleCopy = mScaling;
@@ -343,19 +340,19 @@ void TJuiceBlock::kill()
 
 void TTelesaBlock::initMapObj() { TMapObjBase::initMapObj(); }
 
-void TTelesaBlock::perform(u32 cue, JDrama::TGraphics* graphics)
+void TTelesaBlock::perform(u32 flags, JDrama::TGraphics* graphics)
 {
 	mLiveFlag &= ~LIVE_FLAG_UNK200;
 	if (!gpMarDirector->isTalkModeNow()) {
-		TMapObjBase::perform(cue, graphics);
+		TMapObjBase::perform(flags, graphics);
 	} else {
-		if (cue & CUE_MOVE) {
+		if (flags & 1) {
 			TJuiceBlock::moveObject();
 		}
-		mMActor->perform(cue, graphics);
+		mMActor->perform(flags, graphics);
 	}
 
-	if (cue & CUE_CALC_ANIM) {
+	if (flags & 2) {
 
 		// TODO: Possibly more TRotation3f inlines?
 		TRotation3f mtx;

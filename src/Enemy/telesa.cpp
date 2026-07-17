@@ -277,12 +277,12 @@ void TTelesa::reset()
 	mTelesaBaseColor = cTelesaColor[0];
 }
 
-void TTelesa::perform(u32 cue, JDrama::TGraphics* graphics)
+void TTelesa::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	TSmallEnemy::perform(cue, graphics);
+	TSmallEnemy::perform(param_1, param_2);
 	if (!checkLiveFlag(LIVE_FLAG_UNK200 | LIVE_FLAG_DEAD)) {
 		if (mImitatedBmd) {
-			if (cue & CUE_CALC_ANIM) {
+			if (param_1 & 2) {
 				const TBGCheckData* pTStack_5c;
 				gpMap->checkGround(mPosition.x, mPosition.y, mPosition.z,
 				                   &pTStack_5c);
@@ -295,11 +295,11 @@ void TTelesa::perform(u32 cue, JDrama::TGraphics* graphics)
 				model->mBaseScale    = JGeometry::TVec3<f32>(1.0f, 1.0f, 1.0f);
 			}
 
-			if (cue & CUE_ENTRY)
+			if (param_1 & 0x200)
 				mImitatedBmd->getMActor()->setLightData(mGroundPlane,
 				                                        mPosition);
 
-			mImitatedBmd->getMActor()->perform(cue, graphics);
+			mImitatedBmd->getMActor()->perform(param_1, param_2);
 		}
 	}
 }

@@ -40,28 +40,6 @@ class TMarDirector;
 extern TMarDirector* gpMarDirector;
 inline TMarDirector* SMSGetMarDirector() { return gpMarDirector; }
 
-enum {
-	// Some kind of light-related cues?
-	CUE_UNK10000 = 0x10000,
-	CUE_UNK20000 = 0x20000,
-	CUE_UNK40000 = 0x40000,
-	CUE_UNK80000 = 0x80000,
-
-	// Bits 16-17 can store the pollution layer sometimes.
-	// If more than 4 layers -- everything breaks horribly.
-	CUE_OFFSET_POLLUTION_LAYER = 16,
-
-	CUE_UNK800000              = 0x800000,
-	CUE_UNK1000000             = 0x1000000,
-	CUE_SEMITRANSPARENT_PRIO_2 = 0x2000000,
-	CUE_SEMITRANSPARENT_PRIO_1 = 0x4000000,
-	CUE_UNK8000000             = 0x8000000,
-	CUE_UNK10000000            = 0x10000000,
-	CUE_UNK20000000            = 0x20000000,
-	CUE_UNK40000000            = 0x40000000,
-	CUE_UNK80000000            = 0x80000000,
-};
-
 class TMarDirector : public JDrama::TDirector {
 public:
 	struct TDemoInfo {

@@ -244,6 +244,7 @@ void TSmallEnemy::attackToMario()
 
 	// TODO: wtf
 	JGeometry::TVec3<f32> local_14(0, 0, 0);
+	(void)&local_14;
 
 	JGeometry::TVec3<f32> local_20;
 	local_20.sub(mPosition, SMS_GetMarioPos());
@@ -943,7 +944,7 @@ void TSmallEnemy::behaveToHitOthers(THitActor* param_1)
 	mLinearVelocity = result;
 }
 
-void TSmallEnemy::perform(u32 cue, JDrama::TGraphics* graphics)
+void TSmallEnemy::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	// TODO: wtf is this inline???
 	bool bVar2 = true;
@@ -955,12 +956,12 @@ void TSmallEnemy::perform(u32 cue, JDrama::TGraphics* graphics)
 		if (gpMarDirector->mGameState != 1 && gpMarDirector->mGameState != 2)
 			bVar2 = false;
 		if (bVar2) {
-			performOnlyDraw(cue, graphics);
+			performOnlyDraw(param_1, param_2);
 			return;
 		}
 	}
 
-	TSpineEnemy::perform(cue, graphics);
+	TSpineEnemy::perform(param_1, param_2);
 }
 
 DEFINE_NERVE(TNerveSmallEnemyDie, TLiveActor)

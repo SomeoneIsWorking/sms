@@ -158,10 +158,10 @@ void TEnemyAttachment::calcRootMatrix()
 	getMActor()->getModel()->setBaseScale(mScaling);
 }
 
-void TEnemyAttachment::perform(u32 cue, JDrama::TGraphics* graphics)
+void TEnemyAttachment::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	if (unk150 == nullptr) {
-		if (cue & CUE_CALC_ANIM)
+		if (param_1 & 2)
 			kill();
 		return;
 	}
@@ -181,18 +181,18 @@ void TEnemyAttachment::perform(u32 cue, JDrama::TGraphics* graphics)
 		}
 	}
 
-	if (cue & CUE_MOVE)
+	if (param_1 & 0x1)
 		moveObject();
 
-	if (cue & CUE_CALC_ANIM) {
+	if (param_1 & 0x2) {
 		calcRootMatrix();
 		getMActor()->calcAnm();
 	}
 
-	if (cue & CUE_CALC_VIEW)
+	if (param_1 & 0x4)
 		getMActor()->viewCalc();
 
-	if (cue & CUE_ENTRY)
+	if (param_1 & 0x200)
 		getMActor()->entry();
 }
 
@@ -201,18 +201,17 @@ void TEnemyPolluteModelManager::init(TLiveActor* param_1)
 	unk18 = new TEnemyPolluteModel*[unk14];
 }
 
-void TEnemyPolluteModelManager::perform(u32 cue, JDrama::TGraphics* graphics)
+void TEnemyPolluteModelManager::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (cue & CUE_CALC_ANIM) {
+	if (param_1 & 2) {
 		f32 f31 = 100.0f;
 		SetViewFrustumClipCheckPerspective(
-		    gpCamera->getFovy(), gpCamera->getAspect(),
-		    graphics->getNearPlane(),
+		    gpCamera->getFovy(), gpCamera->getAspect(), param_2->getNearPlane(),
 		    gpConductor->getCondParams().mEnemyFarClip.get());
 
 		for (int i = 0; i < unk14; ++i) {
 			if (unk18[i]->unk5D) {
-				if (ViewFrustumClipCheck(graphics, &unk18[i]->unk44, f31))
+				if (ViewFrustumClipCheck(param_2, &unk18[i]->unk44, f31))
 					unk18[i]->unk5C = false;
 				else
 					unk18[i]->unk5C = true;
@@ -221,7 +220,7 @@ void TEnemyPolluteModelManager::perform(u32 cue, JDrama::TGraphics* graphics)
 	}
 
 	for (int i = 0; i < unk14; ++i)
-		unk18[i]->perform(cue, graphics);
+		unk18[i]->perform(param_1, param_2);
 }
 
 void TEnemyPolluteModelManager::generatePolluteModel(
@@ -248,12 +247,12 @@ TEnemyPolluteModel::TEnemyPolluteModel(TLiveActor* param_1, int param_2,
 	unk10 = new TSharedParts(param_1, param_2, param_3, 3);
 }
 
-void TEnemyPolluteModel::perform(u32 cue, JDrama::TGraphics* graphics)
+void TEnemyPolluteModel::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	if (!unk5D || unk5C)
 		return;
 
-	if (cue & CUE_CALC_ANIM) {
+	if (param_1 & 2) {
 		if (unk10->unk18->curAnmEndsNext(0, nullptr)) {
 			unk5D = false;
 			return;
@@ -264,7 +263,7 @@ void TEnemyPolluteModel::perform(u32 cue, JDrama::TGraphics* graphics)
 		unk10->unk18->calcAnm();
 	}
 
-	if (cue & CUE_ENTRY)
+	if (param_1 & 0x200)
 		gpPollution->stampModel(unk10->unk18->getModel());
 }
 

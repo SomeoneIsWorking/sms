@@ -171,9 +171,9 @@ void TNameKuriManager::createModelData()
 	createModelDataArray(entry);
 }
 
-void TNameKuriManager::perform(u32 cue, JDrama::TGraphics* graphics)
+void TNameKuriManager::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	TEnemyManager::perform(cue, graphics);
+	TEnemyManager::perform(param_1, param_2);
 }
 
 TNameIndParCallback::TNameIndParCallback(TNameKuri* owner)
@@ -448,11 +448,11 @@ void TNameKuri::calcRootMatrix()
 	anmMtx[2][3] = mPosition.z;
 }
 
-void TNameKuri::perform(u32 cue, JDrama::TGraphics* graphics)
+void TNameKuri::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	TWalkerEnemy::perform(cue, graphics);
-	unk1CC->perform(cue, graphics);
-	if (cue & CUE_CALC_ANIM) {
+	TWalkerEnemy::perform(param_1, param_2);
+	unk1CC->perform(param_1, param_2);
+	if (param_1 & 2) {
 		Mtx afStack_50;
 		SMS_GetLightPerspectiveForEffectMtx(afStack_50);
 

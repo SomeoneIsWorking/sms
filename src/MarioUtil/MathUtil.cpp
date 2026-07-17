@@ -4,10 +4,6 @@
 #include <stdio.h>  // matan OOB fail-fast diagnostic
 #endif
 
-static Vec dummy1   = { 1.0f, 1.0f, 1.0f };
-static Vec dummy2   = { 1.0f, 1.0f, 1.0f };
-static int dummy3[] = { 0, 2, 1, 3 };
-
 static u16 atntable[] = {
 	0,    10,   20,   31,   41,   51,   61,   71,   81,   92,   102,  112,
 	122,  132,  143,  153,  163,  173,  183,  194,  204,  214,  224,  234,
@@ -199,7 +195,6 @@ s16 matan(f32 param_1, f32 param_2)
 				return (s16)GetAtanTable(param_1, param_2);
 		}
 	}
-	return result;
 }
 
 static inline void MsGetRotFromZaxisY2(const JGeometry::TVec3<f32>& axis,

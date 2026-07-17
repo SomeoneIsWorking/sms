@@ -25,8 +25,9 @@ int g_sbXhSkyInitDL = 0;
 
 void TSky::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (cue & CUE_CALC_ANIM) {
-		MtxPtr mtx = gpCamera->unk1EC;
+	if (param_1 & 2) {
+		Mtx local_4c;
+		MTXInverse(gpCamera->unk1EC, local_4c);
 
 		Mtx local_EC;
 		MTXInverse(mtx, local_EC);
@@ -69,8 +70,8 @@ void TSky::perform(u32 param_1, JDrama::TGraphics* param_2)
 		}
 		unk44->getModel()->setBaseTRMtx(local_BC);
 	}
-	unk44->perform(cue, graphics);
-	if ((cue & CUE_DRAW) != 0) {
+	unk44->perform(param_1, param_2);
+	if ((param_1 & 8) != 0) {
 		GXClearVtxDesc();
 		GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
 		GXSetVtxDesc(GX_VA_CLR0, GX_DIRECT);

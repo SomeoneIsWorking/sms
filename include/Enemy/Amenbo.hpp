@@ -10,9 +10,9 @@ class TMirrorActor;
 
 class TAmenbo : public TSmallEnemy {
 public:
-	TAmenbo(const char* name = "アメンボくん");
+	TAmenbo(const char*);
 
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 	virtual BOOL receiveMessage(THitActor*, u32);
 	virtual void init(TLiveManager*);
 	virtual void calcRootMatrix();
@@ -101,7 +101,7 @@ public:
 
 class TAmenboManager : public TSmallEnemyManager {
 public:
-	TAmenboManager(const char* name = "アメンボくんマネージャー");
+	TAmenboManager(const char*);
 
 	virtual void load(JSUMemoryInputStream&);
 	virtual void createModelData();

@@ -73,7 +73,7 @@ TMareJellyFishManager::TMareJellyFishManager(const char* name)
 	gpMareJellyFishManager = this;
 }
 
-void TMareJellyFishManager::perform(u32 cue, JDrama::TGraphics* graphics) { }
+void TMareJellyFishManager::perform(u32, JDrama::TGraphics*) { }
 
 void TMareJellyFishManager::createModelData()
 {
@@ -263,16 +263,16 @@ void TNPCManager::clipEnemies(JDrama::TGraphics* graphics)
 	}
 }
 
-void TNPCManager::perform(u32 cue, JDrama::TGraphics* graphics)
+void TNPCManager::perform(u32 flags, JDrama::TGraphics* graphics)
 {
-	if (cue & CUE_ENTRY) {
+	if (flags & 0x200) {
 		for (int i = 0, e = mObjNum; i < e; ++i) {
 			TBaseNPC* npc = (TBaseNPC*)unk18[i];
 			npc->onLiveFlag(LIVE_FLAG_UNK1000000);
 		}
 	}
 
-	TEnemyManager::perform(cue, graphics);
+	TEnemyManager::perform(flags, graphics);
 }
 
 void TNPCManager::makeCommonPartsModelDataKeeper_(u32 param_1,

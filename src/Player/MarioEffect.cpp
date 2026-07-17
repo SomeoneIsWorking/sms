@@ -167,9 +167,9 @@ void TMarioEffect::endDashEffect()
 	unk80->getFrameCtrl(0)->setFrame(0.0f);
 }
 
-void TMarioEffect::perform(u32 cue, JDrama::TGraphics* graphics)
+void TMarioEffect::perform(u32 param_1, JDrama::TGraphics* gfx)
 {
-	if (cue & CUE_MOVE) {
+	if (param_1 & 1) {
 		switch (unk7C) {
 		case 0:
 			if (unk68->checkFlag(MARIO_FLAG_FLUDD_EMITTING)) {
@@ -201,22 +201,22 @@ void TMarioEffect::perform(u32 cue, JDrama::TGraphics* graphics)
 		}
 	}
 
-	if ((cue & CUE_CALC_ANIM) && unk7C != 0) {
+	if ((param_1 & 0x2) && unk7C != 0) {
 		if (unk68->mWaterGun->getEmitMtx(0) != nullptr) {
 			unk80->getModel()->setBaseTRMtx(unk68->mWaterGun->getEmitMtx(0));
-			unk80->perform(CUE_CALC_ANIM, graphics);
+			unk80->perform(0x2, gfx);
 		}
 	}
 
-	if ((cue & CUE_CALC_VIEW) && unk7C != 0)
-		unk80->perform(CUE_CALC_VIEW, graphics);
+	if ((param_1 & 0x4) && unk7C != 0)
+		unk80->perform(0x4, gfx);
 
-	if ((cue & CUE_ENTRY) && unk7C != 0)
-		unk80->perform(CUE_ENTRY, graphics);
+	if ((param_1 & 0x200) && unk7C != 0)
+		unk80->perform(0x200, gfx);
 
 	for (int i = 0; i < 2; ++i) {
 		if (unk6C[i] == 1) {
-			unk74[i]->perform(cue, graphics);
+			unk74[i]->perform(param_1, gfx);
 			if (unk74[i]->getFrameCtrl(0)->checkState(
 			        J3DFrameCtrl::STATE_COMPLETED_ONCE
 			        | J3DFrameCtrl::STATE_LOOPED_ONCE))

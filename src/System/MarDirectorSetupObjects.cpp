@@ -242,7 +242,7 @@ bool TMarDirector::setupObjects()
 	}
 
 	gameObjs->insert(gpMarioParticleManager);
-	gameObjs->insert(new JDrama::TOrthoProj(-1.0f, 1.0f, 0.0f, 0.0f,
+	gameObjs->insert(new JDrama::TOrthoProj(0.0f, 0.0f,
 	                                        (u16)SMSGetGameRenderWidth(),
 	                                        (u16)SMSGetGameRenderHeight()));
 
@@ -530,11 +530,11 @@ bool TMarDirector::setupObjects()
 	initECDisp(mPerformListGXPost, perfEventGroup, normalScene);
 
 	mPerformListMovement->push_back(
-	    JDrama::TNameRefGen::search<JDrama::TViewObj>("合成3"), CUE_MOVE);
+	    JDrama::TNameRefGen::search<JDrama::TViewObj>("合成3"), 1);
 	JDrama::TViewObj* specularSheen
 	    = JDrama::TNameRefGen::search<JDrama::TViewObj>("スペキュラシーン");
 	if (specularSheen)
-		mPerformListMovement->push_back(specularSheen, CUE_MOVE);
+		mPerformListMovement->push_back(specularSheen, 1);
 
 	JDrama::TViewObj* lensFlare
 	    = JDrama::TNameRefGen::search<JDrama::TViewObj>("レンズフレア");
@@ -542,8 +542,8 @@ bool TMarDirector::setupObjects()
 	if (lensFlare) {
 		sunOcclusionGlow
 		    = JDrama::TNameRefGen::search<JDrama::TViewObj>("太陽遮蔽物グロー");
-		mPerformListMovement->push_back(sunOcclusionGlow, CUE_MOVE);
-		mPerformListMovement->push_back(lensFlare, CUE_MOVE);
+		mPerformListMovement->push_back(sunOcclusionGlow, 1);
+		mPerformListMovement->push_back(lensFlare, 1);
 	}
 
 	JDrama::TViewObj* dialogueCursor
@@ -551,18 +551,18 @@ bool TMarDirector::setupObjects()
 	JDrama::TViewObj* targetArrow
 	    = JDrama::TNameRefGen::search<JDrama::TViewObj>("ターゲット矢印");
 
-	mPerformListMovement->push_back(dialogueCursor, CUE_MOVE);
-	mPerformListCalcAnim->push_back(dialogueCursor, CUE_CALC_ANIM);
+	mPerformListMovement->push_back(dialogueCursor, 1);
+	mPerformListCalcAnim->push_back(dialogueCursor, 2);
 
 	if (specularSheen)
-		mPerformListCalcAnim->push_back(specularSheen, CUE_CALC_ANIM);
+		mPerformListCalcAnim->push_back(specularSheen, 2);
 	if (lensFlare) {
-		mPerformListCalcAnim->push_back(lensFlare, CUE_CALC_ANIM);
-		mPerformListCalcAnim->push_back(sunOcclusionGlow, CUE_CALC_ANIM);
+		mPerformListCalcAnim->push_back(lensFlare, 2);
+		mPerformListCalcAnim->push_back(sunOcclusionGlow, 2);
 	}
 
-	mPerformListCalcAnim->push_back(dialogueCursor, CUE_CALC_ANIM);
-	mPerformListCalcAnim->push_back(targetArrow, CUE_CALC_ANIM);
+	mPerformListCalcAnim->push_back(dialogueCursor, 2);
+	mPerformListCalcAnim->push_back(targetArrow, 2);
 	setupPerformList_console();
 	mPerformListGXPost->push_back(drawInit, 0x100);
 	preEntry(mPerformListPreEntry);

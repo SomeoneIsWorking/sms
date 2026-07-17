@@ -300,9 +300,9 @@ void TFireWanwanManager::createModelData()
 	createModelDataArray(entry);
 }
 
-void TFireWanwanManager::perform(u32 cue, JDrama::TGraphics* graphics)
+void TFireWanwanManager::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	TEnemyManager::perform(cue, graphics);
+	TEnemyManager::perform(param_1, param_2);
 
 	for (int i = 0; i < mObjNum; ++i) {
 		TFireWanwan* wanwan = (TFireWanwan*)unk18[i];
@@ -313,7 +313,7 @@ void TFireWanwanManager::perform(u32 cue, JDrama::TGraphics* graphics)
 		}
 	}
 
-	if (cue & CUE_MOVE) {
+	if (param_1 & 1) {
 		checkBalloonHelpBoss22();
 		checkBalloonHelpBoss23();
 		checkBalloonHelpBoss24();
@@ -402,11 +402,11 @@ void TFireWanwanTailNode::setBarAnmMtx(MtxPtr mtx)
 }
 
 #pragma dont_inline on
-void TFireWanwanTailNode::perform(u32 cue, JDrama::TGraphics* graphics,
+void TFireWanwanTailNode::perform(u32 param_1, JDrama::TGraphics* param_2,
                                   const JGeometry::TVec3<f32>& param_3,
                                   const JGeometry::TVec3<f32>& param_4)
 {
-	if (cue & CUE_CALC_ANIM) {
+	if (param_1 & 2) {
 		TPosition3f mtx;
 
 		SMS_CalcToDirMatrix(mtx, param_4,
@@ -420,7 +420,7 @@ void TFireWanwanTailNode::perform(u32 cue, JDrama::TGraphics* graphics,
 	}
 
 	if (!(unk10 & 0x4))
-		mMActor->perform(cue, graphics);
+		mMActor->perform(param_1, param_2);
 }
 #pragma dont_inline off
 
@@ -524,18 +524,18 @@ void TFireWanwanTailHit::init()
 	mIsOnFire = false;
 }
 
-void TFireWanwanTailHit::perform(u32 cue, JDrama::TGraphics* graphics)
+void TFireWanwanTailHit::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	THitActor::perform(cue, graphics);
+	THitActor::perform(param_1, param_2);
 
 	setDamageRadius(mOwner->getSaveParam2()->mTailEndColRange.get());
 
-	if (cue & CUE_MOVE) {
+	if (param_1 & 1) {
 		MtxPtr mtx = mOwner->getTailMtx();
 		movementBody(JGeometry::TVec3<f32>(mtx[0][3], mtx[1][3], mtx[2][3]));
 	}
 
-	performNodes(cue, graphics);
+	performNodes(param_1, param_2);
 
 	{
 		MtxPtr mtx = unkA8[4]->mMActor->getModel()->getBaseTRMtx();
@@ -543,10 +543,10 @@ void TFireWanwanTailHit::perform(u32 cue, JDrama::TGraphics* graphics)
 		    mtx[0][3], mtx[1][3] - mDamageHeight * 0.5f, mtx[2][3]));
 	}
 
-	if ((cue & CUE_CALC_ANIM) && mIsOnFire)
+	if ((param_1 & 2) && mIsOnFire)
 		onFireEffect();
 
-	if (cue & CUE_CALC_ANIM)
+	if (param_1 & 2)
 		unkBC->update();
 
 	if (mHolder != nullptr) {
@@ -1074,21 +1074,21 @@ void TFireWanwan::kill()
 
 bool TFireWanwan::isHitValid(u32) { return false; }
 
-void TFireWanwan::perform(u32 cue, JDrama::TGraphics* graphics)
+void TFireWanwan::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	TSmallEnemy::perform(cue, graphics);
-	if (!(cue & CUE_CALC_ANIM)) {
+	TSmallEnemy::perform(param_1, param_2);
+	if (!(param_1 & 2)) {
 		calcRootMatrix();
 		mMActor->calc();
 	}
 
-	if (cue & CUE_CALC_ANIM) {
+	if (param_1 & 2) {
 		emitEffects();
 		unk238->update();
 	}
 
 	if (!checkLiveFlag(LIVE_FLAG_DEAD))
-		unk194->perform(cue, graphics);
+		unk194->perform(param_1, param_2);
 }
 
 void TFireWanwan::calcRootMatrix()

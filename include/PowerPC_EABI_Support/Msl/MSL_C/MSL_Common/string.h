@@ -1,6 +1,13 @@
 #ifndef _MSL_COMMON_STRING_H
 #define _MSL_COMMON_STRING_H
 
+#ifdef SMS_NATIVE_PLATFORM
+// On the native port we compile against libc — the MSL declarations use
+// __declspec(section ".init") and other CW-only attributes that GCC rejects.
+// Route to the host string.h; the referenced functions are all standard.
+#include <string.h>
+#else
+
 #include "stddef.h"
 
 #ifdef __cplusplus
@@ -33,5 +40,7 @@ using ::strlen;
 using ::strrchr;
 }; // namespace std
 #endif
+
+#endif /* SMS_NATIVE_PLATFORM */
 
 #endif /* _MSL_COMMON_STRING_H */

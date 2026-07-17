@@ -31,7 +31,7 @@
 // 2026-07-04 via full-tree grep + funcs.txt sweep.
 void TMirrorCamera::makeMirrorViewMtx() { }
 
-void TMirrorCamera::perform(u32 cue, JDrama::TGraphics* graphics)
+void TMirrorCamera::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	if (param_1 & 0x14) {
 		C_MTXPerspective(param_2->mProjMtx.mMtx, mFovyScale * gpCamera->mFovy,
@@ -185,8 +185,12 @@ inline static void identity34(MtxPtr mtx)
 
 void TMirrorModel::init(const char* name)
 {
-	mMActor = SMS_MakeMActorWithAnmData(name, gpMirrorModelManager->getMirrorAnmData(), 2,
-	                                    0x10210000);
+	mMActor = SMS_MakeMActorWithAnmData(name,
+	                                    gpMirrorModelManager->getMirrorAnmData(),
+	                                    2,
+	                                    J3DMLF_MaterialPEFull
+	                                        | J3DMLF_UseUniqueMaterials
+	                                        | (1 << J3DMLF_TevStageNumShift));
 
 	TPosition3f local_44;
 	local_44.identity();
@@ -264,7 +268,7 @@ bool TMirrorModelManager::isInMirror(JGeometry::TVec3<f32>& param_1) const
 	           : false;
 }
 
-void TMirrorModelManager::perform(u32 cue, JDrama::TGraphics* graphics)
+void TMirrorModelManager::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	JGeometry::TVec3<f32> local_44 = *gpMarioPos;
 	mCurrentMirrorIndex = gpCubeMirror->getDataNo(gpCubeMirror->getInCubeNo(local_44));
@@ -373,7 +377,7 @@ TMirrorModelManager::TMirrorModelManager(const char* name)
 	gpMirrorModelManager = this;
 }
 
-void TMirrorMapDrawBuf::perform(u32 cue, JDrama::TGraphics* graphics)
+void TMirrorMapDrawBuf::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 #ifdef SMS_NATIVE_PLATFORM
 	// SB_MIRRORBUF_DBG: which named draw-buffers are TMirrorMapDrawBuf, and the mirror gate state.

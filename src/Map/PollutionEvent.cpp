@@ -8,25 +8,21 @@ void TPollutionTest::registerEvent(JDrama::TViewObj*) { }
 
 void TPollutionTest::loadAfter() { JDrama::TViewObj::loadAfter(); }
 
-void TPollutionEventModelStampMario::perform(u32 cue,
-                                             JDrama::TGraphics* graphics)
-{
-}
+void TPollutionEventModelStampMario::perform(u32, JDrama::TGraphics*) { }
 
-void TPollutionEventModelStamp::perform(u32 cue, JDrama::TGraphics* graphics) {
-}
+void TPollutionEventModelStamp::perform(u32, JDrama::TGraphics*) { }
 
 void TPollutionEventModelStamp::init(const char*) { }
 
 TPollutionEventModelStamp::TPollutionEventModelStamp(const char*) { }
 
-void TPollutionEventMaze::perform(u32 cue, JDrama::TGraphics* graphics) { }
+void TPollutionEventMaze::perform(u32, JDrama::TGraphics*) { }
 
 void TPollutionEventMaze::init() { }
 
 TPollutionEventMaze::TPollutionEventMaze(const char*) { }
 
-void TPollutionEventAreaObj::perform(u32 cue, JDrama::TGraphics* graphics) { }
+void TPollutionEventAreaObj::perform(u32, JDrama::TGraphics*) { }
 
 void TPollutionEventAreaObj::init(const char*) { }
 

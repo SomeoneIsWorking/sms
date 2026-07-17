@@ -116,9 +116,9 @@ void M3UModel::entryOut()
 		unk8->mModelData->removeTexNoAnimator(unk4->unk8[unk1C->unk0]);
 }
 
-void M3UModel::perform(u32 cue, JDrama::TGraphics* graphics)
+void M3UModel::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (cue & CUE_CALC_ANIM) {
+	if (param_1 & 2) {
 		updateIn();
 		unk8->calc();
 		updateOut();
@@ -214,11 +214,11 @@ void M3UModel::perform(u32 cue, JDrama::TGraphics* graphics)
 #endif
 	}
 
-	if (cue & CUE_CALC_VIEW) {
+	if (param_1 & 4) {
 		unk8->viewCalc();
 	}
 
-	if (cue & CUE_ENTRY) {
+	if (param_1 & 0x200) {
 		entryIn();
 		unk8->entry();
 		entryOut();

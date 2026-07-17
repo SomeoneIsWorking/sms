@@ -5,13 +5,13 @@
 #include <System/MarioGamePad.hpp>
 #include <dolphin/gx.h>
 
-void TMenuBase::perform(u32 cue, JDrama::TGraphics* graphics)
+void TMenuBase::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (cue & CUE_DRAW) {
-		J2DOrthoGraph orthoGraph(graphics->getViewport());
+	if (param_1 & 0x8) {
+		J2DOrthoGraph orthoGraph(param_2->getViewport());
 		orthoGraph.setup2D();
 		unk10->draw(0, 0, &orthoGraph);
-		const JUTRect& rect = graphics->getScissor();
+		const JUTRect& rect = param_2->getScissor();
 		GXSetScissor(rect.x1, rect.y1, rect.getWidth(), rect.getHeight());
 	}
 }
@@ -58,12 +58,12 @@ TMenuPlane::TMenuPlane(const TMarioGamePad* param_1, J2DPane* param_2,
 		unk30[i] = local_420[i];
 }
 
-void TMenuPlane::perform(u32 cue, JDrama::TGraphics*)
+void TMenuPlane::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	if (unk18 & 0x4)
 		return;
 
-	if (cue & CUE_MOVE) {
+	if (param_1 & 0x1) {
 		if (unk10->checkFrameMeaning(unk34)) {
 			unk18 |= 0x1;
 			return;
@@ -105,9 +105,9 @@ void TMenuPlane::perform(u32 cue, JDrama::TGraphics*)
 	}
 }
 
-void TFlashPane::perform(u32 cue, JDrama::TGraphics*)
+void TFlashPane::perform(u32 param_1, JDrama::TGraphics*)
 {
-	if (cue & CUE_MOVE) {
+	if (param_1 & 0x1) {
 		unk14 += unk18;
 		if (unk18 < 0) {
 			if (unk14 <= 0) {
