@@ -4,6 +4,7 @@
 #include <Strategic/ObjModel.hpp>
 #include <Strategic/Spine.hpp>
 #include <Strategic/TakeActor.hpp>
+#include <Enemy/WireBinder.hpp>
 #include <M3DUtil/MActor.hpp>
 #include <MSound/MSoundSE.hpp>
 #include <MSound/SoundEffects.hpp>
@@ -144,14 +145,69 @@ void TAnimalBird::calcRootMatrix()
 }
 
 // --- pending full specs (unreachable until the factory registers birds) ---
+// STOPGAP: TAnimalBird::load (US 0x8000dea8, 0x154) is NOT a flock spawn — it calls
+// TSpineEnemy::load, reads a 4-byte param, selects mBirdKind (species 0..3), sets flags,
+// and loads species-specific model/anim (callees 0x801b5610/0x80294580/0x80218a50/0x80235df4
+// + the 0x80373988 species table still to resolve). Full RE pending (the wide-RE agent for
+// this one method hit the schema-retry cap). Until then, do the stream-safe minimum so
+// scene-stream alignment is preserved if ever reached; do NOT call TAnimalBase::load (that
+// would wrongly spawn a clone flock). Birds are not factory-registered yet, so this is dead.
 void TAnimalBird::load(JSUMemoryInputStream& stream)
 {
-	BIRD_TODO("TAnimalBird::load");
-	TAnimalBase::load(stream);   // consume the stream faithfully via the base flock load
+	BIRD_TODO("TAnimalBird::load (stopgap: species/model load unported)");
+	TSpineEnemy::load(stream);
+	s32 param;
+	stream.read(&param, sizeof(param));   // consume the 4-byte param load() reads
 }
 BOOL TAnimalBird::receiveMessage(THitActor*, u32) { BIRD_TODO("TAnimalBird::receiveMessage"); return 0; }
-void TAnimalBird::init(TLiveManager* manager) { BIRD_TODO("TAnimalBird::init"); TAnimalBase::init(manager); }
-void TAnimalBird::initParams() { BIRD_TODO("TAnimalBird::initParams"); }
+
+// Bird override of TAnimalBase::init: register with the manager, build the MActor from the
+// NAMED bird model (not from-all-BMD), seed the "wait on ground" nerve, apply bird params +
+// hit tuning, init the anim-sound. US GMSE01 @0x8000e14c.
+void TAnimalBird::init(TLiveManager* manager)
+{
+	mManager = manager;
+	manager->manageActor(this);
+
+	mMActorKeeper = new TMActorKeeper(manager, 1);
+	mMActor       = mMActorKeeper->createMActor("bird_man.bmd", 0);
+
+	mSpine->initWith(&TNerveAnimalBirdWaitOnGround::theNerve());
+	initParams();
+
+	// Collision attribute 0x10000032 (NOT getActorType()); radii attack 50/50, damage 70/80.
+	initHitActor(0x10000032, 0, 0, 50.0f, 50.0f, 70.0f, 80.0f);
+	onHitFlag(2);
+	offHitFlag(1);
+	mScaledBodyRadius = 35.0f;
+	initAnmSound();
+}
+
+// US GMSE01 @0x8000dffc. Snapshot home transform, seed hit points from the save param,
+// clear path nodes, set fly height, clear airborne, pick a random anim phase, and bind to
+// a map wire if the spawn point is on one.
+void TAnimalBird::initParams()
+{
+	mHomePos.set(mPosition.x, mPosition.y, mPosition.z);
+	mHomePos.y += 90.0f;
+	mHomeRot.set(mRotation.x, mRotation.y, mRotation.z);
+
+	TSpineEnemyParams* p = getSaveParam();
+	mHitPoints = p ? p->mSLHitPointMax.get() : 1;
+
+	mCurPathNode  = nullptr;
+	mNextPathNode = nullptr;
+	mFlyHeight    = 1.0f;
+	offLiveFlag(LIVE_FLAG_AIRBORNE);
+
+	// Random anim phase near 1.0 (decomp idiom rand()*(1/(RAND_MAX+1))).
+	mPhase = 1.0f - 0.1f * ((f32)rand() * (1.0f / (f32)(RAND_MAX + 1)) - 0.5f);
+
+	if (TWireBinder::isOnWire(mPosition)) {
+		mWireBinder = new TWireBinder;
+		mWireBinder->init(mPosition);
+	}
+}
 void TAnimalBird::bind() { BIRD_TODO("TAnimalBird::bind"); }
 void TAnimalBird::moveObject() { BIRD_TODO("TAnimalBird::moveObject"); }
 void TAnimalBird::doLanding(bool) { BIRD_TODO("TAnimalBird::doLanding"); }
