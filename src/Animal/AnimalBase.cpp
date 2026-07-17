@@ -16,3 +16,18 @@ void TAnimalBase::loadAfter()
 		                                          &mPosition);
 	}
 }
+
+// TAnimalBase::receiveMessage (US GMSE01 @0x80008be0, JP size 0x8) — body is exactly
+// `li r3,0; blr`: the animal handles no messages, unconditionally returns FALSE (does
+// not chain to the base). Faithful on JP and US.
+BOOL TAnimalBase::receiveMessage(THitActor* /* sender */, u32 /* msg */)
+{
+	return 0;
+}
+
+// TAnimalBase::calcRootMatrix (US GMSE01 @0x80008be8, JP size 0x4) — a single `blr`:
+// an intentional empty override that suppresses the base root-matrix computation
+// (animals position their model via the walk/perform path, not the actor root matrix).
+void TAnimalBase::calcRootMatrix()
+{
+}
