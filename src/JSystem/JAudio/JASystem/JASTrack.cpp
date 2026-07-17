@@ -9,6 +9,10 @@
 #include <JSystem/JAudio/JASystem/JASSeqParser.hpp>
 #include <JSystem/JMath.hpp>
 #include <dolphin/os.h>
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 
 namespace JASystem {
 
@@ -1029,6 +1033,12 @@ bool TTrack::startSeq()
 		unk3C4 = 1;
 		break;
 	}
+#ifdef SMS_NATIVE_PLATFORM
+	if (std::getenv("SB_DBG_AUDIO")) {
+		static int n = 0;
+		std::fprintf(stderr, "[audio] TTrack::startSeq #%d -> registerSubframeCallback (seq PLAYING)\n", ++n);
+	}
+#endif
 	Kernel::registerSubframeCallback(&TTrack::rootCallback, this);
 	return true;
 }
