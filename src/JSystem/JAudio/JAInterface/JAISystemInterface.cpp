@@ -1,3 +1,7 @@
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 #include <JSystem/JAudio/JAInterface/JAISystemInterface.hpp>
 #include <JSystem/JAudio/JAInterface/JAISound.hpp>
 #include <JSystem/JAudio/JAInterface/JAIGlobalParameter.hpp>
@@ -160,6 +164,15 @@ void JAISystemInterface::outerInit(JAISeqUpdateData* param_1, void* param_2,
 	if ((param_4 & 0x10) == 0)
 		outer->setParam(16, 0.0);
 
+#ifdef SMS_NATIVE_PLATFORM
+	if (std::getenv("SB_DBG_AUDIO")) {
+		static int n = 0;
+		if (n < 6) { ++n;
+			std::fprintf(stderr, "[audio] outerInit queue: param_1=%p unk4C=%p slot=%u args=%p track=%p\n",
+			             (void*)param_1, (void*)param_1->unk4C, param_3, (void*)args, (void*)track);
+		}
+	}
+#endif
 	param_1->unk4C[param_3].unk2C.addPortCmdOnce();
 }
 
@@ -175,12 +188,13 @@ void JAISystemInterface::setSePortParameter(
 	if (!track)
 		return;
 #ifdef SMS_NATIVE_PLATFORM
-	// USE-AFTER-FREE guard (2026-07-17): a port command queued by outerInit for a track can be
-	// drained by portCmdMain (aiCallback, same updateDSP) AFTER that track has closed in the
-	// sequence pass -> args->mTrack points to a closed/reused track. unk3C4 is the play-state
-	// (0 = closed); a closed track has no live params to apply, so skip. Also covers the
-	// legitimately-null mOuterParam case (noteOn guards it the same way).
-	if (track->unk3C4 == 0 || track->getOuterParam() == nullptr)
+	// USE-AFTER-FREE guard (2026-07-17): args->mTrack is a REUSED field — a port command can be
+	// drained by portCmdMain (aiCallback, same updateDSP) after the track it named has closed
+	// or its pool slot been reused, so mTrack (and its mOuterParam) may be stale/wild. Validate
+	// against the static track pool FIRST (before any deref), then the play-state / outer param.
+	// A wild `track` here otherwise reads unmapped memory (const fault 0x1746f5168).
+	if (!JASystem::TrackMgr::isPoolTrack(track) || track->unk3C4 == 0
+	    || track->getOuterParam() == nullptr)
 		return;
 #endif
 
