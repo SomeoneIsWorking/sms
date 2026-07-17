@@ -101,6 +101,14 @@ void JAISystemInterface::outerInit(JAISeqUpdateData* param_1, void* param_2,
 {
 	if (!param_2)
 		return;
+#ifdef SMS_NATIVE_PLATFORM
+	// trackToSeqp()/handleToSeq() can hand back a stale/wild track pointer (a freed handle or a
+	// reused pool slot) for a sequence slot that no longer exists; queuing an SE port command
+	// for it makes portCmdMain later deref freed memory -> SIGSEGV (2026-07-17). Reject any
+	// track that is not a live slot of the static track pool before it is used.
+	if (!JASystem::TrackMgr::isPoolTrack(static_cast<const JASystem::TTrack*>(param_2)))
+		return;
+#endif
 
 	JASystem::Kernel::TPortArgs* args = &param_1->unk4C[param_3].unk4;
 	JASystem::TTrack* track           = ((JASystem::TTrack*)param_2);
