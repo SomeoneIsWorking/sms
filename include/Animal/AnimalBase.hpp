@@ -35,6 +35,11 @@ public:
 	void animalWalkIn();
 	void flyToCurPathNode(f32, f32);
 
+	// Private flock-spawn helper called by load() once per sibling clone. Absent
+	// from the original header (weak US symbol); added for the native port (RE'd
+	// US GMSE01 @0x80008cd4). Scatters a bare-constructed clone around this template.
+	void initNoLoad_(TAnimalBase* other);
+
 public:
 	/* 0x150 */ int* mFrameTimer;
 };
