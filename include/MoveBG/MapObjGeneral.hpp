@@ -13,7 +13,7 @@ public:
 
 	virtual void initMapObj();
 	virtual void loadAfter();
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 	virtual BOOL receiveMessage(THitActor* sender, u32 message);
 	virtual void ensureTakeSituation();
 	virtual void calcRootMatrix();

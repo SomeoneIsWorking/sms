@@ -8,7 +8,6 @@
 #include <Player/WaterGun.hpp>
 #include <Player/Yoshi.hpp>
 #include <System/Resolution.hpp>
-#include <System/MarDirector.hpp>
 #include <System/TimeRec.hpp>
 #include <Camera/CubeManagerBase.hpp>
 #include <MarioUtil/DrawUtil.hpp>
@@ -71,7 +70,7 @@ void TMario::thinkAloha()
 	}
 }
 
-void TMario::perform(u32 cue, JDrama::TGraphics* graphics)
+void TMario::perform(u32 param_1, JDrama::TGraphics* graphics)
 {
 #ifdef SMS_NATIVE_PLATFORM
 	// SB_MARIO_DBG: log each perform() invocation's bit flags + the gating state
@@ -114,16 +113,16 @@ void TMario::perform(u32 cue, JDrama::TGraphics* graphics)
 	if (checkFlag(MARIO_FLAG_IS_PERFORMING))
 		return;
 
-	if (cue & CUE_MOVE) {
+	if (param_1 & 1) {
 		thinkFreeze();
 
 		if (mFreezeTimer <= 0) {
 			playerControl(graphics);
 			setPositions();
 			if (mCap != nullptr)
-				mCap->perform(CUE_MOVE, graphics);
+				mCap->perform(1, graphics);
 			if (mWaterGun != nullptr)
-				mWaterGun->perform(CUE_MOVE, graphics);
+				mWaterGun->perform(1, graphics);
 			if (mYoshi != nullptr)
 				mYoshi->movement();
 			moveParticle();
@@ -133,25 +132,25 @@ void TMario::perform(u32 cue, JDrama::TGraphics* graphics)
 		soundMovement();
 	}
 
-	if ((cue & CUE_MOVE) && mFreezeTimer <= 0) {
+	if ((param_1 & 1) && mFreezeTimer <= 0) {
 		thinkAloha();
-		calcAnim(CUE_CALC_ANIM, graphics);
+		calcAnim(2, graphics);
 		animSound();
 
 		if (mWaterGun != nullptr) {
 			mWaterGun->setBaseTRMtx(
 			    mModel->unk8->mNodeMatrices[mJointIdChnChest]);
-			mWaterGun->perform(CUE_CALC_ANIM, graphics);
+			mWaterGun->perform(2, graphics);
 		}
 
 		if (mYoshi != nullptr)
 			mYoshi->calcAnim();
 	}
 
-	if (cue & CUE_CALC_VIEW) {
+	if (param_1 & 0x4) {
 		calcView(graphics);
 		if (mWaterGun != nullptr)
-			mWaterGun->perform(CUE_CALC_VIEW, graphics);
+			mWaterGun->perform(0x4, graphics);
 		if (mYoshi != nullptr)
 			mYoshi->viewCalc();
 
@@ -164,7 +163,7 @@ void TMario::perform(u32 cue, JDrama::TGraphics* graphics)
 		}
 	}
 
-	if (cue & CUE_ENTRY) {
+	if (param_1 & 0x200) {
 		// TODO: inline?
 		BOOL doEntry = TRUE;
 		if (!(unk114 & UNK114_FLAG_VISIBLE))
@@ -183,7 +182,7 @@ void TMario::perform(u32 cue, JDrama::TGraphics* graphics)
 			addDamageFog(graphics);
 
 			if (checkFlag(MARIO_FLAG_HAS_FLUDD))
-				mWaterGun->perform(CUE_ENTRY, graphics);
+				mWaterGun->perform(0x200, graphics);
 
 			entryModels(graphics);
 			mYoshi->entry();
@@ -195,11 +194,11 @@ void TMario::perform(u32 cue, JDrama::TGraphics* graphics)
 		}
 	}
 
-	if (cue & CUE_SEMITRANSPARENT_PRIO_1)
+	if (param_1 & 0x04000000)
 		if (checkFlag(MARIO_FLAG_HAS_FLUDD))
-			mWaterGun->perform(CUE_SEMITRANSPARENT_PRIO_1, graphics);
+			mWaterGun->perform(0x04000000, graphics);
 
-	if (cue & CUE_UNK10000000) {
+	if (param_1 & 0x10000000) {
 		unk394->frameInit();
 		unk398->frameInit();
 
@@ -210,15 +209,15 @@ void TMario::perform(u32 cue, JDrama::TGraphics* graphics)
 		j3dSys.mDrawBuffer[1] = unk398;
 
 		mTrembleModelEffect->movement();
-		mCap->perform(CUE_UNK10000000, graphics);
+		mCap->perform(0x10000000, graphics);
 	}
 
-	if (cue & CUE_UNK8000000) {
+	if (param_1 & 0x08000000) {
 		j3dSys.mDrawBuffer[0] = unk39C;
 		j3dSys.mDrawBuffer[1] = unk3A0;
 	}
 
-	if (cue & CUE_UNK40000000) {
+	if (param_1 & 0x40000000) {
 		if (checkUnk114(UNK114_FLAG_UNK10)) {
 			j3dSys.setUnk4C(3);
 			unk394->draw();
@@ -226,7 +225,7 @@ void TMario::perform(u32 cue, JDrama::TGraphics* graphics)
 		}
 	}
 
-	if (cue & CUE_UNK20000000) {
+	if (param_1 & 0x20000000) {
 		if (checkUnk114(UNK114_FLAG_UNK10)) {
 			j3dSys.setUnk4C(4);
 			unk398->draw();
@@ -234,10 +233,10 @@ void TMario::perform(u32 cue, JDrama::TGraphics* graphics)
 		}
 	}
 
-	if (cue & CUE_UNK1000000)
+	if (param_1 & 0x01000000)
 		drawSpecial(graphics);
 
-	if (cue & CUE_SEMITRANSPARENT_PRIO_2) {
+	if (param_1 & 0x02000000) {
 		if (checkUnk114(UNK114_FLAG_DO_OCCLUSION_PROBE)) {
 			boxDrawPrepare(graphics->mViewMtx);
 			GXSetColorUpdate(GX_FALSE);
@@ -250,7 +249,7 @@ void TMario::perform(u32 cue, JDrama::TGraphics* graphics)
 		}
 	}
 
-	if (cue & CUE_UNK800000) {
+	if (param_1 & 0x00800000) {
 		if (checkUnk114(UNK114_FLAG_DO_OCCLUSION_PROBE)) {
 			boxDrawPrepare(graphics->mViewMtx);
 			GXSetColorUpdate(GX_FALSE);
@@ -263,7 +262,7 @@ void TMario::perform(u32 cue, JDrama::TGraphics* graphics)
 		}
 	}
 
-	if ((cue & CUE_UNK80000000) && (unk114 & UNK114_FLAG_VISIBLE)) {
+	if ((param_1 & 0x80000000) && (unk114 & UNK114_FLAG_VISIBLE)) {
 		j3dSys.onFlag(0x2);
 		GXSetChanMatColor(GX_COLOR0A0, (GXColor) { 0xff, 0xff, 0xff, 0xff });
 		GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL,

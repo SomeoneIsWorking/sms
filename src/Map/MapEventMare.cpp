@@ -142,11 +142,11 @@ void TMareWallRock::movement()
 	}
 }
 
-void TMareWallRock::perform(u32 cue, JDrama::TGraphics* graphics)
+void TMareWallRock::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (cue & CUE_MOVE)
+	if (param_1 & 1)
 		movement();
-	THitActor::perform(cue, graphics);
+	THitActor::perform(param_1, param_2);
 }
 
 void TMareWallRock::initEffect()
@@ -390,9 +390,9 @@ void TMareEventDepressWall::depressing()
 	}
 }
 
-void TMareEventDepressWall::perform(u32 cue, JDrama::TGraphics* graphics)
+void TMareEventDepressWall::perform(u32 param_1, JDrama::TGraphics*)
 {
-	if (cue & CUE_MOVE) {
+	if (param_1 & 1) {
 		switch (unk44) {
 		case 0:
 			break;

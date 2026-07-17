@@ -213,9 +213,9 @@ BOOL TBGBeakHit::receiveMessage(THitActor* sender, u32 message)
 	return false;
 }
 
-void TBGBeakHit::perform(u32 cue, JDrama::TGraphics* graphics)
+void TBGBeakHit::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (cue & CUE_MOVE) {
+	if (param_1 & 1) {
 		mOwner->getJointTransByIndex(26, &mPosition);
 		mPosition.y -= mDamageHeight * 0.5f;
 
@@ -311,10 +311,10 @@ BOOL TBGEyeHit::receiveMessage(THitActor* sender, u32 message)
 	return mOwner->receiveMessage(sender, message);
 }
 
-void TBGEyeHit::perform(u32 cue, JDrama::TGraphics* graphics)
+void TBGEyeHit::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	THitActor::perform(cue, graphics);
-	if (cue & CUE_CALC_ANIM)
+	THitActor::perform(param_1, param_2);
+	if (param_1 & 2)
 		mOwner->getJointTransByIndex(mJointIndex, &mPosition);
 }
 
@@ -342,11 +342,11 @@ BOOL TBGBodyHit::receiveMessage(THitActor* sender, u32 message)
 	return mOwner->receiveMessage(sender, message);
 }
 
-void TBGBodyHit::perform(u32 cue, JDrama::TGraphics* graphics)
+void TBGBodyHit::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (cue & CUE_CALC_ANIM)
+	if (param_1 & 2)
 		mOwner->getJointTransByIndex(mJointIndex, &mPosition);
-	THitActor::perform(cue, graphics);
+	THitActor::perform(param_1, param_2);
 }
 
 TBossGessoMtxCalc::TBossGessoMtxCalc(TBossGesso* owner)
@@ -541,19 +541,7 @@ void TBGCork::crush()
 	unkC = 1;
 }
 
-void TBGCork::perform(u32 cue, JDrama::TGraphics* graphics)
-{
-	MActor* cork;
-	if (unkC == 0) {
-		cork = unk4;
-		if (cue & CUE_CALC_ANIM)
-			cork->getModel()->setBaseTRMtx(mOwner->getModel()->getAnmMtx(27));
-	} else {
-		cork = unk8;
-	}
-
-	cork->perform(cue, graphics);
-}
+void TBGCork::perform(u32, JDrama::TGraphics*) { }
 
 TBossGesso::TBossGesso(const char* name)
     : TSpineEnemy(name)
@@ -1268,193 +1256,7 @@ void TBossGesso::calcRootMatrix()
 
 void TBossGesso::performInContainer(u32, JDrama::TGraphics*) { }
 
-void TBossGesso::perform(u32 cue, JDrama::TGraphics* graphics)
-{
-	if (cue & CUE_CALC_ANIM) {
-		if (mBeak->getHolder() != nullptr || tentacleHeld()) {
-			if (gpMarioOriginal->mIntendedMag > 0.1f) {
-				SMSGetMSound()->startSoundActor(MSD_SE_BS_GESO_PULL, &mPosition,
-				                                0, nullptr, 0, 4);
-			}
-		}
-	}
-
-	if (cue & CUE_MOVE) {
-		if (!unk1A0 && !is2ndFightNow() && mAttackMode == 6) {
-			JGeometry::TVec3<f32> toMario = SMS_GetMarioPos();
-			toMario -= mPosition;
-
-			if (toMario.squared() < 4000000.0f) {
-				unk19C++;
-				if (unk19C >= 1200) {
-					showMessage(0xE0004);
-					unk1A0 = 1;
-				}
-			}
-		}
-
-		if (mBeak->getHolder() != nullptr
-		    && mTimeInCurrentAttackMode % 4 == 0) {
-			rumblePad(1, mBeak->mPosition);
-		}
-
-		if (unk1AC > 0)
-			unk1AC--;
-
-		if (unk1AE > 0)
-			unk1AE--;
-	}
-
-	if (mAttackMode == 6) {
-		if (cue & CUE_CALC_ANIM) {
-			if (JDrama::TNameRefGen::search<THitActor>("container")
-			    == nullptr) {
-				changeAttackMode(0);
-			} else if (mTentacles[0]->mState != 4) {
-				JGeometry::TVec3<f32> pos(11603.0f, 2114.3f, 2411.4f);
-				mTentacles[0]->mNodes[0].setPosition(pos);
-				pos.x = 11510.0f;
-				mTentacles[0]->mNodes[1].setPosition(pos);
-			}
-		}
-
-		mTentacles[0]->testPerform(cue, graphics);
-		return;
-	}
-
-	if (cue & CUE_ENTRY) {
-		if (mSpine->getLatestNerve() == &TNerveBGBeakDamage::theNerve()) {
-			SMS_AddDamageFogEffect(mMActor->getModel()->getModelData(),
-			                       mPosition, graphics);
-		} else {
-			SMS_ResetDamageFogEffect(mMActor->getModel()->getModelData());
-		}
-
-		mMActor->getModel()
-		    ->getModelData()
-		    ->getMaterialNodePointer(0)
-		    ->getTevBlock()
-		    ->setTevKColor(0, &unk190);
-	}
-
-	TSpineEnemy::perform(cue, graphics);
-	mPolDrop->testPerform(cue, graphics);
-
-	if (mLiveFlag & LIVE_FLAG_DEAD)
-		return;
-
-	if (cue & CUE_CALC_ANIM) {
-		if (unk194 > 0) {
-			gpMarioParticleManager->emitAndBindToMtxPtr(
-			    BGESO_JPA_MS_BOGE_WASH, getModel()->getAnmMtx(0), 1, this);
-			unk194--;
-		}
-	}
-
-	mCork->perform(cue, graphics);
-
-	if (cue & CUE_CALC_VIEW) {
-		TCircleShadowRequest request;
-
-		MtxPtr joint = mMActor->getModel()->getAnmMtx(1);
-		request.unk0
-		    = JGeometry::TVec3<f32>(joint[0][3], mPosition.y, joint[2][3]);
-
-		JGeometry::TVec3<f32> right(joint[0][0], joint[1][0], joint[2][0]);
-		JGeometry::TVec3<f32> front(joint[0][2], joint[1][2], joint[2][2]);
-
-		request.unkC  = VECMag(right);
-		request.unk10 = VECMag(front);
-		request.unkC *= mScaledBodyRadius;
-		request.unk10 *= mScaledBodyRadius;
-		request.unk1C = getShadowType();
-		request.unk14 = mRotation.y;
-
-		gpBindShadowManager->request(request, getActorType());
-	}
-
-	mBeak->testPerform(cue, graphics);
-	mLeftEye->testPerform(cue, graphics);
-	mRightEye->testPerform(cue, graphics);
-	mBody->testPerform(cue, graphics);
-
-	if (cue & CUE_MOVE) {
-		mMtxCalc->unk50 += -unk188;
-		if (mMtxCalc->unk50 < 0.0f)
-			mMtxCalc->unk50 = 0.0f;
-		else if (mMtxCalc->unk50 > 1.0f)
-			mMtxCalc->unk50 = 1.0f;
-	}
-
-	if (unk17C) {
-		if (cue & CUE_CALC_ANIM) {
-			MTXCopy(mMActor->getModel()->getBaseTRMtx(),
-			        unk178->getModel()->getBaseTRMtx());
-			unk178->calcAnm();
-		}
-
-		if (cue & CUE_ENTRY)
-			gpPollution->stampModel(unk178->getModel());
-	}
-
-	if (cue & CUE_CALC_ANIM) {
-		if (mLiveFlag & LIVE_FLAG_CLIPPED_OUT) {
-			for (int i = 0; i < TENTACLE_NUM; ++i) {
-				if (mTentacles[i]->mState != 4)
-					mTentacles[i]->mNodes[0].setPosition(mPosition);
-			}
-		} else {
-			static const int rootJoints[] = { 2, 3, 5, 6 };
-
-			for (int i = 0; i < TENTACLE_NUM; ++i) {
-				if (mTentacles[i]->mState == 4)
-					continue;
-
-				JGeometry::TVec3<f32> trans;
-				if (getJointTransByIndex(rootJoints[i], &trans) >= 0)
-					mTentacles[i]->mNodes[0].setPosition(trans);
-			}
-		}
-	}
-
-	for (int i = 0; i < TENTACLE_NUM; ++i) {
-		if (cue & CUE_ENTRY) {
-			if (mSpine->getLatestNerve() == &TNerveBGBeakDamage::theNerve()) {
-				mTentacles[i]->unk2C->offMakeDL();
-				SMS_AddDamageFogEffect(
-				    mTentacles[i]->unk2C->getModel()->getModelData(), mPosition,
-				    graphics);
-			} else {
-				SMS_ResetDamageFogEffect(
-				    mTentacles[i]->unk2C->getModel()->getModelData());
-			}
-		}
-
-		mTentacles[i]->testPerform(cue, graphics);
-	}
-
-	if (cue & CUE_CALC_ANIM) {
-		if (mMActor->checkCurBckFromIndex(14)
-		    || mMActor->checkCurBckFromIndex(15)) {
-			f32 len = lenFromToeToMario();
-			SMSGetMSound()->startSoundActorWithInfo(MSD_SE_BS_GESO_ROLL,
-			                                        &mPosition, nullptr, len, 0,
-			                                        0, nullptr, 0, 4);
-		}
-	}
-
-	if (cue & CUE_MOVE) {
-		if (mBeak->getHolder() != nullptr && unk190.color.a == 0) {
-			int left  = mTentacles[1]->mState;
-			int right = mTentacles[3]->mState;
-
-			if (!((left == 4 || left == 6 || left == 3)
-			      && (right == 4 || right == 6 || right == 3))) {
-				gpMarDirector->mConsole->startAppearBalloon(0xE0003, true);
-			}
-		}
-	}
-}
+void TBossGesso::perform(u32, JDrama::TGraphics*) { }
 
 TBossGessoManager::TBossGessoManager(const char* name)
     : TEnemyManager(name)

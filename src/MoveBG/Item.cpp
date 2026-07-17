@@ -158,12 +158,12 @@ void TItem::appear()
 	offMapObjFlag(MAP_OBJ_FLAG_DISAPPEARING);
 }
 
-void TItem::perform(u32 cue, JDrama::TGraphics* graphics)
+void TItem::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	if (checkLiveFlag(LIVE_FLAG_DEAD))
 		return;
 
-	if ((cue & CUE_MOVE) && checkHitFlag(HIT_FLAG_NO_COLLISION)
+	if ((param_1 & 1) && checkHitFlag(HIT_FLAG_NO_COLLISION)
 	    && !isStateTimerEngaged()) {
 		offHitFlag(HIT_FLAG_NO_COLLISION);
 		if (!checkMapObjFlag(MAP_OBJ_FLAG_UNK10000000)) {
@@ -172,7 +172,7 @@ void TItem::perform(u32 cue, JDrama::TGraphics* graphics)
 		}
 	}
 
-	TMapObjGeneral::perform(cue, graphics);
+	TMapObjGeneral::perform(param_1, param_2);
 }
 
 void TItem::initMapObj()
@@ -258,12 +258,12 @@ void TCoin::makeObjAppeared()
 		unk154->mFlags &= ~1;
 }
 
-void TCoin::perform(u32 cue, JDrama::TGraphics* graphics)
+void TCoin::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	if (checkLiveFlag(LIVE_FLAG_DEAD))
 		return;
 
-	if ((cue & CUE_MOVE) && checkLiveFlag(LIVE_FLAG_UNK10)) {
+	if ((param_1 & 1) && checkLiveFlag(LIVE_FLAG_UNK10)) {
 
 		if (gpMarDirector->isTalkModeNow() && !gpMarDirector->isDemoModeNow())
 			return;
@@ -291,11 +291,11 @@ void TCoin::perform(u32 cue, JDrama::TGraphics* graphics)
 				touchActor(mCollisions[i]);
 
 	} else {
-		if ((cue & CUE_CALC_VIEW) && getMActor() == nullptr) {
+		if ((param_1 & 4) && getMActor() == nullptr) {
 			gpQuestionManager->request(mPosition, 60.0f);
 		}
 
-		TItem::perform(cue, graphics);
+		TItem::perform(param_1, param_2);
 	}
 }
 
@@ -500,91 +500,340 @@ void TShine::movingCircle()
 	mRotation.y += 7.0f;
 	MsWrap(mRotation.y, 0.0f, 360.0f);
 
-// Native port of TShine::kill (@0x801bced0). 13 instructions.
-// Chains TMapObjGeneral::kill, then sets unk154 = 1 — which is the
-// "self-schedule dead" flag consumed by TShine::loadAfter (unk154==1 →
-// virtual makeObjDead dispatch on the next scene load).
+	if (!isStateTimerEngaged()) {
+		unk16C      = 7.0f;
+		mStateTimer = unk178;
+		mState      = STATE_UNKF;
+	}
+}
+
+void TShine::movingUp()
+{
+	mPosition.y += mUpSpeed;
+	if (isStateTimerEngaged())
+		return;
+
+	if (unk154 == 3) {
+		mStateTimer = unk170;
+		mState      = STATE_MOVING_DOWN;
+	} else {
+		unk164      = mPosition.y;
+		mStateTimer = unk168;
+		mState      = STATE_MOVING_CIRCLE;
+	}
+}
+
+void TShine::movingDown()
+{
+	mPosition.y -= mUpSpeed;
+	if (isStateTimerEngaged())
+		return;
+	unk16C      = 7.0f;
+	mStateTimer = unk178;
+	mState      = STATE_UNKF;
+}
+
+void TShine::control()
+{
+	if (!isState(0x10))
+		TMapObjGeneral::control();
+
+	if (isState(0x10)) {
+		mPosition.set(SMS_GetMarioPos());
+		return;
+	}
+
+	switch (mState) {
+	case STATE_NORMAL: {
+		mRotation.y += unk16C;
+		if (gpMSound->gateCheck(MSD_SE_SHINE_EXIST))
+			MSoundSESystem::MSoundSE::startSoundActor(
+			    MSD_SE_SHINE_EXIST, &mPosition, 0, nullptr, 0, 4);
+
+		J3DModel* model      = getMActor()->getModel();
+		MtxPtr mtx           = model->getAnmMtx(2);
+		const GXColor& color = (GXColor) { 0xff, 0xff, 0xff, 0xff };
+		JGeometry::TVec3<f32> trans(mtx[0][3], mtx[1][3], mtx[2][3]);
+		TLightWithDBSetManager* mgr = gpLightManager;
+
+		mgr->mEffectColor.r = color.r;
+		mgr->mEffectColor.g = color.g;
+		mgr->mEffectColor.b = color.b;
+		mgr->mEffectColor.a = color.a;
+
+		mgr->mEffectEnabled = 1;
+
+		mgr = gpLightManager;
+		mgr->mEffectPos.set(trans);
+		mgr->mEffectEnabled = 1;
+	} break;
+
+	case STATE_UNKB:
+		if (isStateTimerEngaged())
+			break;
+		unkF8 &= 0xF7FFFEFF;
+		mStateTimer = unk170;
+		mState      = STATE_MOVING_UP;
+		break;
+
+	case STATE_MOVING_UP:
+		if (gpMSound->gateCheck(MSD_SE_SHINE_EXIST))
+			MSoundSESystem::MSoundSE::startSoundActor(
+			    MSD_SE_SHINE_EXIST, &mPosition, 0, nullptr, 0, 4);
+		movingUp();
+		break;
+
+	case STATE_MOVING_DOWN:
+		if (gpMSound->gateCheck(MSD_SE_SHINE_EXIST))
+			MSoundSESystem::MSoundSE::startSoundActor(
+			    MSD_SE_SHINE_EXIST, &mPosition, 0, nullptr, 0, 4);
+		movingDown();
+		break;
+
+	case STATE_MOVING_CIRCLE:
+		if (gpMSound->gateCheck(MSD_SE_SHINE_EXIST))
+			MSoundSESystem::MSoundSE::startSoundActor(
+			    MSD_SE_SHINE_EXIST, &mPosition, 0, nullptr, 0, 4);
+		movingCircle();
+		break;
+
+	case STATE_UNKF: {
+		if (gpMSound->gateCheck(MSD_SE_SHINE_EXIST))
+			MSoundSESystem::MSoundSE::startSoundActor(
+			    MSD_SE_SHINE_EXIST, &mPosition, 0, nullptr, 0, 4);
+		if (mPosition.y > mInitialPosition.y) {
+			mPosition.y += unk188;
+			unk188 *= mSpeedDownRate;
+		} else {
+			mPosition.y = mInitialPosition.y;
+		}
+		if (unk16C > 2.0f)
+			unk16C -= 0.1f;
+		else
+			unk16C = 2.0f;
+		mRotation.y += unk16C;
+		// Huh? Result discarded?
+		MsWrap(mRotation.y, 0.0f, 360.0f);
+
+		if (isStateTimerEngaged())
+			break;
+		if (unkF8 & 0x20000000)
+			MSBgm::setTrackVolume(0, 1.0f, 10, 0);
+		offHitFlag(HIT_FLAG_NO_COLLISION);
+		mState = STATE_UNK11;
+	} break;
+
+	case STATE_UNK11: {
+		mRotation.y += unk16C;
+		// Huh? Result discarded?
+		MsWrap(mRotation.y, 0.0f, 360.0f);
+		if (SMSGetMSound()->gateCheck(MSD_SE_SHINE_EXIST))
+			MSoundSESystem::MSoundSE::startSoundActor(
+			    MSD_SE_SHINE_EXIST, &mPosition, 0, nullptr, 0, 4);
+	} break;
+
+	case STATE_UNK12: {
+		if (gpCamera->isDemoCamera())
+			break;
+		if (isStateTimerEngaged())
+			break;
+		appearWithDemo("シャイン（いきなり出現）カメラ");
+		mState = STATE_UNK11;
+	} break;
+	}
+}
+
+void TShine::perform(u32 param_1, JDrama::TGraphics* param_2)
+{
+	if ((param_1 & 2) && !checkLiveFlag(LIVE_FLAG_DEAD)) {
+		if (!isState(STATE_NORMAL))
+			offLiveFlag(LIVE_FLAG_UNK200);
+	}
+	TMapObjGeneral::perform(param_1, param_2);
+}
+
+BOOL TShine::receiveMessage(THitActor* sender, u32 message)
+{
+	unkF8 &= 0xF7FFFFFF;
+	mPosition.set(SMS_GetMarioPos());
+	mRotation.y = 180.0f * (f32)*gpMarioAngleY / 32768.0f;
+
+	MsMtxSetXYZRPH(getModel()->getBaseTRMtx(), mPosition.x,
+	               mPosition.y - mYOffset, mPosition.z, mRotation.x,
+	               mRotation.y, mRotation.z);
+
+	if (SMS_IsMarioOnYoshi()) {
+		if (unk1B4)
+			getMActor()->setBck("shine_empty_demo_shine_get_yo");
+		else
+			getMActor()->setBck("shine_demo_shine_get_yo");
+	} else {
+		if (unk1B4)
+			getMActor()->setBck("shine_empty_demo_shine_get");
+		else
+			getMActor()->setBck("shine_demo_shine_get");
+	}
+
+	unk1A8.set(0.5f, 0.5f, 0.5f);
+	mState = STATE_UNK10;
+	return TRUE;
+}
+
+void TShine::touchPlayer(THitActor* actor)
+{
+	actor->receiveMessage(this, HIT_MESSAGE_ATTACK);
+	TLightWithDBSetManager* mgr = gpLightManager;
+	mgr->mEffectPos.set(200000.0f, 500000.0f, 200000.0f);
+	if (gpMSound->gateCheck(MSD_SE_SY_GET_SHINE))
+		MSoundSESystem::MSoundSE::startSoundActor(MSD_SE_SY_GET_SHINE,
+		                                          mPosition, 0, nullptr, 0, 4);
+	getMActor()->setBck("shine_float");
+	onHitFlag(HIT_FLAG_NO_COLLISION);
+}
+
+void TShine::appearWithTime(int param_1, int param_2, int param_3, int param_4)
+{
+	TMapObjGeneral::appear();
+	onHitFlag(HIT_FLAG_NO_COLLISION);
+	mStateTimer = unk150;
+	offMapObjFlag(MAP_OBJ_FLAG_DISAPPEARING);
+	TFlagManager::smInstance->setBool(true, 0x50000);
+
+	if (param_2 >= 0)
+		unk174 = param_2;
+	if (param_3 >= 0)
+		unk170 = param_3;
+	if (param_4 >= 0)
+		unk178 = param_4;
+
+	unk168 = param_1 - (unk174 + unk170 + unk178);
+	unk158 = 0.0f;
+
+	f32 yDelta = mInitialPosition.y - (mUpSpeed * (f32)unk170 + mPosition.y);
+
+	unk17C.x = (mInitialPosition.x - mPosition.x) / (f32)unk168;
+	unk17C.y = yDelta / (f32)unk168;
+	unk17C.z = (mInitialPosition.z - mPosition.z) / (f32)unk168;
+
+	unk15C = getDistanceXZ(mInitialPosition);
+	if (unk15C == 0.0f)
+		unk15C = 1000.0f;
+	if (yDelta > 0.0f)
+		unk15C += fabsf(yDelta);
+	unk160 = unk15C * mCircleRateY;
+
+	if (SMSGetMSound()->gateCheck(MSD_SE_SHINE_APPEAR))
+		MSoundSESystem::MSoundSE::startSoundActor(MSD_SE_SHINE_APPEAR,
+		                                          mPosition, 0, nullptr, 0, 4);
+
+	mStateTimer = unk174;
+	mState      = STATE_UNKB;
+	onHitFlag(HIT_FLAG_NO_COLLISION);
+}
+
+s32 TShine::appearWithTimeCallback(u32 param_1, u32 param_2)
+{
+	TShine* shine = (TShine*)param_1;
+	if (param_2 == 0) {
+		shine->appearWithTime(shine->unk18C, -1, -1, -1);
+		gpMarDirector->unk4E |= 1;
+	} else if (param_2 == 1) {
+		gpMarDirector->unk4E &= ~1;
+	}
+	return 0;
+}
+
+void TShine::appearSimple(int param_1)
+{
+	TMapObjGeneral::appear();
+	onHitFlag(HIT_FLAG_NO_COLLISION);
+	mStateTimer = unk150;
+	offMapObjFlag(MAP_OBJ_FLAG_DISAPPEARING);
+	TFlagManager::smInstance->setBool(true, 0x50000);
+
+	unk174   = 60;
+	unk170   = param_1;
+	unk178   = 60;
+	unk154   = 3;
+	unk158   = 0.0f;
+	unk15C   = 0.0f;
+	unk160   = 0.0f;
+	mUpSpeed = 2.0f;
+
+	mInitialPosition = mPosition;
+
+	if (SMSGetMSound()->gateCheck(MSD_SE_SHINE_APPEAR))
+		MSoundSESystem::MSoundSE::startSoundActor(MSD_SE_SHINE_APPEAR,
+		                                          mPosition, 0, nullptr, 0, 4);
+
+	mStateTimer = unk174;
+	mState      = STATE_UNKB;
+	onHitFlag(HIT_FLAG_NO_COLLISION);
+}
+
+void TShine::appearWithDemo(const char* param_1)
+{
+	unk18C = JDrama::TNameRefGen::instance->search<TCameraMapTool>(param_1)
+	             ->mDemoLengthFrames;
+	SMSGetMarDirector()->fireStartDemoCamera(
+	    param_1, &mPosition, -1, 0.0f, true, appearWithTimeCallback, (u32)(uintptr_t)this,
+	    nullptr, JDrama::TFlagT<u16>());
+}
+
 void TShine::kill()
 {
 	TMapObjGeneral::kill();
 	unk154 = 1;
 }
 
-// Native port of TShine::makeMActors (@0x801bcdd4). Allocates a TMActorKeeper
-// (single-slot: mActorNum=1) with mModelLoaderFlags=0x10220000, then picks the
-// bmd to bind: if the shine's ID has already been collected AND this instance is
-// the Mani-shop's placeholder (「シャイン（マニ屋用）」), use "shine_empty.bmd"
-// and latch unk1B4=1; otherwise use "shine.bmd". mMActor is the initMActor
-// result in both branches. Pure decision spec + tests: native/render/
-// sms_boot_shine.h (sb::shine_make_mactors) + shine_test's makeMActors block.
 void TShine::makeMActors()
 {
-	mMActorKeeper                       = new TMActorKeeper(mManager, 1);
-	mMActorKeeper->mModelLoaderFlags    = 0x10220000;
-
-	if (TFlagManager::getInstance()->getShineFlag(static_cast<u8>(unk134))
-	    && strcmp("シャイン（マニ屋用）", mName) == 0) {
-		mMActor  = initMActor("shine_empty.bmd", nullptr, getSDLModelFlag());
-		unk1B4   = 1;
+	mMActorKeeper                    = new TMActorKeeper(mManager, 1);
+	mMActorKeeper->mModelLoaderFlags = J3DMLF_MaterialPEFull
+	                                   | J3DMLF_UseUniqueMaterials
+	                                   | (2 << J3DMLF_TevStageNumShift);
+	MActor* result;
+	if (TFlagManager::smInstance->getShineFlag(mEventId)
+	    && strcmp("シャイン（１００枚コイン用）", getName()) != 0) {
+		result = initMActor("shine_empty.bmd", nullptr, getSDLModelFlag());
+		unk1B4 = 1;
 	} else {
-		mMActor  = initMActor("shine.bmd", nullptr, getSDLModelFlag());
+		result = initMActor("shine.bmd", nullptr, getSDLModelFlag());
 	}
+	mMActor = result;
 }
 
-// Native port of TShine::initMapObj (@0x801bcd70). シャイン ("Shine") — the
-// game's collectible sun/star. Chains to TMapObjGeneral::initMapObj, then
-// seeds a fixed block of per-instance defaults. Byte-verified against the
-// RE at scratch/disasm.py 0x801bcd70:
-//   unk14C=0x1e0 (480), unk150=0x78 (120), unk1A4=0, {unk1A8,unk1AC,unk1B0}=0.0f,
-//   unk170=0xf0 (240), unk174=0, unk178=0xf0.
 void TShine::initMapObj()
 {
-	TMapObjGeneral::initMapObj();
-	unk14C = 0x1e0;
-	unk150 = 0x78;
-	unk1A4[0] = 0;
-	unk1A8 = 0.0f;
-	unk1AC = 0.0f;
-	unk1B0 = 0.0f;
-	unk170 = 0xf0;
+	TItem::initMapObj();
+	unk1A4 = 0;
+	unk1A8.set(1.0f, 1.0f, 1.0f);
+	unk170 = 240;
 	unk174 = 0;
-	unk178 = 0xf0;
+	unk178 = 240;
 }
 
-// Native port of TShine::loadAfter (@0x801bcd08). 26 instructions.
-// Chains TMapObjGeneral::loadAfter, then a 2-branch dispatch on unk154:
-//   * unk154 == 2 → mTimeTilAppear = 0xf0 (240 frames), mState = 0x12 (18).
-//   * unk154 == 1 → virtual call vtable[0x104] = makeObjDead (session-11
-//     memory: [[session11-mapobjbase-vtable-slot-0x104]]).
-//   * anything else → no-op after base loadAfter.
 void TShine::loadAfter()
 {
 	TMapObjGeneral::loadAfter();
 	if (unk154 == 2) {
-		setTimeTilAppear(0xf0);
-		setState(0x12);
+		mStateTimer = 240;
+		mState      = STATE_UNK12;
 	} else if (unk154 == 1) {
 		makeObjDead();
 	}
 }
 
-// Native port of TShine::loadBeforeInit (@0x801bcc18). 40 instructions.
-// Reads three scene-stream params: a 32-byte name tag mapped to unk154
-// (0=normal, 2=quickly, 1=other), a signed s32 "wait time" defaulted
-// to 0x78 when -1 (→ unk134), and a signed s32 toggle with a
-// (val+1)<2 clamp yielding u8 unk190. Byte-verified against disasm.
 void TShine::loadBeforeInit(JSUMemoryInputStream& stream)
 {
-	char name_buf[32];
-	stream.readString(name_buf, 32);
-
-	if (strcmp(name_buf, "normal") == 0) {
+	char name[0x20];
+	stream.readString(name, sizeof(name));
+	if (strcmp("normal", name) == 0)
 		unk154 = 0;
-	} else if (strcmp(name_buf, "quickly") == 0) {
+	else if (strcmp("quickly", name) == 0)
 		unk154 = 2;
-	} else {
+	else
 		unk154 = 1;
-	}
 
 	s32 eventId;
 	stream.read(&eventId, 4);
@@ -775,17 +1024,17 @@ void TEggYoshi::control()
 	}
 }
 
-void TEggYoshi::perform(u32 cue, JDrama::TGraphics* graphics)
+void TEggYoshi::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	TMapObjGeneral::perform(cue, graphics);
+	TMapObjGeneral::perform(param_1, param_2);
 
 	if (!isState(0xC) && !isState(STATE_DEAD) && !isState(STATE_HOLDING)
 	    && !isState(STATE_APPEARING) && !isState(0xE) && !isState(0xF)
 	    && !isState(0x10)) {
-		if (cue & CUE_CALC_ANIM)
+		if (param_1 & 2)
 			unk148->getModel()->setBaseTRMtx(getModel()->getAnmMtx(0));
 
-		unk148->perform(cue, graphics);
+		unk148->perform(param_1, param_2);
 	}
 }
 
@@ -880,39 +1129,29 @@ void TItemNozzle::touchPlayer(THitActor* param_1)
 	if (isState(STATE_HOLDING))
 		return;
 
-// Native port of TItemNozzle::put (@0x801bbcf4). 6 instructions:
-// clear THitActor::unk64 bit 0 (rlwinm r,r,0,0,30 = &= ~1u), set mState = 1.
-void TItemNozzle::put()
-{
-	unk64 &= ~0x1u;
-	setState(1);
-}
+	if (SMS_IsMarioOnYoshi())
+		return;
 
 	if ((param_1->isActorType(0x80000001) || param_1->isActorType(0x8000083))
 	    && !checkHitFlag(HIT_FLAG_NO_COLLISION))
 		taken(param_1);
 
-// Native port of TItemNozzle::appearing (@0x801bbc0c). 9 instructions:
-// if the LIVE_FLAG_UNK10 bit is clear on mLiveFlag, return early;
-// otherwise setState(1) and clear unk64 bit 0. Byte-verified against
-// the rlwinm-0-27-27 mask (PPC bit 27 = host mask 0x10).
-void TItemNozzle::appearing()
-{
-	if (!checkLiveFlag(LIVE_FLAG_UNK10))
-		return;
-	setState(1);
-	unk64 &= ~0x1u;
-}
+	int boxKind;
+	if (isActorType(0x2000001F))
+		boxKind = 4;
+	else if (isActorType(0x20000022))
+		boxKind = 1;
+	else if (isActorType(0x2000002A))
+		boxKind = 5;
+	else
+		boxKind = 4;
 
-// Native port of TItemNozzle::control (@0x801bbbec). RE via scratch/disasm.py.
-// ノズル ("nozzle") item — a pickup that swaps Mario's spray head. Per-tick behavior is
-// nothing more than delegating to TMapObjGeneral::control (the standard held/thrown/sinking
-// state machine). TItem inherits TMapObjGeneral directly and neither TItem nor TItemNozzle
-// overrides control between them, so the RE emits a bare `bl 0x801b35f8` (TMapObjGeneral).
-//
-// SDA scan (tools/dol_sda.py 0x801bbbec): no references.
-// Dispatch-only port; the pure logic is a single delegation. No spec test.
-void TItemNozzle::control() { TMapObjGeneral::control(); }
+	if (SMSGetMSound()->gateCheck(0x484E))
+		MSoundSESystem::MSoundSE::startSoundActor(0x484E, mPosition, 0, nullptr,
+		                                          0, 4);
+	gpItemManager->resetNozzleBoxesModel(boxKind);
+	gpMarDirector->fireGetNozzle(this);
+}
 
 void TItemNozzle::put()
 {
@@ -949,20 +1188,10 @@ void TItemNozzle::appearing()
 
 void TItemNozzle::control() { TMapObjGeneral::control(); }
 
-// Native port of TNozzleBox::control (@0x801bb674). 22 instructions.
-// Chains to TMapObjGeneral::control, then a 3-guard predicate that
-// clears the unk166 "pending" latch iff (a) not in special state 4,
-// (b) unk166 was set, (c) no collisions this tick (mColCount == 0).
-void TNozzleBox::control()
+void TItemNozzle::initMapObj()
 {
-	TMapObjGeneral::control();
-	if (unk148 == 4)
-		return;
-	if (unk166 == 0)
-		return;
-	if (mColCount != 0)
-		return;
-	unk166 = 0;
+	TItem::initMapObj();
+	unk14C = 7200;
 }
 
 void TItemNozzle::load(JSUMemoryInputStream& stream)

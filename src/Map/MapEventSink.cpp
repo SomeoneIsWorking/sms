@@ -5,7 +5,6 @@
 #include <Map/MapStaticObject.hpp>
 #include <MoveBG/MapObjBase.hpp>
 #include <MoveBG/ItemManager.hpp>
-#include <Enemy/GateKeeper.hpp>
 #include <MarioUtil/RumbleMgr.hpp>
 #include <MarioUtil/DrawUtil.hpp>
 #include <M3DUtil/MActor.hpp>
@@ -33,10 +32,7 @@ TJointObj* TMapEventSink::getBuilding(int i) const
 	return unk1C->getChild(0)->getChild(i + unk24);
 }
 
-bool TMapEventSink::isBuried(int i) const
-{
-	return !mIsBuildingRecovered[i - unk24];
-}
+bool TMapEventSink::isBuried(int i) const { return !unk54[i - unk24]; }
 
 f32 TMapEventSink::getSinkOffsetY() const
 {
@@ -45,13 +41,14 @@ f32 TMapEventSink::getSinkOffsetY() const
 
 TPollutionObj* TMapEventSink::getPollutionObj(int i)
 {
-	return gpPollution->getLayer(unk60[i].unk0)->getObj(unk60[i].unk2);
+	return (TPollutionObj*)gpPollution->getJointModel(unk60[i].unk0)
+	    ->getChild(unk60[i].unk2);
 }
 
 bool TMapEventSink::isFinishedAll() const
 {
 	for (int i = 0; i < mBuildingNum; ++i)
-		if (!mIsBuildingRecovered[i])
+		if (!unk54[i])
 			return false;
 
 	return true;
@@ -67,15 +64,15 @@ void TMapEventSink::makeBuildingRecovered(int i)
 
 	unk5C[i]->remove();
 	unk58[i]->setUp();
-	mIsBuildingRecovered[i] = true;
+	unk54[i] = true;
 }
 
 void TMapEventSink::finishControl()
 {
-	makeBuildingRecovered(mRaisingBuildingIdx);
-	unk2C               = nullptr;
-	unk30               = nullptr;
-	mRaisingBuildingIdx = -1;
+	makeBuildingRecovered(unk28);
+	unk2C = nullptr;
+	unk30 = nullptr;
+	unk28 = -1;
 	if (strcmp("イベント（リコゲート）", mName) == 0)
 		MSMainProc::setBossLivesFlag2(false);
 	else
@@ -97,15 +94,14 @@ bool TMapEventSink::control()
 		rising();
 
 	const J3DTransformInfo& info = unk30->getTransformInfo();
-	unk5C[mRaisingBuildingIdx]->moveTrans(JGeometry::TVec3<f32>(
+	unk5C[unk28]->moveTrans(JGeometry::TVec3<f32>(
 	    info.mTranslate.x, info.mTranslate.y, info.mTranslate.z));
 
 	if (unk4C > unk48
-	    && (gpMarDirector->mMap != 2 || mIsBuildingRecovered[1 - unk24] == 0
-	        || mRaisingBuildingIdx != 1)) {
+	    && (gpMarDirector->mMap != 2 || unk54[1 - unk24] == 0 || unk28 != 1)) {
 		SMSRumbleMgr->start(0x13, (f32*)nullptr);
-		SMSGetMSound()->startSoundActor(
-		    MSD_SE_OBJ_QUAKE, unk50[mRaisingBuildingIdx], 0, nullptr, 0, 4);
+		SMSGetMSound()->startSoundActor(MSD_SE_OBJ_QUAKE, unk50[unk28], 0,
+		                                nullptr, 0, 4);
 	}
 
 	if (unk4C > 0) {
@@ -119,9 +115,9 @@ bool TMapEventSink::control()
 void TMapEventSink::startControl()
 {
 	unk18 = 2;
-	unk2C = getBuilding(getRaisingBuildingIdx());
+	unk2C = getBuilding(unk28);
 	unk2C->alive();
-	unk30 = getBuilding(getRaisingBuildingIdx())->getJoint();
+	unk30 = getBuilding(unk28)->getJoint();
 
 	J3DTransformInfo& info = unk30->getTransformInfo();
 	unk34                  = info.mTranslate.y;
@@ -140,7 +136,7 @@ void TMapEventSink::startControl()
 	unk3C     = dVar4 / iVar3;
 	unk4C     = unk40;
 
-	unk5C[mRaisingBuildingIdx]->moveTrans(JGeometry::TVec3<f32>(
+	unk5C[unk28]->moveTrans(JGeometry::TVec3<f32>(
 	    info.mTranslate.x, info.mTranslate.y, info.mTranslate.z));
 }
 
@@ -193,7 +189,7 @@ void TMapEventSink::load(JSUMemoryInputStream& stream)
 	mBuildingNum = stream.readU32();
 	initWithBuildingNum(stream);
 	for (int i = 0; i < mBuildingNum; ++i) {
-		mIsBuildingRecovered[i] = false;
+		unk54[i] = 0;
 		getBuilding(i)->kill();
 		initBuilding(i, stream);
 	}
@@ -209,31 +205,34 @@ void TMapEventSink::load(JSUMemoryInputStream& stream)
 TMapEventSink::TMapEventSink(const char* name)
     : TMapEvent(name)
 {
-	mBuildingNum         = 0;
-	unk24                = 0;
-	mRaisingBuildingIdx  = -1;
-	unk2C                = nullptr;
-	unk30                = nullptr;
-	unk34                = 0.0f;
-	unk38                = 0.0f;
-	unk3C                = 5.0f;
-	unk40                = 600;
-	unk44                = 0;
-	unk48                = 0;
-	unk4C                = 0;
-	unk50                = nullptr;
-	mIsBuildingRecovered = nullptr;
-	unk58                = nullptr;
-	unk5C                = nullptr;
-	unk60                = nullptr;
-	mCleanedDegree       = 10;
+	mBuildingNum   = 0;
+	unk24          = 0;
+	unk28          = -1;
+	unk2C          = nullptr;
+	unk30          = nullptr;
+	unk34          = 0.0f;
+	unk38          = 0.0f;
+	unk3C          = 5.0f;
+	unk40          = 600;
+	unk44          = 0;
+	unk48          = 0;
+	unk4C          = 0;
+	unk50          = nullptr;
+	unk54          = nullptr;
+	unk58          = nullptr;
+	unk5C          = nullptr;
+	unk60          = nullptr;
+	mCleanedDegree = 10;
 }
 
 bool TMapEventSinkInPollution::watch()
 {
 	for (int i = 0; i < mBuildingNum; ++i) {
-		if (!mIsBuildingRecovered[i] && getPollutionObj(i)->isCleaned()) {
-			mRaisingBuildingIdx = i;
+		if (!unk54[i]
+		    && gpPollution->getLayer(unk60[i].unk0)
+		           ->getObj(unk60[i].unk2)
+		           ->isCleaned()) {
+			unk28 = i;
 			return true;
 		}
 	}
@@ -242,104 +241,113 @@ bool TMapEventSinkInPollution::watch()
 
 void TMapEventSinkInPollution::initBuriedBuilding()
 {
-	for (int i = 0; i < mBuildingNum; ++i)
-		if (getPollutionObj(i)->isCleaned())
+	for (int i = 0; i < mBuildingNum; ++i) {
+		if (gpPollution->getLayer(unk60[i].unk0)
+		        ->getObj(unk60[i].unk2)
+		        ->isCleaned()) {
 			makeBuildingRecovered(i);
+		}
+	}
 }
 
 void TMapEventSinkInPollution::loadAfter()
 {
 	TMapEventSink::loadAfter();
 	for (int i = 0; i < mBuildingNum; ++i) {
-		gpPollution->getCounterObj().registerPollutionObj(
-		    getPollutionObj(i), &getPollutionObj(i)->mCounter);
+		TPollutionObj* obj
+		    = gpPollution->getLayer(unk60[i].unk0)->getObj(unk60[i].unk2);
+		gpPollution->getCounterObj().registerPollutionObj(obj, &obj->mCounter);
 	}
 }
 
-TPollutionObj* TMapEventSinkInPollutionReset::getResetPollutionObj(int i)
-{
-	return gpPollution->getLayer(unk60[i].unk0)->getObj(unk60[i].unk2 + 1);
-}
+void TMapEventSinkInPollutionReset::getResetPollutionObj(int) { }
 
 void TMapEventSinkInPollutionReset::makeBuildingRecovered(int i)
 {
 	TMapEventSinkInPollution::makeBuildingRecovered(i);
-	getPollutionObj(i)->kill();
-	getResetPollutionObj(i)->alive();
-	getResetPollutionObj(i)->updateDepthMap();
+	gpPollution->getLayer(unk60[i].unk0)->getObj(unk60[i].unk2)->kill();
+	gpPollution->getLayer(unk60[i].unk0)->getObj(unk60[i].unk2 + 1)->alive();
+	gpPollution->getLayer(unk60[i].unk0)
+	    ->getObj(unk60[i].unk2 + 1)
+	    ->updateDepthMap();
 }
 
 void TMapEventSinkInPollutionReset::loadAfter()
 {
 	TMapEventSinkInPollution::loadAfter();
 	for (int i = 0; i < mBuildingNum; ++i) {
-		getPollutionObj(i)->alive();
-		getResetPollutionObj(i)->kill();
+		gpPollution->getLayer(unk60[i].unk0)->getObj(unk60[i].unk2)->alive();
+		gpPollution->getLayer(unk60[i].unk0)->getObj(unk60[i].unk2 + 1)->kill();
 	}
 }
 
 void TMapEventSinkBianco::finishControl()
 {
 	char buffer[64];
-	if (mRaisingBuildingIdx == 0) {
+	if (unk28 == 0) {
 		TMapObjBase::setJointTransY(unk64, 0.0f);
 		for (int i = 0; i < 6; ++i) {
 			snprintf(buffer, 0x40, "バナナツリー（スケール） %d", i);
-			JDrama::TNameRefGen::search<TLiveActor>(buffer)->receiveMessage(
-			    gpModelWaterManager->unk2514[0], HIT_MESSAGE_SPRAYED_BY_WATER);
+			TLiveActor* bananaTree
+			    = (TLiveActor*)JDrama::TNameRefGen::getInstance()
+			          ->getRootNameRef()
+			          ->search(buffer);
+			bananaTree->receiveMessage(gpModelWaterManager->unk2514[0],
+			                           HIT_MESSAGE_SPRAYED_BY_WATER);
 		}
 
 		for (int i = 0; i < 7; ++i) {
 			snprintf(buffer, 0x40, "落書き内%02d", i);
-			JDrama::TNameRefGen::search<TLiveActor>(buffer)->receiveMessage(
-			    gpModelWaterManager->unk2514[0], HIT_MESSAGE_SPRAYED_BY_WATER);
+			TLiveActor* graffiti
+			    = (TLiveActor*)JDrama::TNameRefGen::getInstance()
+			          ->getRootNameRef()
+			          ->search(buffer);
+			graffiti->receiveMessage(gpModelWaterManager->unk2514[0],
+			                         HIT_MESSAGE_SPRAYED_BY_WATER);
 		}
 	}
 
 	TMapEventSinkInPollutionReset::finishControl();
 
-	for (int i = 0; i < gpPollution->getJointModelNum(); ++i)
-		gpPollution->getLayer(i)->stopDecay();
+	TPollutionManager* polman = gpPollution;
+	for (int i = 0; i < polman->getJointModelNum(); ++i)
+		polman->getLayer(i)->stopDecay();
 }
 
 void TMapEventSinkBianco::rising()
 {
 	TMapEventSinkInPollutionReset::rising();
-	if (mRaisingBuildingIdx == 0)
+	if (unk28 == 0)
 		TMapObjBase::moveJoint(unk64, 0.0f, unk3C, 0.0f);
 }
 
 bool TMapEventSinkBianco::control()
 {
-	if (mRaisingBuildingIdx == 0 && unk4C == unk7C) {
-		gpItemManager->makeShineAppearWithTime(
-		    "シャイン（坂上げ用）", 300, unk50[mRaisingBuildingIdx].x,
-		    unk50[mRaisingBuildingIdx].y, unk50[mRaisingBuildingIdx].z, 0, 0x3C,
-		    0x3C);
+	if (unk28 == 0 && unk4C == unk7C) {
+		gpItemManager->makeShineAppearWithTime("シャイン（坂上げ用）", 300,
+		                                       unk50[unk28].x, unk50[unk28].y,
+		                                       unk50[unk28].z, 0, 0x3C, 0x3C);
 	}
 	return TMapEventSinkInPollutionReset::control();
 }
 
 void TMapEventSinkBianco::startControl()
 {
-	switch (mRaisingBuildingIdx) {
+	switch (unk28) {
 	case 0: {
 		unk40 = 1320;
 		unk44 = 120;
 		unk48 = 600;
 		unk38 = 1700.0f;
-		JGeometry::TVec3<f32> zero(0.0f, 0.0f, 0.0f);
 		unk7C = 360;
-
-		gpMarioParticleManager->emit(MAP_MAP_MS_OBJUP_SLOPE_A, &zero, 0,
-		                             nullptr);
-		gpMarioParticleManager->emit(MAP_MAP_MS_OBJUP_SLOPE_B, &zero, 2,
-		                             nullptr);
+		JGeometry::TVec3<f32> zero;
+		zero.zero();
+		gpMarioParticleManager->emit(0x59, &zero, 0, nullptr);
+		gpMarioParticleManager->emit(0x1E1, &zero, 2, nullptr);
 		break;
 	}
-
 	case 1:
-		unk40 = 600;
+		unk40 = 60;
 		unk44 = 120;
 		unk48 = 120;
 		unk38 = 1500.0f;
@@ -347,51 +355,34 @@ void TMapEventSinkBianco::startControl()
 	}
 
 	TMapEventSinkInPollutionReset::startControl();
-
-	if (mRaisingBuildingIdx == 0) {
+	if (unk28 == 0) {
 		SMS_ShowJoint(unk64->getMesh(), true);
 		SMS_MarioWarpRequest(unk6C, unk78);
-		unk50[mRaisingBuildingIdx].set(7170.0f, 3675.0f, -185.0f);
-		SMSGetMarDirector()->fireStartDemoCamera(
-		    "bianco0_event0", nullptr, -1, 0.0f, true, nullptr, 0, nullptr,
-		    JDrama::TFlagT<u16>(0));
+		JGeometry::TVec3<f32>& v = unk50[unk28];
+		v.x                      = 7170.0f;
+		v.y                      = 3675.0f;
+		v.z                      = -185.0f;
+		gpMarDirector->fireStartDemoCamera("bianco0_event0", nullptr, -1, 0.0f,
+		                                   true, nullptr, 0, nullptr,
+		                                   JDrama::TFlagT<u16>(0));
 	}
 }
 
 bool TMapEventSinkBianco::watch()
 {
-	if (!mIsBuildingRecovered[0]
-	    && mGateKeeper->checkLiveFlag(LIVE_FLAG_DEAD)) {
-		mRaisingBuildingIdx = 0;
-		for (int i = 0; i < gpPollution->getJointModelNum(); ++i)
-			gpPollution->getLayer(i)->startDecay();
-		return true;
-	}
-
-	for (int i = 1; i < mBuildingNum; ++i) {
-		if (!mIsBuildingRecovered[i]) {
-			if (gpPollution->getLayer(unk60[i].unk0)
-			        ->getObj(unk60[i].unk2)
-			        ->isCleaned()) {
-				mRaisingBuildingIdx = i;
-				return true;
-			}
-		}
-	}
-
-	return false;
+	// TODO: mGateKeeper is likely TGateKeeperBase, which we don't have yet
 }
 
 void TMapEventSinkBianco::loadAfter()
 {
 	TMapEventSinkInPollutionReset::loadAfter();
+	TMapStaticObj* ref = (TMapStaticObj*)JDrama::TNameRef::search(
+	    "鏡内地形シャイン（坂上げ用）");
 
-	TMapStaticObj* ref = JDrama::TNameRefGen::search<TMapStaticObj>("鏡内地形");
-	unk64              = ref->getModelData()->getJointNodePointer(2);
+	unk64 = ref->getModelData()->getJointNodePointer(2);
 	TMapObjBase::moveJoint(unk64, 0.0f, -1700.0f, 0.0f);
 	SMS_ShowJoint(unk64->getMesh(), false);
-	mGateKeeper
-	    = JDrama::TNameRefGen::search<TGateKeeperBase>("ゲートキーパー");
+	mGateKeeper = JDrama::TNameRef::search("ゲートキーパー");
 }
 
 void TMapEventSinkBianco::load(JSUMemoryInputStream& stream)
@@ -416,15 +407,11 @@ void TMapEventSinkBianco::load(JSUMemoryInputStream& stream)
 	                 MAP_MAP_MS_OBJUP_SLOPE_B);
 }
 
-void TMapEventSinkShadowMario::rising()
-{
-	TMapEventSink::rising();
-	unk64[mRaisingBuildingIdx]->mPosition.y += unk3C;
-}
+void TMapEventSinkShadowMario::rising() { TMapEventSink::rising(); }
 
 void TMapEventSinkShadowMario::raiseBuilding(int i)
 {
-	mRaisingBuildingIdx = i;
+	unk28 = i;
 	startControl();
 }
 
@@ -432,10 +419,9 @@ void TMapEventSinkShadowMario::loadAfter()
 {
 	TMapEventSink::loadAfter();
 	for (int i = 0; i < mBuildingNum; ++i) {
-		unk64[i] = JDrama::TNameRefGen::search<JDrama::TPlacement>(unk68[i]);
-		TJointObj* obj = getBuilding(i);
-		unk64[i]->mPosition.y
-		    -= obj->getJoint()->getMax().y - obj->getJoint()->getMin().y;
+		unk64[i] = JDrama::TNameRef::search(unk68[i]);
+		// TODO: what is unk64?
+		getBuilding(i);
 	}
 }
 
@@ -448,6 +434,6 @@ void TMapEventSinkShadowMario::initBuilding(int i, JSUMemoryInputStream& stream)
 void TMapEventSinkShadowMario::initWithBuildingNum(JSUMemoryInputStream& stream)
 {
 	TMapEventSink::initWithBuildingNum(stream);
-	unk64 = new JDrama::TPlacement*[mBuildingNum];
+	unk64 = new JDrama::TNameRef*[mBuildingNum];
 	unk68 = new const char*[mBuildingNum];
 }

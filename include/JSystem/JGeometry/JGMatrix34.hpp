@@ -63,9 +63,8 @@ public:
 	}
 
 	typedef f32 ArrType[4];
-	typedef const f32 ConstArrType[4];
-	operator ArrType*() { return mMtx; }            // Real!
-	operator ConstArrType*() const { return mMtx; } // fabricated
+	operator ArrType*() { return mMtx; } // Real!
+	operator const ArrType*() const { return mMtx; }
 
 	void set(ConstArrType* src)
 	{

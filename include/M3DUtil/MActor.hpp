@@ -51,7 +51,7 @@ public:
 	void setAnimation(const char* name, int type);
 	void initDL();
 	void resetDL();
-	void initDLByIndex(u16);
+	void initDLByIndex(unsigned short);
 	void unlockDLIfNeed();
 	void onMakeDL();
 	void offMakeDL();
@@ -63,23 +63,23 @@ public:
 	void calc();
 	void viewCalc();
 	void loadSetDeformData(const char*);
-	void setLightID(s16);
+	void setLightID(short);
 	void setLightData(const TBGCheckData*, const JGeometry::TVec3<f32>&);
 	void setLightType(int);
 	void update();
 	void entry();
 	void frameUpdate();
 	void matAnmFrameUpdate();
-	void perform(u32 cue, JDrama::TGraphics* graphics);
-	BOOL checkCurAnm(const char* name, int type);
-	bool checkCurAnmFromIndex(int index, int type);
-	bool checkAnmFileExist(const char* name, int type);
-	J3DFrameCtrl* getFrameCtrl(int type);
-	BOOL checkBckPass(f32 pass_frame);
-	int getCurAnmIdx(int type) const;
-	void setFrameRate(f32 rate, int type);
-	void setBck(const char* name);
-	void setBckFromIndex(int index);
+	void perform(u32, JDrama::TGraphics*);
+	BOOL checkCurAnm(const char*, int);
+	bool checkCurAnmFromIndex(int, int);
+	bool checkAnmFileExist(const char*, int);
+	J3DFrameCtrl* getFrameCtrl(int);
+	BOOL checkBckPass(float);
+	int getCurAnmIdx(int) const;
+	void setFrameRate(float, int);
+	void setBck(const char*);
+	void setBckFromIndex(int);
 	void setSubBckFromIndex(int, int);
 	BOOL checkCurBckFromIndex(int);
 	void setSubBck(const char*, const char*);
@@ -151,14 +151,6 @@ public:
 			return;
 
 		mAnmBck->setMotionBlendRatio(ratio);
-	}
-
-	f32 getMotionBlendRatioForBck()
-	{
-		if (!mAnmBck)
-			return 0.0f;
-
-		return mAnmBck->getMotionBlendRatio();
 	}
 
 	void initSimpleMotionBlend(int frame)

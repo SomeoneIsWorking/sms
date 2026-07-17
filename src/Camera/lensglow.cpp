@@ -63,7 +63,9 @@ TLensGlow::TLensGlow(bool param_1, const char* name)
 	if (glowRes == nullptr)
 		OSPanic(__FILE__, __LINE__, "TLensGlow: resource not found: %s", buf);
 #endif
-	unk10 = J3DModelLoaderDataBase::load(glowRes, 0x10020000);
+	unk10 = J3DModelLoaderDataBase::load(glowRes,
+	                                     J3DMLF_MaterialPEFull
+	                                         | (2 << J3DMLF_TevStageNumShift));
 	unk14 = new J3DModel(unk10, 0, 1);
 
 	snprintf(buf, sizeof(buf), "%s/%s", base, "glow.btk");
@@ -100,7 +102,7 @@ TLensGlow::TLensGlow(bool param_1, const char* name)
 	unk60 = unk64 = unk6C;
 }
 
-void TLensGlow::perform(u32 cue, JDrama::TGraphics* graphics)
+void TLensGlow::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	bool inBounds = false;
 	if (gpCameraMario->isMarioIndoor()) {
@@ -109,7 +111,7 @@ void TLensGlow::perform(u32 cue, JDrama::TGraphics* graphics)
 		inBounds = gpSunModel->isInBounds(unk94);
 	}
 
-	if (cue & CUE_MOVE) {
+	if (param_1 & 1) {
 		f32 dispRatio = gpSunModel->getUnk194();
 		u8 thing      = gpSunModel->getUnk191();
 
@@ -182,7 +184,7 @@ void TLensGlow::perform(u32 cue, JDrama::TGraphics* graphics)
 		unk74.y = cy + unk84;
 	}
 
-	if (cue & CUE_CALC_ANIM) {
+	if (param_1 & 2) {
 		unk1C.update();
 		unk34.update();
 
@@ -196,7 +198,7 @@ void TLensGlow::perform(u32 cue, JDrama::TGraphics* graphics)
 		}
 	}
 
-	if ((cue & CUE_ENTRY) != 0 && inBounds) {
+	if ((param_1 & 0x200) != 0 && inBounds) {
 		int matCount = unk10->getMaterialNum();
 		for (u16 i = 0; i < matCount; ++i) {
 			J3DGXColorS10 c;
@@ -211,7 +213,7 @@ void TLensGlow::perform(u32 cue, JDrama::TGraphics* graphics)
 		unk14->entry();
 	}
 
-	if ((cue & CUE_CALC_VIEW) && inBounds) {
+	if ((param_1 & 4) && inBounds) {
 		unk14->viewCalc();
 	}
 }

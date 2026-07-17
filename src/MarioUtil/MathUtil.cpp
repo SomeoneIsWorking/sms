@@ -195,7 +195,6 @@ s16 matan(f32 param_1, f32 param_2)
 				return (s16)GetAtanTable(param_1, param_2);
 		}
 	}
-	return result;
 }
 
 static inline void MsGetRotFromZaxisY2(const JGeometry::TVec3<f32>& axis,

@@ -51,7 +51,6 @@ public:
 	void setMaterialAnm(J3DMaterialAnm* v) { mMaterialAnm = v; }
 
 	u16 getTexNo(u32 idx) { return mTevBlock->getTexNo(idx); }
-	void setTexNo(u32 idx, u16 v) { mTevBlock->setTexNo(idx, v); }
 
 	J3DColorBlock* getColorBlock() { return mColorBlock; }
 	J3DTexGenBlock* getTexGenBlock() { return mTexGenBlock; }

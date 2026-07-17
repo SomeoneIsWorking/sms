@@ -13,19 +13,19 @@ TViewport::TViewport(const TRect& param_1, const char* name)
 {
 }
 
-void TViewport::perform(u32 cue, TGraphics* graphics)
+void TViewport::perform(u32 param_1, TGraphics* param_2)
 {
-	if (!(cue & (CUE_DRAW | CUE_DRAW_INIT)))
+	if (!(param_1 & 0x88))
 		return;
 
-	graphics->setViewport(unk10, 0.0f, 1.0f);
+	param_2->setViewport(unk10, 0.0f, 1.0f);
 
 	if (unk20 & 1)
 		return;
 
-	TRect rect(graphics->getDisplayRect());
+	TRect rect(param_2->getDisplayRect());
 	rect.intersect(unk10);
-	graphics->setScissor(rect);
+	param_2->setScissor(rect);
 }
 
 void TViewport::load(JSUMemoryInputStream& stream)

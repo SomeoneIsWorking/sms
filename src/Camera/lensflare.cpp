@@ -41,7 +41,7 @@ TLensFlare::TLensFlare(const char* name)
 	unk14 = new J3DModel(unk10, 0, 1);
 }
 
-void TLensFlare::perform(u32 cue, JDrama::TGraphics*)
+void TLensFlare::perform(u32 param_1, JDrama::TGraphics*)
 {
 	if (gpSunMgr->isThing())
 		return;
@@ -53,7 +53,7 @@ void TLensFlare::perform(u32 cue, JDrama::TGraphics*)
 		sunInBounds = gpSunModel->isInBounds(unk40);
 	}
 
-	if (cue & CUE_MOVE) {
+	if (param_1 & 1) {
 		if (!gpSunModel->isInBounds(unk44)) {
 			unk28 = 0.0f;
 		} else {
@@ -81,7 +81,7 @@ void TLensFlare::perform(u32 cue, JDrama::TGraphics*)
 	if (!sunInBounds)
 		return;
 
-	if (cue & CUE_CALC_ANIM) {
+	if (param_1 & 2) {
 		JGeometry::TVec3<f32> sunWorldPos = gpSunModel->unk198;
 
 		// TODO: a mystery is happening here with the args, but it's definitely
@@ -147,7 +147,7 @@ void TLensFlare::perform(u32 cue, JDrama::TGraphics*)
 		}
 	}
 
-	if (cue & CUE_ENTRY) {
+	if (param_1 & 0x200) {
 		int matCount = unk10->getMaterialNum();
 		for (u16 i = 0; i < matCount; ++i) {
 			unk10->getMaterialNodePointer(i)->change();
@@ -159,6 +159,6 @@ void TLensFlare::perform(u32 cue, JDrama::TGraphics*)
 		unk14->entry();
 	}
 
-	if (cue & CUE_CALC_VIEW)
+	if (param_1 & 4)
 		unk14->viewCalc();
 }

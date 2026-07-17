@@ -24,7 +24,7 @@ public:
 
 	virtual void load(JSUMemoryInputStream&);
 	virtual void loadAfter();
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 
 	void initEffect();
 	void movement();
@@ -56,7 +56,7 @@ public:
 	TMareEventWallRock(const char* name);
 
 	virtual void load(JSUMemoryInputStream&);
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics) { }
+	virtual void perform(u32, JDrama::TGraphics*) { }
 
 public:
 	/* 0x10 */ s32 unk10;
@@ -67,7 +67,7 @@ class TMareEventDepressWall : public JDrama::TViewObj {
 public:
 	TMareEventDepressWall(const char*);
 
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 
 	void init1stEvent();
 	void init2ndEvent();

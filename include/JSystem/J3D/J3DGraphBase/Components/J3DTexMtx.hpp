@@ -23,7 +23,6 @@ public:
 
 	// Made up
 	u32 getInfo() { return mInfo; }
-	MtxPtr getTotalMtx() { return mTotalMtx; }
 
 	/* 0x64 */ Mtx mTotalMtx;
 	/* 0x94 */ Mtx mViewMtx;

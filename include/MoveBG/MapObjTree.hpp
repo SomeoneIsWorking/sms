@@ -22,13 +22,8 @@ public:
 
 class TMapObjTree : public TMapObjGeneral {
 public:
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
-	virtual f32 getRadiusAtY(f32 param_1) const
-	{
-		return mMinCanopyRadius
-		       + (mMaxCanopyRadius - mMinCanopyRadius)
-		             * (mPosition.y + mDamageHeight - param_1) / mDamageHeight;
-	}
+	virtual void perform(u32, JDrama::TGraphics*);
+	virtual f32 getRadiusAtY(f32) const;
 	virtual void initMapObj();
 	virtual void touchPlayer(THitActor*);
 

@@ -23,7 +23,7 @@ public:
 	{
 	}
 
-	virtual void perform(u32 cue, TGraphics* graphics);
+	virtual void perform(u32, TGraphics*);
 
 	void setSrcRect(const TRect&);
 
@@ -39,7 +39,7 @@ public:
 	{
 	}
 
-	virtual void perform(u32 cue, TGraphics* graphics);
+	virtual void perform(u32, TGraphics*);
 
 	void setSrcRect(const GXRenderModeObj&);
 };
@@ -49,7 +49,7 @@ public:
 	TEfbCtrlTex(const char* = "<EfbCtrlTex>", TFlagT<u16> = 0);
 
 	virtual ~TEfbCtrlTex() { }
-	virtual void perform(u32 cue, TGraphics* graphics);
+	virtual void perform(u32, TGraphics*);
 
 	void setTexAttb(const GXTexObj&);
 

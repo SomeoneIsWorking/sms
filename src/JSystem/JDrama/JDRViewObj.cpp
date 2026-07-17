@@ -11,7 +11,7 @@ extern "C" unsigned VIGetRetraceCount(void) __attribute__((weak));
 extern "C" uint64_t sb_trace_seq(void) __attribute__((weak));
 #endif
 
-void JDrama::TViewObj::testPerform(u32 cue, JDrama::TGraphics* graphics)
+void JDrama::TViewObj::testPerform(u32 param_1, JDrama::TGraphics* param_2)
 {
 #ifdef SMS_NATIVE_PLATFORM
 	// Draw-phase keystone trace: for "camera 1" log the RAW incoming flag, the unkC mask,
@@ -32,8 +32,8 @@ void JDrama::TViewObj::testPerform(u32 cue, JDrama::TGraphics* graphics)
 	if (((param_1 & 0x1000) != 0) && unkC.check(0x1000)) {
 		param_1 = param_1 & ~0x1;
 	}
-	if (((cue & CUE_MOVEMENT_GATE_B) != 0) && unkC.check(CUE_MOVEMENT_GATE_B)) {
-		cue = cue & ~CUE_MOVE;
+	if (((param_1 & 0x2000) != 0) && unkC.check(0x2000)) {
+		param_1 = param_1 & ~0x1;
 	}
 	param_1 &= ~unkC.get();
 	if (param_1) {
