@@ -87,6 +87,7 @@ public:
 	/* 0x174 */ f32 mPhase;
 	/* 0x178 */ TPathNode* mCurPathNode;
 	/* 0x17C */ TPathNode* mNextPathNode;
+	/* 0x180 */ int mBirdKind;   // species 0..3, selected in load() from a stream param
 };
 
 #endif
