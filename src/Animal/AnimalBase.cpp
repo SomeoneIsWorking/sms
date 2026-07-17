@@ -15,6 +15,11 @@
 #include <Strategic/Strategy.hpp>
 #include <MSound/MSoundSE.hpp>
 #include <MSound/SoundEffects.hpp>
+#include <MSound/MSound.hpp>
+#include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
+#include <JSystem/J3D/J3DGraphBase/J3DSys.hpp>
+#include <JSystem/JDrama/JDRGraphics.hpp>
+#include <dolphin/os.h>
 #include <stdlib.h>
 
 // Uniform [0, 1) from the game rand(). Written as the DECOMP SOURCE idiom
@@ -212,4 +217,89 @@ void TAnimalBase::getRotationFlyToDir(JGeometry::TVec3<f32>* rotation,
 	rot.x       = MsWrap(rot.x, -180.0f, 180.0f);
 	rotation->x = MsWrap(rotation->x, -180.0f, 180.0f);
 	CLBChaseGeneralConstantSpecifySpeed<f32>(&rotation->x, rot.x, 0.1f * speed);
+}
+
+// TAnimalBase::perform (US GMSE01 @0x800088a8, JP size 0x338). RE'd + verified. Per-frame
+// dispatcher for the JDrama perform phase-bits: 0x1 simulate (control + velocity integrate +
+// seagull SE), 0x2 anim (updateAnmSound + MActor frameUpdate/calc; only "leaders" advance the
+// clock), 0x4 draw (world matrix; leaders view-calc their own pose, followers borrow
+// leader[idx % sharedAnmNum]'s animated skeleton — the flock shared-skeleton optimization).
+// Renders every animal (seagulls AND birds). Bit-clears each handled phase, chains the rest.
+void TAnimalBase::perform(u32 param_1, JDrama::TGraphics* graphics)
+{
+	if (param_1 & 1) {
+		if (graphics->unk0 & 2) {
+			mLinearVelocity.set(0.0f, 0.0f, 0.0f);
+			control();
+			mPosition.x += mLinearVelocity.x;
+			mPosition.y += mLinearVelocity.y;
+			mPosition.z += mLinearVelocity.z;
+			if (getActorType() == 0x800001) {   // kamome / seagull
+				if (gpMSound->gateCheck(MSD_SE_OBJ_KAMOME_SOLO))
+					MSoundSESystem::MSRandPlay::startSeRandPlay(
+					    MSD_SE_OBJ_KAMOME_SOLO, getInstanceIndex());
+			}
+		}
+		param_1 &= ~1u;
+	}
+
+	TAnimalManagerBase* mgr = static_cast<TAnimalManagerBase*>(getManager());
+	s32 sharedAnmNum = mgr->mAnimalSave->mSLSharedAnmNum.get();
+
+	if (param_1 & 2) {
+		updateAnmSound();
+		getMActor()->frameUpdate();
+		if (!checkLiveFlag(LIVE_FLAG_HIDDEN | LIVE_FLAG_CLIPPED_OUT))
+			calcRootMatrix();
+
+		bool advanceAnim;
+		if (sharedAnmNum != 0)
+			advanceAnim = (getInstanceIndex() < sharedAnmNum);
+		else
+			advanceAnim = !checkLiveFlag(LIVE_FLAG_HIDDEN | LIVE_FLAG_CLIPPED_OUT);
+		if (advanceAnim)
+			getMActor()->calc();
+		param_1 &= ~2u;
+	}
+
+	if ((param_1 & 4) && !checkLiveFlag(LIVE_FLAG_HIDDEN | LIVE_FLAG_CLIPPED_OUT)) {
+		Mtx savedCurMtx;
+		PSMTXCopy(J3DSys::mCurrentMtx, savedCurMtx);
+		Mtx localMtx;
+		CLBCalcRotateZXYTranslateMatrix(localMtx, mRotation, mPosition);
+		Mtx worldMtx;
+		PSMTXConcat(savedCurMtx, localMtx, worldMtx);
+		PSMTXCopy(worldMtx, J3DSys::mCurrentMtx);
+
+		if (sharedAnmNum != 0 && getInstanceIndex() >= sharedAnmNum) {
+			// follower: reuse leader[idx % sharedAnmNum]'s animated skeleton
+			TLiveActor* leader =
+			    static_cast<TLiveActor*>(mgr->getObj(getInstanceIndex() % sharedAnmNum));
+			J3DModel* leaderModel = leader->getModel();
+			J3DModel* selfModel   = getModel();
+			J3DModelData* md      = selfModel->getModelData();
+			u16 drawMtxNum        = md->getDrawMtxNum();
+
+			selfModel->swapDrawMtx();
+			selfModel->swapNrmMtx();
+
+			for (u16 i = 0; i < drawMtxNum; ++i) {
+				MtxPtr src = md->getDrawMtxFlag(i)
+				                 ? leaderModel->getWeightAnmMtx(md->getDrawMtxIndex(i))
+				                 : leaderModel->getAnmMtx(md->getDrawMtxIndex(i));
+				PSMTXConcat(worldMtx, src, selfModel->getDrawMtx(i));
+			}
+			selfModel->calcNrmMtx();
+			DCStoreRange(selfModel->getDrawMtxPtr(), drawMtxNum * sizeof(Mtx));
+			DCStoreRange(selfModel->getNrmMtxPtr(), drawMtxNum * sizeof(Mtx33));
+			selfModel->prepareShapePackets();
+		} else {
+			getMActor()->viewCalc();
+		}
+
+		PSMTXCopy(savedCurMtx, J3DSys::mCurrentMtx);
+		param_1 &= ~4u;
+	}
+
+	TSpineEnemy::perform(param_1, graphics);
 }
