@@ -71,6 +71,9 @@ namespace BNKParser {
 		/* 0x0C */ f32 unkC;
 	};
 
+#ifdef SMS_NATIVE_PLATFORM
+	void sb_ibnk_swap_to_host(void* data); // LP64/BE: swap IBNK in place before parse
+#endif
 	TBasicBank* createBasicBank(void* data);
 	TOscillator::Osc_* findOscPtr(TBasicBank* bank, THeader* header, TOsc* osc);
 	s16* getOscTableEndPtr(s16* ptr);

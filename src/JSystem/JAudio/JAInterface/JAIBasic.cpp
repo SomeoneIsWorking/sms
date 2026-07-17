@@ -294,9 +294,28 @@ void JAIBasic::checkInitDataOnMemory()
 				}
 				unk54[n].unk0 = nullptr; // terminator
 			} else if (cid == 2) {
-				while (__builtin_bswap32(w[o]) != 0)
-					o += 3; // skip (offset, size, flag) entries
-				o += 1;     // the 0 terminator word
+				// IBNK instrument banks: list of (offset,size,waveBankIdx) until
+				// offset==0. Build the null-terminated unk50 table the bank-load
+				// loop (initBankWave: registBankBNK + assignWaveBank) consumes.
+				// Previously skipped (unk50 left null -> silent instruments) pending
+				// the IBNK BE swap, now implemented in registBankBNK
+				// (BNKParser::sb_ibnk_swap_to_host). unk50[i].unk8 = wave-bank index.
+				u32 start = o;
+				u32 n     = 0;
+				while (__builtin_bswap32(w[o]) != 0) {
+					++n;
+					o += 3;
+				}
+				o += 1; // terminator word
+				unk50 = (FabricatedUnk50Struct*)allocHeap(
+				    (n + 1) * sizeof(FabricatedUnk50Struct));
+				for (u32 i = 0; i < n; ++i) {
+					u32 off = __builtin_bswap32(w[start + i * 3 + 0]);
+					u32 fl  = __builtin_bswap32(w[start + i * 3 + 2]);
+					unk50[i].unk0 = (u8*)unk4C + off;
+					unk50[i].unk8 = fl;
+				}
+				unk50[n].unk0 = nullptr; // terminator
 			} else {
 				break; // unknown chunk -> stop (alignment unknown)
 			}
