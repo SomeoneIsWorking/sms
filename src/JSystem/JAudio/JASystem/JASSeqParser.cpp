@@ -1,3 +1,7 @@
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 #include <JSystem/JAudio/JASystem/JASSeqParser.hpp>
 #include <JSystem/JAudio/JASystem/JASTrack.hpp>
 #include <JSystem/JAudio/JASystem/JASPlayer_impl.hpp>
@@ -891,6 +895,12 @@ int TSeqParser::mainProc(TTrack* track, TSeqCtrl* ctrl)
 	while (true) {
 		u8 flag     = track->mSeqCtrl.readByte();
 		u32 retCode = 0;
+#ifdef SMS_NATIVE_PLATFORM
+		if (std::getenv("SB_DBG_AUDIO")) { static int no=0; if (no<40){++no;
+			std::fprintf(stderr, "[audio] opcode #%d flag=0x%02x (%s)\n", no, flag,
+				(flag<0x80)?"noteOn":((flag&0xF0)==0x80&&!(flag&7))?"wait":((flag&0xF0)==0x80||flag==0xF9)?"noteOff":
+				((flag&0xF0)==0x90)?"timeParam":((flag&0xF0)==0xA0)?"regParam":((flag&0xF0)==0xB0)?"regCmd":"cmd"); } }
+#endif
 		if (!(flag & 0x80)) {
 			retCode = cmdNoteOn(track, flag);
 		} else if (((flag & 0xF0) == 128) && !(flag & 0x07)) {
