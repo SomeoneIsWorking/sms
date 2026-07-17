@@ -7,6 +7,8 @@
 #include <System/MarDirector.hpp>
 #include <System/FlagManager.hpp>
 #include <dolphin/mtx.h>
+#include <MarioUtil/PacketUtil.hpp>
+#include <dolphin/gx/GXEnum.h>
 #include <Map/MapData.hpp>
 #include <cmath>
 #include "sms_boot_reset_fruit.h"
@@ -372,4 +374,75 @@ void TMapObjBall::calcCurrentMtx()
 		currentMtx[1][3] -= 10.0f * (1.0f - currentMtx[1][1]);
 
 	PSMTXCopy(currentMtx, getModel()->getAnmMtx(0));
+}
+
+// Native port of TResetFruit ctor (@0x801e1bf4): base TMapObjBall ctor, then init the fruit's
+// TEV tint (unk19c = opaque white) + unk198 (0.0, SDA2[-0x2428]) + unk1a4 (0). Ported here;
+// stub removed from movebg_stubs.cpp.
+TResetFruit::TResetFruit(const char* name) : TMapObjBall(name)
+{
+	unk198 = 0.0f;
+	unk1a4 = 0;
+	unk19c.r = 0xff;
+	unk19c.g = 0xff;
+	unk19c.b = 0xff;
+	unk19c.a = 0xff;
+}
+
+// Native port of TResetFruit::initMapObj (@0x801e1c5c). Chains to the (now-ported)
+// TMapObjBall::initMapObj (builds model + physics), then binds the ctor-set white TEV color
+// into TEV register 0 of the model's material packet. Raw arg (GXTevRegID)1 == GX_TEVREG0.
+void TResetFruit::initMapObj()
+{
+	TMapObjBall::initMapObj();
+	SMS_InitPacket_OneTevColor(getModel(), 0, GX_TEVREG0, &unk19c);
+}
+
+// Native port of TResetFruit::makeObjAppeared (@0x801e2084, US GMSE01, size 0x130).
+// Faithful RE from the DOL disasm (tools/re/disasm_range.py). Called when a picked/eaten
+// 無限フルーツ (infinite fruit) respawns: reset the object to its default appeared state, then
+// stamp the fruit model's root node matrix (getAnmMtx(0)) translation directly from mPosition
+// (Y lifted by the body radius so the ball rests on the ground), with two per-fruit-type Y
+// nudges keyed on mActorType.
+//
+// Field map (all verified against the class headers):
+//   unkF8  MAP_OBJ_FLAG_UNK4000000 (0x4000000)  -> checkMapObjFlag
+//   mBodyRadius (TLiveActor 0xBC), mPosition (TPlacement 0x10), mActorType (THitActor 0x4C),
+//   unkE8 (TLiveActor 0xE8, s8), mState (TMapObjBase 0xFC, u16 <- 0xB).
+// SDA2 float literals resolved via tools/dol_sda.py: [-0x2428]=0.0, [-0x23E8]=50.0,
+//   [-0x23EC]=1.0, [-0x23CC]=10.0.
+//
+// The two mActorType keys are specific fruit variants from the MapObjManager event-id table
+// (0x40000394 = case 1000, 0x40000392 = case 1003); the retail code compares the raw keys
+// (isActorType), which is what we reproduce.
+//
+// UNPORTED CALLEES (both still boot_stubs — reported in unportedDeps): the conditional
+// makeObjDefault() [vtable slot 0x158 = TMapObjBall::makeObjDefault @0x801e42bc] and the
+// unconditional calcCurrentMtx() [vtable slot 0x1EC = TMapObjBall::calcCurrentMtx @0x801e43f0].
+// TMapObjBase::makeObjAppeared (direct bl @0x801b0430, US-unlabeled gap fn) IS ported
+// (MapObjBase.cpp:344). The AnmMtx translation stamp below runs regardless, so the fruit is
+// positioned even while calcCurrentMtx remains stubbed.
+void TResetFruit::makeObjAppeared()
+{
+	if (checkMapObjFlag(MAP_OBJ_FLAG_UNK4000000))
+		makeObjDefault();
+
+	TMapObjBase::makeObjAppeared();
+	calcCurrentMtx();
+
+	MtxPtr mtx = getModel()->getAnmMtx(0);
+	mtx[0][3] = mPosition.x;
+	mtx[1][3] = mPosition.y + mBodyRadius;
+	mtx[2][3] = mPosition.z;
+
+	if (isActorType(0x40000394)) {
+		if (mtx[1][1] > 0.0f)
+			mtx[1][3] -= 50.0f * mtx[1][1];
+	}
+	if (isActorType(0x40000392))
+		mtx[1][3] -= 10.0f * (1.0f - mtx[1][1]);
+
+	unkE8 = 0;
+	if (checkMapObjFlag(MAP_OBJ_FLAG_UNK4000000))
+		mState = 0xb;
 }
