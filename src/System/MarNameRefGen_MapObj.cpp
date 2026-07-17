@@ -36,6 +36,7 @@
 #include "MoveBG/Pool.hpp"
 #include "MoveBG/WoodBarrel.hpp"
 #include <System/MarNameRefGen.hpp>
+#include <MoveBG/MapObjBianco.hpp>
 
 JDrama::TNameRef* TMarNameRefGen::getNameRef_MapObj(const char* name) const
 {
@@ -326,8 +327,8 @@ JDrama::TNameRef* TMarNameRefGen::getNameRef_MapObj(const char* name) const
 	// 	return new TBiancoBell("ベル水車");
 
 	// TODO:
-	// if ( strcmp(name, "BiaWatermill") == 0 )
-	// 	return new TBiancoWatermill("水車（ビアンコ大）");
+		if (strcmp(name, "BiaWatermill") == 0)
+		return new TBiancoWatermill("水車（ビアンコ大）");
 
 	// TODO:
 	// if ( strcmp(name, "BellWatermill") == 0 )
