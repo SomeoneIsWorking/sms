@@ -11,21 +11,16 @@ class J3DDrawBuffer;
 class TLightWithDBSet;
 class TLightMario;
 
-namespace JDrama {
-class TAmbAry;
-class TLightAry;
-} // namespace JDrama
-
 class TLightWithDBSetManager : public JDrama::TViewObj {
 public:
 	TLightWithDBSetManager(const char*);
 
 	virtual ~TLightWithDBSetManager() { }
 	virtual void loadAfter();
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 
 	void calcLightBorder();
-	GXColor getEffectLightColor() const;
+	void getEffectLightColor() const;
 	void setEffectLight(const JDrama::TGraphics*, GXLightObj*);
 	// Retail @0x802281b8 returns the Vec* global @r13-0x6110, which
 	// TLightCommon::loadAfter (@0x80229e30) publishes as
@@ -34,7 +29,8 @@ public:
 	// — that made the shadow direction straight-down instead of sun-slanted.)
 	const JGeometry::TVec3<f32>* getLightPos() const;
 	void makeDrawBuffer();
-	void addChildGroupObj(JDrama::TViewObjPtrListT<JDrama::TViewObj>*);
+	void addChildGroupObj(
+	    JDrama::TViewObjPtrListT<JDrama::TViewObj, JDrama::TViewObj>*);
 
 	// fabricated (renamed for clarity — see mLightSets below)
 	TLightWithDBSet* getUnk14(int i) { return mLightSets[i]; }
@@ -43,9 +39,7 @@ public:
 	/* 0x10 */ TLightMario* mMarioLight;                    // was unk10
 	/* 0x14 */ TLightWithDBSet** mLightSets;                // was unk14 — 4 per-kind sets (player/mapobj/object/indirect)
 	/* 0x18 */ GXColor mEffectColor;                        // was unk18 — GX_LIGHT1 effect color
-	/* 0x1C */ u32 unk1C;                                   // aliased over Vec3<f32> mEffectPos (setLight reads as 3 f32s)
-	/* 0x20 */ u32 unk20;                                   // ...
-	/* 0x24 */ u32 unk24;                                   // ...
+	/* 0x1C */ JGeometry::TVec3<f32> mEffectPos;            // setLight reads as 3 f32s
 	/* 0x28 */ float mEffectAlphaScale;                     // was unk28 — setLight scales mEffectColor.a
 	/* 0x2C */ float unk2C;
 	/* 0x30 */ float unk30;
@@ -124,17 +118,18 @@ public:
 	TLightWithDBSet(int, const char*);
 
 	virtual ~TLightWithDBSet() { }
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 	virtual void makeDrawBuffer() = 0;
 
-	int getAmbIndex(const char*);
-	int getLightIndex(const char*);
+	void getAmbIndex(const char*);
+	void getLightIndex(const char*);
 	void getLightDrawBuffer(int);
 	void getXluDrawBuffer(int);
 	void getOpaDrawBuffer(int);
 	void resetLightDrawBuffer();
 	void changeLightDrawBuffer(int);
-	void addChildGroupObj(JDrama::TViewObjPtrListT<JDrama::TViewObj>*);
+	void addChildGroupObj(
+	    JDrama::TViewObjPtrListT<JDrama::TViewObj, JDrama::TViewObj>*);
 
 public:
 	/* 0x10 */ TLightDrawBuffer** mDrawBuffers;             // was unk10 — allocated by makeDrawBuffer, iterated in perform
@@ -183,9 +178,8 @@ public:
 	{
 	}
 
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
-	virtual GXColor getLightColor(int) const;
-	virtual GXColor getAmbColor(int) const;
+	virtual ~TLightMario() { }
+	virtual void perform(u32, JDrama::TGraphics*);
 	virtual void setLight(const JDrama::TGraphics*, int);
 
 	// Overrides of TLightCommon virtuals (return GXColor now that the header
@@ -202,7 +196,7 @@ public:
 	}
 
 	virtual ~TLightShadow() { }
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 };
 
 #endif

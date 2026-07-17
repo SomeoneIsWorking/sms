@@ -65,7 +65,7 @@ void TDrawBufObj::load(JSUMemoryInputStream& stream)
 	mDrawBuffer = new J3DDrawBuffer(mDrawBufferSize);
 }
 
-void TDrawBufObj::perform(u32 cue, TGraphics* graphics)
+void TDrawBufObj::perform(u32 param_1, TGraphics* param_2)
 {
 #ifdef SMS_NATIVE_PLATFORM
 	{
@@ -93,7 +93,7 @@ void TDrawBufObj::perform(u32 cue, TGraphics* graphics)
 	if (param_1 & 0x80)
 		mDrawBuffer->frameInit();
 
-	if (cue & CUE_SET_DRAW_BUFFER) {
+	if (param_1 & 0x400) {
 		if (unk18 & 3)
 			j3dSys.setDrawBuffer(mDrawBuffer, 0);
 
@@ -101,7 +101,7 @@ void TDrawBufObj::perform(u32 cue, TGraphics* graphics)
 			j3dSys.setDrawBuffer(mDrawBuffer, 1);
 	}
 
-	if (cue & CUE_DRAW) {
+	if (param_1 & 8) {
 		j3dSys.unk4C = unk18;
 #ifdef SMS_NATIVE_PLATFORM
 		// STOPGAP (file-select overbright): suppress the GXPost/display-pass (phase 6) redraw of the

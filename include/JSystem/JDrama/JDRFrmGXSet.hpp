@@ -14,7 +14,7 @@ public:
 	{
 	}
 
-	virtual void perform(u32 cue, TGraphics* graphics);
+	virtual void perform(u32, TGraphics*);
 
 public:
 	/* 0x10 */ TDisplay* unk10;

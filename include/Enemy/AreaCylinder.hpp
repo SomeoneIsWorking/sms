@@ -12,7 +12,7 @@ public:
 	TAreaCylinder(const char* name = "<TAreaCylinder>");
 
 	virtual void load(JSUMemoryInputStream& stream);
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 
 	// fabricated
 	BOOL contain(const JGeometry::TVec3<f32>& pos) const
@@ -36,7 +36,7 @@ class TAreaCylinderManager : public JDrama::TViewObj {
 public:
 	TAreaCylinderManager(const char* name);
 
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 
 	void registerCylinder(TAreaCylinder*);
 	bool contain(const JGeometry::TVec3<f32>&);

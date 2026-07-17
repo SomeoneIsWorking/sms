@@ -212,9 +212,9 @@ THino2Hit::THino2Hit(THinokuri2* owner, int joint_idx, const char* name)
 {
 }
 
-void THino2Hit::perform(u32 cue, JDrama::TGraphics* graphics)
+void THino2Hit::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (!(cue & CUE_MOVE))
+	if (!(param_1 & 1))
 		return;
 
 	if (mOwner->checkLiveFlag(LIVE_FLAG_CLIPPED_OUT)) {
@@ -306,22 +306,22 @@ void THino2Mask::breakMask() { }
 
 void THino2Mask::startDamageMotion() { }
 
-void THino2Mask::perform(u32 cue, JDrama::TGraphics* graphics)
+void THino2Mask::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	if (unk4 == 0)
 		return;
 
 	if (unk4 == 1) {
-		if (cue & CUE_CALC_ANIM) {
+		if (param_1 & 2) {
 			unk10->getModel()->setBaseTRMtx(unk4C);
 			J3DFrameCtrl* ctrl = unk10->getFrameCtrl(3);
 			ctrl->setFrame(unkC);
 			ctrl->setRate(0.0f);
 			unk10->resetDL();
 		}
-		unk10->perform(cue, graphics);
+		unk10->perform(param_1, param_2);
 	} else {
-		if (cue & CUE_CALC_ANIM) {
+		if (param_1 & 2) {
 			if (unk8 > 240) {
 				unk4 = 0;
 				return;
@@ -338,7 +338,7 @@ void THino2Mask::perform(u32 cue, JDrama::TGraphics* graphics)
 			++unk8;
 		}
 
-		if (cue & CUE_CALC_ANIM) {
+		if (param_1 & 2) {
 			Mtx afStack_58;
 			Mtx afStack_88;
 			{
@@ -364,11 +364,11 @@ void THino2Mask::perform(u32 cue, JDrama::TGraphics* graphics)
 			}
 		}
 
-		if ((cue & CUE_ENTRY) && unk8 > 60 && unk8 % 6 >= 3)
-			cue &= ~CUE_ENTRY;
+		if ((param_1 & 0x200) && unk8 > 60 && unk8 % 6 >= 3)
+			param_1 &= ~0x200;
 
-		unk14->perform(cue, graphics);
-		unk18->perform(cue, graphics);
+		unk14->perform(param_1, param_2);
+		unk18->perform(param_1, param_2);
 	}
 }
 
@@ -994,16 +994,16 @@ void THinokuri2::moveObject()
 		--unk168;
 }
 
-void THinokuri2::perform(u32 cue, JDrama::TGraphics* graphics)
+void THinokuri2::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	gpCurHinokuri = this;
 
-	mHead->perform(cue, graphics);
-	mBody->perform(cue, graphics);
-	unk174->perform(cue, graphics);
-	unk178->perform(cue, graphics);
+	mHead->perform(param_1, param_2);
+	mBody->perform(param_1, param_2);
+	unk174->perform(param_1, param_2);
+	unk178->perform(param_1, param_2);
 
-	if (cue & CUE_ENTRY) {
+	if (param_1 & 0x200) {
 		mMActor->resetDL();
 		for (u16 i = 2; i < 5; ++i) {
 			J3DShape* shape
@@ -1017,7 +1017,7 @@ void THinokuri2::perform(u32 cue, JDrama::TGraphics* graphics)
 		}
 	}
 
-	if (cue & CUE_CALC_ANIM) {
+	if (param_1 & 0x2) {
 		calcRootMatrix();
 		getMActor()->frameUpdate();
 		if (!checkLiveFlag(LIVE_FLAG_DEAD | LIVE_FLAG_CLIPPED_OUT)) {
@@ -1026,18 +1026,18 @@ void THinokuri2::perform(u32 cue, JDrama::TGraphics* graphics)
 			getMActor()->updateOut();
 		}
 	} else {
-		TSpineEnemy::perform(cue, graphics);
+		TSpineEnemy::perform(param_1, param_2);
 	}
 
 	if (!checkLiveFlag(LIVE_FLAG_DEAD | LIVE_FLAG_CLIPPED_OUT)) {
 		if (mLevel == 2 || unk1A4->unk4 == 2) {
-			if (cue & CUE_CALC_ANIM) {
+			if (param_1 & 2) {
 				unk1A4->setMatrix(getModel()->getAnmMtx(0x17));
 			}
-			unk1A4->perform(cue, graphics);
+			unk1A4->perform(param_1, param_2);
 		}
 
-		if (cue & CUE_CALC_VIEW) {
+		if (param_1 & 04) {
 			unk150->entryDrawShadow();
 			gpQuestionManager->request(mPosition, mScaledBodyRadius);
 		}

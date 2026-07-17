@@ -25,10 +25,10 @@ public:
 
 	virtual void load(JSUMemoryInputStream&);
 	virtual void loadAfter();
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
-	virtual void draw(const JDrama::TRect&, JUtility::TColor);
+	virtual void perform(u32, JDrama::TGraphics*);
 
-	u8 getShineAlpha();
+	void getShineAlpha();
+	void draw(const JDrama::TRect&, JUtility::TColor);
 	void changeAlpha(u8*);
 	void startFade(int, bool);
 
@@ -61,7 +61,7 @@ public:
 	}
 
 	virtual void loadAfter();
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 };
 
 #endif

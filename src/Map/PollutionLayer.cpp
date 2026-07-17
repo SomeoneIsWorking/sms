@@ -87,9 +87,9 @@ void TPollutionLayerWave::draw() const
 	}
 }
 
-void TPollutionLayerWave::perform(u32 cue, JDrama::TGraphics* graphics)
+void TPollutionLayerWave::perform(u32 flags, JDrama::TGraphics*)
 {
-	if (cue & CUE_DRAW) {
+	if (flags & 8) {
 		initGX();
 		draw();
 	}
@@ -269,11 +269,11 @@ bool TPollutionLayer::isPolluted(int s, int t, f32 y) const
 
 void TPollutionLayer::subtractFromYMap(f32, f32, f32) const { }
 
-void TPollutionLayer::perform(u32 cue, JDrama::TGraphics* graphics)
+void TPollutionLayer::perform(u32 flags, JDrama::TGraphics* gfx)
 {
-	if (cue & CUE_MOVE)
+	if (flags & 1)
 		action();
-	TJointModel::perform(cue, graphics);
+	TJointModel::perform(flags, gfx);
 }
 
 static inline u8 readBmpPixel(const u8* bmp, int x, int y, int w, int h)

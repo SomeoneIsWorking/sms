@@ -32,9 +32,9 @@ void TMovieRumble::init(const char* param_1)
 	unk28 = false;
 }
 
-void TMovieRumble::perform(u32 cue, JDrama::TGraphics*)
+void TMovieRumble::perform(u32 param_1, JDrama::TGraphics*)
 {
-	if (cue & CUE_MOVE)
+	if (param_1 & 0x1)
 		movement();
 }
 

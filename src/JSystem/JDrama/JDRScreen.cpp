@@ -3,19 +3,19 @@
 
 using namespace JDrama;
 
-void TCamConnecter::perform(u32 cue, JDrama::TGraphics* graphics)
+void TCamConnecter::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (!(cue & CUE_DRAW))
+	if (!(param_1 & 0x8))
 		return;
 
 	if (unk10)
-		unk10->testPerform(CUE_SET_PROJECTION, graphics);
+		unk10->testPerform(0x10, param_2);
 
 	if (unk14)
-		unk14->testPerform(cue, graphics);
+		unk14->testPerform(param_1, param_2);
 
 	if (unk10 && unk18.check(0x1))
-		unk10->testPerform(CUE_DRAW, graphics);
+		unk10->testPerform(0x8, param_2);
 }
 
 TScreen::TScreen(const TRect& param_1, const char* name)

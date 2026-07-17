@@ -4,13 +4,11 @@
 #include <JSystem/JDrama/JDRViewObj.hpp>
 #include <JSystem/JDrama/JDRNameRef.hpp>
 #include <JSystem/JDrama/JDRGraphics.hpp>
-#include <JSystem/JGadget/std-list.hpp>
 #include <JSystem/JSupport/JSUMemoryInputStream.hpp>
 
 namespace JDrama {
 
 template <class T, class U = TViewObj>
-
 class TViewObjPtrListT : public U, public JGadget::TList_pointer<T*> {
 public:
 	TViewObjPtrListT(const char* name = "<TViewObjPtrListT>")
@@ -61,7 +59,7 @@ public:
 		return nullptr;
 	}
 
-	virtual void perform(u32 cue, TGraphics* graphics);
+	virtual void perform(u32 param_1, TGraphics* param_2);
 
 	virtual void loadSuper(JSUMemoryInputStream& stream);
 
@@ -75,12 +73,12 @@ public:
 };
 
 template <class T, class U>
-void TViewObjPtrListT<T, U>::perform(u32 cue, TGraphics* graphics)
+void TViewObjPtrListT<T, U>::perform(u32 param_1, TGraphics* param_2)
 {
 	typedef typename JGadget::TList_pointer<T*>::iterator I;
 
 	for (I it = getChildren().begin(); it != getChildren().end(); ++it)
-		it->testPerform(cue, graphics);
+		it->testPerform(param_1, param_2);
 }
 
 template <class T, class U>

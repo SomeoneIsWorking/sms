@@ -366,7 +366,7 @@ JDrama::TNameRef* TConductor::searchF(u16 key, const char* name)
 	return nullptr;
 }
 
-void TConductor::perform(u32 cue, JDrama::TGraphics* graphics)
+void TConductor::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 #ifdef SMS_NATIVE_PLATFORM
 	// SB_COND_DBG: one-shot per distinct param_1 — what flags does the conductor actually
@@ -390,16 +390,16 @@ void TConductor::perform(u32 cue, JDrama::TGraphics* graphics)
 			if (i != 0) {
 				for (; it != unk10.end(); ++it)
 					if ((*it)->hasMapCollision())
-						(*it)->testPerform(cue, graphics);
+						(*it)->testPerform(param_1, param_2);
 			} else {
 				for (; it != unk10.end(); ++it)
 					if (!(*it)->hasMapCollision())
-						(*it)->testPerform(cue, graphics);
+						(*it)->testPerform(param_1, param_2);
 			}
 		}
 
-		if (cue & CUE_CALC_ANIM)
-			clipAloneActors(graphics);
+		if (param_1 & 2)
+			clipAloneActors(param_2);
 
 		{
 			JGadget::TList<TLiveActor*>::iterator it = unk30.begin(),
@@ -407,11 +407,11 @@ void TConductor::perform(u32 cue, JDrama::TGraphics* graphics)
 			if (i != 0) {
 				for (; it != e; ++it)
 					if ((*it)->hasMapCollision())
-						(*it)->testPerform(cue, graphics);
+						(*it)->testPerform(param_1, param_2);
 			} else {
 				for (; it != e; ++it)
 					if (!(*it)->hasMapCollision())
-						(*it)->testPerform(cue, graphics);
+						(*it)->testPerform(param_1, param_2);
 			}
 		}
 	}
@@ -419,26 +419,26 @@ void TConductor::perform(u32 cue, JDrama::TGraphics* graphics)
 	{
 		JGadget::TList<TGenerator*>::iterator it, e;
 		for (it = unk60.begin(), e = unk60.end(); it != e; ++it)
-			(*it)->testPerform(cue, graphics);
+			(*it)->testPerform(param_1, param_2);
 	}
 
 	{
 		JGadget::TList<JDrama::TViewObj*>::iterator it, e;
 		for (it = unk40.begin(), e = unk40.end(); it != e; ++it)
-			(*it)->testPerform(cue, graphics);
+			(*it)->testPerform(param_1, param_2);
 	}
 
 	{
 		JGadget::TList<TAreaCylinderManager*>::iterator it, e;
 		for (it = unk50.begin(), e = unk50.end(); it != e; ++it)
-			(*it)->testPerform(cue, graphics);
+			(*it)->testPerform(param_1, param_2);
 	}
 
-	if (cue & CUE_ENTRY) {
+	if (param_1 & 0x200) {
 		JGadget::TList<SDLModelData*>::iterator it, e;
 		for (it = unk70.begin(), e = unk70.end(); it != e; ++it)
 			(*it)->entrySDLModels();
 	}
 
-	unk80->perform(cue, graphics);
+	unk80->perform(param_1, param_2);
 }

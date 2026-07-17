@@ -28,16 +28,16 @@ BOOL THookTake::receiveMessage(THitActor* sender, u32 message)
 	return FALSE;
 }
 
-void THookTake::perform(u32 cue, JDrama::TGraphics* graphics)
+void THookTake::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if ((cue & CUE_MOVE) != 0) {
+	if ((param_1 & 1) != 0) {
 		mPosition = mOwner->getPosition();
 		mPosition.y -= 900.0f;
 	}
 
-	THitActor::perform(cue, graphics);
+	THitActor::perform(param_1, param_2);
 
-	if ((cue & CUE_MOVE) != 0 && mHeldObject != nullptr) {
+	if ((param_1 & 1) != 0 && mHeldObject != nullptr) {
 		moveHeldObject();
 	}
 }
@@ -87,11 +87,11 @@ BOOL TRiccoHook::receiveMessage(THitActor* sender, u32 message)
 	return FALSE;
 }
 
-void TRiccoHook::perform(u32 cue, JDrama::TGraphics* graphics)
+void TRiccoHook::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	TSpineEnemy::perform(cue, graphics);
-	mHookTake->perform(cue, graphics);
-	if ((cue & CUE_MOVE) && mTimer > 0) {
+	TSpineEnemy::perform(param_1, param_2);
+	mHookTake->perform(param_1, param_2);
+	if ((param_1 & 1) && mTimer > 0) {
 		mTimer--;
 	}
 }
@@ -140,8 +140,8 @@ DEFINE_NERVE(TNerveRHGraphWander, TLiveActor)
 	TRiccoHook* self = (TRiccoHook*)spine->getBody();
 
 	if (spine->getTime() == 0) {
-		f32 y                        = self->getRotation().y;
-		JGeometry::TVec3<f32> polar = polarXZ(y, 1.0f);
+		f32 y                              = self->getRotation().y;
+		const JGeometry::TVec3<f32>& polar = polarXZ(y, 1.0f);
 
 		self->goToDirectedNextGraphNode(polar);
 	}

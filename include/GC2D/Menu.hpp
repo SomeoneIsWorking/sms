@@ -17,7 +17,7 @@ public:
 	{
 	}
 
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 
 public:
 	/* 0x10 */ J2DScreen* unk10;
@@ -27,7 +27,7 @@ class TMenuPlane : public JDrama::TViewObj {
 public:
 	TMenuPlane(const TMarioGamePad*, J2DPane*, u32, u32);
 
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 
 	void show()
 	{
@@ -84,7 +84,7 @@ public:
 	{
 	}
 
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 
 	void hide()
 	{

@@ -77,27 +77,27 @@ JDrama::TNameRef* TStrategy::searchF(u16 key, const char* name)
 	return nullptr;
 }
 
-void TStrategy::perform(u32 cue, JDrama::TGraphics* graphics)
+void TStrategy::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 
-	if ((cue & (CUE_MOVE | CUE_CALC_ANIM)) != 0) {
+	if ((param_1 & 3) != 0) {
 		if (unk10[0] != (TIdxGroupObj*)0x0)
-			unk10[0]->testPerform(cue, graphics);
+			unk10[0]->testPerform(param_1, param_2);
 
 		if (unk10[3] != (TIdxGroupObj*)0x0)
-			unk10[3]->testPerform(cue, graphics);
+			unk10[3]->testPerform(param_1, param_2);
 
 		if (unk10[4] != (TIdxGroupObj*)0x0)
-			unk10[4]->testPerform(cue, graphics);
+			unk10[4]->testPerform(param_1, param_2);
 
 		if (unk10[0xb] != (TIdxGroupObj*)0x0)
-			unk10[0xb]->testPerform(cue, graphics);
+			unk10[0xb]->testPerform(param_1, param_2);
 
 		if (unk10[6] != (TIdxGroupObj*)0x0)
-			unk10[6]->testPerform(cue, graphics);
+			unk10[6]->testPerform(param_1, param_2);
 
 		if (unk10[9] != (TIdxGroupObj*)0x0)
-			unk10[9]->testPerform(cue, graphics);
+			unk10[9]->testPerform(param_1, param_2);
 	}
 
 #ifdef SMS_NATIVE_PLATFORM
@@ -123,22 +123,22 @@ void TStrategy::perform(u32 cue, JDrama::TGraphics* graphics)
 
 	if ((param_1 & 8) != 0) {
 		if (unk10[0] != (TIdxGroupObj*)0x0)
-			unk10[0]->testPerform(cue, graphics);
+			unk10[0]->testPerform(param_1, param_2);
 
 		if (unk10[3] != (TIdxGroupObj*)0x0)
-			unk10[3]->testPerform(cue, graphics);
+			unk10[3]->testPerform(param_1, param_2);
 
 		if (unk10[4] != (TIdxGroupObj*)0x0)
-			unk10[4]->testPerform(cue, graphics);
+			unk10[4]->testPerform(param_1, param_2);
 
 		if (unk10[5] != (TIdxGroupObj*)0x0)
-			unk10[5]->testPerform(cue, graphics);
+			unk10[5]->testPerform(param_1, param_2);
 
 		if (unk10[0xb] != (TIdxGroupObj*)0x0)
-			unk10[0xb]->testPerform(cue, graphics);
+			unk10[0xb]->testPerform(param_1, param_2);
 
 		if (unk10[6] != (TIdxGroupObj*)0x0)
-			unk10[6]->testPerform(cue, graphics);
+			unk10[6]->testPerform(param_1, param_2);
 
 #ifdef SMS_NATIVE_PLATFORM
 		// FAITHFUL FIX (map-gone-with-NPCs root cause): do NOT draw the NPC group (unk10[9],
@@ -158,6 +158,6 @@ void TStrategy::perform(u32 cue, JDrama::TGraphics* graphics)
 		if (false)
 #endif
 		if (unk10[9] != (TIdxGroupObj*)0x0)
-			unk10[9]->testPerform(cue, graphics);
+			unk10[9]->testPerform(param_1, param_2);
 	}
 }

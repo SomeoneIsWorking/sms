@@ -580,9 +580,9 @@ void TMapObjGeneral::calcRootMatrix()
 	model->setBaseScale(mScaling);
 }
 
-void TMapObjGeneral::perform(u32 cue, JDrama::TGraphics* graphics)
+void TMapObjGeneral::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (cue & CUE_MOVE) {
+	if (param_1 & 1) {
 		if (isState(STATE_WAITING_TO_APPEAR))
 			waitingToAppear();
 	} else {
@@ -593,7 +593,7 @@ void TMapObjGeneral::perform(u32 cue, JDrama::TGraphics* graphics)
 		}
 	}
 
-	TMapObjBase::perform(cue, graphics);
+	TMapObjBase::perform(param_1, param_2);
 }
 
 BOOL TMapObjGeneral::receiveMessage(THitActor* sender, u32 message)

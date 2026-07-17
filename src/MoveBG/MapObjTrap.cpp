@@ -38,10 +38,10 @@ BOOL TLampTrapSpikeHit::receiveMessage(THitActor* sender, u32 message)
 	return unk68->receiveMessage(sender, message);
 }
 
-void TLampTrapSpikeHit::perform(u32 cue, JDrama::TGraphics* graphics)
+void TLampTrapSpikeHit::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	THitActor::perform(cue, graphics);
-	if (cue & CUE_MOVE) {
+	THitActor::perform(param_1, param_2);
+	if (param_1 & 1) {
 		mPosition = unk68->mPosition;
 		mPosition.y += 2300.0f;
 		if (unk68->unk138 == 2 || unk68->unk138 == 0 || unk68->unk138 == 1) {
@@ -188,10 +188,10 @@ void TLampTrapSpike::control()
 		SMS_SendMessageToMario(this, 0xA);
 }
 
-void TLampTrapSpike::perform(u32 cue, JDrama::TGraphics* graphics)
+void TLampTrapSpike::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	TMapObjBase::perform(cue, graphics);
-	unk140->perform(cue, graphics);
+	TMapObjBase::perform(param_1, param_2);
+	unk140->perform(param_1, param_2);
 }
 
 TLampTrapIronHit::TLampTrapIronHit(TLampTrapIron* trap, const char* name)
@@ -210,10 +210,10 @@ BOOL TLampTrapIronHit::receiveMessage(THitActor* sender, u32 message)
 	return unk68->receiveMessage(sender, message);
 }
 
-void TLampTrapIronHit::perform(u32 cue, JDrama::TGraphics* graphics)
+void TLampTrapIronHit::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	THitActor::perform(cue, graphics);
-	if (cue & CUE_MOVE) {
+	THitActor::perform(param_1, param_2);
+	if (param_1 & 1) {
 		mPosition = unk68->mPosition;
 		mPosition.y += 2300.0f;
 		if (unk68->unk13C > 0)
@@ -279,11 +279,11 @@ void TLampTrapIron::control()
 	}
 }
 
-void TLampTrapIron::perform(u32 cue, JDrama::TGraphics* graphics)
+void TLampTrapIron::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	TMapObjBase::perform(cue, graphics);
-	unk138->perform(cue, graphics);
-	if ((cue & CUE_CALC_ANIM) && unk13C > 0) {
+	TMapObjBase::perform(param_1, param_2);
+	unk138->perform(param_1, param_2);
+	if ((param_1 & 2) && unk13C > 0) {
 		gpMarioParticleManager->emit(0x1F1, &mPosition, 3, this);
 		gpMarioParticleManager->emit(0x12C, &mPosition, 1, this);
 	}

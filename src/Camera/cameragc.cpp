@@ -47,8 +47,7 @@ const char* cJetCoasterDemoBckName = "tinkoopa_killer_camera";
 const char* cStartCamBckFileName   = "/scene/map/camera/StartCamera.bck";
 
 CPolarSubCamera::CPolarSubCamera(const char* name)
-    : JDrama::TLookAtCamera(CLBConstUpVec, CLBConstUpVec, CLBConstUpVec, 0.0f,
-                            0.0f, name)
+    : JDrama::TLookAtCamera(CLBConstUpVec, name)
     , mMode(CAMERA_MODE_INVALID)
     , mPrevMode(CAMERA_MODE_INVALID)
     , mSavedModeBeforeTalk(CAMERA_MODE_INVALID)
@@ -964,7 +963,7 @@ void CPolarSubCamera::ctrlGameCamera_()
 	unk148.set(mTarget);
 }
 
-void CPolarSubCamera::perform(u32 cue, JDrama::TGraphics* graphics)
+void CPolarSubCamera::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 #ifdef SMS_NATIVE_PLATFORM
 	SB_LOG_EVERY("cam", 200, "CPolarSubCamera perform param_1=0x%x mMode=%d fovy=%.2f ctrl(b0)=%d gxproj(b10)=%d",
@@ -1026,7 +1025,7 @@ void CPolarSubCamera::perform(u32 cue, JDrama::TGraphics* graphics)
 #endif
 		}
 
-		bool flag2 = (graphics->unk0 & 2) ? true : false;
+		bool flag2 = (param_2->unk0 & 2) ? true : false;
 		if (flag2) {
 			if (mMode != CAMERA_MODE_REPRODUCE_DEMO) {
 				if (!(unk64 & CAMERA_FLAG_DEAD_DEMO)) {
@@ -1047,15 +1046,15 @@ void CPolarSubCamera::perform(u32 cue, JDrama::TGraphics* graphics)
 		updateDemoCamera_(flag2);
 	}
 
-	if (cue & (CUE_CALC_VIEW | CUE_SET_PROJECTION)) {
+	if (param_1 & 0x14) {
 		for (int i = 0; i < 4; ++i)
 			for (int j = 0; j < 4; ++j)
-				graphics->mProjMtx.mMtx[i][j] = unk16C[i][j];
-		graphics->setViewMtx(unk1EC);
-		graphics->mNearPlane = mNear;
-		graphics->mFarPlane  = mFar;
-		if (cue & CUE_SET_PROJECTION)
-			GXSetProjection(graphics->mProjMtx.mMtx, GX_PERSPECTIVE);
+				param_2->mProjMtx.mMtx[i][j] = unk16C[i][j];
+		MTXCopy(unk1EC, param_2->getUnkB4());
+		param_2->mNearPlane = mNear;
+		param_2->mFarPlane  = mFar;
+		if (param_1 & 0x10)
+			GXSetProjection(param_2->mProjMtx.mMtx, GX_PERSPECTIVE);
 	}
 }
 

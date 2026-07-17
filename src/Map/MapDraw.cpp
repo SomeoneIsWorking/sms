@@ -19,9 +19,9 @@
 u16 SMSGetGameRenderHeight();
 u16 SMSGetGameRenderWidth();
 
-void TMapDrawWall::perform(u32 cue, JDrama::TGraphics* graphics)
+void TMapDrawWall::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (!(cue & CUE_DRAW))
+	if (!(param_1 & 8))
 		return;
 
 	if (gpCamera->getUnk2C8() == -1) {

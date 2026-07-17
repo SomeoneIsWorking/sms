@@ -532,7 +532,7 @@ void TCardLoad::loadAfter()
 	mOptionWall = JDrama::TNameRefGen::search<TMapObjOptionWall>("オプション用壁");
 }
 
-void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
+void TCardLoad::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 #ifdef SMS_NATIVE_PLATFORM
 	if (param_1 & 1) {
@@ -577,7 +577,7 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 				const JGeometry::TVec3<f32>& bp = b->getPosition();
 				fprintf(stderr, "[selpos]   block%d(%.1f %.1f %.1f) mBlockPosition(%.1f %.1f %.1f) state=%d ttl=%d\n",
 				        i, bp.x, bp.y, bp.z, b->mBlockPosition.x, b->mBlockPosition.y, b->mBlockPosition.z,
-				        (int)b->mState, (int)b->mTimeTilAppear);
+				        (int)b->mState, (int)b->mStateTimer);
 			}
 		}
 		// SB_SEL_PICK=<0|1|2>: deterministic faithful file selection for headless
@@ -1030,9 +1030,9 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 			unkC0 += 1;
 	}
 
-	if (cue & CUE_DRAW) {
-		const JDrama::TRect& rect = graphics->getScissor();
-		J2DOrthoGraph graph(graphics->getViewport());
+	if (param_1 & 8) {
+		const JDrama::TRect& rect = param_2->getScissor();
+		J2DOrthoGraph graph(param_2->getViewport());
 		graph.setup2D();
 		switch (mState) {
 		case 0:
@@ -1057,7 +1057,7 @@ void TCardLoad::perform(u32 cue, JDrama::TGraphics* graphics)
 			break;
 		}
 
-		graphics->setScissor(rect);
+		param_2->setScissor(rect);
 	}
 }
 

@@ -9,7 +9,7 @@ class TSky : public JDrama::TActor {
 public:
 	TSky(const char* name = "空");
 	virtual void load(JSUMemoryInputStream&);
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 
 public:
 	/* 0x44 */ MActor* unk44;

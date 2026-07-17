@@ -290,9 +290,9 @@ BOOL TBGTakeHit::receiveMessage(THitActor* sender, u32 message)
 	return false;
 }
 
-void TBGTakeHit::perform(u32 cue, JDrama::TGraphics* graphics)
+void TBGTakeHit::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (cue & CUE_MOVE) {
+	if (param_1 & 1) {
 		mPosition = mOwner->mSpline->getPoint(1.0f);
 		mPosition.y -= mDamageHeight * 0.5f;
 
@@ -383,9 +383,9 @@ TBGAttackHit::TBGAttackHit(TBGTentacle* owner, f32 pos_on_spline,
 	offHitFlag(HIT_FLAG_NO_COLLISION);
 }
 
-void TBGAttackHit::perform(u32 cue, JDrama::TGraphics* graphics)
+void TBGAttackHit::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (cue & CUE_MOVE) {
+	if (param_1 & 1) {
 		mPosition = mOwner->mSpline->getPoint(mPosOnSpline);
 
 		if (mOwner->mTakeHit->checkHitFlag(HIT_FLAG_CANNOT_ATTACK)
@@ -1350,11 +1350,11 @@ void TBGTentacle::resetAllNodes(const JGeometry::TVec3<f32>& param_1)
 	unk80->calc();
 }
 
-void TBGTentacle::perform(u32 cue, JDrama::TGraphics* graphics)
+void TBGTentacle::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	mTakeHit->perform(cue, graphics);
+	mTakeHit->perform(param_1, param_2);
 
-	if (cue & CUE_MOVE) {
+	if (param_1 & 1) {
 		// Uuuuh... the hit boxes move along the tentacle's spline,
 		// looping back after reaching the end? Why?!
 		for (int i = 0; i < 5; ++i) {
@@ -1366,12 +1366,12 @@ void TBGTentacle::perform(u32 cue, JDrama::TGraphics* graphics)
 	}
 
 	for (int i = 0; i < 5; ++i)
-		mAttackHit[i]->perform(cue, graphics);
+		mAttackHit[i]->perform(param_1, param_2);
 
-	if (cue & CUE_CALC_ANIM)
+	if (param_1 & 2)
 		calcAttackGuideAnm();
 
-	if (cue & CUE_MOVE) {
+	if (param_1 & 1) {
 		decideAtkColExists();
 		moveConstraint();
 		moveNode();
@@ -1382,23 +1382,23 @@ void TBGTentacle::perform(u32 cue, JDrama::TGraphics* graphics)
 		++mTimeInCurrentState;
 	}
 
-	if (cue & CUE_CALC_ANIM)
+	if (param_1 & 2)
 		unk2C->getModel()->getModelData()->getJointNodePointer(0)->setMtxCalc(
 		    mMtxCalc);
 
-	if (cue & CUE_ENTRY) {
+	if (param_1 & 0x200) {
 		unk2C->setLightData(mOwner->getGroundPlane(), mOwner->getPosition());
 
 		if (mState == 4) {
 			if (mTimeInCurrentState
 			        >= mOwner->getSaveParam()->getSLAmputeeTime() - 240
 			    && mTimeInCurrentState % 6 >= 3) {
-				cue &= ~CUE_ENTRY;
+				param_1 &= ~0x200;
 			}
 		}
 	}
 
-	if ((cue & CUE_MOVE) && mState == 4
+	if ((param_1 & 1) && mState == 4
 	    && mTimeInCurrentState
 	           < mOwner->getSaveParam()->getSLAmputeeTime() - 240) {
 		SMSGetMSound()->startSoundActor(MSD_SE_BS_GESO_TAKEN_HAND,
@@ -1406,5 +1406,5 @@ void TBGTentacle::perform(u32 cue, JDrama::TGraphics* graphics)
 	}
 
 	if (mState != 6)
-		unk2C->perform(cue, graphics);
+		unk2C->perform(param_1, param_2);
 }

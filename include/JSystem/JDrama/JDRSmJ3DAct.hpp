@@ -25,7 +25,7 @@ public:
 
 	void initModDat();
 	void load(JSUMemoryInputStream&);
-	void perform(u32 cue, JDrama::TGraphics* graphics);
+	void perform(u32, JDrama::TGraphics*);
 	~TSmJ3DAct() { }
 
 public:

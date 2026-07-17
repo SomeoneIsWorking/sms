@@ -22,7 +22,7 @@ public:
 	void initModel(const char*);
 	void initMapCollision(const char*);
 	void initUnique();
-	void perform(u32 cue, JDrama::TGraphics* graphics);
+	void perform(u32, JDrama::TGraphics*);
 	void calcUnique(JPABaseEmitter*);
 	J3DModel* getModel() const;
 	J3DModelData* getModelData() const;
@@ -77,7 +77,7 @@ public:
 	{
 	}
 
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 
 	// fabricated
 	void setActor(MActor* actor) { unk68 = actor; }
@@ -90,7 +90,7 @@ class TMapObjSoundGroup : public JDrama::TViewObj {
 public:
 	TMapObjSoundGroup(const char* name = "環境音テスト");
 	virtual void load(JSUMemoryInputStream&);
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 
 public:
 	/* 0x10 */ MSSceneSE* unk10;

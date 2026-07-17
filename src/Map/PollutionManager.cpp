@@ -94,22 +94,22 @@ bool TPollutionManager::cleanedAll() const
 
 void TPollutionManager::draw() { }
 
-void TPollutionManager::perform(u32 cue, JDrama::TGraphics* graphics)
+void TPollutionManager::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (cue & CUE_UNK1000000) {
+	if (param_1 & 0x1000000) {
 		getCounterObj().countObjDegree();
-	} else if (cue & CUE_SEMITRANSPARENT_PRIO_2) {
-		u8 layer = cue >> CUE_OFFSET_POLLUTION_LAYER;
-		if (layer == 0)
+	} else if (param_1 & 0x2000000) {
+		u8 uVar1 = param_1 >> 0x10;
+		if (uVar1 == 0)
 			getCounterLayer().calcViewMtx();
 
-		getCounterLayer().countTexDegree(layer);
+		getCounterLayer().countTexDegree(uVar1);
 
 		int last = getJointModelNum() - 1;
-		if (layer == last)
+		if (uVar1 == last)
 			getCounterLayer().resetTask();
 	} else {
-		TJointModelManager::perform(cue, graphics);
+		TJointModelManager::perform(param_1, param_2);
 	}
 }
 
@@ -146,63 +146,57 @@ void TPollutionManager::setDataAddress(TPollutionManager::TPollutionInfo* info)
 {
 	(void)0;
 	// pointer patching ewwww
-	info->unk4 = (TPollutionLayerInfo*)((u8*)info->unk4 + (uintptr_t)info);
-	unk6C      = info->unk4;
-	for (int i = 0; i < getJointModelNum(); ++i)
-		unk6C[i].unk28 += (uintptr_t)info;
+	info->mLayerInfos
+	    = (TPollutionLayerInfo*)((u8*)info->mLayerInfos + (uintptr_t)info);
+	mLayerInfos = info->mLayerInfos;
+	for (int i = 0; i < mJointModelNum; ++i)
+		mLayerInfos[i].mHeightMap += (uintptr_t)info;
 }
 
 void TPollutionManager::initPollutionInfo()
 {
 	if (TPollutionInfo* info
 	    = (TPollutionInfo*)JKRGetResource("/scene/map/ymap.ymp")) {
+#ifdef SMS_NATIVE_PLATFORM
+		// STOPGAP: skip the pollution (落書き) data init because the
+		// ymap.ymp file overlay is not yet ported for the host. ymap.ymp is
+		// a packed BE blob overlaid directly as TPollutionInfo /
+		// TPollutionLayerInfo, with 32-bit offsets typed as native
+		// pointers (the native-bmd-load-lp64-overlay class). Proper fix =
+		// sb_ymp_swap_to_host + narrow mLayerInfos/mHeightMap to u32
+		// offsets. Pollution is the PARKED subsystem; leaving
+		// mJointModelNum = 0 is a clean no-op, TPollutionManager::load
+		// guards everything on it. Guard BEFORE setDataAddress so the raw
+		// LP64-broken pointer patching doesn't run.
+		(void)info;
+		OSReport("[pollution] STOPGAP: ymap.ymp overlay not ported for host "
+		         "-> skipping pollution setup (no goo). mJointModelNum=0.\n");
+		mJointModelNum = 0;
+		return;
+#endif
 		mJointModelNum = info->mLayerCount;
 		setDataAddress(info);
 
-	if (!info)
-		return;
 
-#ifdef SMS_NATIVE_PLATFORM
-	// STOPGAP: skip the pollution (落書き) data setup because the ymap.ymp file
-	// overlay is not yet ported for the host. ymap.ymp is a packed GameCube
-	// big-endian blob overlaid directly as TPollutionInfo / TPollutionLayerInfo:
-	// (1) every numeric field needs a BE->host swap (unswapped, info->unk0 reads
-	//     byteswapped -> mJointModelNum huge -> name_table[] OOB -> SEGV in
-	//     initJointModel, the crash this guards), and (2) the embedded 32-bit
-	//     offsets (TPollutionInfo::unk4, TPollutionLayerInfo::unk28) are typed as
-	//     native pointers, so on LP64 the struct layout and setDataAddress's
-	//     offset+base patching are wrong (the native-bmd-load-lp64-overlay class).
-	// PROPER FIX: an sb_ymp_swap_to_host pass (mirroring bmd_swap / the .col swap)
-	// plus narrowing unk4/unk28 to u32 offsets with accessors. Pollution is the
-	// PARKED subsystem; the plaza geometry is the current target and TPollution
-	// Manager::load fully guards everything on mJointModelNum != 0, so leaving it
-	// 0 is a clean no-op (no pollution layers) rather than a hidden hack.
-	OSReport("[pollution] STOPGAP: ymap.ymp overlay not ported for host -> "
-	         "skipping pollution setup (no goo). mJointModelNum=0.\n");
-	mJointModelNum = 0;
-	return;
-#endif
-
-	mJointModelNum = info->unk0;
-	setDataAddress(info);
-
-	if (gpMarDirector->mMap == 0x9 && gpMarDirector->unk7D != 0x7) {
-		static const char* mare_name_table[] = {
-			"pollution00", "pollution01", "pollution02", "pollution03",
-			"pollution04", "pollution05", "pollution06", "pollutionA",
-			"pollutionB",  nullptr,
-		};
-		initJointModel("scene/map/pollution", mare_name_table);
-	} else {
-		static const char* name_table[] = {
-			"pollution00", "pollution01", "pollution02", "pollution03",
-			"pollution04", "pollution05", "pollution06", "pollution07",
-			"pollution08", "pollution09", "pollution10", "pollution11",
-			"pollution12", "pollution13", "pollution14", "pollution15",
-			"pollution16", "pollution17", "pollution18", "pollution19",
-			nullptr,
-		};
-		initJointModel("scene/map/pollution", name_table);
+		if (gpMarDirector->getCurrentMap() == 0x9
+		    && gpMarDirector->getCurrentStage() != 0x7) {
+			static const char* mare_name_table[] = {
+				"pollution00", "pollution01", "pollution02", "pollution03",
+				"pollution04", "pollution05", "pollution06", "pollutionA",
+				"pollutionB",  nullptr,
+			};
+			initJointModel("scene/map/pollution", mare_name_table);
+		} else {
+			static const char* name_table[] = {
+				"pollution00", "pollution01", "pollution02", "pollution03",
+				"pollution04", "pollution05", "pollution06", "pollution07",
+				"pollution08", "pollution09", "pollution10", "pollution11",
+				"pollution12", "pollution13", "pollution14", "pollution15",
+				"pollution16", "pollution17", "pollution18", "pollution19",
+				nullptr,
+			};
+			initJointModel("scene/map/pollution", name_table);
+		}
 	}
 }
 

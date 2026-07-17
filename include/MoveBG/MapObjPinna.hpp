@@ -61,7 +61,7 @@ public:
 	void control();
 	void attachCoin(TCoin*, int);
 	void calcAfter();
-	void perform(u32 cue, JDrama::TGraphics* graphics);
+	void perform(u32, JDrama::TGraphics*);
 	void loadAfter();
 	void initMapObj();
 	TShellCup(const char* name = "シェルカップ");

@@ -1621,9 +1621,9 @@ void TModelWaterManager::drawRefracAndSpec() const
 		unk5D30->draw();
 }
 
-void TModelWaterManager::perform(u32 cue, JDrama::TGraphics* graphics)
+void TModelWaterManager::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	MtxPtr r29 = graphics->mViewMtx;
+	MtxPtr r29 = param_2->mViewMtx;
 
 #ifdef SMS_NATIVE_PLATFORM
 	// SB_WATER_DBG: confirm the reflective-sea path runs natively. Logs each perform flag
@@ -1649,18 +1649,18 @@ void TModelWaterManager::perform(u32 cue, JDrama::TGraphics* graphics)
 		unk5E00 += 1;
 	}
 
-	if (cue & CUE_CALC_VIEW) {
+	if (param_1 & 4) {
 		if (unk5D60 & 0x80)
 			TTimeRec::startTimer(0xFF, 0x00, 0x00, 0xFE);
 
-		calcDrawVtx(graphics->mViewMtx);
-		calcVMAll(graphics->mViewMtx);
+		calcDrawVtx(param_2->mViewMtx);
+		calcVMAll(param_2->mViewMtx);
 
 		if (unk5D60 & 0x80)
 			TTimeRec::endTimer();
 	}
 
-	if (cue & CUE_DRAW) {
+	if (param_1 & 8) {
 		if (unk5D60 & 0x80)
 			TTimeRec::snapGxTimeStart(0xFF, 0x00, 0x00, 0xFD);
 
@@ -1672,20 +1672,20 @@ void TModelWaterManager::perform(u32 cue, JDrama::TGraphics* graphics)
 
 		MTXCopy(r29, unk5E10);
 		if ((unk5D60 & 0x100) && !(unk5D60 & 0x200))
-			drawShineShadowVolume(graphics->mViewMtx);
+			drawShineShadowVolume(param_2->mViewMtx);
 
 		if (unk5D60 & 0x80)
 			TTimeRec::snapGxTimeEnd();
 	}
 
-	if (cue & CUE_DRAW_INIT) {
+	if (param_1 & 0x80) {
 		if (unk5D60 & 0x80)
 			TTimeRec::snapGxTimeStart(0xFF, 0x00, 0x00, 0xFC);
 
 		drawRefracAndSpec();
 
 		if ((unk5D60 & 0x100) && (unk5D60 & 0x200))
-			drawShineShadowVolume(graphics->mViewMtx);
+			drawShineShadowVolume(param_2->mViewMtx);
 
 		if (unk5D60 & 0x80)
 			TTimeRec::snapGxTimeEnd();

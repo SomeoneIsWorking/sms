@@ -30,7 +30,7 @@ public:
 
 class TKumokun : public TSmallEnemy {
 public:
-	TKumokun(const char* name = "くもくん");
+	TKumokun(const char*);
 
 	virtual BOOL receiveMessage(THitActor*, u32);
 	virtual void init(TLiveManager*);

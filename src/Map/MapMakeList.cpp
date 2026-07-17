@@ -217,8 +217,8 @@ void TMapCollisionData::addCheckDataToGrid(TBGCheckData* param_1, int kind)
 		if (gga)
 			++s_inGrid;
 		if (s_calls % 200 == 0 || s_calls < 4)
-			fprintf(stderr, "[addgrid] call#%d (inGrid=%d) planeType=%d param2=%d gga=%d cells[z%d..%d,x%d..%d]\n",
-			        s_calls, s_inGrid, iVar7, param_2, (int)gga, local_b4, local_b8, local_ac, local_b0);
+			fprintf(stderr, "[addgrid] call#%d (inGrid=%d) planeType=%d kind=%d gga=%d cells[z%d..%d,x%d..%d]\n",
+			        s_calls, s_inGrid, iVar7, kind, (int)gga, local_b4, local_b8, local_ac, local_b0);
 	}
 #endif
 	if (gga) {
@@ -259,7 +259,7 @@ void TMapCollisionData::addCheckDataToGrid(TBGCheckData* param_1, int kind)
 					}
 #endif
 					if (pin) {
-						TBGCheckList* list = getListRoot(i, j, param_2, iVar7);
+						TBGCheckList* list = getListRoot(i, j, kind, iVar7);
 						TBGCheckList* list2;
 						switch (iVar7) {
 						case 0:

@@ -30,9 +30,9 @@ int TDirector::direct()
 {
 	TGraphics graphics;
 	graphics.unk0 = 1;
-	unk10->testPerform(CUE_MOVE | CUE_CALC_ANIM, &graphics);
+	unk10->testPerform(3, &graphics);
 	graphics.unk0 = 0;
-	unk14->testPerform(CUE_DRAW, &graphics);
+	unk14->testPerform(8, &graphics);
 	return 0;
 }
 

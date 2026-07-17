@@ -1098,7 +1098,7 @@ config.libs = [
             Object(NonMatching, "GC2D/BoundPane.cpp"),
             Object(NonMatching, "GC2D/PauseMenu2.cpp"),
             Object(NonMatching, "GC2D/MessageLoader.cpp"),
-            Object(NonMatching, "GC2D/HelpActor.cpp"),
+            Object(Matching, "GC2D/HelpActor.cpp"),
             Object(Matching, "GC2D/MessageUtil.cpp"),
             Object(NonMatching, "GC2D/CardSave.cpp"),
             Object(NonMatching, "GC2D/CardLoad.cpp"),
@@ -1250,7 +1250,7 @@ config.libs = [
     {
         "lib": "Animal",
         "mw_version": "GC/1.2.5",
-        "cflags": [*cflags_game, "-inline deferred", "-opt all,nostrength"],
+        "cflags": cflags_game,
         "progress_category": "game",
         "objects": [
             Object(NonMatching, "Animal/boid.cpp"),

@@ -143,7 +143,7 @@ public:
 	virtual ~TMapObjBase() { }
 	virtual void load(JSUMemoryInputStream&);
 	virtual void loadAfter();
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 	virtual BOOL receiveMessage(THitActor* sender, u32 message);
 	virtual MtxPtr getTakingMtx();
 	virtual void ensureTakeSituation();
@@ -208,22 +208,16 @@ public:
 	void initUnique();
 	void setMatTableTex(J3DMaterialTable*);
 	void setMatTable(J3DMaterialTable*);
-	JPABaseEmitter* emitAndRotate(s32, unsigned char,
-	                              const JGeometry::TVec3<f32>*) const;
-	JPABaseEmitter* emitAndScale(s32, unsigned char,
-	                             const JGeometry::TVec3<f32>*,
+	JPABaseEmitter* emitAndRotate(s32, u8, const JGeometry::TVec3<f32>*) const;
+	JPABaseEmitter* emitAndScale(s32, u8, const JGeometry::TVec3<f32>*,
 	                             const JGeometry::TVec3<f32>&) const;
-	JPABaseEmitter* emitAndBindScale(s32, unsigned char,
-	                                 const JGeometry::TVec3<f32>*,
+	JPABaseEmitter* emitAndBindScale(s32, u8, const JGeometry::TVec3<f32>*,
 	                                 const JGeometry::TVec3<f32>&) const;
-	JPABaseEmitter* emitAndScale(s32, unsigned char,
-	                             const JGeometry::TVec3<f32>*) const;
-	JPABaseEmitter* emitAndRotateScale(s32, unsigned char,
-	                                   const JGeometry::TVec3<f32>*) const;
-	JPABaseEmitter* emitAndSRT(s32, unsigned char,
-	                           const JGeometry::TVec3<f32>*,
-	                           const JGeometry::TVec3<f32>&,
-	                           const JGeometry::TVec3<f32>&);
+	JPABaseEmitter* emitAndScale(s32, u8, const JGeometry::TVec3<f32>*) const;
+	void emitAndRotateScale(s32, u8, const JGeometry::TVec3<f32>*) const;
+	static void emitAndSRT(s32, u8, const JGeometry::TVec3<f32>*,
+	                       const JGeometry::TVec3<f32>&,
+	                       const JGeometry::TVec3<f32>&);
 	void emitColumnWater();
 	bool marioHipAttack() const;
 	bool marioHeadAttack() const;
@@ -318,8 +312,7 @@ public:
 	                     f32 vertical_speed) const;
 	void throwObjToOverhead(TMapObjBase*, f32, f32) const;
 	void checkOnManhole();
-	static void loadHideObjInfo(JSUMemoryInputStream&, s32*, f32*, f32*,
-	                            s32*);
+	static void loadHideObjInfo(JSUMemoryInputStream&, s32*, f32*, f32*, s32*);
 	static bool isDemo();
 	static bool isHideObj(THitActor*);
 	void getObjCollisionHeightOffset() const { }
@@ -347,10 +340,6 @@ public:
 
 	// Fabricated
 	const JGeometry::TVec3<f32>& getInitialScaling() { return mInitialScaling; }
-	const JGeometry::TVec3<f32>& getInitialPosition() const
-	{
-		return mInitialPosition;
-	}
 
 	const char* getUnkF4() { return unkF4; }
 

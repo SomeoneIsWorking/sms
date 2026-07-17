@@ -23,7 +23,6 @@ enum TLiveFlagBits {
 	LIVE_FLAG_CLIPPED_OUT = 0x4,
 	LIVE_FLAG_UNK8        = 0x8,
 	LIVE_FLAG_UNK10       = 0x10,
-	LIVE_FLAG_UNK20       = 0x20,
 	LIVE_FLAG_UNK40       = 0x40,
 	LIVE_FLAG_AIRBORNE    = 0x80,
 	LIVE_FLAG_UNK100      = 0x100,
@@ -85,7 +84,7 @@ public:
 	JGeometry::TVec3<f32> calcVelocityToJumpToY(const JGeometry::TVec3<f32>&,
 	                                            f32 speed, f32 gravity) const;
 	void calcVelocityToJumpToXZ(const JGeometry::TVec3<f32>&, f32, f32) const;
-	void perform(u32 cue, JDrama::TGraphics* graphics);
+	void perform(u32, JDrama::TGraphics*);
 	void load(JSUMemoryInputStream&);
 	void initLodAnm(const TLodAnmIndex*, int, f32);
 	J3DModel* getModel() const;

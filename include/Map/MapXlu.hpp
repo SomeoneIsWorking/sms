@@ -13,6 +13,9 @@ public:
 	bool changeXluJoint(int prio);
 	void changeNormalJoint();
 
+	// fabricated diagnostic accessor
+	s32 getPrioGroupNum() const { return mPrioGroupNum; }
+
 private:
 	struct TXluPrioGroup {
 		/* 0x0 */ s32 mObjectNum;

@@ -25,7 +25,7 @@ void TMarDirector::initECTGft(
 		TBathWaterManager* bathtubWater
 		    = JDrama::TNameRefGen::search<TBathWaterManager>("バスタブの水");
 		if (bathtubWater)
-			param_2->push_back(bathtubWater->getPreprocessor(), CUE_DRAW);
+			param_2->push_back(bathtubWater->getPreprocessor(), 8);
 	} else {
 		JDrama::TViewObjPtrListT<JDrama::TViewObj>* graffitiGroup
 		    = JDrama::TNameRefGen::search<
@@ -40,15 +40,14 @@ void TMarDirector::initECTGft(
 		JDrama::TRect rect;
 		rect.set(0, 0, 0x200, 0x200);
 		graffitiEfbTex->setSrcRect(rect);
-		param_1->push_back(graffitiEfbTex, CUE_DRAW_INIT);
+		param_1->push_back(graffitiEfbTex, 0x80);
 
-		param_1->push_back(new JDrama::TViewport(rect, "graffito"), CUE_DRAW);
-		param_1->push_back(
-		    new JDrama::TOrthoProj(-1.0f, 1.0f, 0.0f, 0.0f, 512.0f, 512.0f),
-		    CUE_SET_PROJECTION);
-		param_1->push_back(drawInit, CUE_DRAW);
-		param_1->push_back(graffitiGroup, CUE_UNK1000000);
-		param_1->push_back(graffitiEfbTex, CUE_DRAW);
+		param_1->push_back(new JDrama::TViewport(rect, "graffito"), 0x8);
+		param_1->push_back(new JDrama::TOrthoProj(0.0f, 0.0f, 512.0f, 512.0f),
+		                   0x10);
+		param_1->push_back(drawInit, 0x8);
+		param_1->push_back(graffitiGroup, 0x1000000);
+		param_1->push_back(graffitiEfbTex, 0x8);
 
 		for (int i = 0; i < gpPollution->getJointModelNum(); ++i) {
 			JDrama::TEfbCtrlTex* efbTex = new JDrama::TEfbCtrlTex("graffito");
@@ -61,17 +60,14 @@ void TMarDirector::initECTGft(
 			JDrama::TRect rect;
 			rect.set(0, 0, img->width, img->height);
 			efbTex->setSrcRect(rect);
-			param_2->push_back(efbTex, CUE_DRAW_INIT);
-			param_2->push_back(new JDrama::TViewport(rect, "graffito"),
-			                   CUE_DRAW);
-			param_2->push_back(new JDrama::TOrthoProj(-1.0f, 1.0f, 0.0f, 0.0f,
-			                                          img->width, img->height),
-			                   CUE_SET_PROJECTION);
-			param_1->push_back(drawInit, CUE_DRAW);
-			param_1->push_back(graffitiGroup, (i << CUE_OFFSET_POLLUTION_LAYER)
-			                                      | CUE_SEMITRANSPARENT_PRIO_2
-			                                      | CUE_DRAW);
-			param_1->push_back(efbTex, CUE_DRAW);
+			param_2->push_back(efbTex, 0x80);
+			param_2->push_back(new JDrama::TViewport(rect, "graffito"), 0x8);
+			param_2->push_back(
+			    new JDrama::TOrthoProj(0.0f, 0.0f, img->width, img->height),
+			    0x10);
+			param_1->push_back(drawInit, 0x8);
+			param_1->push_back(graffitiGroup, (i << 16) | 0x2000008);
+			param_1->push_back(efbTex, 0x8);
 		}
 	}
 }
@@ -145,18 +141,18 @@ void TMarDirector::initECDisp(
 	if (specularSheen || lensFlare || lensGlow) {
 		f32 w = (u16)SMSGetGameRenderWidth() / 2;
 		f32 h = (u16)SMSGetGameRenderHeight() / 2;
-		ortho = new JDrama::TOrthoProj(-1.0f, 1.0f, -w, h, w, -h);
+		ortho = new JDrama::TOrthoProj(-w, h, w, -h);
 	}
 
-	JDrama::TOrthoProj* ortho2 = new JDrama::TOrthoProj(
-	    10.0f, 300000.0f, 0.0f, 0.0f, (u16)SMSGetGameRenderHeight(),
-	    (u16)SMSGetGameRenderWidth());
+	JDrama::TOrthoProj* ortho2
+	    = new JDrama::TOrthoProj(0.0f, 0.0f, (u16)SMSGetGameRenderHeight(),
+	                             (u16)SMSGetGameRenderWidth());
 
-	param_1->push_back(stageDisp, CUE_DRAW_INIT);
+	param_1->push_back(stageDisp, 0x80);
 	param_1->push_back(
-	    new JDrama::TViewport(SMSGetRederRect_Game(), "Screen 2D"), CUE_DRAW);
-	param_1->push_back(ortho2, CUE_SET_PROJECTION);
-	param_1->push_back(composite3, CUE_DRAW);
+	    new JDrama::TViewport(SMSGetRederRect_Game(), "Screen 2D"), 0x8);
+	param_1->push_back(ortho2, 0x10);
+	param_1->push_back(composite3, 0x8);
 
 	JDrama::TViewObj* setViewMtx
 	    = JDrama::TNameRefGen::search<JDrama::TViewObj>(
@@ -169,23 +165,22 @@ void TMarDirector::initECDisp(
 	    = JDrama::TNameRefGen::search<JDrama::TCamera>("camera 1");
 
 	if (specularSheen || lensFlare || lensGlow) {
-		param_1->push_back(ortho, CUE_SET_PROJECTION);
-		param_1->push_back(setViewMtx, CUE_CALC_VIEW);
-		param_1->push_back(drawBufLensFlare,
-		                   CUE_SET_DRAW_BUFFER | CUE_DRAW_INIT);
+		param_1->push_back(ortho, 0x10);
+		param_1->push_back(setViewMtx, 0x4);
+		param_1->push_back(drawBufLensFlare, 0x480);
 		if (specularSheen)
-			param_1->push_back(specularSheen, CUE_CALC_VIEW | CUE_ENTRY);
+			param_1->push_back(specularSheen, 0x204);
 		if (lensGlow)
-			param_1->push_back(lensGlow, CUE_CALC_VIEW | CUE_ENTRY);
-		param_1->push_back(drawInit, CUE_DRAW);
-		param_1->push_back(drawBufLensFlare, CUE_DRAW);
+			param_1->push_back(lensGlow, 0x204);
+		param_1->push_back(drawInit, 0x8);
+		param_1->push_back(drawBufLensFlare, 0x8);
 		if (lensFlare) {
-			param_1->push_back(camera1, CUE_SET_PROJECTION);
-			param_1->push_back(setViewMtx, CUE_CALC_VIEW);
-			param_1->push_back(drawBufLensFlare, CUE_DRAW_INIT);
-			param_1->push_back(lensFlare, CUE_CALC_VIEW | CUE_ENTRY);
-			param_1->push_back(drawInit, CUE_DRAW);
-			param_1->push_back(drawBufLensFlare, CUE_DRAW);
+			param_1->push_back(camera1, 0x10);
+			param_1->push_back(setViewMtx, 0x4);
+			param_1->push_back(drawBufLensFlare, 0x80);
+			param_1->push_back(lensFlare, 0x204);
+			param_1->push_back(drawInit, 0x8);
+			param_1->push_back(drawBufLensFlare, 0x8);
 		}
 	}
 
@@ -194,38 +189,38 @@ void TMarDirector::initECDisp(
 	JDrama::TCamera* drawBufChrXlu
 	    = JDrama::TNameRefGen::search<JDrama::TCamera>("DrawBuf ChrXlu");
 
-	param_1->push_back(camera1, CUE_SET_PROJECTION);
-	param_1->push_back(setViewMtx, CUE_CALC_VIEW);
-	param_1->push_back(drawBufChrOpa, CUE_SET_DRAW_BUFFER | CUE_DRAW_INIT);
-	param_1->push_back(drawBufChrXlu, CUE_SET_DRAW_BUFFER | CUE_DRAW_INIT);
-	param_1->push_back("会話カーソル", CUE_CALC_VIEW | CUE_ENTRY);
-	param_1->push_back("ターゲット矢印", CUE_CALC_VIEW | CUE_ENTRY);
-	param_1->push_back(drawInit, CUE_DRAW);
-	param_1->push_back(drawBufChrOpa, CUE_DRAW);
-	param_1->push_back(drawBufChrXlu, CUE_DRAW);
+	param_1->push_back(camera1, 0x10);
+	param_1->push_back(setViewMtx, 0x4);
+	param_1->push_back(drawBufChrOpa, 0x480);
+	param_1->push_back(drawBufChrXlu, 0x480);
+	param_1->push_back("会話カーソル", 0x204);
+	param_1->push_back("ターゲット矢印", 0x204);
+	param_1->push_back(drawInit, 0x8);
+	param_1->push_back(drawBufChrOpa, 0x8);
+	param_1->push_back(drawBufChrXlu, 0x8);
 
-	JDrama::TOrthoProj* ortho3 = new JDrama::TOrthoProj(
-	    -1.0f, 1.0f, 0.0f, 0.0f, (u16)SMSGetGameRenderHeight(),
-	    (u16)SMSGetGameRenderWidth());
-	param_1->push_back(ortho3, CUE_SET_PROJECTION);
+	JDrama::TOrthoProj* ortho3
+	    = new JDrama::TOrthoProj(0.0f, 0.0f, (u16)SMSGetGameRenderHeight(),
+	                             (u16)SMSGetGameRenderWidth());
+	param_1->push_back(ortho3, 0x10);
 
 	JDrama::TViewObj* group2D2
 	    = JDrama::TNameRefGen::search<JDrama::TViewObj>("Group 2D 2");
-	param_1->push_back(group2D2, CUE_DRAW);
+	param_1->push_back(group2D2, 0x8);
 
 	JDrama::TOrthoProj* ortho4
-	    = new JDrama::TOrthoProj(-500.0f, 500.0f, 0.0f, 16.0f, 600.0f, 464.0f);
-	param_1->push_back(ortho4, CUE_SET_PROJECTION);
+	    = new JDrama::TOrthoProj(0.0f, 16.0f, 600.0f, 464.0f);
+	param_1->push_back(ortho4, 0x10);
 
 	JDrama::TViewObj* group2D
 	    = JDrama::TNameRefGen::search<JDrama::TViewObj>("Group 2D");
-	param_1->push_back(group2D, CUE_DRAW);
+	param_1->push_back(group2D, 0x8);
 
-	param_1->push_back(ortho4, CUE_SET_PROJECTION);
+	param_1->push_back(ortho4, 0x10);
 	JDrama::TViewObj* guide
 	    = JDrama::TNameRefGen::search<JDrama::TViewObj>("Guide");
-	param_1->push_back(guide, CUE_DRAW);
-	param_1->push_back(stageDisp, CUE_DRAW);
+	param_1->push_back(guide, 0x8);
+	param_1->push_back(stageDisp, 0x8);
 }
 
 extern JPAEmitterManager* gpEmitterManager4D2;
@@ -238,7 +233,7 @@ void TMarDirector::setupPerformList_console()
 
 	list->insert(new TEmitterViewObj(gpEmitterManager4D2));
 
-	unk30->push_back(list, CUE_MOVE | CUE_CALC_ANIM);
-	unk30->push_back("Group 2D 2", CUE_MOVE | CUE_CALC_ANIM);
-	unk30->push_back("Guide", CUE_MOVE | CUE_CALC_ANIM);
+	unk30->push_back(list, 3);
+	unk30->push_back("Group 2D 2", 3);
+	unk30->push_back("Guide", 3);
 }

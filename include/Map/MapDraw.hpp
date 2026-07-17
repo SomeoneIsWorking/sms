@@ -13,7 +13,7 @@ public:
 
 	virtual ~TMapDrawWall() { }
 	virtual void load(JSUMemoryInputStream&);
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 
 public:
 	/* 0x10 */ ResTIMG* unk10;

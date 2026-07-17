@@ -61,7 +61,7 @@ public:
 	virtual void entryIn();
 	virtual void entryOut();
 
-	void perform(u32 cue, JDrama::TGraphics* graphics);
+	void perform(u32, JDrama::TGraphics*);
 	void entryOutTexPatternAnm();
 	void entryInTexPatternAnm();
 	void updateInTexPatternAnm();

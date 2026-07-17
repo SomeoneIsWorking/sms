@@ -10,13 +10,28 @@
 #include <Map/MapWarp.hpp>
 #include <Map/MapXlu.hpp>
 #include <Map/MapCollisionEntry.hpp>
+#include <Map/MapStaticObject.hpp>
+#include <Map/MapEventMare.hpp>
+#include <M3DUtil/MActor.hpp>
+#include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
+#include <MoveBG/MapObjBase.hpp>
+#include <MoveBG/MapObjManager.hpp>
+#include <MoveBG/MapObjOption.hpp>
+#include <MoveBG/MapObjWater.hpp>
 #include <MoveBG/MapObjWave.hpp>
-#include <MSound/MSound.hpp>
 #include <System/MarDirector.hpp>
+#include <System/Particles.hpp>
+#include <System/EmitterViewObj.hpp>
+#include <Camera/Camera.hpp>
+#include <Camera/CubeManagerBase.hpp>
+#include <Player/MarioAccess.hpp>
+#include <MSound/MSound.hpp>
+#include <JSystem/JDrama/JDRNameRefGen.hpp>
+#include <JSystem/JDrama/JDRViewObjPtrList.hpp>
 #ifdef SMS_NATIVE_PLATFORM
-// WEAK: only defined inside sms-boot (native/render/sms_boot_j3d_capture.cpp) — a test target
-// linking this file without the render-capture pipeline (e.g. sms-j3dload_test) must still link.
-// The sole call site below is already gated behind a getenv() debug flag.
+// WEAK: only defined inside sms-boot (native/render/sms_boot_j3d_capture.cpp) — a
+// test target linking this file without the render-capture pipeline (e.g.
+// sms-j3dload_test) must still link. Sole call site below is gated on getenv().
 extern "C" int sb_boot_capture_phase() __attribute__((weak));
 #endif
 
@@ -252,30 +267,24 @@ void TMap::update()
 	if (gpMarDirector->mGameState != 0)
 		return;
 
-	u8 mapId = gpMarDirector->mMap;
-	if (mapId == 57 || mapId == 16)
+	if (gpCamera->isDemoCamera())
 		return;
 
-	// TODO: SDA1[-0x6094] holds a singleton whose first u32 field, when bit-1
-	// is set, gates OUT the water-immersion tracking (likely a cinematic /
-	// pollution-cleared / cutscene marker). Not yet pinned to a named
-	// symbol. At title (mMap==15), the .sbss is zero-initialized so this
-	// check treats bit-1 as clear (proceed with immersion). Once the
-	// singleton is named, replace this guard with a real read.
-	// if (*((u32*)gpUnkSDA1_6094) & 2) return;
+	if (gpMarDirector->getCurrentMap() == 0x39
+	    || gpMarDirector->getCurrentMap() == 0x10)
+		return;
 
-	f32 waterY = gpMapObjWave->getHeight(cam->unk124.x, cam->unk124.y,
-	                                     cam->unk124.z);
-	f32 camY = cam->unk124.y;
+	if (SMS_CheckMarioFlag(MARIO_FLAG_VISIBLE))
+		return;
 
-	if (waterY <= camY) {
-		// camera above/at water surface
-		if (unk20 == 0) {
+	const JGeometry::TVec3<f32>& camPos = gpCamera->getUnk124();
+	f32 height = gpMapObjWave->getHeight(camPos.x, camPos.y, camPos.z);
+	if (height == gpCamera->getUnk124().y || gpCamera->getUnk124().y > height) {
+		if (!unk20) {
 			unk20 = 1;
 			MSSeCallBack::setWaterCameraFir(false);
 		}
-	} else if (unk20 != 0) {
-		// camera below water surface, was previously above
+	} else if (unk20) {
 		unk20 = 0;
 		MSSeCallBack::setWaterCameraFir(true);
 	}
@@ -387,9 +396,9 @@ f32 TMap::checkGround(f32 x, f32 y, f32 z, const TBGCheckData** result) const
 
 void TMap::changeModel(s16 param_1) const { mWarp->changeModel(param_1); }
 
-void TMap::perform(u32 cue, JDrama::TGraphics* graphics)
+void TMap::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (cue & CUE_MOVE) {
+	if (param_1 & 1) {
 		update();
 		mCollisionData->initMoveCollision();
 		mWarp->watchToWarp();
@@ -410,7 +419,7 @@ void TMap::perform(u32 cue, JDrama::TGraphics* graphics)
 		if ((param_1 & 0x2000000)) {
 			if (!mXlu->changeXluJoint(1))
 				return;
-		} else if ((cue & CUE_SEMITRANSPARENT_PRIO_1)) {
+		} else if ((param_1 & 0x4000000)) {
 			if (!mXlu->changeXluJoint(0))
 				return;
 		} else {
@@ -418,10 +427,10 @@ void TMap::perform(u32 cue, JDrama::TGraphics* graphics)
 		}
 	}
 
-	if (cue & CUE_DRAW)
-		draw(cue, graphics);
+	if (param_1 & 8)
+		draw(param_1, param_2);
 
-	mModelManager->perform(cue, graphics);
+	mModelManager->perform(param_1, param_2);
 }
 
 void TMap::loadAfter()
@@ -466,10 +475,10 @@ void TMap::load(JSUMemoryInputStream& stream)
 			TMapCollisionBase* cb = mModelManager->mCollision;
 			fprintf(stderr, "[mapcol] static vtxCount=%u (>=350:%d skips MTX xform) "
 			        "unk20 trans(%.1f %.1f %.1f) raw vtx0(%.1f %.1f %.1f)\n",
-			        cb->unk10, (int)(cb->unk10 >= 0x15E),
+			        cb->mVertexNum, (int)(cb->mVertexNum >= 0x15E),
 			        cb->unk20[0][3], cb->unk20[1][3], cb->unk20[2][3],
-			        cb->unk14 ? cb->unk14[0].x : -1, cb->unk14 ? cb->unk14[0].y : -1,
-			        cb->unk14 ? cb->unk14[0].z : -1);
+			        cb->mVertices ? cb->mVertices[0].x : -1, cb->mVertices ? cb->mVertices[0].y : -1,
+			        cb->mVertices ? cb->mVertices[0].z : -1);
 		}
 		// Find a GROUND triangle (normal.y>0.9) and test checkGround at its
 		// centroid — settles whether checkGround can find linked triangles.

@@ -7,7 +7,7 @@ class MActor;
 
 class TMapObjSeaIndirect : public JDrama::TActor {
 public:
-	void perform(u32 cue, JDrama::TGraphics* graphics);
+	void perform(u32, JDrama::TGraphics*);
 	void init();
 	TMapObjSeaIndirect(const char*);
 
@@ -17,7 +17,7 @@ public:
 
 class TMapObjWaterFilter : public JDrama::TActor {
 public:
-	void perform(u32 cue, JDrama::TGraphics* graphics);
+	void perform(u32, JDrama::TGraphics*);
 	void init();
 	TMapObjWaterFilter(const char*);
 

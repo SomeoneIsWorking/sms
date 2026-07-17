@@ -20,10 +20,10 @@ TSmJ3DScn::TSmJ3DScn(const char* name, s32 draw_bufs)
 		mDrawBuffers[i] = new J3DDrawBuffer(0x400);
 }
 
-void TSmJ3DScn::perform(u32 cue, TGraphics* graphics)
+void TSmJ3DScn::perform(u32 param_1, TGraphics* param_2)
 {
-	if (cue & (CUE_MOVE | CUE_CALC_ANIM)) {
-		TViewObjPtrListT::perform(cue, graphics);
+	if (param_1 & 3) {
+		TViewObjPtrListT::perform(param_1, param_2);
 	}
 
 #ifdef SMS_NATIVE_PLATFORM
@@ -45,16 +45,16 @@ void TSmJ3DScn::perform(u32 cue, TGraphics* graphics)
 
 	if (param_1 & 8) {
 		if (mLightMap)
-			mLightMap->perform(CUE_LIGHT, graphics);
+			mLightMap->perform(0x20, param_2);
 
-		MTXCopy(graphics->mViewMtx, j3dSys.getViewMtx());
+		MTXCopy(param_2->mViewMtx, j3dSys.getViewMtx());
 		j3dSys.drawInit();
 		for (int i = 0; i < mDrawBufferCount; ++i)
 			mDrawBuffers[i]->frameInit();
 
 		j3dSys.setDrawBuffer(mDrawBuffers[0], 0);
 		j3dSys.setDrawBuffer(mDrawBuffers[1], 1);
-		TViewObjPtrListT::perform(cue | (CUE_CALC_VIEW | CUE_ENTRY), graphics);
+		TViewObjPtrListT::perform(param_1 | 0x204, param_2);
 		j3dSys.setUnk4C(3);
 		mDrawBuffers[0]->draw();
 		j3dSys.setUnk4C(4);

@@ -41,7 +41,7 @@ public:
 	void setAnimation(const char*, int);
 	void initDL();
 	void resetDL();
-	void initDLByIndex(u16);
+	void initDLByIndex(unsigned short);
 	void unlockDLIfNeed();
 	void onMakeDL();
 	void offMakeDL();
@@ -53,14 +53,14 @@ public:
 	void calc();
 	void viewCalc();
 	void loadSetDeformData(const char*);
-	void setLightID(s16);
+	void setLightID(short);
 	void setLightData(const TBGCheckData*, const JGeometry::TVec3<f32>&);
 	void setLightType(int);
 	void update();
 	void entry();
 	void frameUpdate();
 	void matAnmFrameUpdate();
-	void perform(u32 cue, JDrama::TGraphics* graphics);
+	void perform(u32, JDrama::TGraphics*);
 	BOOL checkCurAnm(const char*, int);
 	bool checkCurAnmFromIndex(int, int);
 	bool checkAnmFileExist(const char*, int);
@@ -140,14 +140,6 @@ public:
 			return;
 
 		unkC->setMotionBlendRatio(ratio);
-	}
-
-	f32 getMotionBlendRatioForBck()
-	{
-		if (!unkC)
-			return 0.0f;
-
-		return unkC->getMotionBlendRatio();
 	}
 
 	void initSimpleMotionBlend(int frame)

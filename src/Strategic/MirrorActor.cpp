@@ -59,9 +59,9 @@ void TMirrorActor::checkIsInMirror()
 	}
 }
 
-void TMirrorActor::perform(u32 cue, JDrama::TGraphics* graphics)
+void TMirrorActor::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (cue & CUE_CALC_ANIM) {
+	if (param_1 & 2) {
 		checkIsInMirror();
 		if (mInMirror == 0)
 			return;

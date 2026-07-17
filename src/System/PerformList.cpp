@@ -17,9 +17,10 @@ void TPerformList::forEachPerform(
 	}
 }
 
-void TPerformList::perform(u32 cue, JDrama::TGraphics* graphics)
+void TPerformList::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	forEachPerform(getChildren().begin(), getChildren().end(), graphics, cue);
+	forEachPerform(getChildren().begin(), getChildren().end(), param_2,
+	               param_1);
 }
 
 void TPerformList::load(JSUMemoryInputStream& stream)

@@ -320,7 +320,7 @@ void MActor::viewCalc()
 		unk4->viewCalc();
 }
 
-void MActor::setLightID(s16 light_id)
+void MActor::setLightID(short light_id)
 {
 	unk3C = 0;
 	unk3C = light_id;
@@ -342,7 +342,10 @@ void MActor::setLightData(const TBGCheckData* param_1,
 
 	unk3C = 0;
 	if (param_1->isShadow()) {
-		setLightID(param_1->getData());
+		s16 data = param_1->getData();
+
+		unk3C = 0;
+		unk3C = data;
 	}
 }
 
@@ -395,15 +398,15 @@ void MActor::matAnmFrameUpdate()
 			unk28[i]->getFrameCtrl()->update();
 }
 
-void MActor::perform(u32 cue, JDrama::TGraphics*)
+void MActor::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (cue & CUE_CALC_ANIM)
+	if (param_1 & 0x2)
 		calcAnm();
 
-	if (cue & CUE_CALC_VIEW)
+	if (param_1 & 0x4)
 		viewCalc();
 
-	if (cue & CUE_ENTRY)
+	if (param_1 & 0x200)
 		entry();
 }
 

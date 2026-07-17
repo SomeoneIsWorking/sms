@@ -29,7 +29,7 @@ public:
 	}
 
 	virtual void load(JSUMemoryInputStream&);
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 
 	// Filters are &ed with the first param in perform
 	void push_back(JDrama::TViewObj* object, u32 filter);

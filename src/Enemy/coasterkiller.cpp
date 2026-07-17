@@ -75,10 +75,10 @@ void TCoasterEnemy::reset()
 	mPathIdx = 0;
 }
 
-void TCoasterEnemy::perform(u32 cue, JDrama::TGraphics* graphics)
+void TCoasterEnemy::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	TWalkerEnemy::perform(cue, graphics);
-	if (cue & CUE_MOVE) { } // required to move param_1 into r31
+	TWalkerEnemy::perform(param_1, param_2);
+	if (param_1 & 1) { } // required to move param_1 into r31
 }
 
 f32 TCoasterEnemy::getGravityY() const { return 0.0f; }
@@ -214,14 +214,14 @@ void TCoasterKiller::init(TLiveManager* mgr)
 
 void TCoasterKiller::reset() { TCoasterEnemy::reset(); }
 
-void TCoasterKiller::perform(u32 cue, JDrama::TGraphics* graphics)
+void TCoasterKiller::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	TCoasterEnemy::perform(cue, graphics);
+	TCoasterEnemy::perform(param_1, param_2);
 
-	if ((cue & CUE_CALC_ANIM) && !checkLiveFlag(LIVE_FLAG_DEAD)) {
-		mParticlePos.setQT(mQuat, mPosition);
-		gpMarioParticleManager->emitAndBindToMtxPtr(PARTICLE_MS_KIL_SMOKE,
-		                                            mParticlePos, 1, this);
+	if ((param_1 * 2) && (param_1 & 1) == 0) {
+		mParticlePos.setQT(getQuat(), mPosition);
+		gpMarioParticleManager->emitAndBindToMtxPtr(0x174, mParticlePos.mMtx, 1,
+		                                            this);
 
 		if (mSpine->getCurrentNerve()
 		    != &TNerveCoasterKillerExplosion::theNerve()) {

@@ -2,6 +2,8 @@
 #include <Animal/AnimalSave.hpp>
 #include <JSystem/J3D/J3DGraphLoader/J3DModelLoaderFlags.hpp>
 #include <MSound/SoundEffects.hpp>
+#include <MSound/MSoundBGM.hpp>
+#include <MSound/MSSetSound.hpp>
 #include <MSound/MSoundSE.hpp>
 #include <M3DUtil/InfectiousStrings.hpp>
 #include <MarioUtil/DrawUtil.hpp>
@@ -9,26 +11,45 @@
 #include <Camera/CubeManagerBase.hpp>
 #include <Strategic/LiveActor.hpp>
 
-// rogue includes needed for matching sinit & bss
-#include <MSound/MSSetSound.hpp>
-#include <MSound/MSoundBGM.hpp>
-
-TAnimalManagerBase::TAnimalManagerBase(const char* name)
-    : TEnemyManager(name)
+void TMewManager::createModelData()
 {
-	mViewClipNear   = 250.0f;
-	mViewClipFarPtr = nullptr;
-	mAnimalSave     = nullptr;
+	static TModelDataLoadEntry entry[] = {
+		{ "kamome_high.bmd",
+		  J3DMLF_MaterialPEFull | J3DMLF_UseUniqueMaterials
+		      | (1 << J3DMLF_TevStageNumShift),
+		  1 },
+		{ nullptr, 0, 0 },
+	};
+	createModelDataArray(entry);
+}
+
+void TMewManager::loadAfter()
+{
+	JDrama::TNameRef::loadAfter();
+	MSoundSESystem::MSRandPlay::createRandPlayVec(MSD_SE_OBJ_KAMOME_SOLO,
+	                                              mObjNum);
+}
+
+void TMewManager::load(JSUMemoryInputStream& stream)
+{
+	TEnemyManager::load(stream);
+	mAnimalSave     = new TAnimalSaveIndividual("/Animal/mew.prm");
+	mViewClipNear   = mAnimalSave->mSLViewClipNear.value;
+	mViewClipFarPtr = &mAnimalSave->mSLViewClipFar.value;
+	unk3C           = mAnimalSave->mSLViewClipRadius.value;
 }
 
 void TAnimalManagerBase::clipEnemies(JDrama::TGraphics* graphics)
 {
+	// TODO: stack frame inflation from inline expansion
+	volatile u8 _pad[8];
+
 	SetViewFrustumClipCheckPerspective(gpCamera->mFovy, gpCamera->getAspect(),
 	                                   mViewClipNear, *mViewClipFarPtr);
 
 	s32 count = mObjNum;
 	for (int i = 0; i < count; ++i) {
-		TLiveActor* actor         = (TLiveActor*)unk18[i];
+		TLiveActor* actor         = (TLiveActor*)getObj(i);
 		JGeometry::TVec3<f32> pos = actor->mPosition;
 		pos.y += 75.0f;
 
@@ -44,30 +65,10 @@ void TAnimalManagerBase::clipEnemies(JDrama::TGraphics* graphics)
 	}
 }
 
-void TMewManager::load(JSUMemoryInputStream& stream)
+TAnimalManagerBase::TAnimalManagerBase(const char* name)
+    : TEnemyManager(name)
 {
-	TAnimalManagerBase::load(stream);
-	mAnimalSave     = new TAnimalSaveIndividual("/Animal/mew.prm");
-	mViewClipNear   = mAnimalSave->mSLViewClipNear.get();
-	mViewClipFarPtr = &mAnimalSave->mSLViewClipFar.get();
-	unk3C           = mAnimalSave->mSLViewClipRadius.get();
-}
-
-void TMewManager::loadAfter()
-{
-	TAnimalManagerBase::loadAfter();
-	MSoundSESystem::MSRandPlay::createRandPlayVec(MSD_SE_OBJ_KAMOME_SOLO,
-	                                              mObjNum);
-}
-
-void TMewManager::createModelData()
-{
-	static const TModelDataLoadEntry entry[] = {
-		{ "kamome_high.bmd",
-		  J3DMLF_MaterialPEFull | J3DMLF_UseUniqueMaterials
-		      | (1 << J3DMLF_TevStageNumShift),
-		  1 },
-		{ nullptr, 0, 0 },
-	};
-	createModelDataArray(entry);
+	mViewClipNear   = 250.0f;
+	mViewClipFarPtr = nullptr;
+	mAnimalSave     = nullptr;
 }

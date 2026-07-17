@@ -13,12 +13,12 @@
 #include <MSound/MSSetSound.hpp>
 #include <MSound/MSoundBGM.hpp>
 
-void TPolluterBase::perform(u32 cue, JDrama::TGraphics*)
+void TPolluterBase::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (cue & CUE_CALC_ANIM)
+	if (param_1 & 2)
 		unk138->calcAnm();
 
-	if (cue & CUE_ENTRY)
+	if (param_1 & 0x200)
 		gpPollution->stampModel(unk138->getModel());
 }
 
@@ -82,9 +82,9 @@ TRevivalPolluter::TRevivalPolluter()
 {
 }
 
-void TMapObjRevivalPollution::perform(u32 cue, JDrama::TGraphics*)
+void TMapObjRevivalPollution::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (!(cue & CUE_CALC_ANIM))
+	if (!(param_1 & 2))
 		return;
 
 	for (int i = 0; i < unk10; ++i)

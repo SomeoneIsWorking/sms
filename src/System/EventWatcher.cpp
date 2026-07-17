@@ -1043,8 +1043,8 @@ void TEventWatcher::launchScript(const char* script)
 	}
 }
 
-void TEventWatcher::perform(u32 cue, JDrama::TGraphics* graphics)
+void TEventWatcher::perform(u32 param_1, JDrama::TGraphics*)
 {
-	if ((cue & CUE_MOVE) && mInterp)
+	if ((param_1 & 1) && mInterp)
 		mInterp->update();
 }

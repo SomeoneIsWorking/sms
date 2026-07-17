@@ -50,7 +50,7 @@ public:
 	virtual ~TPolarCamera() { }
 
 	virtual void load(JSUMemoryInputStream&);
-	virtual void perform(u32 cue, TGraphics* graphics);
+	virtual void perform(u32, TGraphics*);
 
 	virtual JStage::TECameraProjection JSGGetProjectionType() const;
 	virtual void JSGSetProjectionType(JStage::TECameraProjection);
@@ -70,21 +70,19 @@ public:
 
 class TLookAtCamera : public TCamera {
 public:
-	TLookAtCamera(const JGeometry::TVec3<f32>& position,
-	              const JGeometry::TVec3<f32>& target,
-	              const JGeometry::TVec3<f32>& up, f32 fovy, f32 aspect,
-	              const char* name)
-	    : TCamera(50.0f, 10000.0f, name)
+	// TODO: arguments probably wrong
+	TLookAtCamera(const JGeometry::TVec3<f32>& thing, const char* name)
+	    : TCamera(10.0f, 300000.0, name)
 	{
-		mUp       = up;
-		mTarget   = target;
-		mFovy     = fovy;
-		mAspect   = aspect;
-		mPosition = position;
+		mUp       = thing;
+		mTarget   = thing;
+		mFovy     = 0;
+		mAspect   = 0;
+		mPosition = thing;
 	}
 
 	virtual ~TLookAtCamera() { }
-	virtual void perform(u32 cue, TGraphics* graphics);
+	virtual void perform(u32, TGraphics*);
 
 	virtual JStage::TECameraProjection JSGGetProjectionType() const;
 	virtual void JSGSetProjectionType(JStage::TECameraProjection);
@@ -111,8 +109,8 @@ public:
 
 class TOrthoProj : public TCamera {
 public:
-	TOrthoProj(f32 near, f32 far, f32 a, f32 b, f32 c, f32 d)
-	    : TCamera(near, far, "<TOrthoProj>")
+	TOrthoProj(f32 a, f32 b, f32 c, f32 d)
+	    : TCamera(-1.0f, 1.0f, "<TOrthoProj>")
 	{
 		mField[0] = a;
 		mField[1] = b;
@@ -123,7 +121,7 @@ public:
 	virtual ~TOrthoProj() { }
 
 	virtual void load(JSUMemoryInputStream&);
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 
 	virtual JStage::TECameraProjection JSGGetProjectionType() const;
 	virtual void JSGSetProjectionType(JStage::TECameraProjection);

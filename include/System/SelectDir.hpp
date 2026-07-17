@@ -10,11 +10,6 @@ template <class T, class U> class TViewObjPtrListT;
 class TViewObj;
 };
 
-class JKRArchive;
-class JPAEmitterManager;
-class TSelectGrad;
-class TSelectMenu;
-class TSelectShineManager;
 class TMarioGamePad;
 class JKRMemArchive;
 class JPAEmitterManager;
@@ -31,7 +26,6 @@ class TSelectShineManager;
 class TSelectDir : public JDrama::TDirector {
 public:
 	TSelectDir();
-	virtual ~TSelectDir();
 
 	virtual int direct();
 

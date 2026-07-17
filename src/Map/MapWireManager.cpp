@@ -20,6 +20,13 @@
 // header tentative-def duplicated across every includer).
 TMapWireManager* gpMapWireManager;
 
+// rogue includes needed for matching sinit & bss
+#include <MSound/MSSetSound.hpp>
+#include <MSound/MSoundBGM.hpp>
+
+f32 TMapWireActor::mCommonAttackRadius = 200.0f;
+f32 TMapWireActor::mCommonAttackHeight = 200.0f;
+
 void TMapWireActor::checkTakingActor() { }
 
 f32 TMapWireActor::getPosInWire() const
@@ -171,8 +178,8 @@ void TMapWireManager::getPointPosInNthWire(int param_1,
                                            const JGeometry::TVec3<f32>& param_2,
                                            JGeometry::TVec3<f32>* param_3) const
 {
-	mWires[param_1]->getPointPosOnWire(mWires[param_1]->getPosInWire(param_2),
-	                                   param_3);
+	getWire(param_1)->getPointPosOnWire(getWire(param_1)->getPosInWire(param_2),
+	                                    param_3);
 }
 
 void TMapWireManager::getPointPosInWire(const JGeometry::TVec3<f32>&,
@@ -180,18 +187,18 @@ void TMapWireManager::getPointPosInWire(const JGeometry::TVec3<f32>&,
 {
 }
 
-void TMapWireManager::perform(u32 cue, JDrama::TGraphics* graphics)
+void TMapWireManager::perform(u32 param_1, JDrama::TGraphics*)
 {
-	if (cue & CUE_MOVE) {
-		for (int i = 0; i < unk1C; ++i)
-			unk24[i]->doActorToWire();
+	if (param_1 & 1) {
+		for (int i = 0; i < mActorMgrNum; ++i)
+			mActorMgrs[i]->doActorToWire();
 
-		for (int i = 0; i < unk10; ++i)
-			unk18[i]->move();
+		for (int i = 0; i < mWireNum; ++i)
+			mWires[i]->move();
 
 		TMapWireActorManager* mgr;
-		for (int i = 0; i < unk1C; ++i) {
-			mgr = unk24[i];
+		for (int i = 0; i < mActorMgrNum; ++i) {
+			mgr = mActorMgrs[i];
 			mgr->unk4.onHitFlag(HIT_FLAG_NO_COLLISION);
 			if (mgr->unk7C != nullptr) {
 				MtxPtr mtx = gpMarioOriginal->getTakenMtx();
@@ -200,95 +207,74 @@ void TMapWireManager::perform(u32 cue, JDrama::TGraphics* graphics)
 			}
 		}
 	}
-	if (cue & CUE_DRAW) {
+	if (param_1 & 8) {
 		initDraw();
 		GXSetChanMatColor(GX_COLOR0A0, mUpperSurface);
-		for (int i = 0; i < unk10; ++i)
-			unk18[i]->drawUpper();
+		for (int i = 0; i < mWireNum; ++i)
+			mWires[i]->drawUpper();
 		GXSetChanMatColor(GX_COLOR0A0, mLowerSurface);
-		for (int i = 0; i < unk10; ++i)
-			unk18[i]->drawLower();
+		for (int i = 0; i < mWireNum; ++i)
+			mWires[i]->drawLower();
 	}
-	if (cue & CUE_ENTRY) {
-		for (int i = 0; i < unk10; ++i)
-			unk18[i]->calcViewAndDBEntry();
+	if (param_1 & 0x200) {
+		for (int i = 0; i < mWireNum; ++i)
+			mWires[i]->calcViewAndDBEntry();
 	}
 }
 
 void TMapWireManager::entry(TTakeActor* actor)
 {
-	unk24[unk1C] = new TMapWireActorManager(actor);
-	++unk1C;
+	mActorMgrs[mActorMgrNum] = new TMapWireActorManager(actor);
+	++mActorMgrNum;
 }
 
 void TMapWireManager::loadAfter()
 {
 	JDrama::TViewObj::loadAfter();
 
-	TTakeActor* mario   = gpMarioOriginal;
-	mActorMgrs[mActorMgrNum] = new TMapWireActorManager(mario);
-	++mActorMgrNum;
+	entry(gpMarioOriginal);
 }
 
 void TMapWireManager::load(JSUMemoryInputStream& stream)
 {
 	JDrama::TViewObj::load(stream);
 	stream.readString();
-	stream.read(&mMaxWireNum, 4);
-	stream.read(&mMaxActorMgrNum, 4);
-	stream.read(&TMapWire::mDrawWidth, 4);
-	stream.read(&TMapWire::mDrawHeight, 4);
-	int val;
-	stream.read(&val, 4);
-	mUpperSurface.r = SB_BE32(val);
-	stream.read(&val, 4);
-	mUpperSurface.g = SB_BE32(val);
-	stream.read(&val, 4);
-	mUpperSurface.b = SB_BE32(val);
+	stream >> mMaxWireNum;
+	stream >> mMaxActorMgrNum;
+	stream >> TMapWire::mDrawWidth;
+	stream >> TMapWire::mDrawHeight;
 
-	stream.read(&val, 4);
-	mLowerSurface.r = SB_BE32(val);
-	stream.read(&val, 4);
-	mLowerSurface.g = SB_BE32(val);
-	stream.read(&val, 4);
-	mLowerSurface.b = SB_BE32(val);
+	s32 val;
+	stream >> val;
+	mUpperSurface.r = val;
+	stream >> val;
+	mUpperSurface.g = val;
+	stream >> val;
+	mUpperSurface.b = val;
 
-#ifdef SMS_NATIVE_PLATFORM
-	// These fields are big-endian on disc but read via the raw read(&x,4) (which
-	// does not byteswap, unlike the typed readers). Swap to host: mMaxWireNum/
-	// mMaxActorMgrNum are array capacities (unswapped -> a ~1GB `new TMapWire*[]`
-	// OOM-panics), and mDrawWidth/mDrawHeight are f32 line dimensions. The color
-	// components above use SB_BE32 since `int val` is truncated to a u8 immediately.
-	mMaxWireNum     = __builtin_bswap32(mMaxWireNum);
-	mMaxActorMgrNum = __builtin_bswap32(mMaxActorMgrNum);
-	{
-		u32 w, h;
-		__builtin_memcpy(&w, &TMapWire::mDrawWidth, 4);
-		__builtin_memcpy(&h, &TMapWire::mDrawHeight, 4);
-		w = __builtin_bswap32(w);
-		h = __builtin_bswap32(h);
-		__builtin_memcpy(&TMapWire::mDrawWidth, &w, 4);
-		__builtin_memcpy(&TMapWire::mDrawHeight, &h, 4);
-	}
-#endif
+	stream >> val;
+	mLowerSurface.r = val;
+	stream >> val;
+	mLowerSurface.g = val;
+	stream >> val;
+	mLowerSurface.b = val;
 
 	mWires     = new TMapWire*[mMaxWireNum];
 	mActorMgrs = new TMapWireActorManager*[mMaxActorMgrNum];
 
 	mWireNum = gpCubeWire->unk10;
-
 	for (int i = 0; i < mWireNum; ++i) {
 		mWires[i] = new TMapWire;
-		mWires[i]->init(&(*gpCubeWire->unk14)[i]);
+		mWires[i]->init(&gpCubeWire->unk14->getChildren()[i]);
 	}
 }
 
 TMapWireManager::TMapWireManager(const char* name)
     : JDrama::TViewObj(name)
-    , unk10(0)
-    , unk18(nullptr)
-    , unk1C(0)
-    , unk24(nullptr)
+    , mWireNum(0)
+    , mWires(nullptr)
+    , mActorMgrNum(0)
+    , mActorMgrs(nullptr)
     , unk28(0)
 {
 	gpMapWireManager = this;

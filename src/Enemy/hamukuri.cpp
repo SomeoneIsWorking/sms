@@ -220,15 +220,15 @@ void THamuKuriManager::createAnmData()
 	unk20 = data;
 }
 
-void THamuKuriManager::perform(u32 cue, JDrama::TGraphics* graphics)
+void THamuKuriManager::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (unk68 > 0 && mSearchActSw && (cue & CUE_CALC_ANIM))
+	if (unk68 > 0 && mSearchActSw && (param_1 & 2))
 		setSearchHamuKuri();
 
-	if (cue & CUE_MOVE)
+	if (param_1 & 1)
 		checkSerialKill();
 
-	TEnemyManager::perform(cue, graphics);
+	TEnemyManager::perform(param_1, param_2);
 }
 
 void THamuKuriManager::setSearchHamuKuri()
@@ -439,12 +439,12 @@ void TDangoHamuKuriManager::createModelDataArray(
 	}
 }
 
-void TDoroHaneKuriManager::perform(u32 cue, JDrama::TGraphics* graphics)
+void TDoroHaneKuriManager::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	THamuKuriManager::perform(cue, graphics);
+	THamuKuriManager::perform(param_1, param_2);
 
 	if (unk74)
-		unk74->perform(cue, graphics);
+		unk74->perform(param_1, param_2);
 }
 
 void TDoroHaneKuriManager::createHige()
@@ -581,14 +581,14 @@ void TFireHamuKuriManager::createModelData()
 	createModelDataArray(entry);
 }
 
-void TDoroHige::perform(u32 cue, JDrama::TGraphics* graphics)
+void TDoroHige::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	if (!unk1C->isUnk198()
 	    || unk1C->checkLiveFlag(LIVE_FLAG_CLIPPED_OUT | LIVE_FLAG_HIDDEN
 	                            | LIVE_FLAG_DEAD))
 		return;
 
-	TSharedParts::perform(cue, graphics);
+	TSharedParts::perform(param_1, param_2);
 }
 
 TDoroHamuKuriManager::TDoroHamuKuriManager(const char* name)
@@ -623,12 +623,12 @@ void TDoroHamuKuriManager::createModelData()
 	createModelDataArray(entry);
 }
 
-void TDoroHamuKuriManager::perform(u32 cue, JDrama::TGraphics* graphics)
+void TDoroHamuKuriManager::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	THamuKuriManager::perform(cue, graphics);
+	THamuKuriManager::perform(param_1, param_2);
 
 	if (unk74)
-		unk74->perform(cue, graphics);
+		unk74->perform(param_1, param_2);
 }
 
 void TDoroHamuKuriManager::createHige()
@@ -1593,14 +1593,14 @@ void TDangoHamuKuri::init(TLiveManager* param_1)
 	mActorType = 0x10000010;
 }
 
-void TDangoHamuKuri::perform(u32 cue, JDrama::TGraphics* graphics)
+void TDangoHamuKuri::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	if (mBoss
 	    && !(mBoss->mSpine->getCurrentNerve()
 	                 == &TNerveWalkerGenerate::theNerve()
 	             ? true
 	             : false))
-		TSmallEnemy::perform(cue, graphics);
+		TSmallEnemy::perform(param_1, param_2);
 }
 
 bool TDangoHamuKuri::changeByJuice()
@@ -1892,9 +1892,9 @@ void TBossDangoHamuKuri::init(TLiveManager* param_1)
 	mBoss = this;
 }
 
-void TBossDangoHamuKuri::perform(u32 cue, JDrama::TGraphics* graphics)
+void TBossDangoHamuKuri::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	TSmallEnemy::perform(cue, graphics);
+	TSmallEnemy::perform(param_1, param_2);
 }
 
 void TBossDangoHamuKuri::reset()
@@ -2572,9 +2572,15 @@ DEFINE_NERVE(TNerveDoroHamuKuriRobCap, TLiveActor)
 	if (spine->getTime() == 0 || self->unk1F8 == nullptr) {
 		self->unk1F8 = manager->unk70;
 		self->setRunAnm();
-		self->setGoalPath(manager->unk70);
+		// TODO: one more inline?
+		TPathNode target(manager->unk70);
+		if (manager->unk70)
+			target.unk4.set(manager->unk70->mPosition.x,
+			                manager->unk70->mPosition.y,
+			                manager->unk70->mPosition.z);
+		self->setGoalPath(target);
 	} else if (self->unk1F8 != manager->unk70) {
-		self->setGoalPath((THitActor*)gpMarioAddress);
+		self->setGoalPathMario();
 		return true;
 	}
 

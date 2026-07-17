@@ -98,7 +98,7 @@ public:
 
 	TWaterGun(TMario* mario);
 
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 
 	void changeBackup();
 	void calcAnimation(JDrama::TGraphics*);

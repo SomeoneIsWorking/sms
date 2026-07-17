@@ -152,16 +152,16 @@ void TAmenbo::control()
 	TLiveActor::control();
 }
 
-void TAmenbo::perform(u32 cue, JDrama::TGraphics* graphics)
+void TAmenbo::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	TSmallEnemy::perform(cue, graphics);
+	TSmallEnemy::perform(param_1, param_2);
 	if (checkLiveFlag(LIVE_FLAG_CLIPPED_OUT)) {
 		if (gpMirrorModelManager->isInMirror(mPosition)) {
-			if (cue & CUE_CALC_ANIM) {
+			if (param_1 & 2) {
 				calcRootMatrix();
 				mMActor->calc();
 			}
-			if (cue & CUE_CALC_VIEW)
+			if (param_1 & 4)
 				mMActor->viewCalc();
 		}
 	}
