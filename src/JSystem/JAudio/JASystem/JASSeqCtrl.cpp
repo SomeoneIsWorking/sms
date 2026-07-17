@@ -1,3 +1,7 @@
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 #include <JSystem/JAudio/JASystem/JASSeqCtrl.hpp>
 #include <types.h>
 
@@ -7,6 +11,12 @@ void TSeqCtrl::init(void* data, u32 size)
 {
 	mRawFilePtr     = (u8*)data;
 	mCurrentFilePtr = mRawFilePtr + size;
+#ifdef SMS_NATIVE_PLATFORM
+	if (std::getenv("SB_DBG_AUDIO")) { static int n=0; if (n<8){++n;
+		const u8* p = mCurrentFilePtr;
+		std::fprintf(stderr, "[audio] SeqCtrl::init #%d data=%p size=%u bytes: %02x %02x %02x %02x %02x %02x %02x %02x\n",
+			n, data, size, p?p[0]:0,p?p[1]:0,p?p[2]:0,p?p[3]:0,p?p[4]:0,p?p[5]:0,p?p[6]:0,p?p[7]:0); } }
+#endif
 	mWaitTimer      = 0;
 	mLoopIndex      = 0;
 	for (int i = 0; i < 8; i++) {

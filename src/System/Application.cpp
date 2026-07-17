@@ -43,6 +43,8 @@
 // (native/src/sms_boot_audio.cpp). Defined there; set at the /audi resource read.
 extern "C" const unsigned char* sb_aaf_data;
 extern "C" unsigned int sb_aaf_size;
+extern "C" const unsigned char* sb_seq_data;
+extern "C" unsigned int sb_seq_size;
 #endif
 #include <System/MarNameRefGen.hpp>
 #include <System/StageUtil.hpp>
@@ -394,6 +396,24 @@ void TApplication::initialize_bootAfter()
 	// table from it (the dead JaiArcS.hed Vload path can't).
 	sb_aaf_data = buf;
 	sb_aaf_size = uVar3;
+	// sequence.arc (the BMS collection) is ALSO a /audi resource inside nintendo.szs,
+	// NOT on the disc FST — so a DVD read of "/AudioRes/sequence.arc" fails (openDvd==0)
+	// and the sequences came back all-zero (silent BGM). Capture it in-memory here, the
+	// same way as mSound.aaf, for the native BARC-backed loader (sms_boot_audio.cpp).
+	// NOTE (2026-07-17): "sequence.arc" is NOT a /audi resource (getResource returns a
+	// ~16-byte stub) and NOT on the disc FST (openDvd fails), yet the BMS collection is a
+	// real ~337KB+ file the BARC offsets index into (verified NOT inside the aaf either).
+	// Its true location is still unresolved — this capture is a no-op until it is found.
+	// Guarded on a plausible size so a stub resource doesn't set a bogus sb_seq_data.
+	{
+		u32 seqSize = this_01->getResSize(this_01->getResource("sequence.arc"));
+		if (seqSize > 1024) {
+			u8* seqBuf = new u8[seqSize];
+			this_01->readResource(seqBuf, seqSize, "sequence.arc");
+			sb_seq_data = seqBuf;
+			sb_seq_size = seqSize;
+		}
+	}
 #endif
 	JKRHeap* prevHeap = JKRGetCurrentHeap();
 	gpMSound = new MSound(prevHeap, nullptr, 0xF40000, buf, nullptr, 0xb00000);
