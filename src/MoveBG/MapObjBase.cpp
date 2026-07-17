@@ -371,6 +371,22 @@ void TMapObjBase::makeObjDead()
 		SMS_HideAllShapePacket(getModel());
 }
 
+// TMapObjBase::kill (JP 0x800E17C8, size 0x2C): dispatches to the virtual makeObjDead()
+// (vtable+0x104, per [[session11-mapobjbase-vtable-slot-0x104]]). RE'd from the US DOL: the
+// body is a thunk `lwz r12,0(r3); lwz r12,0x104(r12); mtlr r12; blrl` — i.e. a virtual call to
+// makeObjDead, so a subclass override runs. Writing makeObjDead() reproduces that dispatch.
+void TMapObjBase::kill() { makeObjDead(); }
+
+// TMapObjBase::getHitObjNumMax (JP 0x80105224, size 0x8): base default max hit-object count.
+// RE'd via the US vtable slot 59 (anchored by TEggYoshi's override) = `li r3, 5; blr`.
+// TEggYoshi / TItem override this to 10.
+u16 TMapObjBase::getHitObjNumMax() { return 5; }
+
+// TMapObjBase::loadBeforeInit (JP 0x8010520C, size 0x4): empty base load-hook (verified `blr`
+// at US vtable slot 45; sibling base virtuals calc/draw/dead are likewise empty). Subclasses
+// such as TShine / TCoinBlue override it.
+void TMapObjBase::loadBeforeInit(JSUMemoryInputStream&) { }
+
 void TMapObjBase::makeObjAppeared()
 {
 	offLiveFlag(LIVE_FLAG_DEAD | LIVE_FLAG_UNK8);
