@@ -43,6 +43,12 @@ namespace BankMgr {
 
 	bool registBankBNK(int bankIndex, void* bankData)
 	{
+#ifdef SMS_NATIVE_PLATFORM
+		// IBNK is big-endian; swap it to host IN PLACE before ANY field is read
+		// (the vir-number read below + createBasicBank's whole traversal). See
+		// BNKParser::sb_ibnk_swap_to_host — the analogue of sb_wsys_swap_to_host.
+		BNKParser::sb_ibnk_swap_to_host(bankData);
+#endif
 		setVir2PhyTable(*((u32*)(bankData) + 2), bankIndex);
 		TBasicBank* bank = BNKParser::createBasicBank(bankData);
 		if (bank == nullptr)
