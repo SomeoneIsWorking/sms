@@ -1,3 +1,7 @@
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 #include <JSystem/JAudio/JASystem/JASBankMgr.hpp>
 #include <JSystem/JAudio/JASystem/JASSystemHeap.hpp>
 #include <JSystem/JAudio/JASystem/JASCalc.hpp>
@@ -97,37 +101,50 @@ namespace BankMgr {
 	TChannel* noteOn(TChannelMgr* param_1, int param_2, int param_3, u8 param_4,
 	                 u8 param_5, u32 param_6)
 	{
+#ifdef SMS_NATIVE_PLATFORM
+#define NOTEON_FAIL(reason) do { \
+		if (std::getenv("SB_DBG_AUDIO")) { static int n_##reason=0; if (n_##reason<3){++n_##reason; \
+			std::fprintf(stderr, "[audio] noteOn FAIL: " #reason " (bank=%d inst=%d)\n", param_2, param_3);} } \
+		return nullptr; } while (0)
+#else
+#define NOTEON_FAIL(reason) return nullptr
+#endif
+
+#ifdef SMS_NATIVE_PLATFORM
+		if (std::getenv("SB_DBG_AUDIO")) { static int nc=0; if (nc<5){++nc;
+			std::fprintf(stderr, "[audio] BankMgr::noteOn CALLED (bank=%d inst=%d)\n", param_2, param_3);} }
+#endif
 		if (param_3 > 0xEF)
 			return noteOnOsc(param_1, param_3 - 0xF0, param_4, param_5,
 			                 param_6);
 
 		TBank* bank = getBank(param_2);
 		if (!bank)
-			return nullptr;
+			NOTEON_FAIL(no_bank);
 
 		TInst* inst = bank->getInst(param_3);
 		if (!inst)
-			return nullptr;
+			NOTEON_FAIL(no_inst);
 
 		TInstParam instParam;
 		if (!inst->getParam(param_4, param_5, &instParam))
-			return nullptr;
+			NOTEON_FAIL(no_instParam);
 
 		TWaveBank* waveBank = bank->unk4;
 		if (!waveBank)
-			return nullptr;
+			NOTEON_FAIL(no_waveBank);
 
 		TWaveHandle* waveHndl = waveBank->getWaveHandle(instParam.unk4);
 		if (!waveHndl)
-			return nullptr;
+			NOTEON_FAIL(no_waveHndl);
 
 		const TWaveInfo* waveInfo = waveHndl->getWaveInfo();
 		if (!waveInfo)
-			return nullptr;
+			NOTEON_FAIL(no_waveInfo);
 
 		const void* wave = waveHndl->getWavePtr();
 		if (!wave)
-			return nullptr;
+			NOTEON_FAIL(no_wave);
 
 		u32 chanKey = (instParam.unk40 << 0x18) | (param_2 << 8) | param_3;
 		switch (instParam.unk40 & 0xC0) {
