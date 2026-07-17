@@ -167,12 +167,12 @@ void JAISystemInterface::setSePortParameter(
 	if (!track)
 		return;
 #ifdef SMS_NATIVE_PLATFORM
-	// mOuterParam is legitimately nullable (assigned only via assignExtBuffer; TTrack::noteOn
-	// and BankMgr::noteOn already guard `if (mOuterParam)` before using it). This SE-port
-	// handler dereferences getOuterParam() unguarded and SIGSEGVs on a track without an outer
-	// param — exposed once real sequences drive SE ports (2026-07-17). No params to apply when
-	// there's no outer buffer, so skip (same policy as the existing noteOn guards).
-	if (track->getOuterParam() == nullptr)
+	// USE-AFTER-FREE guard (2026-07-17): a port command queued by outerInit for a track can be
+	// drained by portCmdMain (aiCallback, same updateDSP) AFTER that track has closed in the
+	// sequence pass -> args->mTrack points to a closed/reused track. unk3C4 is the play-state
+	// (0 = closed); a closed track has no live params to apply, so skip. Also covers the
+	// legitimately-null mOuterParam case (noteOn guards it the same way).
+	if (track->unk3C4 == 0 || track->getOuterParam() == nullptr)
 		return;
 #endif
 
