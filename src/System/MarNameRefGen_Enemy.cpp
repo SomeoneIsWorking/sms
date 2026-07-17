@@ -11,6 +11,7 @@
 #include "Enemy/PoiHana.hpp"
 #include "Enemy/RiccoHook.hpp"
 #include "Enemy/Rocket.hpp"
+#include "Enemy/EggGen.hpp"
 #include "Enemy/Seal.hpp"
 #include "Enemy/SmallEnemy.hpp"
 #include "Enemy/TamaNoko.hpp"
@@ -133,16 +134,16 @@ JDrama::TNameRef* TMarNameRefGen::getNameRef_Enemy(const char* name) const
 	//     return new TButterfloidManager;
 
 	// TODO:
-	// if ( strcmp(name, "EggGenerator") == 0)
-	//     return new TEggGenerator;
+		if (strcmp(name, "EggGenerator") == 0)
+		return new TEggGenerator;
 
 	// TODO:
-	// if ( strcmp(name, "WickedEggGenerator") == 0)
-	//     return new TEggGenerator;
+		if (strcmp(name, "WickedEggGenerator") == 0)
+		return new TEggGenerator;
 
 	// TODO:
-	// if ( strcmp(name, "EggGenManager") == 0)
-	//     return new TEggGenManager;
+		if (strcmp(name, "EggGenManager") == 0)
+		return new TEggGenManager;
 
 	if (strcmp(name, "EffectColumWaterManager") == 0)
 		return new TEffectColumWaterManager;
