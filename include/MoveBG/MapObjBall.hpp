@@ -91,6 +91,13 @@ public:
 	u32 mBreakingScaleSpeed;
 	u32 mFruitWaitTimeToAppear;
 	u32 mRottenColor;
+
+	// Set by the ctor (@0x801e1bf4). GUEST offsets 0x198/0x19c/0x1a4; on the LP64 host these
+	// are just named members (host offset irrelevant — accessed by name only). unk19c is the
+	// fruit's TEV register-0 tint, bound in initMapObj via SMS_InitPacket_OneTevColor.
+	/* 0x198 */ f32 unk198;
+	/* 0x19c */ GXColorS10 unk19c;
+	/* 0x1a4 */ u8 unk1a4;
 };
 
 class TRandomFruit : public TResetFruit {
