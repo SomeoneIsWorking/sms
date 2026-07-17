@@ -13,12 +13,12 @@
 #include <MSound/MSSetSound.hpp>
 #include <MSound/MSoundBGM.hpp>
 
-void TMapModel::perform(u32 cue, JDrama::TGraphics* graphics)
+void TMapModel::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	if (checkFlag(FLAG_DEAD))
 		return;
 
-	if ((cue & CUE_CALC_ANIM) != 0 && mUnderpass != nullptr) {
+	if ((param_1 & 2) != 0 && mUnderpass != nullptr) {
 		// NOTE: this seems to be the logic for entering delphino plaza
 		// underpasses: if inside, draw them on top of everything and move the
 		// camera to top view
@@ -48,13 +48,13 @@ void TMapModel::perform(u32 cue, JDrama::TGraphics* graphics)
 		}
 	}
 
-	if ((cue & CUE_CALC_ANIM) != 0) {
+	if ((param_1 & 2) != 0) {
 		MActor* actor = mActor;
-		cue &= ~CUE_CALC_ANIM;
+		param_1 &= ~2;
 		actor->frameUpdate();
 	}
 
-	mActor->perform(cue, graphics);
+	mActor->perform(param_1, param_2);
 }
 
 void TMapModel::initUnderpass()

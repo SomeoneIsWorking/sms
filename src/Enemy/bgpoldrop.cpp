@@ -84,15 +84,15 @@ void TBGPolDrop::launch(const JGeometry::TVec3<f32>& param_1,
 	unk58 = 1;
 }
 
-void TBGPolDrop::perform(u32 cue, JDrama::TGraphics* graphics)
+void TBGPolDrop::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	if (!unk58)
 		return;
 
-	if (cue & CUE_MOVE)
+	if (param_1 & 1)
 		move();
 
-	if (cue & CUE_CALC_ANIM) {
+	if (param_1 & 2) {
 		MtxPtr m = unk50->getModel()->getBaseTRMtx();
 		if (unk58 == 1) {
 			Mtx local_60;
@@ -135,11 +135,11 @@ void TBGPolDrop::perform(u32 cue, JDrama::TGraphics* graphics)
 		}
 	}
 
-	unk50->perform(cue, graphics);
+	unk50->perform(param_1, param_2);
 	if (unk58 == 2) {
-		if (cue & CUE_CALC_ANIM)
+		if (param_1 & 0x2)
 			unk54->calcAnm();
-		if (cue & CUE_ENTRY)
+		if (param_1 & 0x200)
 			gpPollution->stampModel(unk54->getModel());
 	}
 }

@@ -10,7 +10,7 @@
 void TMultiMtxEffect::setup(J3DModel* model, const char* prmLocation)
 {
 	mModel        = model;
-	mMtxEffectTbl = new TMtxEffectBase*[mNumBones];
+	mMtxEffectTbl = new TMtxEffectBase*[mNumBones << 2];
 
 	for (u16 i = 0; i < mNumBones; ++i) {
 		char* path = new char[0x40];
@@ -54,8 +54,9 @@ void TMultiMtxEffect::setup(J3DModel* model, const char* prmLocation)
 		}
 		}
 	}
-	for (int i = 0; i < mNumBones; ++i)
-		mMtxEffectTbl[i]->onFlag(2);
+	for (u16 i = 0; i < mNumBones; ++i) {
+		mMtxEffectTbl[i]->mFlags |= 2;
+	}
 }
 
 void TMultiMtxEffect::setUserArea()

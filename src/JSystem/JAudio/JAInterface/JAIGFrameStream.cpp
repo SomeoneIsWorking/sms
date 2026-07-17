@@ -726,7 +726,7 @@ namespace StreamLib {
 
 		for (u32 i = 0; i < ARRAY_COUNT(assign_ch); ++i) {
 			if (assign_ch[i] != nullptr && assign_ch[i]->unk8 != 0)
-				JASystem::TDSPChannel::free(assign_ch[i], (u32)&assign_ch[i]);
+				JASystem::TDSPChannel::free(assign_ch[i], (u32)(uintptr_t)&assign_ch[i]);
 
 			assign_ch[i] = nullptr;
 		}
@@ -768,8 +768,8 @@ namespace StreamLib {
 		}
 
 		if (assign_ch[0] == nullptr) {
-			assign_ch[0] = JASystem::TDSPChannel::alloc(0, (u32)&assign_ch[0]);
-			assign_ch[1] = JASystem::TDSPChannel::alloc(0, (u32)&assign_ch[1]);
+			assign_ch[0] = JASystem::TDSPChannel::alloc(0, (u32)(uintptr_t)&assign_ch[0]);
+			assign_ch[1] = JASystem::TDSPChannel::alloc(0, (u32)(uintptr_t)&assign_ch[1]);
 			if (assign_ch[0] != nullptr && assign_ch[1] != nullptr) {
 				assign_ch[0]->unk3 = 0x7F;
 				assign_ch[1]->unk3 = 0x7F;
@@ -826,9 +826,9 @@ namespace StreamLib {
 			if (buf->unk2 != 0) {
 				if (adpcmbuf_state != 2) {
 					JASystem::TDSPChannel::free(assign_ch[0],
-					                            (u32)&assign_ch[0]);
+					                            (u32)(uintptr_t)&assign_ch[0]);
 					JASystem::TDSPChannel::free(assign_ch[1],
-					                            (u32)&assign_ch[1]);
+					                            (u32)(uintptr_t)&assign_ch[1]);
 					hackyHackMcHackson(-1);
 					playflag  = 0;
 					playflag2 = 2;

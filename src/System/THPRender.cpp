@@ -8,12 +8,12 @@ TTHPRender::TTHPRender(const char* name)
 	frameNumber = -1;
 }
 
-void TTHPRender::perform(u32 cue, JDrama::TGraphics* graphics)
+void TTHPRender::perform(u32 flags, JDrama::TGraphics* gfx)
 {
-	if ((cue & CUE_DRAW)) {
+	if ((flags & 8)) {
 
 		SMS_DrawInit();
-		GXLoadPosMtxImm(graphics->mViewMtx, GX_PNMTX0);
+		GXLoadPosMtxImm(gfx->mViewMtx, GX_PNMTX0);
 		GXSetCurrentMtx(GX_PNMTX0);
 		frameNumber = THPPlayerDrawCurrentFrame(0, x, y, polyW, polyH);
 	}

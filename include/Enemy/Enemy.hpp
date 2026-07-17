@@ -42,7 +42,7 @@ public:
 	~TSpineEnemy();
 
 	virtual void load(JSUMemoryInputStream&);
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 	virtual BOOL receiveMessage(THitActor* sender, u32 message);
 	virtual void init(TLiveManager*);
 	virtual void calcRootMatrix();
@@ -99,8 +99,23 @@ public:
 		return getSaveParam() ? getSaveParam()->mSLHitPointMax.get() : 1;
 	}
 
-	// fabricated TODO: remove
-	void setGoalPathMario() { setGoalPath((THitActor*)gpMarioAddress); }
+	// fabricated
+	void setGoalPathMario()
+	{
+		TPathNode node((THitActor*)gpMarioAddress);
+
+		// the hell
+		if (gpMarioAddress) {
+			node.unk4.set(*(f32*)((u8*)gpMarioAddress + 0x10),
+			              *(f32*)((u8*)gpMarioAddress + 0x14),
+			              *(f32*)((u8*)gpMarioAddress + 0x18));
+		}
+
+		unkF4  = node;
+		unk104 = node;
+
+		unk114.clear();
+	}
 	void setGoalPath(const TPathNode& point)
 	{
 		unkF4  = point;

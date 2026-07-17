@@ -292,16 +292,16 @@ void TCardSave::init(int param_1)
 	}
 }
 
-void TCardSave::perform(u32 cue, JDrama::TGraphics* graphics)
+void TCardSave::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	if (unk2DF)
 		return;
 
-	if (cue & CUE_MOVE)
+	if (param_1 & 1)
 		execMovement_();
 
-	if (cue & CUE_DRAW)
-		execIssueGX_(graphics);
+	if (param_1 & 8)
+		execIssueGX_(param_2);
 }
 
 void TCardSave::makeBuffer(J2DTextBox* param_1, int size)

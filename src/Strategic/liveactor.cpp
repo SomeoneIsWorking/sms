@@ -347,35 +347,35 @@ void TLiveActor::drawObject(JDrama::TGraphics*)
 	mMActor->entry();
 }
 
-void TLiveActor::perform(u32 cue, JDrama::TGraphics* graphics)
+void TLiveActor::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	if (mLiveFlag & (LIVE_FLAG_UNK200 | LIVE_FLAG_DEAD))
 		return;
 
-	if (cue & CUE_MOVE)
+	if (param_1 & 1)
 		moveObject();
 
-	if (cue & CUE_CALC_ANIM)
+	if (param_1 & 2)
 		updateAnmSound();
 
 	if (mMActor) {
-		if (cue & CUE_CALC_ANIM)
+		if (param_1 & 2)
 			mMActor->frameUpdate();
 
-		if (cue & CUE_CALC_VIEW)
+		if (param_1 & 4)
 			requestShadow();
 
 		if (!(mLiveFlag & (LIVE_FLAG_HIDDEN | LIVE_FLAG_CLIPPED_OUT))) {
-			if (cue & CUE_CALC_ANIM) {
+			if (param_1 & 2) {
 				calcRootMatrix();
 				mMActor->calc();
 			}
 
-			if (cue & CUE_CALC_VIEW)
+			if (param_1 & 4)
 				mMActor->viewCalc();
 
-			if (cue & CUE_ENTRY)
-				drawObject(graphics);
+			if (param_1 & 0x200)
+				drawObject(param_2);
 		}
 	}
 }
@@ -387,19 +387,19 @@ void TLiveActor::performOnlyDraw(u32 param_1, JDrama::TGraphics* param_2)
 	if (!mMActor)
 		return;
 
-	if (param_1 & CUE_CALC_VIEW)
+	if (param_1 & 4)
 		requestShadow();
 
 	if (!(mLiveFlag & (LIVE_FLAG_HIDDEN | LIVE_FLAG_CLIPPED_OUT))) {
-		if (param_1 & CUE_CALC_ANIM) {
+		if (param_1 & 2) {
 			calcRootMatrix();
 			mMActor->calc();
 		}
 
-		if (param_1 & CUE_CALC_VIEW)
+		if (param_1 & 4)
 			mMActor->viewCalc();
 
-		if (param_1 & CUE_ENTRY)
+		if (param_1 & 0x200)
 			drawObject(param_2);
 	}
 }

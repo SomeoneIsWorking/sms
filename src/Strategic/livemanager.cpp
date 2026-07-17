@@ -84,19 +84,19 @@ void TLiveManager::setFlagOutOfCube()
 	}
 }
 
-void TLiveManager::perform(u32 cue, JDrama::TGraphics* graphics)
+void TLiveManager::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 
-	if (cue & CUE_CALC_ANIM) {
+	if (param_1 & 2) {
 		if (unk30 & 1)
 			TTimeRec::startTimer();
-		clipActors(graphics);
+		clipActors(param_2);
 		setFlagOutOfCube();
 		if (unk30 & 1)
 			TTimeRec::endTimer();
 	}
 
-	TObjManager::perform(cue, graphics);
+	TObjManager::perform(param_1, param_2);
 }
 
 const TLiveActor* TLiveManager::getActorByFlag(u32 flag) const

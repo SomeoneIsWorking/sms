@@ -237,11 +237,11 @@ void TRailMapObj::control()
 	}
 }
 
-void TRailMapObj::perform(u32 cue, JDrama::TGraphics* graphics)
+void TRailMapObj::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if ((cue & CUE_ENTRY) && unk14C == 0)
-		cue &= ~CUE_ENTRY;
-	TMapObjBase::perform(cue, graphics);
+	if ((param_1 & 0x200) && unk14C == 0)
+		param_1 &= ~0x200;
+	TMapObjBase::perform(param_1, param_2);
 }
 
 TNormalLift::TNormalLift(const char* name)
@@ -335,12 +335,12 @@ void TNormalLift::setGroundCollision()
 		TRailMapObj::setGroundCollision();
 }
 
-void TNormalLift::perform(u32 cue, JDrama::TGraphics* graphics)
+void TNormalLift::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (unk158 && unk152 && (cue & CUE_ENTRY))
-		cue &= ~CUE_ENTRY;
+	if (unk158 && unk152 && (param_1 & 0x200))
+		param_1 &= ~0x200;
 
-	TRailMapObj::perform(cue, graphics);
+	TRailMapObj::perform(param_1, param_2);
 }
 
 TRailBlock::TRailBlock(const char* name)

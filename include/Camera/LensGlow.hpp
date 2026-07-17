@@ -11,7 +11,7 @@ class J3DAnmBase;
 class TLensGlow : public JDrama::TViewObj {
 public:
 	TLensGlow(bool, const char*);
-	void perform(u32 cue, JDrama::TGraphics* graphics);
+	void perform(u32, JDrama::TGraphics*);
 
 public:
 	/* 0x10 */ J3DModelData* unk10;

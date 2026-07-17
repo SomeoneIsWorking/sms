@@ -52,7 +52,7 @@ public:
 
 	virtual void load(JSUMemoryInputStream&);
 	virtual void loadAfter();
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 
 	u32 getWireNo(const JGeometry::TVec3<f32>&) const;
 	void getPointPosInNthWire(int, const JGeometry::TVec3<f32>&,
@@ -61,7 +61,7 @@ public:
 	                       JGeometry::TVec3<f32>*) const;
 	void entry(TTakeActor*);
 
-	TMapWire* getWire(int index) const { return unk18[index]; }
+	TMapWire* getWire(int index) const { return mWires[index]; }
 
 	static JUtility::TColor mUpperSurface;
 	static JUtility::TColor mLowerSurface;

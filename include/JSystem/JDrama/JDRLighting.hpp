@@ -6,7 +6,6 @@
 #include <JSystem/JDrama/JDRPlacement.hpp>
 #include <JSystem/JStage/JSGAmbientLight.hpp>
 #include <dolphin/gx/GXLighting.h>
-#include <dolphin/gx/GXGet.h>
 
 namespace JDrama {
 
@@ -53,7 +52,7 @@ public:
 	}
 
 	virtual void load(JSUMemoryInputStream&);
-	virtual void perform(u32 cue, TGraphics* graphics);
+	virtual void perform(u32, TGraphics*);
 
 	virtual JStage::TELight JSGGetLightType() const;
 	virtual void JSGSetLightType(JStage::TELight);
@@ -65,13 +64,6 @@ public:
 	virtual void JSGSetColor(GXColor);
 
 	void correct(TGraphics*) const;
-
-	GXColor getColor()
-	{
-		GXColor result;
-		GXGetLightColor(&unk24, &result);
-		return result;
-	}
 
 public:
 	/* 0x24 */ GXLightObj unk24;
@@ -104,7 +96,7 @@ public:
 
 	virtual void load(JSUMemoryInputStream&);
 	virtual TNameRef* searchF(u16, const char*);
-	virtual void perform(u32 cue, TGraphics* graphics);
+	virtual void perform(u32, TGraphics*);
 
 	void setLightNum(s32);
 
@@ -122,11 +114,9 @@ public:
 	}
 
 	virtual void load(JSUMemoryInputStream&);
-	virtual void perform(u32 cue, TGraphics* graphics);
+	virtual void perform(u32, TGraphics*);
 	virtual GXColor JSGGetColor() const;
 	virtual void JSGSetColor(GXColor color);
-
-	const JUtility::TColor& getColor() const { return mColor; }
 
 public:
 	/* 0x14 */ JUtility::TColor mColor;
@@ -144,7 +134,7 @@ public:
 
 	virtual void load(JSUMemoryInputStream&);
 	virtual TNameRef* searchF(u16, const char*);
-	virtual void perform(u32 cue, TGraphics* graphics) { }
+	virtual void perform(u32, TGraphics*) { }
 
 	void setAmbNum(s32);
 

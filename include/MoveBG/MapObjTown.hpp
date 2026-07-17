@@ -14,10 +14,14 @@ class TDoor : public TMapObjBase {
 public:
 	TDoor(const char* name = "ドア");
 
-	// Ivar deduced from the load RE (@0x801c24cc). Header was empty; CW emitted a single
-	// byte at TMapObjBase's end (0x138). Nonzero → the door is "locked" (specific gameplay
-	// gate — needs a key / stage-flag). Named provisionally.
-	/* 0x138 */ u8 mLocked;
+	virtual void load(JSUMemoryInputStream&);
+	virtual void touchPlayer(THitActor*);
+
+public:
+	// unk138 (upstream naming). Deduced from load @0x801c24cc: nonzero
+	// → the door is "locked" (specific gameplay gate — needs a key /
+	// stage-flag). Kept the upstream name for merge continuity.
+	/* 0x138 */ bool unk138;
 };
 
 class TManhole : public TMapObjGeneral {
@@ -109,16 +113,13 @@ public:
 
 class TDamageObj : public THitActor {
 public:
-	void perform(u32, JDrama::TGraphics*);
-	void init(u32);
-	void load(JSUMemoryInputStream&);
 	TDamageObj(const char* name = "ダメージオブジェ")
 	    : THitActor(name)
 	{
 	}
 
 	virtual void load(JSUMemoryInputStream&);
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 
 	void init(u32);
 };
@@ -144,9 +145,6 @@ public:
 
 class THideObjInfo : public JDrama::TActor {
 public:
-	void perform(u32, JDrama::TGraphics*);
-	void action(long);
-	void load(JSUMemoryInputStream&);
 	THideObjInfo(const char* name = "オブジェ出現情報");
 
 	virtual void load(JSUMemoryInputStream&);
@@ -160,10 +158,6 @@ public:
 
 class TMapObjSwitch : public TMapObjBase {
 public:
-	void control();
-	BOOL receiveMessage(THitActor*, u32);
-	void registerObjInfo(THideObjInfo*);
-	void load(JSUMemoryInputStream&);
 	TMapObjSwitch(const char* name = "オブジェスイッチ");
 
 	virtual void load(JSUMemoryInputStream&);
@@ -184,19 +178,19 @@ extern TMapObjSwitch* gpMapObjSwitch;
 
 class TRedCoinSwitch : public TMapObjBase {
 public:
-	BOOL receiveMessage(THitActor*, u32);
-	void control();
-	void loadAfter();
-	void load(JSUMemoryInputStream&);
 	TRedCoinSwitch(const char* name = "赤コインスイッチ");
+
+	virtual void load(JSUMemoryInputStream&);
+	virtual void loadAfter();
+	virtual BOOL receiveMessage(THitActor*, u32);
+	virtual void control();
 
 public:
 	// Countdown budget (frame-ish units) for the red-coin mission the switch triggers.
 	// Populated by ::load from the scene stream: non-positive seed → 1200 default (~20 s
-	// @ 60 fps), else seed × 10. Field offset observed as this+0x138 in the RE disasm of
-	// 0x801c088c (`stw r0, 0x138(r30)`) — TMapObjBase runs through 0x134, so this is the
-	// first TRedCoinSwitch-owned field.
+	// @ 60 fps), else seed × 10.
 	/* 0x138 */ s32 mTimerDuration;
+	/* 0x13C */ GXColorS10 unk13C;
 };
 
 class TBasketReverse : public TMapObjBase {

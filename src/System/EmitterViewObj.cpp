@@ -23,29 +23,29 @@ TEmitterViewObj::TEmitterViewObj(JPAEmitterManager* param_1, const char* name)
 {
 }
 
-void TEmitterViewObj::perform(u32 cue, JDrama::TGraphics* graphics)
+void TEmitterViewObj::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (cue & CUE_CALC_ANIM) {
+	if (param_1 & 0x2) {
 		for (int i = SMSGetAnmFrameRate(); i > 0; --i)
 			unk10->calc();
 	}
 
-	if (cue & CUE_DRAW) {
-		JPADrawInfo drawInfo(graphics->getViewMtx());
+	if (param_1 & 0x8) {
+		JPADrawInfo drawInfo(param_2->getUnkB4());
 		unk10->draw(&drawInfo);
 	}
 }
 
-void TEmitterIndirectViewObj::perform(u32 cue, JDrama::TGraphics* graphics)
+void TEmitterIndirectViewObj::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (cue & CUE_CALC_ANIM) {
+	if (param_1 & 0x2) {
 		for (int i = SMSGetAnmFrameRate(); i > 0; --i)
 			unk10->calc();
 	}
 
-	if (cue & CUE_DRAW) {
+	if (param_1 & 0x8) {
 		SMS_DrawInit();
-		JPADrawInfo drawInfo(graphics->getViewMtx());
+		JPADrawInfo drawInfo(param_2->getUnkB4());
 		drawInfo.setFovy(gpCamera->getFovy());
 		drawInfo.setAspect(gpCamera->getAspect());
 		unk10->draw(&drawInfo);
@@ -104,9 +104,9 @@ void TMarioParticleManager::createEffectInfoAry(int param_1)
 		unk368[i] = new TInfo[unk3B4];
 }
 
-void TMarioParticleManager::perform(u32 cue, JDrama::TGraphics* graphics)
+void TMarioParticleManager::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (cue & CUE_CALC_ANIM) {
+	if (param_1 & 0x2) {
 		for (int i = SMSGetAnmFrameRate(); i > 0; --i)
 			mEmitterManager->calc();
 
@@ -169,10 +169,10 @@ void TMarioParticleManager::perform(u32 cue, JDrama::TGraphics* graphics)
 		}
 	}
 
-	if (cue & CUE_DRAW) {
-		if (cue & CUE_UNK40000000) {
+	if (param_1 & 0x8) {
+		if (param_1 & 0x40000000) {
 			SMS_DrawInit();
-			JPADrawInfo drawInfo(graphics->getViewMtx());
+			JPADrawInfo drawInfo(param_2->getUnkB4());
 			drawInfo.setFovy(gpCamera->getFovy());
 			drawInfo.setAspect(gpCamera->getAspect());
 			mEmitterManager->draw(&drawInfo, 2);

@@ -5,10 +5,10 @@
 #include <MSound/MSSetSound.hpp>
 #include <MSound/MSoundBGM.hpp>
 
-void TJointModelManager::perform(u32 cue, JDrama::TGraphics* graphics)
+void TJointModelManager::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	for (int i = 0; i < getJointModelNum(); ++i)
-		mJointModels[i]->perform(cue, graphics);
+		mJointModels[i]->perform(param_1, param_2);
 }
 
 void TJointModelManager::initJointModel(const char* param_1,

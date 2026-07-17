@@ -628,12 +628,12 @@ BOOL TSpineEnemy::checkCurAnmEnd(int param_1) const
 	}
 }
 
-void TSpineEnemy::perform(u32 cue, JDrama::TGraphics* graphics)
+void TSpineEnemy::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	TEnemyManager* mgr = (TEnemyManager*)getManager();
 
 	if (mgr != nullptr) {
-		if ((cue & CUE_CALC_ANIM)
+		if ((param_1 & 2)
 		    && !checkLiveFlag(LIVE_FLAG_HIDDEN | LIVE_FLAG_CLIPPED_OUT)
 		    && TEnemyManager::mIsCopyAnmMtx && mgr->unk4C >= 0) {
 			if (checkLiveFlag(LIVE_FLAG_DEAD | LIVE_FLAG_UNK200))
@@ -643,12 +643,12 @@ void TSpineEnemy::perform(u32 cue, JDrama::TGraphics* graphics)
 				return;
 		}
 	} else {
-		if ((cue & CUE_CALC_ANIM)
+		if ((param_1 & 2)
 		    && !checkLiveFlag(LIVE_FLAG_HIDDEN | LIVE_FLAG_CLIPPED_OUT)
 		    && checkLiveFlag(LIVE_FLAG_DEAD | LIVE_FLAG_UNK200)) {
 			return;
 		}
 	}
 
-	TLiveActor::perform(cue, graphics);
+	TLiveActor::perform(param_1, param_2);
 }

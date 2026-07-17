@@ -13,6 +13,31 @@
 #include <JSystem/J3D/J3DGraphBase/J3DSys.hpp>
 #include <JSystem/JParticle/JPAResourceManager.hpp>
 #include <dolphin/os.h>
+#include <System/MarDirector.hpp>
+#include <System/Particles.hpp>
+#include <System/EmitterViewObj.hpp>
+#include <Strategic/MirrorActor.hpp>
+#include <Strategic/Strategy.hpp>
+#include <MarioUtil/MathUtil.hpp>
+#include <MarioUtil/TexUtil.hpp>
+#include <MarioUtil/ScreenUtil.hpp>
+#include <MarioUtil/MtxUtil.hpp>
+#include <M3DUtil/MActor.hpp>
+#include <M3DUtil/MActorUtil.hpp>
+#include <Map/MapCollisionManager.hpp>
+#include <Map/MapCollisionEntry.hpp>
+#include <Map/MapModel.hpp>
+#include <Map/MapMirror.hpp>
+#include <Map/Map.hpp>
+#include <Map/Sky.hpp>
+#include <MoveBG/MapObjManager.hpp>
+#include <MoveBG/MapObjBase.hpp>
+#include <Camera/Camera.hpp>
+#include <Enemy/Conductor.hpp>
+#include <Enemy/Graph.hpp>
+#include <MSound/MSoundScene.hpp>
+#include <MSound/MSound.hpp>
+#include <MSound/MSoundSE.hpp>
 #include <stdio.h>
 
 // Common J3DModelLoaderFlag combinations used by the actor data table below.
@@ -157,28 +182,12 @@ J3DModel* TMapStaticObj::getModel() const { return mMActor->getModel(); }
 
 void TMapStaticObj::calcUnique(JPABaseEmitter* emitter)
 {
-#ifdef SMS_NATIVE_PLATFORM
-	// SB_SEA_DBG: trace the "sea"/reflective static objects — which perform flag, whether the
-	// 0x80 (DrawBuf AfterIndirect) enter branch fires, and the model shape count. The pass-3
-	// indirect reflective sea is a flag-0x80 static obj entered into DrawBuf AfterIndirect.
-	if (const char* e = getenv("SB_SEA_DBG"); e && e[0] && e[0] != '0') {
-		if (unk6C && (strcmp(unk6C, "sea") == 0 || strcmp(unk6C, "SeaIndirect") == 0
-		    || strcmp(unk6C, "ReflectSky") == 0 || strcmp(unk6C, "ReflectParts") == 0)) {
-			static int sn = 0;
-			if (sn < 60) { ++sn;
-				fprintf(stderr, "[sea] '%s' perform(0x%x) unk40=0x%x model=%p enter80=%d\n",
-				        unk6C, param_1, unk68 ? unk68->unk40 : 0, (void*)unk70,
-				        (int)((param_1 & 0x200) && unk68 && (unk68->unk40 & 0x80)));
-			}
-		}
-	}
-#endif
-	if (param_1 & 2) {
-		u32 sfx = unk78;
-		if (sfx != 0xffffffff) {
-			if (gpMSound->gateCheck(sfx))
-				MSoundSESystem::MSoundSE::startSoundActor(sfx, &mPosition, 0,
-				                                          nullptr, 0, 4);
+	switch (mActorType) {
+	case 0x40000024:
+		if (emitter) {
+			JGeometry::TVec3<f32> scale(mEffectCoronaScale, mEffectCoronaScale,
+			                            mEffectCoronaScale);
+			emitter->setScale(scale);
 		}
 		break;
 	default:
@@ -186,7 +195,7 @@ void TMapStaticObj::calcUnique(JPABaseEmitter* emitter)
 	}
 }
 
-void TMapStaticObj::perform(u32 cue, JDrama::TGraphics* graphics)
+void TMapStaticObj::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 #ifdef SMS_NATIVE_PLATFORM
 	// SB_SEA_DBG: trace the "sea"/reflective static objects — which perform flag, whether the
@@ -227,8 +236,7 @@ void TMapStaticObj::perform(u32 cue, JDrama::TGraphics* graphics)
 		calcUnique(emitter);
 	}
 
-	if ((cue & CUE_CALC_VIEW)
-	    && (mActorData->mFlags & TActorData::FLAG_IS_INDIRECT)) {
+	if ((param_1 & 4) && (mActorData->mFlags & TActorData::FLAG_IS_INDIRECT)) {
 		Mtx afStack_7c;
 		SMS_GetLightPerspectiveForEffectMtx(afStack_7c);
 
@@ -239,21 +247,20 @@ void TMapStaticObj::perform(u32 cue, JDrama::TGraphics* graphics)
 		    ->setEffectMtx(afStack_7c);
 	}
 
-	if ((cue & CUE_ENTRY)
+	if ((param_1 & 0x200)
 	    && ((mActorData->mFlags & TActorData::FLAG_UNK8)
 	        || (mActorData->mFlags & TActorData::FLAG_UNK20))) {
-		cue &= ~CUE_ENTRY;
+		param_1 &= ~0x200;
 		mMActor->updateMatAnm();
 	}
 
-	if ((!(param_1 & 0x200) || !(unk68->unk40 & 0x10)
-	     || (gpMirrorModelManager->mCurrentMirrorIndex != -1 ? true : false))
-	    && unk70) {
+	if ((!(param_1 & 0x200) || !(mActorData->mFlags & TActorData::FLAG_UNK10)
+	     || gpMirrorModelManager->isCurrentMirrorPresent())
+	    && mMActor) {
 		if (param_1 & 0x2) {
-			MsMtxSetXYZRPH(unk70->getModel()->getBaseTRMtx(), mPosition.x,
-			               mPosition.y, mPosition.z, mRotation.x, mRotation.y,
-			               mRotation.z);
-			unk70->getModel()->setBaseScale(mScaling);
+			MsMtxSetXYZRPH(getModel()->getBaseTRMtx(), mPosition.x, mPosition.y,
+			               mPosition.z, mRotation.x, mRotation.y, mRotation.z);
+			getModel()->setBaseScale(mScaling);
 		}
 
 #ifdef SMS_NATIVE_PLATFORM
@@ -279,11 +286,11 @@ void TMapStaticObj::perform(u32 cue, JDrama::TGraphics* graphics)
 			    gpMapObjManager->getDrawBufferAfterIndirectOpa(), 0);
 			j3dSys.setDrawBuffer(
 			    gpMapObjManager->getDrawBufferAfterIndirectXlu(), 1);
-			mMActor->perform(cue, graphics);
+			mMActor->perform(param_1, param_2);
 			j3dSys.setDrawBuffer(oldOpaBuf, 0);
 			j3dSys.setDrawBuffer(oldXluBuf, 1);
 		} else {
-			mMActor->perform(cue, graphics);
+			mMActor->perform(param_1, param_2);
 		}
 	}
 }
@@ -362,24 +369,43 @@ void TMapStaticObj::initModel(const char* name)
 
 void TMapStaticObj::init(const char* name)
 {
-	unk6C = name;
-	const ActorDataTableEntry* entry;
-	// Name→config lookup: advance until this entry's key MATCHES `name`. The original loops
-	// `while (strcmp(name, table[i].unk0) != 0) ++i;` — the decomp transcribed the exit test with
-	// the sense INVERTED (`if (strcmp(...)) break` = break on the first MISMATCH), which made every
-	// static object resolve to table[0] ("SeaIndirect", unk40=0x41). Proven: the option map's
-	// `sun_mirror` (real unk40=0x62: model-load + entryMirrorDrawBufferAlways) came back unk40=0x41,
-	// so its sun/water reflection never set up. Break on MATCH; fail fast on the nullptr terminator
-	// (an unknown name is a data-contract violation, not something to silently mis-resolve).
-	for (int i = 0;; ++i) {
-		entry = &actor_data_table[i];
+	mActorName = name;
+
 #ifdef SMS_NATIVE_PLATFORM
-		if (entry->unk0 == nullptr) {
+	// FAIL FAST: on the GC the sentinel `while (strcmp(name, tbl[i].mActorName))`
+	// walks off the end into rodata garbage on an unknown name — subtle. Native
+	// side turns that into an OSPanic that names the bad key.
+	for (int i = 0;; ++i) {
+		if (actor_data_table[i].mActorName == nullptr)
 			OSPanic(__FILE__, __LINE__,
 			        "TMapStaticObj::init: name '%s' not in actor_data_table", name);
+		if (strcmp(name, actor_data_table[i].mActorName) == 0) {
+			mActorData = &actor_data_table[i];
+			break;
 		}
+	}
+#else
+	int i = 0;
+	while (strcmp(name, actor_data_table[i].mActorName) != 0)
+		++i;
+	mActorData = &actor_data_table[i];
 #endif
-		if (strcmp(name, entry->unk0) == 0)
+
+	initHitActor(mActorData->mActorType, 5, mActorData->mHitFlags,
+	             mActorData->mAttackRadius, mActorData->mAttackHeight,
+	             mActorData->mDamageRadius, mActorData->mDamageHeight);
+
+	if (mActorData->mModelFileName != nullptr)
+		initModel(mActorData->mModelFileName);
+
+	if (mActorData->mColFileName != nullptr)
+		initMapCollision(mActorData->mColFileName);
+
+	mSoundId = mActorData->mSoundId;
+
+	if (mActorData->mParticlePath != nullptr) {
+		switch (mActorData->mParticleType) {
+		case 0:
 			break;
 		case 1:
 			SMS_LoadParticle(mActorData->mParticlePath,
@@ -394,22 +420,18 @@ void TMapStaticObj::init(const char* name)
 		}
 	}
 
-	if (unk68->unk1C != nullptr) {
-		JDrama::TNameRef* ref
-		    = JDrama::TNameRefGen::getInstance()->getRootNameRef()->search(
-		        unk68->unk1C);
-		// TODO: insert into some list?
-#ifdef SMS_NATIVE_PLATFORM
-		if (const char* e = getenv("SB_STATICOBJ_DBG"); e && e[0] && e[0] != '0')
-			fprintf(stderr, "[staticobj] LIST-INSERT-TODO name='%s' listName='%s' ref=%p unk40=0x%x\n",
-			             unk6C ? unk6C : "?", unk68->unk1C, (void*)ref, unk68->unk40);
-#endif
+	if (mActorData->mIdxGroupName != nullptr) {
+		TIdxGroupObj* group
+		    = JDrama::TNameRefGen::getInstance()->search<TIdxGroupObj>(
+		        mActorData->mIdxGroupName);
+		group->getChildren().push_back(this);
 	}
 #ifdef SMS_NATIVE_PLATFORM
 	if (const char* e = getenv("SB_STATICOBJ_DBG"); e && e[0] && e[0] != '0')
-		fprintf(stderr, "[staticobj] created name='%s' unk40=0x%x model=%p unk1C='%s'\n",
-		             unk6C ? unk6C : "?", unk68->unk40, (void*)unk70,
-		             unk68->unk1C ? unk68->unk1C : "(null)");
+		fprintf(stderr,
+		    "[staticobj] created name='%s' mFlags=0x%x model=%p group='%s'\n",
+		    mActorName ? mActorName : "?", mActorData->mFlags, (void*)mMActor,
+		    mActorData->mIdxGroupName ? mActorData->mIdxGroupName : "(null)");
 #endif
 
 	if (mActorData->mFlags & TActorData::FLAG_IS_INDIRECT) {
@@ -449,26 +471,26 @@ TMapStaticObj::TMapStaticObj(const char* name)
 {
 }
 
-void TMapModelActor::perform(u32 cue, JDrama::TGraphics* graphics)
+void TMapModelActor::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	if (!unk68)
 		return;
 
-	if (cue & CUE_CALC_ANIM) {
+	if (param_1 & 2) {
 		MsMtxSetXYZRPH(unk68->getModel()->getBaseTRMtx(), mPosition.x,
 		               mPosition.y, mPosition.z, mRotation.x, mRotation.y,
 		               mRotation.z);
 		unk68->getModel()->setBaseScale(mScaling);
 	}
-	unk68->perform(cue, graphics);
+	unk68->perform(param_1, param_2);
 }
 
-void TMapObjSoundGroup::perform(u32 cue, JDrama::TGraphics* graphics)
+void TMapObjSoundGroup::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	if (unk14->isDummy())
 		return;
 
-	if (cue & CUE_MOVE) {
+	if (param_1 & 1) {
 		JGeometry::TVec3<f32> local_c18[0x100];
 		JGeometry::TVec3<f32> local_c24;
 		unk14->unk0->getPoint(&local_c24);

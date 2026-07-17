@@ -62,7 +62,7 @@ public:
 	virtual TJointObj* newJointObj() const { return new TPollutionObj; }
 	virtual void initJointModel(TJointModelManager*, const char*,
 	                            MActorAnmData*);
-	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
+	virtual void perform(u32, JDrama::TGraphics*);
 	virtual u32 getJ3DModelDataFlag() const
 	{
 		return J3DMLF_MaterialPEFull | J3DMLF_MaterialUseIndirect
@@ -266,7 +266,7 @@ public:
 	virtual void initJointModel(TJointModelManager*, const char*,
 	                            MActorAnmData*);
 	virtual void perform(u32, JDrama::TGraphics*);
-	virtual int getPlaneType() const { }
+	virtual int getPlaneType() const { return 6; }
 	virtual ResTIMG* getTexResource(const char*);
 
 	void draw() const;
