@@ -3,6 +3,7 @@
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
 #include <cstdlib>
+#include <sb_log.h>
 #endif
 #include <Player/WaterGun.hpp>
 #include <Player/Yoshi.hpp>
@@ -170,6 +171,12 @@ void TMario::perform(u32 cue, JDrama::TGraphics* graphics)
 			doEntry = FALSE;
 		if (checkFlag(MARIO_FLAG_UNK4))
 			doEntry = FALSE;
+		SB_LOG_ONCE("mario",
+		            "perform(0x200): unk114=0x%x VISIBLE=%d UNK4=%d -> doEntry=%d "
+		            "mStatus=0x%x pos=(%.0f,%.0f,%.0f)",
+		            (unsigned)unk114, (int)!!(unk114 & UNK114_FLAG_VISIBLE),
+		            (int)!!checkFlag(MARIO_FLAG_UNK4), (int)doEntry, (unsigned)mStatus,
+		            (double)mPosition.x, (double)mPosition.y, (double)mPosition.z);
 
 		if (doEntry == TRUE) {
 			addDirty();
