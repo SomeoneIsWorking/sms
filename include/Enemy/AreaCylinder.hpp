@@ -3,7 +3,9 @@
 
 #include <JSystem/JGadget/std-list.hpp>
 #include <JSystem/JDrama/JDRViewObj.hpp>
-#include <JSystem/JGeometry/JGVec3.hpp>
+#include <JSystem/JGadget/std-list.hpp>
+
+class TAreaCylinder;
 
 class TAreaCylinder : public JDrama::TViewObj {
 public:
@@ -37,7 +39,7 @@ public:
 	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
 
 	void registerCylinder(TAreaCylinder*);
-	BOOL contain(const JGeometry::TVec3<f32>&);
+	bool contain(const JGeometry::TVec3<f32>&);
 	TAreaCylinder* getCylinderContains(const JGeometry::TVec3<f32>&);
 
 public:
