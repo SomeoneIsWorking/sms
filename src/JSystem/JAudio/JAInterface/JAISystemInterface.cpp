@@ -166,6 +166,15 @@ void JAISystemInterface::setSePortParameter(
 	JASystem::TTrack* track = param_1->mTrack;
 	if (!track)
 		return;
+#ifdef SMS_NATIVE_PLATFORM
+	// mOuterParam is legitimately nullable (assigned only via assignExtBuffer; TTrack::noteOn
+	// and BankMgr::noteOn already guard `if (mOuterParam)` before using it). This SE-port
+	// handler dereferences getOuterParam() unguarded and SIGSEGVs on a track without an outer
+	// param — exposed once real sequences drive SE ports (2026-07-17). No params to apply when
+	// there's no outer buffer, so skip (same policy as the existing noteOn guards).
+	if (track->getOuterParam() == nullptr)
+		return;
+#endif
 
 	// TODO: some weird stuff is happening here and with setSeqPortargsF32/U32,
 	// they seem to have a union somewhere making the params accessible by index
