@@ -27,7 +27,7 @@ public:
 	virtual void initMapObj();
 	virtual void touchPlayer(THitActor*);
 
-	void controlLeaf(int);
+	int controlLeaf(int); // returns 1 when the leaf has settled, 0 while swinging (summed by perform)
 	void initEach();
 	TMapObjTree(const char* name = "木");
 

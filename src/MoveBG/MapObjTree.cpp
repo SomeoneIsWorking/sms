@@ -3,6 +3,11 @@
 #include <Map/MapCollisionManager.hpp>
 #include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
 #include <cstdio>
+#include <cmath>
+#include <dolphin/mtx.h>
+#include <MoveBG/MapObjGeneral.hpp>
+#include <Strategic/LiveActor.hpp>
+#include <Player/MarioAccess.hpp>
 
 // TMapObjTree — trees whose leaves each carry a moving collision object.
 //
@@ -121,4 +126,85 @@ void TMapObjTree::initMapObj()
 
 	if (mMapCollisionManager)
 		mMapCollisionManager->unk10 = nullptr;
+}
+
+// controlLeaf @0x801f6c74 (US GMSE01, size 0x1BC) - cold RE from the DOL.
+// Per-frame spring-damper sway for ONE leaf. Returns true when the leaf has
+// SETTLED (|angle| < unk15C), false while still swinging; caller
+// TMapObjTree::perform @0x801f6bd8 sums these and latches unk158 once all
+// leaves report settled. A resting leaf (vel==0) always reports settled.
+// Add includes: <Player/MarioAccess.hpp> (gpMarioSpeedY) and <cmath> (fabsf).
+// Header decl must change void -> bool (see notes).
+int TMapObjTree::controlLeaf(int index)
+{
+	TMapObjLeaf* leaf = &mLeaves[index];
+
+	// Resting leaf: no integration, just keep the collision matrix synced.
+	if (leaf->unk4 == 0.0f) {
+		// Refresh collision only when Mario is not rising (fcmpo+cror(lt|eq) => <=0).
+		if (*gpMarioSpeedY <= 0.0f) {
+			Mtx tmp;
+			PSMTXCopy(leaf->mMtx, tmp);      // DOL @0x8009544c paired-single Mtx copy
+			leaf->mCollision->moveMtx(tmp);  // vtable +0x14 = moveMtx(MtxPtr)
+		}
+		return true;
+	}
+
+	// Spring-damper integrator (fadds / fnmsubs / fmuls).
+	leaf->unk0 += leaf->unk4;                        // angle += vel
+	leaf->unk4  = leaf->unk4 - leaf->unk0 * unk164;  // vel -= angle * stiffness
+	leaf->unk4  = leaf->unk4 * unk168;               // vel *= damping
+
+	// Rotation about local +X by the current angle.
+	Mtx rot;
+	Vec axis = { 1.0f, 0.0f, 0.0f };
+	PSMTXRotAxisRad(rot, &axis, leaf->unk0);
+
+	// swayed = leafMtx * rot (in-place dst==srcA, as in the DOL).
+	Mtx swayed;
+	PSMTXCopy(leaf->mMtx, swayed);
+	PSMTXConcat(swayed, rot, swayed);
+
+	// Write into the model joint matrix (mNodeMatrices[mLeafCount - index]).
+	PSMTXCopy(swayed, getModel()->getAnmMtx(mLeafCount - index));
+
+	// Refresh collision only when Mario is not rising.
+	if (*gpMarioSpeedY <= 0.0f)
+		leaf->mCollision->moveMtx(swayed);
+
+	// Settled once the swing amplitude drops below the threshold.
+	return fabsf(leaf->unk0) < unk15C;
+}
+
+// TMapObjTree::perform @US 0x801f6bd8 (JP 0x801CE3BC), size 0x9C.
+// Per-frame: on the logic pass, drive every leaf's sway via controlLeaf and,
+// once all leaves have come to rest AND nothing is colliding with the tree,
+// latch the tree as "settled" so leaf control stops running. Then delegate to
+// the parent for the normal MapObjGeneral perform-list dispatch (calc/entry/
+// draw). Cold-RE'd from the US GMSE01 DOL; see structure below.
+//
+// Guest field map (accessed by NAME on host — guest offsets are for provenance):
+//   this+0x158 unk158     : "settled" latch. Retail reads/writes only the top
+//                           byte (lbz/stb) as a 0/1 flag; declared u32 in the
+//                           header, used purely as a boolean here.
+//   param_1 & 1           : logic/calc pass flag (same bit MapObjGeneral tests).
+//   this+0x150 mLeafCount : leaf count (s32).
+//   this+0x48  mColCount  : THitActor::mColCount (u16) — live collision count.
+//   controlLeaf(i)        : returns 1 if leaf i is at rest, else 0 (summed).
+void TMapObjTree::perform(u32 param_1, JDrama::TGraphics* param_2)
+{
+	// Run leaf control only while unsettled, and only on the logic pass.
+	if (unk158 == 0 && (param_1 & 1)) {
+		int settledCount = 0;
+		for (int i = 0; i < mLeafCount; ++i)
+			settledCount += controlLeaf(i);
+
+		// Latch "settled" once every leaf reports at-rest and no collisions
+		// are registered against the tree (mColCount == 0). controlLeaf keeps
+		// getting called each frame until this latches.
+		if (mColCount == 0 && settledCount == mLeafCount)
+			unk158 = 1;
+	}
+
+	TMapObjGeneral::perform(param_1, param_2);
 }
