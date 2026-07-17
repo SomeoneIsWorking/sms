@@ -1,8 +1,12 @@
 #include <MoveBG/MapObjBall.hpp>
 #include <MoveBG/MapObjGeneral.hpp>
 #include <Strategic/LiveActor.hpp>
+#include <Strategic/TakeActor.hpp>
+#include <MarioUtil/MathUtil.hpp>
+#include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
 #include <System/MarDirector.hpp>
 #include <System/FlagManager.hpp>
+#include <dolphin/mtx.h>
 #include "sms_boot_reset_fruit.h"
 #include "sms_boot_coverfruit.h"
 
@@ -83,4 +87,27 @@ void TCoverFruit::loadAfter()
 	if (TFlagManager::getInstance()->getBool(sb::kCoverFruitCollectedFlag)) {
 		makeObjDead();
 	}
+}
+
+// Native port of TCoverFruit::calcRootMatrix (@0x801e1840, US GMSE01, size 0x144). RE'd from
+// disasm (workflow 2026-07-17, verified vs the binary); a simplified twin of the ported
+// TMapObjGeneral::calcRootMatrix (MapObjGeneral.cpp). フタのフルーツ ("lid fruit"):
+//   - held (mHolder != null): copy the holder's taking matrix into the model's base TR matrix
+//     and snap mPosition to that matrix's translation column (src[0..2][3]).
+//   - else: build the base TR matrix from SRT (position with mYOffset removed in Y, rotation via
+//     the f32 MsMtxSetXYZRPH overload = deg->s16 by 65536/360, matching the disasm SDA2 const).
+//   - always: push mScaling into the model base scale.
+// getModel() is re-fetched per use to mirror the three `bl getModel` sites (not hoisted).
+void TCoverFruit::calcRootMatrix()
+{
+	if (mHolder) {
+		MtxPtr src = mHolder->getTakingMtx();
+		MTXCopy(src, getModel()->getBaseTRMtx());
+		mPosition.set(src[0][3], src[1][3], src[2][3]);
+	} else {
+		MsMtxSetXYZRPH(getModel()->getBaseTRMtx(), mPosition.x,
+		               mPosition.y - mYOffset, mPosition.z, mRotation.x,
+		               mRotation.y, mRotation.z);
+	}
+	getModel()->setBaseScale(mScaling);
 }
