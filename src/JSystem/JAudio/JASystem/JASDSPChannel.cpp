@@ -42,7 +42,7 @@ void TDSPChannel::init(u8 param)
 	unkC  = DSPInterface::getDSPHandle(param);
 }
 
-BOOL TDSPChannel::allocate(u32 param)
+BOOL TDSPChannel::allocate(uintptr_t param)
 {
 	if (!isUnk1One())
 		return false;
@@ -118,7 +118,7 @@ void TDSPChannel::initAll()
 	first = 0;
 }
 
-TDSPChannel* TDSPChannel::alloc(u32 param1, u32 param2)
+TDSPChannel* TDSPChannel::alloc(u32 param1, uintptr_t param2)
 {
 	if (param1)
 		return nullptr;
@@ -136,7 +136,7 @@ TDSPChannel* TDSPChannel::alloc(u32 param1, u32 param2)
 	return nullptr;
 }
 
-int TDSPChannel::free(TDSPChannel* channel, u32 param)
+int TDSPChannel::free(TDSPChannel* channel, uintptr_t param)
 {
 	if (!channel)
 		return -1;

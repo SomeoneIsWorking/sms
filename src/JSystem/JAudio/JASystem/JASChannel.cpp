@@ -373,7 +373,6 @@ namespace Driver {
 	int updatecallDSPChannel(TDSPChannel* dspChannel, u32 param)
 	{
 		TChannel* channel = dspChannel->getLogicalChannel();
-		TChannelMgr* mgr  = channel->unk4;
 
 		u32 i;
 		u32 r28 = 0;
@@ -384,6 +383,15 @@ namespace Driver {
 			killBrokenLogicalChannels(dspChannel);
 			return 0;
 		}
+
+		// `mgr` is read AFTER the null check (the decomp reads it before, at the top,
+		// but only USES it in the channel != null branches below). On PPC the early
+		// `channel->unk4` when channel==null harmlessly loads address 0x4 and the
+		// value goes unused; on an LP64 host it SIGSEGVs. Moving the read here is
+		// behavior-identical and null-safe. (Surfaced 2026-07-17 once the DSP pipeline
+		// was actually driven — TDSPChannel::updateAll had never run before the
+		// finishDSPFrame deadlock fix.)
+		TChannelMgr* mgr = channel->unk4;
 
 		if (channel->unk20 != dspChannel) {
 			if (channel->unk20 != nullptr
@@ -705,7 +713,7 @@ BOOL TChannel::play(u32 param)
 	unk30 = param;
 	unk34 = unk30;
 	unk28 = &Driver::updatecallLogicalChannel;
-	unk20 = TDSPChannel::alloc(0, (u32)(uintptr_t)this);
+	unk20 = TDSPChannel::alloc(0, (uintptr_t)this);
 
 	if (unk20 == nullptr) {
 		if (checkLogicalChannel() == TRUE) {
@@ -720,7 +728,7 @@ BOOL TChannel::play(u32 param)
 	}
 
 	if (playLogicalChannel() == FALSE) {
-		TDSPChannel::free(unk20, (u32)(uintptr_t)this);
+		TDSPChannel::free(unk20, (uintptr_t)this);
 		unk20 = nullptr;
 		unk4->addListTail(this, 0);
 		return false;
@@ -765,7 +773,7 @@ BOOL TChannel::stopLogicalChannel()
 	unk20->unk10 = 0;
 	unk20->unk6  = 0;
 	unk20->stop();
-	TDSPChannel::free(unk20, (u32)(uintptr_t)this);
+	TDSPChannel::free(unk20, (uintptr_t)this);
 	unk20 = nullptr;
 
 	return TRUE;
