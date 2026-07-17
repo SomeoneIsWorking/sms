@@ -15,6 +15,12 @@ namespace TrackMgr {
 	void reset();
 	void initRegistTrack();
 	TTrack* getNewTrack();
+#ifdef SMS_NATIVE_PLATFORM
+	// True iff `t` is a live slot of the static track pool (a properly-aligned pointer within
+	// [sTrackPool, sTrackPool+sTrackCount)). Used to reject a stale/wild track pointer before
+	// it is dereferenced in the SE-port path (2026-07-17 use-after-free).
+	bool isPoolTrack(const TTrack* t);
+#endif
 	u32 allocNewRoot(TTrack*);
 	u32 deAllocRoot(TTrack*);
 	void registTrack(u32, TTrack*);

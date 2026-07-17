@@ -55,6 +55,20 @@ void TrackMgr::setPause(Kernel::TPortArgs* args) { }
 
 void TrackMgr::clearPause(Kernel::TPortArgs* args) { }
 
+#ifdef SMS_NATIVE_PLATFORM
+bool TrackMgr::isPoolTrack(const TTrack* t)
+{
+	if (t == nullptr || sTrackPool == nullptr)
+		return false;
+	if (t < sTrackPool || t >= sTrackPool + sTrackCount)
+		return false;
+	// Must land exactly on a pool-element boundary (a mid-object/garbage pointer is invalid).
+	return (reinterpret_cast<uintptr_t>(t) - reinterpret_cast<uintptr_t>(sTrackPool))
+	           % sizeof(TTrack)
+	       == 0;
+}
+#endif
+
 void TrackMgr::reset()
 {
 	for (int i = 0; i < sTrackCount; ++i) {
