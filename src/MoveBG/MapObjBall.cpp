@@ -290,3 +290,18 @@ void TMapObjBall::initMapObj()
 		unk190 = 10.0f;
 	}
 }
+
+// Native port of TMapObjBall::makeObjDefault (@0x801e42bc, US GMSE01, size 0x58). RE'd +
+// workflow-verified (2026-07-17). Runs the base default-state setup (which recomputes mPosition
+// from mInitialPosition + mYOffset and calls getModel()->calc()), then re-stamps the model's
+// root node matrix translation from mPosition, lifting the ball center by mBodyRadius so it
+// rests on the ground.
+void TMapObjBall::makeObjDefault()
+{
+	TMapObjBase::makeObjDefault();
+
+	MtxPtr anmMtx = getModel()->getAnmMtx(0);
+	anmMtx[0][3] = mPosition.x;
+	anmMtx[1][3] = mPosition.y + mBodyRadius;
+	anmMtx[2][3] = mPosition.z;
+}
