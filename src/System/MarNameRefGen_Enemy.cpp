@@ -1,3 +1,21 @@
+#include "Animal/AnimalBase.hpp"
+#include "Animal/AnimalManager.hpp"
+#include "Animal/Bird.hpp"
+#include "Enemy/EffectObj.hpp"
+#include "Enemy/EnemyManager.hpp"
+#include "Enemy/Gesso.hpp"
+#include "Enemy/HamuKuri.hpp"
+#include "Enemy/Launcher.hpp"
+#include "Enemy/MameGesso.hpp"
+#include "Enemy/NameKuri.hpp"
+#include "Enemy/PoiHana.hpp"
+#include "Enemy/RiccoHook.hpp"
+#include "Enemy/Rocket.hpp"
+#include "Enemy/SmallEnemy.hpp"
+#include "Enemy/TamaNoko.hpp"
+#include "Enemy/Telesa.hpp"
+#include "Enemy/TypicalEnemy.hpp"
+#include "Enemy/WalkerEnemy.hpp"
 #include <System/MarNameRefGen.hpp>
 #include <Enemy/EffectObj.hpp>
 #include <Enemy/EnemyManager.hpp>
@@ -68,13 +86,11 @@ JDrama::TNameRef* TMarNameRefGen::getNameRef_Enemy(const char* name) const
 	if (strcmp(name, "MewManager") == 0)
 		return new TMewManager;
 
-	// TODO:
-	// if ( strcmp(name, "AnimalBird") == 0)
-	//     return new TAnimalBird;
+	if (strcmp(name, "AnimalBird") == 0)
+		return new TAnimalBird;
 
-	// TODO:
-	// if ( strcmp(name, "AnimalBirdManager") == 0)
-	//     return new TAnimalBirdManager;
+	if (strcmp(name, "AnimalBirdManager") == 0)
+		return new TAnimalBirdManager;
 
 	if (strcmp(name, "FishoidA") == 0)
 		return new TFishoid(0, "回遊魚Ａ");
