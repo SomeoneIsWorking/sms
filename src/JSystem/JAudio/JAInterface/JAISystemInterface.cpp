@@ -8,6 +8,7 @@
 #include <JSystem/JAudio/JAInterface/JAIParameters.hpp>
 #include <JSystem/JAudio/JASystem/JASDvdThread.hpp>
 #include <JSystem/JAudio/JASystem/JASTrackMgr.hpp>
+#include <JSystem/JAudio/JASystem/JASCmdStack.hpp>
 #include <types.h>
 
 JASystem::Kernel::TPortCmd JAISystemInterface::systemPortCmd;
@@ -57,12 +58,43 @@ JASystem::TTrack* JAISystemInterface::trackToSeqp(JAISound* param_1, u8 param_2)
 	return result;
 }
 
+#ifdef SMS_NATIVE_PLATFORM
+// LP64 landmine: the decomp addresses TPortArgs as a flat 4-byte-word array from &mTrack
+// (`((f32*)&s->unk4)[param_3]`), which is only correct when mTrack is a 4-byte GC pointer.
+// On the 64-bit host mTrack is 8 bytes, so every index >= 1 is off by one f32 slot and the
+// per-parameter pushes scatter into the wrong fields (pitch->volume, pan->pitch, ...),
+// leaving mTrackPitch permanently 0 -> DSP pitch 0 -> silence (2026-07-17). param_3 is the
+// GC word index; map it to the named field it denotes (GC byte offset = param_3 * 4) so the
+// write is layout-correct on both ABIs. Index 0 = mTrack (never a value target).
+static void* sb_portarg_slot(JASystem::Kernel::TPortArgs* a, u8 idx)
+{
+	switch (idx) {
+	case 1: return &a->mFlags;
+	case 2: return &a->mTrackVolume;
+	case 3: return &a->mTrackPitch;
+	case 4: return &a->mTrackPan;
+	case 5: return &a->mTrackFxmix;
+	case 6: return &a->mTrackDolby;
+	case 7: return &a->unk1C;
+	case 8: return &a->unk20;
+	case 9: return &a->mTrackTempo;
+	default: return nullptr;
+	}
+}
+#endif
+
 void JAISystemInterface::setSeqPortargsF32(JAISeqUpdateData* param_1,
                                            u32 param_2, u8 param_3, f32 param_4)
 {
 	JAISeqUpdateData::FabricatedUnk4CStruct* s = &param_1->unk4C[param_2];
 
+#ifdef SMS_NATIVE_PLATFORM
+	void* slot = sb_portarg_slot(&s->unk4, param_3);
+	if (slot)
+		*(f32*)slot = param_4;
+#else
 	((f32*)&s->unk4)[param_3] = param_4;
+#endif
 }
 
 void JAISystemInterface::setSeqPortargsPS16(JAISeqUpdateData*, u32, u8, s16*) {
@@ -73,7 +105,13 @@ void JAISystemInterface::setSeqPortargsU32(JAISeqUpdateData* param_1,
 {
 	JAISeqUpdateData::FabricatedUnk4CStruct* s = &param_1->unk4C[param_2];
 
+#ifdef SMS_NATIVE_PLATFORM
+	void* slot = sb_portarg_slot(&s->unk4, param_3);
+	if (slot)
+		*(u32*)slot = param_4;
+#else
 	((u32*)&s->unk4)[param_3] = param_4;
+#endif
 }
 
 JAISeqParameter* JAISystemInterface::rootInit(JAISeqUpdateData* param_1)
