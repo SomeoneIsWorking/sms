@@ -11,6 +11,7 @@
 #include "Enemy/PoiHana.hpp"
 #include "Enemy/RiccoHook.hpp"
 #include "Enemy/Rocket.hpp"
+#include "Enemy/Seal.hpp"
 #include "Enemy/SmallEnemy.hpp"
 #include "Enemy/TamaNoko.hpp"
 #include "Enemy/Telesa.hpp"
@@ -456,12 +457,12 @@ JDrama::TNameRef* TMarNameRefGen::getNameRef_Enemy(const char* name) const
 	//     return new TBiancoGateKeeperManager;
 
 	// TODO:
-	// if ( strcmp(name, "OrangeSeal") == 0)
-	//     return new TSeal;
+	if (strcmp(name, "OrangeSeal") == 0)
+		return new TSeal;
 
 	// TODO:
-	// if ( strcmp(name, "SealManager") == 0)
-	//     return new TSealManager;
+	if (strcmp(name, "SealManager") == 0)
+		return new TSealManager;
 
 	if (strcmp(name, "HamukuriLauncher") == 0)
 		return new THamuKuriLauncher;
