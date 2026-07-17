@@ -11,6 +11,7 @@
 #include "Enemy/PoiHana.hpp"
 #include "Enemy/RiccoHook.hpp"
 #include "Enemy/Rocket.hpp"
+#include "Enemy/HauntLeg.hpp"
 #include "Enemy/DebuTelesa.hpp"
 #include "Enemy/EffectEnemy.hpp"
 #include "Enemy/EggGen.hpp"
