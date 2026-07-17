@@ -1,3 +1,7 @@
+#ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
+#include <cstdlib>
+#endif
 #include <JSystem/JAudio/JASystem/JASCmdStack.hpp>
 #include <JSystem/JAudio/JASystem/JASCallback.hpp>
 #include <dolphin/os.h>
@@ -101,7 +105,11 @@ namespace Kernel {
 			TPortCmd* cmd = getPortCmd(head);
 			if (!cmd)
 				break;
-
+#ifdef SMS_NATIVE_PLATFORM
+			if (std::getenv("SB_DBG_AUDIO"))
+				std::fprintf(stderr, "[audio] portCmdOnce run: cmd=%p func=%p args=%p\n",
+				             (void*)cmd, (void*)cmd->unk8, (void*)cmd->unkC);
+#endif
 			cmd->unk8(cmd->unkC);
 		}
 	}
