@@ -710,6 +710,17 @@ s8 TTrack::mainProc()
 		}
 
 		retcode = sParser.mainProc(this, &mSeqCtrl);
+#ifdef SMS_NATIVE_PLATFORM
+		if (std::getenv("SB_DBG_AUDIO")) {
+			static long nProc = 0, nEnd = 0, nWait = 0;
+			++nProc;
+			if (retcode == -1) ++nEnd;
+			if (mSeqCtrl.mWaitTimer > 0) ++nWait;
+			if (nProc <= 3 || nProc % 500 == 0)
+				std::fprintf(stderr, "[audio] parser.mainProc #%ld retcode=%d waitTimer=%d (ends=%ld waits=%ld)\n",
+				             nProc, (int)retcode, (int)mSeqCtrl.mWaitTimer, nEnd, nWait);
+		}
+#endif
 
 		if (retcode == -1)
 			return -1;
@@ -1538,6 +1549,14 @@ f32 TTrack::panCalc(f32 param1, f32 param2, f32 param3, u8 param4)
 s32 TTrack::rootCallback(void* param)
 {
 	TTrack* self = static_cast<TTrack*>(param);
+#ifdef SMS_NATIVE_PLATFORM
+	if (std::getenv("SB_DBG_AUDIO")) {
+		static long nCB = 0; ++nCB;
+		if (nCB <= 3 || nCB % 5000 == 0)
+			std::fprintf(stderr, "[audio] rootCallback #%ld state(unk3C4)=%d tempo(unk3B0)=%.4f acc(unk3AC)=%.4f\n",
+			             nCB, self ? (int)self->unk3C4 : -99, self ? self->unk3B0 : -1.f, self ? self->unk3AC : -1.f);
+	}
+#endif
 	if (self && self->unk3C4 != 0) {
 		if (self->unk3C4 == 3) {
 			self->updateSeq(0, true);
