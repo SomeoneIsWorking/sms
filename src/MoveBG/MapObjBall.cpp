@@ -7,6 +7,8 @@
 #include <System/MarDirector.hpp>
 #include <System/FlagManager.hpp>
 #include <dolphin/mtx.h>
+#include <Map/MapData.hpp>
+#include <cmath>
 #include "sms_boot_reset_fruit.h"
 #include "sms_boot_coverfruit.h"
 
@@ -304,4 +306,70 @@ void TMapObjBall::makeObjDefault()
 	anmMtx[0][3] = mPosition.x;
 	anmMtx[1][3] = mPosition.y + mBodyRadius;
 	anmMtx[2][3] = mPosition.z;
+}
+
+
+// Native port of TMapObjBall::calcCurrentMtx (@0x801e43f0, US GMSE01, size 0x430). RE'd +
+// workflow-verified (2026-07-17). Builds the ball's per-frame world matrix so it rolls in its
+// travel direction: snap-to-rest on flat ground, else roll (axis = horizontal vec perpendicular
+// to velocity via getVerticalVecToTargetXZ; angle = 2*speed/bodyRadius; Rodrigues rotation
+// concatenated onto the model base orientation), position centered one body-radius above ground,
+// with two per-actor-type pivot tweaks (same 50/10 constants as makeObjAppeared). All callees
+// ported (getVerticalVecToTargetXZ, makeMtxRotByAxis, PSMTX*, JGeometry::TUtil sqrt/inv_sqrt).
+void TMapObjBall::calcCurrentMtx()
+{
+	Mtx currentMtx;
+	PSMTXIdentity(currentMtx);
+
+	f32 restThreshold = mMapObjData->mPhysical->unk4->unkC;
+
+	// Snap tiny horizontal drift to a dead stop when resting on perfectly flat ground.
+	if (fabsf(mVelocity.x) < restThreshold && fabsf(mVelocity.z) < restThreshold
+	    && mGroundPlane->getNormal().y == 1.0f) {
+		mVelocity.x = 0.0f;
+		mVelocity.z = 0.0f;
+	}
+
+	// Roll the ball while it is still moving horizontally.
+	if (fabsf(mVelocity.x) > restThreshold || fabsf(mVelocity.z) > restThreshold) {
+		JGeometry::TVec3<f32> vertical;
+		getVerticalVecToTargetXZ(mPosition.x + mVelocity.x, mPosition.z + mVelocity.z,
+		                         &vertical);
+
+		f32 speed = JGeometry::TUtil<f32>::sqrt(
+		    mVelocity.x * mVelocity.x + mVelocity.z * mVelocity.z);
+
+		JGeometry::TVec3<f32> axis;
+		f32 magSq = vertical.x * vertical.x + vertical.y * vertical.y
+		          + vertical.z * vertical.z;
+		if (magSq <= JGeometry::TUtil<f32>::epsilon()) {
+			axis.set(0.0f, 0.0f, 0.0f);
+		} else {
+			f32 inv = JGeometry::TUtil<f32>::inv_sqrt(magSq);
+			axis.set(vertical.x * inv, vertical.y * inv, vertical.z * inv);
+		}
+
+		f32 angle = 2.0f * (speed / mBodyRadius);
+		makeMtxRotByAxis(axis, angle, currentMtx);
+	}
+
+	// Concatenate the roll onto the model's base orientation (translation stripped).
+	Mtx modelMtx;
+	PSMTXCopy(getModel()->getAnmMtx(0), modelMtx);
+	modelMtx[0][3] = 0.0f;
+	modelMtx[1][3] = 0.0f;
+	modelMtx[2][3] = 0.0f;
+	PSMTXConcat(currentMtx, modelMtx, currentMtx);
+
+	// Centre the ball one body-radius above its ground position.
+	currentMtx[0][3] = mPosition.x;
+	currentMtx[1][3] = mPosition.y + mBodyRadius;
+	currentMtx[2][3] = mPosition.z;
+
+	if (isActorType(0x40000394) && currentMtx[1][1] > 0.0f)
+		currentMtx[1][3] -= 50.0f * currentMtx[1][1];
+	if (isActorType(0x40000392))
+		currentMtx[1][3] -= 10.0f * (1.0f - currentMtx[1][1]);
+
+	PSMTXCopy(currentMtx, getModel()->getAnmMtx(0));
 }
