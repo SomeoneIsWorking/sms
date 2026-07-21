@@ -776,8 +776,21 @@ void MSoundSE::startSoundNpcActor(u32 param_1, const Vec* param_2, u32 param_3,
 
 bool MSoundSE::checkMonoSound(u32 param_1, JAIActor* param_2)
 {
-	JAISoundInfo* local_c;
+	JAISoundInfo* local_c = nullptr;
 	JAIBasic::basic->unk0->getInfoPointer(param_1, (void**)&local_c);
+#ifdef SMS_NATIVE_PLATFORM
+	if (local_c == nullptr) {
+		OSReport("[MSoundSE] checkMonoSound: no info for id 0x%x (%u) "
+		         "ret=%p %p %p %p\n",
+		         param_1, param_1, __builtin_return_address(0),
+		         __builtin_return_address(1), __builtin_return_address(2),
+		         __builtin_return_address(3));
+		OSPanic(__FILE__, __LINE__,
+		        "[MSoundSE] sound id 0x%x has no JAISoundInfo -- the caller "
+		        "passed a bogus id; fix it at the source.\n",
+		        param_1);
+	}
+#endif
 	if (local_c->unk0 & 0x4000) {
 		u32 uVar1       = JAIBasic::basic->changeIDToCategory(param_1);
 		JAISound* sound = JAIBasic::basic->unk0->unk1E8[uVar1 & 0xff].unk4;

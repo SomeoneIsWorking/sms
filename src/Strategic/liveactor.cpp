@@ -1,3 +1,6 @@
+#ifdef SMS_NATIVE_PLATFORM
+#include "bas_swap.h"
+#endif
 #include <Strategic/LiveActor.hpp>
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
@@ -481,6 +484,16 @@ void TLiveActor::setAnmSound(const char* path)
 
 	if (mAnmSoundPath != nullptr) {
 		void* res = JKRFileLoader::getGlbResource(mAnmSoundPath);
+#ifdef SMS_NATIVE_PLATFORM
+		// .bas is consumed by DIRECT CAST (JAIAnimeSound::initActorAnimSound does
+		// `mData = (JAIAnimeSoundData*)data`), so its big-endian sound ids and
+		// frame times must be converted before the audio system reads them. Left
+		// raw, an NPC asked for sound id 0xB89C000 (real ids are ~0x28c5), missed
+		// the info table, and crashed MSoundSE::checkMonoSound on the NULL.
+		// Returns a cached host-endian COPY — getGlbResource() hands back a shared
+		// buffer, so an in-place swap would double-swap on the next call.
+		res = const_cast<void*>(smsport::assets::bas_to_host(res));
+#endif
 		mAnmSound->initAnmSound(res, 1, 0.0f);
 	} else {
 		mAnmSound->initAnmSound(nullptr, 1, 0.0f);

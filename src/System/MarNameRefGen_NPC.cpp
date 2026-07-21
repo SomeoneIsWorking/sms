@@ -17,17 +17,19 @@ JDrama::TNameRef* TMarNameRefGen::getNameRef_NPC(const char* name) const
 	// (MonteMAManager/KinopioManager/... all return real managers); they were
 	// simply unreachable because this gate returns before them.
 	//
-	// MEASURED BLOCKER (2026-07-21, SB_NPC_ON=1 on a plaza that otherwise boots
-	// and renders clean):
-	//     SIGSEGV fault=0x0
-	//     MSoundSESystem::MSoundSE::checkMonoSound (MSoundSE.cpp:781)
-	//       -> local_c->unk0, where getInfoPointer() left local_c NULL
-	//     called with sound id param_1 = 193462272 (0xB89C000)
-	// That id is garbage — real MSD_SE_* ids are ~0x28c5 — so some NPC init path
-	// is emitting an uninitialised/mis-swapped sound id, the audio info lookup
-	// misses, and checkMonoSound dereferences the null it gets back. Fix the id at
-	// its source (NPC sound setup); do NOT just null-guard checkMonoSound, which
-	// would hide a corrupt id rather than repair it.
+	// ✅ The crash blocker is FIXED (2026-07-21). It was:
+	//     SIGSEGV fault=0x0, MSoundSE::checkMonoSound (MSoundSE.cpp:781),
+	//     sound id 0xB89C000 — a byte-reversed id.
+	// Root cause: .bas animation-sound files are consumed by DIRECT CAST and were
+	// never byteswapped, so every id/frame-time came out big-endian. Fixed by
+	// smsport::assets::bas_to_host() at the load site (TLiveActor::setAnmSound).
+	// With SB_NPC_ON=1 the plaza now boots, survives and renders (no crash).
+	//
+	// REMAINING (why this is still gated off by default): the NPCs are created
+	// but render NOTHING — a frame with SB_NPC_ON=1 is byte-for-byte identical to
+	// one without (0 of 1228800 pixels differ). So their model/draw path is still
+	// unported; enabling them by default would add live actor logic for zero
+	// visual gain. Flip the default once they actually draw.
 	{
 		static int npc_on = -1;
 		if (npc_on < 0) {
