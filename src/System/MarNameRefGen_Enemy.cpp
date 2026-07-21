@@ -1,6 +1,8 @@
 #include "Animal/AnimalBase.hpp"
 #include "Animal/AnimalManager.hpp"
 #include "Animal/Bird.hpp"
+#include "Enemy/Amenbo.hpp"
+#include "Enemy/FireWanwan.hpp"
 #include "Enemy/EffectObj.hpp"
 #include "Enemy/EnemyManager.hpp"
 #include "Enemy/Gesso.hpp"
@@ -117,9 +119,13 @@ JDrama::TNameRef* TMarNameRefGen::getNameRef_Enemy(const char* name) const
 	// if ( strcmp(name, "ButterflyC") == 0)
 	//     return new TButterfloid;
 
-	// TODO:
-	// if ( strcmp(name, "ButterflyManager") == 0)
-	//     return new TButterfloidManager;
+	// BLOCKED, do not re-enable yet: TButterfloidManager IS implemented
+	// (src/Animal/Butterfly.cpp) but registering it fails to LINK — its base
+	// framework TRealoid / TRealoidActor has no bodies (loadDefault, perform,
+	// ctors, typeinfo all undefined). Butterfly/boid/fishoid all sit behind that
+	// same Realoid/Boid framework; port it first, then flip these on together.
+	// if (strcmp(name, "ButterflyManager") == 0)
+	// 	return new TButterfloidManager("チョウチョマネージャー");
 
 	// TODO:
 		if (strcmp(name, "EggGenerator") == 0)
@@ -329,9 +335,11 @@ JDrama::TNameRef* TMarNameRefGen::getNameRef_Enemy(const char* name) const
 	// if ( strcmp(name, "ChuuHanaManager") == 0)
 	//     return new TChuuHanaManager;
 
-	// TODO:
-	// if ( strcmp(name, "FireWanwanManager") == 0)
-	//     return new TFireWanwanManager;
+	// TFireWanwanManager is fully implemented (src/Enemy/fireWanwan.cpp) — it was
+	// only ever missing its factory case, which made stage 8 hard-panic in
+	// TNameRef::genObject. Registered 2026-07-21 (game-wide stage survey).
+	if (strcmp(name, "FireWanwanManager") == 0)
+		return new TFireWanwanManager("ファイアワンワンマネージャー");
 
 	// TODO:
 	// if ( strcmp(name, "FireWanwan") == 0)
@@ -501,9 +509,9 @@ JDrama::TNameRef* TMarNameRefGen::getNameRef_Enemy(const char* name) const
 	// if ( strcmp( name, "Kumokun" ) == 0 )
 	//     return new TKumokun;
 
-	// TODO:
-	// if ( strcmp( name, "AmenboManager" ) == 0 )
-	//     return new TAmenboManager;
+	// TAmenboManager is implemented (src/Enemy/Amenbo.cpp).
+	if (strcmp(name, "AmenboManager") == 0)
+		return new TAmenboManager("アメンボマネージャー");
 
 	// TODO:
 	// if ( strcmp( name, "Amenbo" ) == 0 )
