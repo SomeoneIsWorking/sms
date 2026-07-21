@@ -26,8 +26,7 @@ int g_sbXhSkyInitDL = 0;
 void TSky::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	if (param_1 & 2) {
-		Mtx local_4c;
-		MTXInverse(gpCamera->unk1EC, local_4c);
+		MtxPtr mtx = gpCamera->unk1EC;
 
 		Mtx local_EC;
 		MTXInverse(mtx, local_EC);

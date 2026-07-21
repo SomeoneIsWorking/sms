@@ -309,8 +309,9 @@ JDrama::TNameRef* TMarNameRefGen::getNameRef_Enemy(const char* name) const
 		return new TDebuTelesaManager("デブテルサマネージャー");
 
 	// TODO:
+	// upstream's TDebuTelesa ctor takes the actor name explicitly (no default)
 	if (strcmp(name, "DebuTelesa") == 0)
-		return new TDebuTelesa;
+		return new TDebuTelesa("デブテルサ");
 
 	if (strcmp(name, "PoiHanaManager") == 0)
 		return new TPoiHanaManager;
