@@ -52,6 +52,12 @@ SDLModelData* TModelDataKeeper::createAndKeepData(const char* name, u32 flags)
 		node = node->getNext();
 
 	SDLModelData* data = loadModelData(name, flags, mFolder);
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_MODEL_TRACE"))
+		fprintf(stderr, "[keepdata] folder='%s' name='%s' -> data=%p\n",
+		        mFolder ? mFolder : "(null)", name ? name : "(null)",
+		        (void*)data);
+#endif
 	node->registerDataAndJoinNewNode(data, name);
 	return data;
 }
