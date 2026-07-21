@@ -504,6 +504,30 @@ void operator delete[](void* memory)
 	if (sb_host_free_if_tagged(memory)) return;
 	JKRHeap::free(memory, nullptr);
 }
+
+// C++14 SIZED deallocation — MUST route exactly like the unsized forms above.
+// Missing these was a live heap-corruption bug (found by ASan 2026-07-21):
+// `operator new` hands back a pointer that is offset INSIDE the malloc'd block
+// (SbHostHdr sits immediately before it), so only sb_host_free_if_tagged() knows
+// how to recover the real base. When the compiler knows the object size — which
+// it does for std::string/std::vector buffers and most typed deletes — it emits
+// a call to the SIZED delete instead. With no override, that resolved to the
+// default implementation, which calls libc free() straight on our offset user
+// pointer ("attempting free on address which was not malloc()-ed, 32 bytes
+// inside region"). That silently corrupted the host heap on essentially every
+// std::string destruction, surfacing much later as unrelated crashes with
+// misattributed symbols. Ignore the size argument; our header carries the real
+// length.
+void operator delete(void* memory, size_t)
+{
+	if (sb_host_free_if_tagged(memory)) return;
+	JKRHeap::free(memory, nullptr);
+}
+void operator delete[](void* memory, size_t)
+{
+	if (sb_host_free_if_tagged(memory)) return;
+	JKRHeap::free(memory, nullptr);
+}
 #else
 void* operator new(size_t byteCount)
 {
