@@ -1,62 +1,23 @@
 #include <Enemy/DebuTelesa.hpp>
-#include <Enemy/SmallEnemy.hpp>
-#include <Strategic/Spine.hpp>
-#include <Strategic/TakeActor.hpp>
-#include <Enemy/Telesa.hpp>
-#include <Strategic/ObjModel.hpp>
-#include <M3DUtil/MActor.hpp>
+#include <Camera/Camera.hpp>
+#include <Camera/CubeManagerBase.hpp>
 #include <System/Particles.hpp>
+#include <Strategic/Spine.hpp>
+#include <M3DUtil/MActor.hpp>
+#include <MarioUtil/DrawUtil.hpp>
 #include <MSound/MSound.hpp>
 #include <MSound/MSoundSE.hpp>
 #include <MSound/SoundEffects.hpp>
-#include <JSystem/J3D/J3DGraphLoader/J3DModelLoaderFlags.hpp>
+#include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
 
-// TDebuTelesa (fat Boo). RE'd US GMSE01 (wide-RE sweep 2026-07-17). TDebuTelesa : TSmallEnemy.
+// rogue includes needed for matching sinit & bss
+#include <MSound/MSSetSound.hpp>
+#include <MSound/MSoundBGM.hpp>
 
-// ---- params ----
-TDebuTelesaSaveLoadParams::TDebuTelesaSaveLoadParams(const char* path)
-    : TSmallEnemyParams(path)
-{
-	mSLAttackRadius.set(240);
-	mSLAttackHeight.set(330);
-	mSLDamageRadius.set(220);
-	mSLDamageHeight.set(300);
-	unk2CC = 0.0f;
-	unk2D0 = 0.0f;
-}
+static const char* DebuTelesa_bastable[] = {
+	"/scene/DebuTelesa/bas/debuTelesa_wait.bas",
+};
 
-// ---- manager ----
-TDebuTelesaManager::TDebuTelesaManager(const char* name)
-    : TSmallEnemyManager(name)
-{
-}
-
-void TDebuTelesaManager::load(JSUMemoryInputStream& stream)
-{
-	unk38 = new TDebuTelesaSaveLoadParams("/enemy/debuTelesa.prm");
-	TSmallEnemyManager::load(stream);
-}
-
-void TDebuTelesaManager::createModelData()
-{
-	static TModelDataLoadEntry entry[] = {
-		{ "debuTelesa.bmd",
-		  J3DMLF_MaterialPEFull | J3DMLF_UseUniqueMaterials
-		      | (1 << J3DMLF_TevStageNumShift),
-		  0 },
-		{ nullptr, 0, 0 },
-	};
-	createModelDataArray(entry);
-}
-
-void TDebuTelesaManager::clipEnemies(JDrama::TGraphics* graphics)
-{
-	// DebuTelesa overrides only the clip fov; approximate with the base frustum clip
-	// (exact fov tuning uses an uncertain camera global — deferred, cosmetic cull only).
-	TSmallEnemyManager::clipEnemies(graphics);
-}
-
-// ---- actor ----
 TDebuTelesa::TDebuTelesa(const char* name)
     : TSmallEnemy(name)
 {
@@ -68,72 +29,156 @@ void TDebuTelesa::init(TLiveManager* manager)
 	mManager = manager;
 	mManager->manageActor(this);
 	setMActorAndKeeper();
-
 	mSpine->initWith(&TNerveDebuTelesaWait::theNerve());
-
-	initHitActor(0x10000033, 1, 0x80000000, 0.0f, 0.0f, 0.0f, 0.0f);
-	offHitFlag(1);
+	initCollision();
 	initAnmSound();
 
-	mYodareJointIdx = getModel()->getModelData()->getJointName()->getIndex("null_yodare");
-	mRHandJointIdx  = getModel()->getModelData()->getJointName()->getIndex("jnt_Rhand");
+	mNullYodareJointIdx
+	    = getModel()->getModelData()->getJointName()->getIndex("null_yodare");
+	mRightHandJointIdx
+	    = getModel()->getModelData()->getJointName()->getIndex("jnt_Rhand");
+}
+
+void TDebuTelesa::reset() { }
+
+void TDebuTelesa::initCollision()
+{
+	initHitActor(0x10000033, 1, 0x80000000, 10.0f, 10.0f, 10.0f, 10.0f);
+	offHitFlag(HIT_FLAG_NO_COLLISION);
 }
 
 void TDebuTelesa::calcRootMatrix()
 {
 	TSpineEnemy::calcRootMatrix();
-
-	if (mHolder != nullptr) // held/bound -> no drool effects
-		return;
-	if (mSpine->getLatestNerve() == &TNerveSmallEnemyDie::theNerve())
-		return;
-
-	// Track the right-hand joint position (used by the drool effect).
-	MtxPtr jm = getModel()->getAnmMtx(mRHandJointIdx);
-	mRHandPos.set(jm[0][3], jm[1][3], jm[2][3]);
-	// STOPGAP: the two looping drool particles (E_SMS_EFFECT_LOOP_INDIRECT 0x124 @ jnt_Rhand,
-	// 0x187 @ null_yodare) are deferred — the SMS_EasyEmitParticle overload/enumerand mapping
-	// needs verification. Cosmetic; the enemy behaves correctly without them.
-}
-
-BOOL TDebuTelesa::receiveMessage(THitActor* sender, u32 msg)
-{
-	switch (msg) {
-	case 0:
-	case 1:
-	case 0xc:
-		return FALSE;
-	case 0xb:
-		if (gpMSound->gateCheck(0x2938))
-			MSoundSESystem::MSoundSE::startSoundNpcActor(0x2938, &mPosition, 0, nullptr, 0, 4);
-		break;
-	default:
-		break;
-	}
-	return TSmallEnemy::receiveMessage(sender, msg);
+	emitEffects();
 }
 
 void TDebuTelesa::kill() { TSmallEnemy::kill(); }
 
-static const char* debutelesa_bastable[] = {
-	"/scene/DebuTelesa/bas/debuTelesa_wait.bas",
-};
-const char** TDebuTelesa::getBasNameTable() const { return debutelesa_bastable; }
+BOOL TDebuTelesa::receiveMessage(THitActor* sender, u32 message)
+{
+	switch (message) {
+	case HIT_MESSAGE_TRAMPLE:
+	case HIT_MESSAGE_HIP_DROP:
+	case HIT_MESSAGE_PUNCH:
+		return false;
 
-void TDebuTelesa::reset() {}
-void TDebuTelesa::behaveToWater(THitActor*) {}
-bool TDebuTelesa::changeByJuice() { return false; }
-bool TDebuTelesa::isCollidMove(THitActor*) { return false; }
-bool TDebuTelesa::doKeepDistance() { return true; }
+	case HIT_MESSAGE_UNKB:
+		SMSGetMSound()->startSoundActor(MSD_SE_EN_DB_TELSA_EATEN, &mPosition, 0,
+		                                nullptr, 0, 4);
+		break;
+	}
+
+	return TSmallEnemy::receiveMessage(sender, message);
+}
+
+const char** TDebuTelesa::getBasNameTable() const
+{
+	return DebuTelesa_bastable;
+}
+
+void TDebuTelesa::behaveToWater(THitActor*) { }
+
 void TDebuTelesa::attackToMario() { sendAttackMsgToMario(); }
+
+bool TDebuTelesa::isCollidMove(THitActor*) { return false; }
+
+bool TDebuTelesa::doKeepDistance() { return true; }
+
 void TDebuTelesa::setDeadAnm() { getMActor()->getFrameCtrl(0)->init(1); }
+
+void TDebuTelesa::emitEffects()
+{
+	if (isTaken())
+		return;
+
+	if (mSpine->getLatestNerve() == &TNerveSmallEnemyDie::theNerve())
+		return;
+
+	MtxPtr handMtx = getModel()->getAnmMtx(mRightHandJointIdx);
+	mRightHandPos.set(handMtx[0][3], handMtx[1][3], handMtx[2][3]);
+	SMS_EasyEmitParticle(PARTICLE_MS_POI_ZZZ, &mRightHandPos, this,
+	                     JGeometry::TVec3<f32>(1.5f));
+
+	SMS_EasyEmitParticle(PARTICLE_MS_TLS_YODARE_L,
+	                     getModel()->getAnmMtx(mNullYodareJointIdx), this,
+	                     JGeometry::TVec3<f32>(2.3f));
+}
+
+bool TDebuTelesa::isDying() const
+{
+	return mSpine->getLatestNerve() == &TNerveSmallEnemyDie::theNerve();
+}
+
+TDebuTelesaParams::TDebuTelesaParams(const char* path)
+    : TSmallEnemyParams(path)
+{
+	TParams::load(mPrmPath);
+}
+
+TDebuTelesaManager::TDebuTelesaManager(const char* name)
+    : TSmallEnemyManager(name)
+{
+}
+
+void TDebuTelesaManager::load(JSUMemoryInputStream& stream)
+{
+	TDebuTelesaParams* params = new TDebuTelesaParams("/enemy/debuTelesa.prm");
+
+	unk38 = params;
+
+	params->mSLAttackRadius.set(240);
+	params->mSLAttackHeight.set(330);
+	params->mSLDamageRadius.set(220);
+	params->mSLDamageHeight.set(300);
+	params->mBodyScaleRange.set(1.0f, 1.0f);
+
+	TSmallEnemyManager::load(stream);
+	unk5C = 0;
+}
+
+void TDebuTelesaManager::createModelData()
+{
+	static const TModelDataLoadEntry entry[] = {
+		{ "debuTelesa.bmd", 0x10210000, 0 },
+		{ nullptr, 0, 0 },
+	};
+	createModelDataArray(entry);
+}
+
+void TDebuTelesaManager::clipEnemies(JDrama::TGraphics* graphics)
+{
+	int e;
+	TDebuTelesa* debu;
+	int i;
+
+	SetViewFrustumClipCheckPerspective(gpCamera->getFovy(),
+	                                   gpCamera->getAspect(), 350.0f,
+	                                   getSaveParam()->mSLFarClip.get());
+	for (e = getObjNum(), i = 0; i < e; ++i) {
+		debu = getObj(i);
+
+		JGeometry::TVec3<f32> pos = debu->mPosition;
+
+		if (debu->checkLiveFlag(LIVE_FLAG_UNK2000)
+		    && SMS_IsInOtherFastCube(pos)) {
+			debu->onLiveFlag(LIVE_FLAG_CLIPPED_OUT);
+		} else if (ViewFrustumClipCheck(graphics, &debu->mPosition, unk3C)) {
+			debu->offLiveFlag(LIVE_FLAG_CLIPPED_OUT);
+		} else {
+			debu->onLiveFlag(LIVE_FLAG_CLIPPED_OUT);
+		}
+	}
+}
 
 DEFINE_NERVE(TNerveDebuTelesaWait, TLiveActor)
 {
-	TDebuTelesa* self = static_cast<TDebuTelesa*>(spine->getBody());
+	TDebuTelesa* self = (TDebuTelesa*)spine->getBody();
+
 	if (spine->getTime() == 0) {
 		self->getMActor()->setBck("debutelesa_wait");
 		self->setCurAnmSound();
 	}
-	return FALSE;
+
+	return false;
 }

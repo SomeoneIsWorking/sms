@@ -3,16 +3,14 @@
 
 #include <JSystem/JGadget/std-list.hpp>
 #include <JSystem/JDrama/JDRViewObj.hpp>
-#include <JSystem/JGadget/std-list.hpp>
-
-class TAreaCylinder;
+#include <JSystem/JGeometry/JGVec3.hpp>
 
 class TAreaCylinder : public JDrama::TViewObj {
 public:
 	TAreaCylinder(const char* name = "<TAreaCylinder>");
 
 	virtual void load(JSUMemoryInputStream& stream);
-	virtual void perform(u32, JDrama::TGraphics*);
+	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
 
 	// fabricated
 	BOOL contain(const JGeometry::TVec3<f32>& pos) const
@@ -36,10 +34,10 @@ class TAreaCylinderManager : public JDrama::TViewObj {
 public:
 	TAreaCylinderManager(const char* name);
 
-	virtual void perform(u32, JDrama::TGraphics*);
+	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
 
 	void registerCylinder(TAreaCylinder*);
-	bool contain(const JGeometry::TVec3<f32>&);
+	BOOL contain(const JGeometry::TVec3<f32>&);
 	TAreaCylinder* getCylinderContains(const JGeometry::TVec3<f32>&);
 
 public:
