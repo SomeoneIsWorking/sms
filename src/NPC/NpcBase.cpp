@@ -624,6 +624,38 @@ void TBaseNPC::movementOnlyTalk_(const JDrama::TGraphics* param_1)
 
 void TBaseNPC::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// SB_NPC_DBG: is perform even reached, and with what model/visibility state?
+	// (NPCs currently render nothing despite their model DATA loading fine.)
+	if (getenv("SB_NPC_DBG")) {
+		// Accumulate the DISTINCT cues NPCs are ever performed with. Logging the
+		// first N calls is misleading — they are all from the movement phase.
+		static u32 seen = 0;
+		if ((seen | param_1) != seen) {
+			seen |= param_1;
+			fprintf(stderr,
+			        "[npcdbg] new cue=0x%x (union 0x%x) mActor=%p model=%p "
+			        "flags=0x%x pos=%.0f,%.0f,%.0f\n",
+			        param_1, seen, (void*)mMActor,
+			        mMActor ? (void*)mMActor->getModel() : nullptr,
+			        (unsigned)mLiveFlag, mPosition.x, mPosition.y, mPosition.z);
+		}
+		// Per-DRAW-cue census: how many NPCs are actually clipped vs drawable?
+		// One sampled actor being CLIPPED_OUT does not mean they all are.
+		if (param_1 & 0x8) {
+			static int frame = 0, clipped = 0, total = 0;
+			++total;
+			if (checkLiveFlag(LIVE_FLAG_CLIPPED_OUT))
+				++clipped;
+			if (total >= 60) {
+				fprintf(stderr,
+				        "[npcdbg] draw-cue census #%d: %d/%d NPCs CLIPPED_OUT\n",
+				        ++frame, clipped, total);
+				clipped = total = 0;
+			}
+		}
+	}
+#endif
 	if (mActorType == 0x400001C) {
 		if (!(param_1 & 0x1))
 			return;
