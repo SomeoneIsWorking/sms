@@ -118,6 +118,16 @@ SDLModel::SDLModel(J3DModelData*, u32) { }
 void SDLModel::entryModelDataSDL(SDLModelData* param_1, u32 param_2,
                                  u32 param_3)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	if (param_1 == nullptr) {
+		OSReport("[SDLModel] NULL SDLModelData: ret0=%p ret1=%p ret2=%p ret3=%p\n",
+		         __builtin_return_address(0), __builtin_return_address(1),
+		         __builtin_return_address(2), __builtin_return_address(3));
+		OSPanic(__FILE__, __LINE__,
+		        "[SDLModel] entryModelDataSDL got a NULL SDLModelData -- the "
+		        "caller's model failed to load. Fix the loader, not here.\n");
+	}
+#endif
 	J3DModelData* md = param_1->unk0;
 
 	mModelData = md;
