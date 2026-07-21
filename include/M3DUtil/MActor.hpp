@@ -153,6 +153,14 @@ public:
 		mAnmBck->setMotionBlendRatio(ratio);
 	}
 
+	f32 getMotionBlendRatioForBck()
+	{
+		if (!unkC)
+			return 0.0f;
+
+		return unkC->getMotionBlendRatio();
+	}
+
 	void initSimpleMotionBlend(int frame)
 	{
 		if (!mAnmBck)
