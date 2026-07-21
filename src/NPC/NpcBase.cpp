@@ -811,8 +811,27 @@ void TBaseNPC::perform(u32 param_1, JDrama::TGraphics* param_2)
 		offLiveFlag(LIVE_FLAG_UNK1000000);
 		JGeometry::TVec3<f32> diff;
 		diff.sub(mPosition, gpCamera->unk124);
-		if (diff.squared() > CLBSquared(mIndividualParams->mAllDLLockDist.get())
-		    && !isSunflower()) {
+		bool dl_lock = diff.squared()
+		                   > CLBSquared(mIndividualParams->mAllDLLockDist.get())
+		               && !isSunflower();
+#ifdef SMS_NATIVE_PLATFORM
+		if (getenv("SB_NPC_DBG")) {
+			static int n = 0, locked = 0;
+			++n;
+			if (dl_lock)
+				++locked;
+			if (n >= 60) {
+				fprintf(stderr,
+				        "[npcdbg] DL-lock census: %d/%d locked, "
+				        "mAllDLLockDist=%.1f dist=%.0f clipped=%d\n",
+				        locked, n, mIndividualParams->mAllDLLockDist.get(),
+				        std::sqrtf(diff.squared()),
+				        checkLiveFlag(LIVE_FLAG_CLIPPED_OUT) ? 1 : 0);
+				n = locked = 0;
+			}
+		}
+#endif
+		if (dl_lock) {
 			getModel()->lock();
 		} else {
 			mMActor->unlockDLIfNeed();
