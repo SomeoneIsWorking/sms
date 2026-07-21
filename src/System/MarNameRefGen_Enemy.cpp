@@ -1,6 +1,8 @@
 #include "Animal/AnimalBase.hpp"
 #include "Animal/AnimalManager.hpp"
 #include "Animal/Bird.hpp"
+#include "Animal/Butterfly.hpp"
+#include "Animal/fishoid.hpp"
 #include "Enemy/Amenbo.hpp"
 #include "Enemy/FireWanwan.hpp"
 #include "Enemy/EffectObj.hpp"
@@ -79,25 +81,22 @@ JDrama::TNameRef* TMarNameRefGen::getNameRef_Enemy(const char* name) const
 	if (strcmp(name, "AnimalBirdManager") == 0)
 		return new TAnimalBirdManager;
 
-	// TODO:
-	// if ( strcmp(name, "FishoidA") == 0)
-	//     return new TFishoid;
+	// Fishoid A-D + manager: now linkable after adopting upstream's
+	// src/Animal/{boid,fishoid}.cpp (ours were empty 1-line placeholders).
+	if (strcmp(name, "FishoidA") == 0)
+		return new TFishoid(0, "回遊魚A");
 
-	// TODO:
-	// if ( strcmp(name, "FishoidB") == 0)
-	//     return new TFishoid;
+	if (strcmp(name, "FishoidB") == 0)
+		return new TFishoid(1, "回遊魚B");
 
-	// TODO:
-	// if ( strcmp(name, "FishoidC") == 0)
-	//     return new TFishoid;
+	if (strcmp(name, "FishoidC") == 0)
+		return new TFishoid(2, "回遊魚C");
 
-	// TODO:
-	// if ( strcmp(name, "FishoidD") == 0)
-	//     return new TFishoid;
+	if (strcmp(name, "FishoidD") == 0)
+		return new TFishoid(3, "回遊魚D");
 
-	// TODO:
-	// if ( strcmp(name, "FishoidManager") == 0)
-	//     return new TFishoidManager;
+	if (strcmp(name, "FishoidManager") == 0)
+		return new TFishoidManager;
 
 	// TODO:
 	// if ( strcmp( name, "BeeHive" ) == 0 )
@@ -119,13 +118,10 @@ JDrama::TNameRef* TMarNameRefGen::getNameRef_Enemy(const char* name) const
 	// if ( strcmp(name, "ButterflyC") == 0)
 	//     return new TButterfloid;
 
-	// BLOCKED, do not re-enable yet: TButterfloidManager IS implemented
-	// (src/Animal/Butterfly.cpp) but registering it fails to LINK — its base
-	// framework TRealoid / TRealoidActor has no bodies (loadDefault, perform,
-	// ctors, typeinfo all undefined). Butterfly/boid/fishoid all sit behind that
-	// same Realoid/Boid framework; port it first, then flip these on together.
-	// if (strcmp(name, "ButterflyManager") == 0)
-	// 	return new TButterfloidManager("チョウチョマネージャー");
+	// Unblocked: TRealoid/TRealoidActor now have bodies (adopted upstream
+	// src/Animal/{boid,fishoid}.cpp), so this links.
+	if (strcmp(name, "ButterflyManager") == 0)
+		return new TButterfloidManager("チョウチョマネージャー");
 
 	// TODO:
 		if (strcmp(name, "EggGenerator") == 0)

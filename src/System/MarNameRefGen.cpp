@@ -1,4 +1,6 @@
 #include <System/MarNameRefGen.hpp>
+#include <Map/MapEventMare.hpp>
+#include <Map/MapEventSirena.hpp>
 
 #include <JSystem/JDrama/JDRSmJ3DScn.hpp>
 #include <System/StageEventInfo.hpp>
@@ -249,9 +251,11 @@ JDrama::TNameRef* TMarNameRefGen::getNameRef(const char* name) const
 	if (strcmp(name, "MapEventSinkShadowMario") == 0)
 		return new TMapEventSinkShadowMario;
 
-	// TODO:
-	// if (strcmp(name, "MapEventSirenaSink") == 0)
-	// 	return new TMapEventSirenaSink;
+	// Implemented in src/Map/MapEventSirena.cpp — only the factory case was missing.
+	// The ctor takes const char* with no default, which is why the commented-out
+	// `new TMapEventSirenaSink;` above would not have compiled.
+	if (strcmp(name, "MapEventSirenaSink") == 0)
+		return new TMapEventSirenaSink("シレナ沈没船イベント");
 
 	if (strcmp(name, "MapEventSinkBianco") == 0)
 		return new TMapEventSinkBianco;
@@ -266,11 +270,14 @@ JDrama::TNameRef* TMarNameRefGen::getNameRef(const char* name) const
 	// if (strcmp(name, "DolpicEventMammaGate") == 0)
 	// 	return new TDolpicEventRiccoMammaGate;
 
-	// if (strcmp(name, "MareEventBumpyWall") == 0)
-	// 	return new TMareEventBumpyWall;
+	// Implemented in src/Map/MapEventMare.cpp. This is the single most frequent
+	// missing type game-wide (27 scene sites in the stage survey).
+	if (strcmp(name, "MareEventBumpyWall") == 0)
+		return new TMareEventBumpyWall("マーレ揺れ壁");
 
-	// if (strcmp(name, "MareEventWallRock") == 0)
-	// 	return new TMareEventWallRock;
+	// Implemented in src/Map/MapEventMare.cpp (with TMareWallRock).
+	if (strcmp(name, "MareEventWallRock") == 0)
+		return new TMareEventWallRock("マーレ壁岩");
 
 	if (strcmp(name, "StageEnemyInfoHeader") == 0)
 		return new TStageEnemyInfoTable;

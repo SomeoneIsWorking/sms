@@ -174,6 +174,14 @@ public:
 		return getGraph()->getGraphNode(mCurrIdx);
 	}
 	int getPrevIndex() { return mPrevIdx; }
+	// Added from upstream/main alongside adopting src/Animal/{boid,fishoid}.cpp —
+	// TBoidLeader::updateGoal needs it. Taken as a single hunk rather than the whole
+	// header, since ours carries native-port changes upstream does not have.
+	void moveToRandomNext()
+	{
+		moveTo(
+		    unk0->getRandomNextIndex(getCurGraphIndex(), getPrevIndex(), -1));
+	}
 	void init(TGraphWeb* web) { unk0 = web; }
 	void reset() { mPrevIdx = -1; }
 	void reset2() { mCurrIdx = -1; }

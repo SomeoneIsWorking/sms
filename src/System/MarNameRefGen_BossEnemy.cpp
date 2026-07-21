@@ -1,4 +1,5 @@
 #include "Enemy/BathtubKiller.hpp"
+#include <Enemy/BossManta.hpp>
 #include "Enemy/BossGesso.hpp"
 #include "Enemy/CoasterKiller.hpp"
 #include "Enemy/Enemy.hpp"
@@ -169,12 +170,14 @@ JDrama::TNameRef* TMarNameRefGen::getNameRef_BossEnemy(const char* name) const
 	//     return new TBEelTears("油ダマ");
 
 	// TODO:
-	// if ( strcmp( name, "BossManta" ) == 0 )
-	//     return new TBossManta("ボスマンタ");
+	if (strcmp(name, "BossManta") == 0)
+		return new TBossManta("ボスマンタ");
 
 	// TODO:
-	// if ( strcmp( name, "BossMantaManager" ) == 0 )
-	//     return new TBossMantaManager("ボスマンタマネージャ");
+	// Restored: our rebase reconciliation had cut src/Enemy/bossManta.cpp to a
+	// single newline; upstream's full 1355-line TU is now adopted, so this links.
+	if (strcmp(name, "BossMantaManager") == 0)
+		return new TBossMantaManager("ボスマンタマネージャ");
 
 	return nullptr;
 }
