@@ -1,3 +1,4 @@
+#include <Animal/AnimalSave.hpp>
 #include <Animal/Bird.hpp>
 #include <Animal/AnimalManager.hpp>
 #include <Enemy/EnemyManager.hpp>
@@ -60,6 +61,21 @@ void TAnimalBirdManager::load(JSUMemoryInputStream& stream)
 	// LP64: guest sizes the alloc 0x210 — `new` sizes the host object.
 	unk38 = new TAnimalBirdParams("/Animal/bird.prm");
 	TEnemyManager::load(stream);
+
+	// mAnimalSave is a HARD requirement of TAnimalManagerBase, not an optional
+	// extra: TAnimalBase::init (AnimalBase.cpp:157) and ::perform (:247) both
+	// dereference it unconditionally, and TAnimalManagerBase's ctor leaves it
+	// null. Omitting it here is what crashed the plaza —
+	//   SIGSEGV fault=0x30 in TAnimalBase::perform
+	//   -> mgr->mAnimalSave->mSLSharedAnmNum.get()
+	// once birds were actually registered and started performing. Mirrors
+	// TMewManager::load, which sets it plus the view-clip fields derived from it.
+	// Same .prm as the tuning block above: TParams keys are read by name, so the
+	// save block picks up mSLSharedAnmNum / mSLViewClip* from /Animal/bird.prm.
+	mAnimalSave     = new TAnimalSaveIndividual("/Animal/bird.prm");
+	mViewClipNear   = mAnimalSave->mSLViewClipNear.value;
+	mViewClipFarPtr = &mAnimalSave->mSLViewClipFar.value;
+	unk3C           = mAnimalSave->mSLViewClipRadius.value;
 }
 
 void TAnimalBirdManager::loadAfter()

@@ -157,39 +157,17 @@ void SDLMatPacket::beParasiteDL(J3DMatPacket* host)
 
 void SDLMatPacket::newSingleDL(u32 size)
 {
-	mpDisplayListObj            = new J3DDisplayListObj;
-	mpDisplayListObj->mCapacity = ALIGN_NEXT(size, 0x20);
-	mpDisplayListObj->mpData[0] = new (0x20) u8[mpDisplayListObj->mCapacity];
-	mpDisplayListObj->mpData[1] = mpDisplayListObj->mpData[0];
-	mpDisplayListObj->mSize     = 0;
-}
-
-SDLModel::SDLModel(SDLModelData* model_data, u32 flags, u32 mtx_num)
-    : mSdlModelData(model_data)
-    , mNextSameMat(nullptr)
-    , mSdlFlags(0)
-{
-	initialize();
-	entryModelDataSDL(model_data, flags, mtx_num);
-}
-
-SDLModel::SDLModel(J3DModelData* model_data, u32 flags)
-    : mSdlModelData(nullptr)
-    , mNextSameMat(nullptr)
-    , mSdlFlags(0)
-{
-	// NOTE: this is guesswork on dead code
-	initialize();
-	// BUG: stack use-after-free. Don't call this ;)
-	SDLModelData sdlModelData(model_data);
-	mSdlModelData = &sdlModelData;
-	entryModelDataSDL(mSdlModelData, flags, 1);
-}
-
-void SDLModel::entryModelDataSDL(SDLModelData* model_data, u32 flags,
-                                 u32 mtx_num)
-{
-	J3DModelData* md = model_data->unk0;
+#ifdef SMS_NATIVE_PLATFORM
+	if (param_1 == nullptr) {
+		OSReport("[SDLModel] NULL SDLModelData: ret0=%p ret1=%p ret2=%p ret3=%p\n",
+		         __builtin_return_address(0), __builtin_return_address(1),
+		         __builtin_return_address(2), __builtin_return_address(3));
+		OSPanic(__FILE__, __LINE__,
+		        "[SDLModel] entryModelDataSDL got a NULL SDLModelData -- the "
+		        "caller's model failed to load. Fix the loader, not here.\n");
+	}
+#endif
+	J3DModelData* md = param_1->unk0;
 
 	mModelData = md;
 	if (flags & 1)
