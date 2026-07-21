@@ -168,8 +168,25 @@ MActor* TMActorKeeper::createMActor(const char* model_data_name, u32 flags)
 MActor* TMActorKeeper::createMActorFromAllBmd(u32 flags)
 {
 	int num = mModelDataKeeper->getModelDataNum();
-	for (int i = 0; i < num; ++i)
-		createMActorFromNthData(i, flags);
+#ifdef SMS_NATIVE_PLATFORM
+	if (getenv("SB_MODEL_TRACE"))
+		fprintf(stderr, "[allbmd] keeper=%p num=%d\n", (void*)mModelDataKeeper,
+		        num);
+#endif
+	MActor* last = nullptr;
+	for (int i = 0; i < num; ++i) {
+#ifdef SMS_NATIVE_PLATFORM
+		if (getenv("SB_MODEL_TRACE"))
+			fprintf(stderr, "[allbmd]   [%d] data=%p\n", i,
+			        (void*)mModelDataKeeper->getNthData(i));
+#endif
+		last = createMActorFromNthData(i, flags);
+	}
+	// The original falls off the end here (its callers use the returned MActor*,
+	// e.g. TAnimalBase::init does `mMActor = createMActorFromAllBmd(3)`), which is
+	// UB natively — return the last actor created, which is what the PPC codegen
+	// happened to leave in r3.
+	return last;
 }
 
 TMActorKeeper::TMActorKeeper(TLiveManager* param_1, u16 param_2)
