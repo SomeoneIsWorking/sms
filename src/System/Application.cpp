@@ -876,7 +876,13 @@ int TApplication::gameLoop()
 			              video->mNextRenderMode.efbHeight, 0.0f, 1.0f);
 			GXSetScissor(0, 0, video->mNextRenderMode.fbWidth,
 			             video->mNextRenderMode.efbHeight);
-			Mtx afStack_1ac;
+			// Mtx44, NOT Mtx: C_MTXOrtho writes a full 4x4 (64 bytes). `Mtx` is
+			// f32[3][4] (48 bytes) and BOTH decay to f32(*)[4] as an argument, so
+			// the compiler cannot catch the mismatch — this silently smashed 16
+			// bytes of stack EVERY FRAME (ASan: stack-buffer-overflow, WRITE of
+			// size 16, C_MTXOrtho <- TApplication::gameLoop). Same values written,
+			// host corruption removed.
+			Mtx44 afStack_1ac;
 			C_MTXOrtho(afStack_1ac, 0.0f, (f32)video->mNextRenderMode.fbWidth,
 			           0.0f, (f32)video->mNextRenderMode.efbHeight, -1.0f,
 			           1.0f);
@@ -969,7 +975,8 @@ int TApplication::drawDVDErr()
 
 		GXSetViewport(0.0f, 0.0f, video->mNextRenderMode.fbWidth,
 		              video->mNextRenderMode.efbHeight, 0.0f, 1.0f);
-		Mtx afStack_260;
+		// Mtx44 for the same reason as afStack_1ac above (C_MTXOrtho writes 4x4).
+		Mtx44 afStack_260;
 		C_MTXOrtho(afStack_260, 16.0f, 464.0f, 0.0f, 600.0f, -1.0f, 1.0f);
 		GXSetProjection(afStack_260, GX_ORTHOGRAPHIC);
 		MTXIdentity(afStack_260);
