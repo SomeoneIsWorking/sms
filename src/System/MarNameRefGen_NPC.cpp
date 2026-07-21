@@ -6,16 +6,28 @@
 JDrama::TNameRef* TMarNameRefGen::getNameRef_NPC(const char* name) const
 {
 #ifdef SMS_NATIVE_PLATFORM
-	// STOPGAP:  the NPC *Managers* (MonteMManager/.../KinopioManager) so
-	// these NPCs get a non-null mManager, because the NPC population needs its
-	// managers to set mManager before TBaseNPC::load -> setIndividualDifference_
-	// dereferences it (mManager->unk28). Until the managers are wired (their
-	// getNameRef cases are TODO'd below), creating the individual TBaseNPCs here
-	// yields orphan NPCs with mManager==null -> SEGV in setIndividualDifference_.
-	// The NPCs are CHARACTERS, not plaza geometry, so we exclude the whole NPC
-	// population to reach a rendering plaza first; genObject tolerates the
-	// resulting null (skips the object). Set SB_NPC_ON=1 to re-enable creation
-	// once the managers are registered.
+	// STOPGAP: the whole NPC population (Monte* / Kinopio / Kinojii / Peach /
+	// BoardNpc + their managers) is excluded so the plaza renders. NPCs are
+	// CHARACTERS, not plaza geometry; genObject tolerates the null and skips the
+	// object. Set SB_NPC_ON=1 to re-enable.
+	//
+	// ⚠️ The ORIGINAL reason recorded here — "the managers are not registered yet,
+	// so NPCs get mManager==null and SEGV in setIndividualDifference_" — is now
+	// FALSE and has been corrected. The manager cases below ARE implemented
+	// (MonteMAManager/KinopioManager/... all return real managers); they were
+	// simply unreachable because this gate returns before them.
+	//
+	// MEASURED BLOCKER (2026-07-21, SB_NPC_ON=1 on a plaza that otherwise boots
+	// and renders clean):
+	//     SIGSEGV fault=0x0
+	//     MSoundSESystem::MSoundSE::checkMonoSound (MSoundSE.cpp:781)
+	//       -> local_c->unk0, where getInfoPointer() left local_c NULL
+	//     called with sound id param_1 = 193462272 (0xB89C000)
+	// That id is garbage — real MSD_SE_* ids are ~0x28c5 — so some NPC init path
+	// is emitting an uninitialised/mis-swapped sound id, the audio info lookup
+	// misses, and checkMonoSound dereferences the null it gets back. Fix the id at
+	// its source (NPC sound setup); do NOT just null-guard checkMonoSound, which
+	// would hide a corrupt id rather than repair it.
 	{
 		static int npc_on = -1;
 		if (npc_on < 0) {
