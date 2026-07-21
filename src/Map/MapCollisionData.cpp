@@ -57,17 +57,16 @@ void TMapCollisionData::init(JSUMemoryInputStream& stream)
 	stream >> value;
 	unk24 = value;
 
-#ifdef SMS_NATIVE_PLATFORM
-	// map.col counts are big-endian on disc; the raw read(&value,4) above copies
-	// bytes without swapping (unlike the typed readS32). Left unswapped, unk1C/
-	// unk20/unk24 become huge garbage and `new TBGCheckData[unk1C]` (etc.) walks
-	// off the heap, crashing in the element ctor. Swap to host before use.
-	unk8  = __builtin_bswap32(unk8);
-	unkC  = __builtin_bswap32(unkC);
-	unk1C = __builtin_bswap32(unk1C);
-	unk20 = __builtin_bswap32(unk20);
-	unk24 = __builtin_bswap32(unk24);
-#endif
+	// NOTE (2026-07-21, corrected): there used to be an explicit
+	// __builtin_bswap32() on unk8/unkC/unk1C/unk20/unk24 here, justified by "the
+	// raw read(&value,4) above copies bytes without swapping". That justification
+	// is FALSE for the code above — these are typed `stream >> value` reads, and
+	// JSUInputStream::operator>>(s32&) already byteswaps BE asset bytes to host
+	// endian (see JSUInputStream.hpp). The extra swap was therefore a DOUBLE swap
+	// that put the counts back into big-endian, so unk1C/unk20/unk24 became huge
+	// garbage and `new TBGCheckData[unk1C]` walked off the heap and died in the
+	// element ctor — the exact failure the old comment described, caused by its
+	// own "fix". Removed; operator>> is the single swap point.
 
 	mGridExtentX = (unk8 / 2) * 1024.0f;
 	mGridExtentY = (unkC / 2) * 1024.0f;
