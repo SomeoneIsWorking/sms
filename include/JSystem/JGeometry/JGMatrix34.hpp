@@ -6,7 +6,7 @@
 
 namespace JGeometry {
 
-inline void gekko_ps_copy12( void* dst,  void* src)
+inline void gekko_ps_copy12(register void* dst, register void* src)
 {
 #ifdef __MWERKS__ // clang-format off
 	asm {
@@ -63,8 +63,9 @@ public:
 	}
 
 	typedef f32 ArrType[4];
-	operator ArrType*() { return mMtx; } // Real!
-	operator const ArrType*() const { return mMtx; }
+	typedef const f32 ConstArrType[4];
+	operator ArrType*() { return mMtx; }            // Real!
+	operator ConstArrType*() const { return mMtx; } // fabricated
 
 	void set(ConstArrType* src)
 	{
