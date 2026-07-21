@@ -192,7 +192,22 @@ static J2DPane* getRegionTolerantDummyPane()
 	if (!s_dummy) {
 		for (unsigned i = 0; i < sizeof(s_buf); ++i)
 			s_buf[i] = 0;
-		s_dummy = new (s_buf) J2DPane();
+		// Construct a J2DTextBox, NOT a bare J2DPane. Callers routinely cast the
+		// search result to a richer subclass — e.g.
+		//   unk528 = (J2DTextBox*)unkB0->search('tet2');   (GCConsole2.cpp)
+		// With a bare J2DPane in this ZERO-FILLED buffer a J2DTextBox's mText reads
+		// as NULL, so any such caller strlen()s a null pointer. A J2DTextBox IS-A
+		// J2DPane, so plain-pane callers are unaffected while TextBox callers find a
+		// valid empty string. initiate() explicitly tolerates a null font (and
+		// handles mFont==nullptr afterwards), so no font resource is needed.
+		//
+		// SCOPE: this is HARDENING of a real latent null-deref, NOT a fix for the
+		// stage 3/4 crash. Tested: stages 3 and 4 still SIGSEGV in __strlen_avx2
+		// with this in place, so that strlen is NOT reading this dummy's mText —
+		// their root cause is still open. Measured pixel-neutral on stage 1.
+		static_assert(sizeof(J2DTextBox) <= sizeof(s_buf),
+		              "region-tolerant dummy buffer must fit a J2DTextBox");
+		s_dummy = new (s_buf) J2DTextBox((const ResFONT*)nullptr, "");
 		s_dummy->hide();
 	}
 	return s_dummy;
