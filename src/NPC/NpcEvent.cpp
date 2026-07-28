@@ -346,7 +346,7 @@ void TNpcEvent::initDownSunflowerNum()
 		mDownSunflowerNum = 0;
 }
 
-static s32 ReviveSunflowerCallBack(u32 param_1, u32 param_2)
+static s32 ReviveSunflowerCallBack(TDemoCameraArg param_1, u32 param_2)
 {
 	if (param_2 == 0) {
 		TBaseNPC* sunflower = (TBaseNPC*)param_1;

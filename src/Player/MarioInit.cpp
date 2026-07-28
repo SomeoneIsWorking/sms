@@ -207,7 +207,7 @@ TMario::TMario()
 	mPumpCooldown            = 0;
 	mUpperState              = UPPER_STATE_IDLE;
 	mLastMsgSender                   = 0;
-	unk388                   = 6;
+	mPlayerType              = PLAYER_TYPE_INVALID;
 	unk390                   = 0;
 	unk394                   = nullptr;
 	unk398                   = nullptr;

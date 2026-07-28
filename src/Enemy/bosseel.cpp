@@ -1979,7 +1979,7 @@ bool TBossEel::isInBossEelMoguDemo()
 	return false;
 }
 
-static s32 hoseiDiveCameraCallback(u32 actorAddress, u32 state)
+static s32 hoseiDiveCameraCallback(TDemoCameraArg actorAddress, u32 state)
 {
 	if (state == 1) {
 		const TLiveActor* actor
@@ -1997,7 +1997,7 @@ void TBossEel::startMoguCamera()
 		gpMarDirector->getConsole()->startAppearBalloon(0xE0015, true);
 		SMSGetMarDirector()->fireStartDemoCamera(
 		    "meoto_mogu_camera", &mPosition, -1, 0.0f, false,
-		    &hoseiDiveCameraCallback, reinterpret_cast<u32>(this), nullptr,
+		    &hoseiDiveCameraCallback, reinterpret_cast<TDemoCameraArg>(this), nullptr,
 		    JDrama::TFlagT<u16>(0));
 		mMoguCameraActive = true;
 	}

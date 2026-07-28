@@ -127,7 +127,7 @@ void CPolarSubCamera::startJetCoasterCam1()
 	unk2B0->setFrame(gpMarDirector->unk58 * 0.5f);
 }
 
-static s32 JetCoasterDemoCallBack(u32 param_1, u32 param_2)
+static s32 JetCoasterDemoCallBack(TDemoCameraArg param_1, u32 param_2)
 {
 	if (param_2 == 1)
 		((CPolarSubCamera*)param_1)->startJetCoasterCam1();
@@ -1050,7 +1050,7 @@ void CPolarSubCamera::perform(u32 param_1, JDrama::TGraphics* param_2)
 		for (int i = 0; i < 4; ++i)
 			for (int j = 0; j < 4; ++j)
 				param_2->mProjMtx.mMtx[i][j] = unk16C[i][j];
-		MTXCopy(unk1EC, param_2->getUnkB4());
+		MTXCopy(unk1EC, param_2->getViewMtx());
 		param_2->mNearPlane = mNear;
 		param_2->mFarPlane  = mFar;
 		if (param_1 & 0x10)

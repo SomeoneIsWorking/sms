@@ -168,7 +168,7 @@ void TEnemyMario::initModel()
 	mAnmSoundTbl = new JAIAnimeSound*[199];
 	char buffer[0x10C];
 	for (int i = 0; i < 199; ++i) {
-		snprintf(buffer, 0xff, "/mario/bas/ma_%s.bas", marioAnimeFiles[i].unk4);
+		snprintf(buffer, 0xff, "/mario/bas/ma_%s.bas", marioAnimeFiles[i].mAnimFileName);
 		loadBas((void**)&mAnmSoundTbl[i], buffer);
 	}
 
@@ -509,7 +509,7 @@ void TEnemyMario::initEnemyValues()
 		mInputReplays = nullptr;
 	}
 
-	if (gpMarDirector->mMap == 1 && gpMarDirector->unk7D == 1) {
+	if (gpMarDirector->mMap == 1 && gpMarDirector->mScenario == 1) {
 		mRunAwayInputReplays = new TMarioInputReplay*[8];
 		for (int i = 0; i < 8; ++i) {
 			if (recordFileNamesDolpic1[i] != nullptr) {
@@ -652,7 +652,7 @@ bool TEnemyMario::tryTake()
 				((TLiveActor*)actor)->onLiveFlag(LIVE_FLAG_UNK100000);
 				onEMFlag(EM_FLAG_ENFORCE_TAKE);
 			}
-			unk384 = actor;
+			mLastMsgSender = actor;
 			changePlayerStatus(MARIO_STATUS_TAKE, 0, false);
 		}
 	}

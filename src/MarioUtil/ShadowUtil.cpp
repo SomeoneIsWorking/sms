@@ -549,7 +549,7 @@ void TMBindShadowManager::drawShadow(u32 flags, JDrama::TGraphics* g)
 		GXSetChanMatColor(GX_COLOR0A0, c);
 	}
 	GXSetCurrentMtx(GX_PNMTX0);
-	MtxPtr view = g->getUnkB4();
+	MtxPtr view = g->getViewMtx();
 	GXLoadNrmMtxImm(view, GX_PNMTX0);
 
 #ifdef SMS_NATIVE_PLATFORM

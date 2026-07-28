@@ -2,6 +2,7 @@
 #define MOVE_BG_ITEM_HPP
 
 #include <MoveBG/MapObjGeneral.hpp>
+#include <System/MarDirector.hpp>
 
 class TMirrorActor;
 
@@ -109,7 +110,7 @@ public:
 
 	void appearWithDemo(const char*);
 	void appearSimple(int);
-	static s32 appearWithTimeCallback(u32, u32);
+	static s32 appearWithTimeCallback(TDemoCameraArg, u32);
 	void appearWithTime(int, int, int, int);
 	void movingDown();
 	void movingUp();
