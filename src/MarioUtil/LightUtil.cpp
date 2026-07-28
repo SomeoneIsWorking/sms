@@ -272,7 +272,7 @@ void TLightCommon::setLight(const JDrama::TGraphics* graphics, int idx)
 	SMS_DrawInit();
 
 	const int  gi   = idx * 2;              // getter idx (faithful to `slwi r31, r30, 1`)
-	MtxPtr     view = const_cast<JDrama::TGraphics*>(graphics)->getUnkB4();
+	MtxPtr     view = const_cast<JDrama::TGraphics*>(graphics)->getViewMtx();
 
 	GXLightObj obj{};
 

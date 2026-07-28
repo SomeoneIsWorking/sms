@@ -1,4 +1,3 @@
-#include <JSystem/JSupport/JSUInputStream.hpp> // JSU_BE32 / JSU_BE32_INPLACE
 #include <Enemy/Conductor.hpp>
 #include <Enemy/Emario.hpp>
 #include <Enemy/Enemy.hpp>
@@ -43,15 +42,7 @@ void TEMario::load(JSUMemoryInputStream& stream)
 {
 	TSpineEnemy::load(stream);
 
-	stream.read(&unk154, 4);
-	stream.read(&unk158, 4);
-	stream.read(&unk15C, 4);
-	stream.read(&unk160, 4);
-	// BE dword on disc; raw read(&x,4) does not swap (JSU raw-read class).
-	unk154 = JSU_BE32(unk154);
-	unk158 = JSU_BE32(unk158);
-	unk15C = JSU_BE32(unk15C);
-	unk160 = JSU_BE32(unk160);
+	stream >> mInitialState >> unk158 >> unk15C >> unk160;
 
 	stream.readU32();
 	stream.readU32();
@@ -199,13 +190,13 @@ void TEMario::startGateDrawing() { mEnemyMario->startGateDrawing(); }
 
 void TEMario::forceDisappear() { mEnemyMario->startDisappear(9); }
 
-void TEMario::perform(u32 flags, JDrama::TGraphics* gfx)
+void TEMario::perform(u32 cue, JDrama::TGraphics* graphics)
 {
 	if (checkLiveFlag(LIVE_FLAG_UNK40)) {
 		return;
 	}
 
-	if (!(flags & 0x1)) {
+	if (!(cue & CUE_MOVE)) {
 		return;
 	}
 
@@ -215,9 +206,9 @@ void TEMario::perform(u32 flags, JDrama::TGraphics* gfx)
 
 	for (s32 i = 0; i < mColCount; ++i) {
 		switch (mCollisions[i]->mActorType) {
-		case (s32)0x80000001: {
-			const f32 d = vecDist(mPosition, mCollisions[i]->getPosition());
-			if (d < mEnemyMario->mCollisionCheckDist) {
+		case 0x80000001: {
+			if (mPosition.distance(mCollisions[i]->getPosition())
+			    < mEnemyMario->mAttackRange) {
 				mCollisions[i]->receiveMessage(this, HIT_MESSAGE_ATTACK);
 			}
 		} break;
@@ -236,9 +227,9 @@ void TEMario::perform(u32 flags, JDrama::TGraphics* gfx)
 		}
 	}
 
-	mEnemyMario->perform(flags, gfx);
+	mEnemyMario->perform(cue, graphics);
 
-	if (flags & 0x1) {
+	if (cue & CUE_MOVE) {
 		mPosition = mEnemyMario->getPosition();
 		mRotation = mEnemyMario->getRotation();
 		mScaling  = mEnemyMario->getScaling();

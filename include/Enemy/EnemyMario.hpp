@@ -168,13 +168,38 @@ public:
 	TSettingParams* getSettingsParams() { return mSettingParams; }
 
 public:
-	u16 unk4290; // goal flag for
-	u16 unk4292; // some kind of state
-	char unk4294[10];
-	TEMario* mEMario; // 0x42A0
-	char unk42A4[12];
-	f32 mCollisionCheckDist; /* 0x42B0 */ // distance for a collision check
-	char unk42B4[94];
+	/* 0x4290 */ u16 mEMFlags;
+	/* 0x4292 */ u16 mEMDoing;      // ok
+	/* 0x4294 */ s16 mWaterCounter; // ok
+	/* 0x4296 */ s16 mAngleToMario;
+	/* 0x4298 */ s16 mTargetAngle;
+	/* 0x429C */ f32 mDistanceToMario;
+	/* 0x42A0 */ TEMario* mEMario;
+	/* 0x42A4 */ u32 mEMDoingTimer;
+	/* 0x42A8 */ s32 mReplayIndex;
+	/* 0x42AC */ f32 mTrembleStrength;
+	/* 0x42B0 */ f32 mAttackRange;
+	/* 0x42B4 */ s16 mWaterEffectTimer;
+	/* 0x42B6 */ s16 mWaterEffectTimerMax;
+	/* 0x42B8 */ s16 mTrampleCount;
+	/* 0x42BA */ s16 mWaterHitTimer;
+	/* 0x42BC */ f32 mReplayJumpSpeed;
+	/* 0x42C0 */ JGeometry::TVec3<f32> mReferencePosition;
+	/* 0x42CC */ s16 mRunAwayNodeIndex;
+	/* 0x42D0 */ f32 mRunAwaySpeed;
+	/* 0x42D4 */ u8 mPadIndex;
+	/* 0x42D5 */ char unk42D5[0x7];
+	/* 0x42DC */ J3DModel* mSpecialModel;
+	/* 0x42E0 */ JGeometry::TVec3<f32> mDisappearPosition;
+	/* 0x42EC */ J3DModel* mBrushModel;
+	/* 0x42F0 */ MActor* mStampActor;
+	/* 0x42F4 */ f32 mBrushScaleupDuringDrawing;
+	/* 0x42F8 */ TMarioInputReplay** mInputReplays;
+	/* 0x42FC */ TMarioInputReplay** mRunAwayInputReplays;
+	/* 0x4300 */ TMarioInputReplay* mGateReplay;
+	/* 0x4304 */ TReplayLink (*mReplayLinks)[3];
+	/* 0x4308 */ char unk4308[0x4];
+	/* 0x430C */ TSettingParams* mSettingParams;
 };
 
 #endif

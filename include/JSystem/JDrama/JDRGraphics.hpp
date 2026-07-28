@@ -29,7 +29,9 @@ struct TGraphics {
 	const TRect& getViewport() { return mViewportRect; }
 	const TRect& getScissor() { return mScissorRect; }
 
-	MtxPtr getUnkB4() { return mViewMtx.mMtx; }
+	MtxPtr getViewMtx() { return mViewMtx.mMtx; }
+	MtxPtr getViewMtx() const { return (MtxPtr)mViewMtx.mMtx; }
+	void setViewMtx(MtxPtr m) { MTXCopy(m, mViewMtx.mMtx); }
 	f32 getNearPlane() { return mNearPlane; }
 
 	GXFBClamp getFBClamp() { return mFBClamp; }

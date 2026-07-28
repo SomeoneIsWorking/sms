@@ -40,6 +40,17 @@ class TMarDirector;
 extern TMarDirector* gpMarDirector;
 inline TMarDirector* SMSGetMarDirector() { return gpMarDirector; }
 
+// The demo-camera user cookie is a POINTER ROUND-TRIP, not an integer: the caller hands over an
+// actor address and the callback casts it straight back (bosseel.cpp's hoseiDiveCameraCallback
+// does exactly that). A u32 truncates it on LP64 and the callback then dereferences garbage, so
+// the cookie is pointer-width on the host. On GC uintptr_t IS u32, so the observable behaviour
+// and the struct layout are unchanged there.
+#ifdef SMS_NATIVE_PLATFORM
+typedef uintptr_t TDemoCameraArg;
+#else
+typedef u32 TDemoCameraArg;
+#endif
+
 class TMarDirector : public JDrama::TDirector {
 public:
 	struct TDemoInfo {
@@ -48,8 +59,8 @@ public:
 		/* 0x8 */ u32 unk8;
 		/* 0xC */ f32 unkC;
 		/* 0x10 */ bool unk10;
-		/* 0x14 */ s32 (*unk14)(u32, u32);
-		/* 0x18 */ u32 unk18;
+		/* 0x14 */ s32 (*unk14)(TDemoCameraArg, u32);
+		/* 0x18 */ TDemoCameraArg unk18;
 		/* 0x1C */ JDrama::TActor* unk1C;
 		/* 0x20 */ JDrama::TFlagT<u16> unk20;
 	};
@@ -67,7 +78,8 @@ public:
 	void fireStreamingMovie(u8);
 	void fireEndDemoCamera();
 	void fireStartDemoCamera(const char*, const JGeometry::TVec3<f32>*, s32,
-	                         f32, bool, s32 (*)(u32, u32), u32, JDrama::TActor*,
+	                         f32, bool, s32 (*)(TDemoCameraArg, u32),
+	                         TDemoCameraArg, JDrama::TActor*,
 	                         JDrama::TFlagT<u16>);
 	void fireStageEvent(TMapObjBase*);
 	void setNextStage(u16, JDrama::TActor*);

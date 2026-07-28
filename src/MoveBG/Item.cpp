@@ -731,7 +731,7 @@ void TShine::appearWithTime(int param_1, int param_2, int param_3, int param_4)
 	onHitFlag(HIT_FLAG_NO_COLLISION);
 }
 
-s32 TShine::appearWithTimeCallback(u32 param_1, u32 param_2)
+s32 TShine::appearWithTimeCallback(TDemoCameraArg param_1, u32 param_2)
 {
 	TShine* shine = (TShine*)param_1;
 	if (param_2 == 0) {
@@ -776,7 +776,7 @@ void TShine::appearWithDemo(const char* param_1)
 	unk18C = JDrama::TNameRefGen::instance->search<TCameraMapTool>(param_1)
 	             ->mDemoLengthFrames;
 	SMSGetMarDirector()->fireStartDemoCamera(
-	    param_1, &mPosition, -1, 0.0f, true, appearWithTimeCallback, (u32)(uintptr_t)this,
+	    param_1, &mPosition, -1, 0.0f, true, appearWithTimeCallback, reinterpret_cast<TDemoCameraArg>(this),
 	    nullptr, JDrama::TFlagT<u16>());
 }
 
