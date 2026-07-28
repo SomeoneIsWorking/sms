@@ -244,10 +244,20 @@ int TMarDirector::direct()
 
 			u32 uVar11 = ~uVar8;
 			u32 uVar4  = uVar11;
+			// Verified against the original DOL (0x80299b08-0x80299b28):
+			//   nor    r31, r27, r27            ; uVar4 = ~uVar8
+			//   rlwinm r4, r4, 0, 0x14, 0x12    ; unk58&1 -> clear PPC bit 19 = ~0x1000
+			//   rlwinm r4, r4, 0, 0x13, 0x11    ; unk58&2 -> clear PPC bit 18 = ~0x2000
+			// Both masks were wrong here. The second was not even the same OPERATION:
+			// `uVar4 &= 0x200` masks uVar4 down to bit 9, clearing bit 0 — the MOVEMENT
+			// bit — so every actor's movement pass was skipped on the iterations where
+			// unk58&2 holds. Measured: 2 movement dispatches per direct() call against
+			// the recompiled retail code's 4, which is what made the file-select sea's
+			// UV scroll run at half rate here.
 			if (unk58 & 1)
-				uVar4 &= ~0x100;
+				uVar4 &= ~0x1000;
 			if (unk58 & 2)
-				uVar4 &= 0x200;
+				uVar4 &= ~0x2000;
 			// Verified against the original DOL (0x80299b2c-0x80299b6c): the unk4E&1
 			// branch selects the SHINE-stage movement list; the else branch (normal
 			// stages, incl. Delfino Plaza) drives mPerformListMovement. The prior decomp
