@@ -593,7 +593,7 @@ void THinokuri2::updatePolTrans() { }
 template <class T> static inline T randy(T l, T r)
 {
 	r -= l;
-	T k = (1.f / (RAND_MAX + 1)) * rand() * r;
+	T k = (1.f / (RAND_MAX + 1.0f)) * rand() * r;
 	l += k;
 	return l;
 }
@@ -1224,7 +1224,7 @@ DEFINE_NERVE(TNerveHino2PrePol, TLiveActor)
 			int wait = self->getSaveParam()->mSLPrePolWait.get();
 			if (wait > uVar5) {
 				f32 prob = self->getSaveParam()->mSLStampProb.get();
-				if (rand() * (1.0f / (RAND_MAX + 1)) < prob) {
+				if (rand() * (1.0f / (RAND_MAX + 1.0f)) < prob) {
 					spine->pushAfterCurrent(&TNerveHino2Pollute::theNerve());
 				} else {
 					spine->pushAfterCurrent(&TNerveHino2Stamp::theNerve());

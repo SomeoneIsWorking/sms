@@ -24,10 +24,16 @@
 
 // Uniform [0, 1) from the game rand(). Written as the DECOMP SOURCE idiom
 // rand()*(1/(RAND_MAX+1)) (which the GC compiler folds to *1/32768, RAND_MAX==0x7FFF),
-// NOT the disasm-folded literal 1/32768. Correct today under the consistent libc regime;
-// becomes bit-deterministic-vs-GC automatically once the decomp MSL rand.c is compiled
-// with RAND_MAX==32767 (see debug_journal/2026-07-17_rand_lcg_libc_not_gc.md).
-static inline f32 sAnmRand01() { return (f32)rand() * (1.0f / (f32)(RAND_MAX + 1)); }
+// NOT the disasm-folded literal 1/32768. Becomes bit-deterministic-vs-GC automatically once the
+// decomp MSL rand.c is compiled with RAND_MAX==32767 (debug_journal/2026-07-17_rand_lcg_libc_not_gc.md).
+//
+// The `+ 1.0f` is load-bearing and was NOT "correct today under the consistent libc regime" as this
+// comment previously claimed. `RAND_MAX + 1` is INT arithmetic: where RAND_MAX is INT_MAX (glibc)
+// it overflows to -2147483648 and the whole expression goes NEGATIVE. Casting the result — the
+// earlier `(f32)(RAND_MAX + 1)` — does not help, because the overflow has already happened inside
+// the parentheses. The literal must be a float so the addition itself is float.
+// See debug_journal/2026-08-05_msrandf_negative_rng_delfino_segv.md.
+static inline f32 sAnmRand01() { return (f32)rand() * (1.0f / (f32)(RAND_MAX + 1.0f)); }
 
 // Native port of TAnimalBase::loadAfter (US GMSE01 @0x80008bec, size 0x48). RE'd from disasm
 // (workflow 2026-07-17, verified vs the binary). TAnimalBase's TU is unnamed in the US map, so

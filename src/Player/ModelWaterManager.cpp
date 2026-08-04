@@ -249,7 +249,7 @@ bool TModelWaterManager::askHitWaterParticleOnGround(
 	return false;
 }
 
-static inline f32 MsRandF() { return rand() * (1.f / (RAND_MAX + 1)); }
+static inline f32 MsRandF() { return rand() * (1.f / (RAND_MAX + 1.0f)); }
 static inline f32 rand11() { return ((rand() & 0xff) - 128) / 128.0f; }
 
 void TModelWaterManager::makeEmit(const TWaterEmitInfo& param_1)

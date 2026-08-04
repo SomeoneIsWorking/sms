@@ -217,7 +217,7 @@ void TAnimalBird::initParams()
 	offLiveFlag(LIVE_FLAG_AIRBORNE);
 
 	// Random anim phase near 1.0 (decomp idiom rand()*(1/(RAND_MAX+1))).
-	mPhase = 1.0f - 0.1f * ((f32)rand() * (1.0f / (f32)(RAND_MAX + 1)) - 0.5f);
+	mPhase = 1.0f - 0.1f * ((f32)rand() * (1.0f / (f32)(RAND_MAX + 1.0f)) - 0.5f);
 
 	if (TWireBinder::isOnWire(mPosition)) {
 		mWireBinder = new TWireBinder;

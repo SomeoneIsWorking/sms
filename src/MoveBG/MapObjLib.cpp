@@ -874,7 +874,7 @@ void TMapObjLibWave::movement()
 TMapObjLibWave::TMapObjLibWave(f32 param_1, f32 param_2, f32 param_3,
                                f32 param_4)
 {
-	unk0  = rand() * (1.0f / (RAND_MAX + 1)) * 360.0f;
+	unk0  = rand() * (1.0f / (RAND_MAX + 1.0f)) * 360.0f;
 	unk4  = param_1;
 	unk8  = 0.0f;
 	unkC  = param_2;

@@ -35,7 +35,7 @@ TStageEnemyInfo* TStageEnemyInfoTable::getMatchedInfo(s32 param_1)
 	if (weightSum == 0)
 		return nullptr;
 
-	s32 x = rand() * (1.f / (RAND_MAX + 1)) * weightSum;
+	s32 x = rand() * (1.f / (RAND_MAX + 1.0f)) * weightSum;
 	for (TStageEnemyInfo** it = begin(); it != end(); ++it) {
 		TStageEnemyInfo* info = *it;
 		if (info->isMatching(param_1)) {
