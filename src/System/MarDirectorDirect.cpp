@@ -44,7 +44,11 @@ extern "C" void sb_gx_fifo_rewind(u32 mark);
 extern "C" u64 sb_gx_fifo_hash(u32 from, u32 to);
 extern "C" void sb_gx_fifo_snapshot(u32 from, u32 to);
 extern "C" long sb_gx_fifo_compare(u32 from, u32 to);
-extern "C" void sb_gx_fifo_dump_heads(u32 from, u32 n);  // sms-boot/runtime/phase_track.cpp — tag the current perform-list phase
+extern "C" void sb_gx_fifo_dump_heads(u32 from, u32 n);
+// Definition of the marker-suppression flag consumed by J3DDrawBuffer.cpp. Draw-identity markers
+// are diagnostic metadata emitted CONDITIONALLY, so they differ between a first and a repeat pass
+// and contaminate the idempotence comparison; the probe suppresses them across BOTH passes.
+extern "C" { int sb_suppress_draw_markers = 0; }  // sms-boot/runtime/phase_track.cpp — tag the current perform-list phase
 // Shared cross-instrument sequence counter (sms-boot/runtime/trace_seq.cpp).
 // SB_TRACE_SEQ=1: prefix [dir-br] lines with seq=N so this family interleaves
 // exactly with the present-boundary/proj/drawbuf-flush/plist-order logs.
@@ -369,7 +373,7 @@ int TMarDirector::direct()
 			u32 dblMark = 0;
 			u64 dblHash0 = 0;
 			u32 dblBytes0 = 0;
-			if (dblPasses == 2) dblMark = sb_gx_fifo_mark();
+			if (dblPasses >= 2) { dblMark = sb_gx_fifo_mark(); sb_suppress_draw_markers = 1; }
 			for (int dblPass = 0; dblPass < dblPasses; ++dblPass) {
 			if (dblPass >= 1) {
 				const u32 end0 = sb_gx_fifo_mark();
@@ -428,7 +432,8 @@ int TMarDirector::direct()
 			mPerformListGXPost->perform(0xffffffff, &local_140);
 #ifdef SMS_NATIVE_PLATFORM
 			} // SB_DOUBLE_DRAW repeat
-			if (dblPasses == 2) {
+			if (dblPasses >= 2) {
+				sb_suppress_draw_markers = 0;
 				const u32 end1  = sb_gx_fifo_mark();
 				const u32 bytes1 = end1 - dblMark;
 				const u64 hash1  = sb_gx_fifo_hash(dblMark, end1);

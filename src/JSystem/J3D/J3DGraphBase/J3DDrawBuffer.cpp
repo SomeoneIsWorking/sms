@@ -34,6 +34,9 @@ extern "C" const char* sb_boot_drawbuf_name(const void* buf) __attribute__((weak
 // SB_TRACE_SEQ=1: prefix dbhead flush lines with seq=N so this family
 // interleaves exactly with the present-boundary/plist-order/proj logs.
 extern "C" uint64_t sb_trace_seq(void) __attribute__((weak));
+// Set by the SB_DOUBLE_DRAW idempotence probe (MarDirectorDirect.cpp) while it compares two draw
+// passes; see the use site below for why the markers have to be out of that comparison.
+extern "C" int sb_suppress_draw_markers;
 extern "C" unsigned VIGetRetraceCount(void) __attribute__((weak));
 // SB_DBHEAD_DBG lifecycle instrument (defined near g_sbCpuDrawBufName below): forward-declared
 // here so frameInit() (which appears earlier in this file) can arm the per-buffer marker.
@@ -452,7 +455,13 @@ void J3DDrawBuffer::draw() const
 	{
 		const char* nm = sb_boot_drawbuf_name((const void*)this);
 		g_sbCpuDrawBufName = nm ? nm : "buf?";
-		GXInsertDebugMarker(nm ? nm : "buf?");
+		// Suppressed while the SB_DOUBLE_DRAW idempotence probe compares two draw passes.
+		// These markers are diagnostic metadata, and they are emitted CONDITIONALLY, so they
+		// diverge between a first and a repeat pass and swamped the comparison (the +164-byte
+		// "residual" was entirely this). Suppressing them in BOTH passes leaves the comparison
+		// covering render commands only. Zero cost when the probe is off.
+		if (!sb_suppress_draw_markers)
+			GXInsertDebugMarker(nm ? nm : "buf?");
 	}
 #endif
 #ifdef SMS_NATIVE_PLATFORM
