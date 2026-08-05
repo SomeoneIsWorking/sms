@@ -37,7 +37,11 @@
 #include <cstdio>
 #include <cstdlib>
 extern "C" bool sb_boot_drive_scene();   // native/src/scene_drive.cpp
-extern "C" void sb_boot_capture_set_phase(int);  // sms-boot/runtime/phase_track.cpp — tag the current perform-list phase
+extern "C" void sb_boot_capture_set_phase(int);
+// GX fifo mark/rewind/hash for the SB_DOUBLE_DRAW idempotence probe (extern/aurora/lib/gx/fifo.cpp).
+extern "C" u32 sb_gx_fifo_mark(void);
+extern "C" void sb_gx_fifo_rewind(u32 mark);
+extern "C" u64 sb_gx_fifo_hash(u32 from, u32 to);  // sms-boot/runtime/phase_track.cpp — tag the current perform-list phase
 // Shared cross-instrument sequence counter (sms-boot/runtime/trace_seq.cpp).
 // SB_TRACE_SEQ=1: prefix [dir-br] lines with seq=N so this family interleaves
 // exactly with the present-boundary/proj/drawbuf-flush/plist-order logs.
@@ -330,6 +334,54 @@ int TMarDirector::direct()
 			sb_boot_capture_set_phase(1);
 #endif
 #ifdef SMS_NATIVE_PLATFORM
+			// SB_DOUBLE_DRAW — draw-pass IDEMPOTENCE probe for game-native 60fps interpolation.
+			//
+			// Interpolation renders the DRAW phases twice per logic tick (once per sub-frame), so
+			// those passes must emit the SAME commands both times. Anything that differs between
+			// two back-to-back runs is state the pass mutated as it ran.
+			//
+			// The fifo is MARKED before pass 0, hashed after it, then REWOUND so pass 1 replaces
+			// it rather than appending. That keeps total emitted geometry at 1x (no staging
+			// overflow, the frame renders normally from the final pass) while still comparing the
+			// two passes byte for byte.
+			//
+			//   =1  two passes, nothing in between        <- the question: are they identical?
+			//   =2  POSITIVE CONTROL: run the CalcAnim list between the passes, which advances
+			//       animation, so the hashes MUST differ. If =2 reports "identical", the
+			//       comparison is blind and =1's clean result means nothing.
+			//
+			// The previous attempt at this question compared Mario's position across separate
+			// runs; its control could not fire because Mario is frozen in this scene
+			// (stuck WIN_DEMO, mStatus=0x133f), so it proved nothing. This one is self-contained
+			// and needs no dynamic scene.
+			static int s_dblDraw = -1;
+			if (s_dblDraw < 0) { const char* e = getenv("SB_DOUBLE_DRAW"); s_dblDraw = (e && e[0]) ? atoi(e) : 0; }
+			const int dblPasses = (s_dblDraw >= 1 && s_dblDraw <= 3) ? 2 : 1;
+			u32 dblMark = 0;
+			u64 dblHash0 = 0;
+			u32 dblBytes0 = 0;
+			if (dblPasses == 2) dblMark = sb_gx_fifo_mark();
+			for (int dblPass = 0; dblPass < dblPasses; ++dblPass) {
+			if (dblPass == 1) {
+				const u32 end0 = sb_gx_fifo_mark();
+				dblBytes0 = end0 - dblMark;
+				dblHash0  = sb_gx_fifo_hash(dblMark, end0);
+				sb_gx_fifo_rewind(dblMark);
+				if (s_dblDraw == 2) {
+					// control: advance animation between the two passes
+					mPerformListCalcAnim->perform(2, &local_140);
+				} else if (s_dblDraw == 3) {
+					// =3: re-run the ENTRY pass before the second draw. Hypothesis for why =1
+					// differs: the draw buffers are POPULATED by PreEntry and consumed as they
+					// are drawn, so a bare second draw finds them (partly) empty. If =3 comes
+					// out identical, the interpolation sub-frame boundary is "PreEntry + draw",
+					// not "draw" — which is what the design assumed and had not verified.
+					mPerformListPreEntry->perform(0xffffffff, &local_140);
+				}
+			}
+
+#endif
+#ifdef SMS_NATIVE_PLATFORM
 			// SB_SKIP_GHOST=1 (diagnostic): skip the phase-1 Draw-Buffer-Group draw
 			// (mPerformListDrawBufGroup, the only thing mPerformListDrawBufGroup holds). This is the suspected phase-1 "ghost"
 			// pass that draws the whole 3D scene under the stale ortho projection carried
@@ -364,6 +416,26 @@ int TMarDirector::direct()
 			sb_boot_capture_set_phase(6);
 #endif
 			mPerformListGXPost->perform(0xffffffff, &local_140);
+#ifdef SMS_NATIVE_PLATFORM
+			} // SB_DOUBLE_DRAW repeat
+			if (dblPasses == 2) {
+				const u32 end1  = sb_gx_fifo_mark();
+				const u32 bytes1 = end1 - dblMark;
+				const u64 hash1  = sb_gx_fifo_hash(dblMark, end1);
+				static long s_n = 0, s_same = 0, s_diff = 0, s_empty = 0;
+				++s_n;
+				if (dblBytes0 == 0 || bytes1 == 0) ++s_empty;   // never let "emitted nothing" read as "identical"
+				else if (dblBytes0 == bytes1 && dblHash0 == hash1) ++s_same;
+				else ++s_diff;
+				if ((s_n % 200) == 0) {
+					fprintf(stderr,
+					        "[dbl-draw] mode=%d ticks=%ld identical=%ld DIFFERENT=%ld empty=%ld "
+					        "| last bytes %u vs %u hash %016llx vs %016llx\n",
+					        s_dblDraw, s_n, s_same, s_diff, s_empty, dblBytes0, bytes1,
+					        (unsigned long long)dblHash0, (unsigned long long)hash1);
+				}
+			}
+#endif
 			GXInvalidateTexAll();
 		}
 		desiredAppState = changeState();
