@@ -41,7 +41,10 @@ extern "C" void sb_boot_capture_set_phase(int);
 // GX fifo mark/rewind/hash for the SB_DOUBLE_DRAW idempotence probe (extern/aurora/lib/gx/fifo.cpp).
 extern "C" u32 sb_gx_fifo_mark(void);
 extern "C" void sb_gx_fifo_rewind(u32 mark);
-extern "C" u64 sb_gx_fifo_hash(u32 from, u32 to);  // sms-boot/runtime/phase_track.cpp — tag the current perform-list phase
+extern "C" u64 sb_gx_fifo_hash(u32 from, u32 to);
+extern "C" void sb_gx_fifo_snapshot(u32 from, u32 to);
+extern "C" long sb_gx_fifo_compare(u32 from, u32 to);
+extern "C" void sb_gx_fifo_dump_heads(u32 from, u32 n);  // sms-boot/runtime/phase_track.cpp — tag the current perform-list phase
 // Shared cross-instrument sequence counter (sms-boot/runtime/trace_seq.cpp).
 // SB_TRACE_SEQ=1: prefix [dir-br] lines with seq=N so this family interleaves
 // exactly with the present-boundary/proj/drawbuf-flush/plist-order logs.
@@ -356,21 +359,28 @@ int TMarDirector::direct()
 			// and needs no dynamic scene.
 			static int s_dblDraw = -1;
 			if (s_dblDraw < 0) { const char* e = getenv("SB_DOUBLE_DRAW"); s_dblDraw = (e && e[0]) ? atoi(e) : 0; }
-			const int dblPasses = (s_dblDraw >= 1 && s_dblDraw <= 3) ? 2 : 1;
+			// =4: THREE passes, comparing pass 1 against pass 2 rather than pass 0 against pass 1.
+			// Byte-identity vs pass 0 is a stricter test than interpolation needs: GX is a sticky
+			// state machine, so pass 0 runs from the previous frame's state while every later pass
+			// runs from post-draw state, and the prologue legitimately differs (firstDiff=0).
+			// What matters is whether re-running is STABLE — if 1 and 2 match, the difference is a
+			// one-off transient and sub-frames after the first are reproducible.
+			const int dblPasses = (s_dblDraw >= 1 && s_dblDraw <= 3) ? 2 : (s_dblDraw == 4 ? 3 : 1);
 			u32 dblMark = 0;
 			u64 dblHash0 = 0;
 			u32 dblBytes0 = 0;
 			if (dblPasses == 2) dblMark = sb_gx_fifo_mark();
 			for (int dblPass = 0; dblPass < dblPasses; ++dblPass) {
-			if (dblPass == 1) {
+			if (dblPass >= 1) {
 				const u32 end0 = sb_gx_fifo_mark();
 				dblBytes0 = end0 - dblMark;
 				dblHash0  = sb_gx_fifo_hash(dblMark, end0);
+				sb_gx_fifo_snapshot(dblMark, end0);
 				sb_gx_fifo_rewind(dblMark);
 				if (s_dblDraw == 2) {
 					// control: advance animation between the two passes
 					mPerformListCalcAnim->perform(2, &local_140);
-				} else if (s_dblDraw == 3) {
+				} else if (s_dblDraw == 3 || s_dblDraw == 4) {
 					// =3: re-run the ENTRY pass before the second draw. Hypothesis for why =1
 					// differs: the draw buffers are POPULATED by PreEntry and consumed as they
 					// are drawn, so a bare second draw finds them (partly) empty. If =3 comes
@@ -427,12 +437,18 @@ int TMarDirector::direct()
 				if (dblBytes0 == 0 || bytes1 == 0) ++s_empty;   // never let "emitted nothing" read as "identical"
 				else if (dblBytes0 == bytes1 && dblHash0 == hash1) ++s_same;
 				else ++s_diff;
-				if ((s_n % 200) == 0) {
+				if ((s_n % 50) == 0) {
+					// First differing offset localises the divergence; a byte count only detects it.
+					const long firstDiff = sb_gx_fifo_compare(dblMark, end1);
 					fprintf(stderr,
 					        "[dbl-draw] mode=%d ticks=%ld identical=%ld DIFFERENT=%ld empty=%ld "
-					        "| last bytes %u vs %u hash %016llx vs %016llx\n",
+					        "| bytes %u vs %u (delta %+d) firstDiff=%ld (%.4f%% in) mark=%u\n",
 					        s_dblDraw, s_n, s_same, s_diff, s_empty, dblBytes0, bytes1,
-					        (unsigned long long)dblHash0, (unsigned long long)hash1);
+					        (int)bytes1 - (int)dblBytes0, firstDiff,
+					        dblBytes0 ? 100.0 * (double)firstDiff / (double)dblBytes0 : 0.0,
+					        dblMark);
+					static int s_dumped = 0;
+					if (!s_dumped) { s_dumped = 1; sb_gx_fifo_dump_heads(dblMark, 32); }
 				}
 			}
 #endif
