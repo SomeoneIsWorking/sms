@@ -53,6 +53,20 @@ public:
 	/* 0x30 */ JGeometry::TVec3<f32> mRotation;
 	/* 0x3C */ TCharacter* unk3C;
 	/* 0x40 */ TViewObj* unk40;
+
+#ifdef SMS_NATIVE_PLATFORM
+	// Interpolation `prev`: this actor's transform before the current tick's movement. Lives on
+	// TActor rather than TLiveActor so it covers map objects and anything else that moves, not
+	// only live actors. Appended and native-only, so the guest-offset comments above stay correct.
+	void sbSnapshotInterp() override {
+		mSbPrevPosition = mPosition;
+		mSbPrevRotation = mRotation;
+		mSbPrevValid    = true;
+	}
+	JGeometry::TVec3<f32> mSbPrevPosition;
+	JGeometry::TVec3<f32> mSbPrevRotation;
+	bool mSbPrevValid = false;   // nothing may interpolate from an unwritten transform
+#endif
 };
 
 } // namespace JDrama

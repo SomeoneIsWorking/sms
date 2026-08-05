@@ -173,20 +173,6 @@ public:
 	/* 0xEC */ TMapCollisionManager* mMapCollisionManager;
 	/* 0xF0 */ u32 mLiveFlag;
 
-#ifdef SMS_NATIVE_PLATFORM
-	// The `prev` half of game-native 60fps interpolation: this actor's transform as it stood
-	// BEFORE this tick's moveObject(). A sub-frame renders from lerp(prev, cur, alpha) written
-	// into the LIVE fields, so every calcRootMatrix override — there are many, and they are
-	// virtual — picks the interpolated transform up without being touched.
-	//
-	// Appended at the end and native-only: the guest-offset comments above stay correct, and the
-	// decomp accesses everything by name, so host layout does not matter (see the LP64 note in
-	// the porting memory). Nothing reads these until mSbPrevValid is set, so the first tick after
-	// construction falls back to the current transform rather than interpolating from garbage.
-	JGeometry::TVec3<f32> mSbPrevPosition;
-	JGeometry::TVec3<f32> mSbPrevRotation;
-	bool mSbPrevValid;
-#endif
 };
 
 #endif

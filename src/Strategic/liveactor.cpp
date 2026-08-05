@@ -48,14 +48,6 @@ TLiveActor::TLiveActor(const char* name)
 	mSpine         = nullptr;
 	unk90          = nullptr;
 
-#ifdef SMS_NATIVE_PLATFORM
-	// Interpolation `prev` starts INVALID: nothing may interpolate from an unwritten transform.
-	// The first tick snapshots and only then is prev meaningful.
-	mSbPrevValid = false;
-	mSbPrevPosition.setAll(0.0f);
-	mSbPrevRotation.setAll(0.0f);
-#endif
-
 	mLinearVelocity.setAll(0.0f);
 	mAngularVelocity.setAll(0.0f);
 
@@ -367,14 +359,6 @@ void TLiveActor::perform(u32 param_1, JDrama::TGraphics* param_2)
 		return;
 
 	if (param_1 & 1) {
-#ifdef SMS_NATIVE_PLATFORM
-		// Snapshot the transform BEFORE physics runs. This is the only place the pair
-		// (prev, cur) is well defined: after moveObject the live fields are `cur`, and the
-		// values captured here are what the previous frame displayed.
-		mSbPrevPosition = mPosition;
-		mSbPrevRotation = mRotation;
-		mSbPrevValid    = true;
-#endif
 		moveObject();
 #ifdef SMS_NATIVE_PLATFORM
 		// SB_LOG=interp — does the snapshot actually capture MOTION? An inert prev/cur pair is
@@ -382,7 +366,7 @@ void TLiveActor::perform(u32 param_1, JDrama::TGraphics* param_2)
 		// so "interpolation changed nothing" could mean the snapshot is useless and never say so.
 		// Reports how many actors actually moved this tick and by how much. A `moved=0` reading
 		// means interpolation would be a no-op and the design needs re-examining, not shipping.
-		if (SB_LOG_ON("interp") && mSbPrevValid) {
+		if (SB_LOG_ON("interp") && mSbPrevValid) { // fields now live on TActor, filled by the list dispatch
 			static long s_seen = 0, s_moved = 0;
 			static f32 s_maxDelta = 0.0f;
 			const f32 dx = mPosition.x - mSbPrevPosition.x;
@@ -402,8 +386,8 @@ void TLiveActor::perform(u32 param_1, JDrama::TGraphics* param_2)
 				// that transform interpolation has nothing to do.
 				SB_LOGC("interp",
 				        "snapshots=%ld moved=%ld (%.1f%%) maxStep=%.3f units "
-				        "| COVERS ONLY actors using TLiveActor::perform; 231 classes override it "
-				        "(incl. TMario) and are NOT counted here",
+				        "| population: actors reaching TLiveActor::perform (the SNAPSHOT itself now "
+				        "covers every object via the perform-list dispatch)",
 				        s_seen, s_moved, 100.0 * (double)s_moved / (double)s_seen,
 				        (double)(s_maxDelta > 0.0f ? __builtin_sqrtf(s_maxDelta) : 0.0f));
 			}

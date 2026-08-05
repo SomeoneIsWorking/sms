@@ -50,6 +50,14 @@ public:
 	void push_back(JDrama::TViewObj* object, u32 filter);
 	void push_back(const char* name, u32 filter);
 
+#ifdef SMS_NATIVE_PLATFORM
+	// Snapshot every child's transform for 60fps interpolation; see the definition.
+	void snapshotInterp();
+	// The perform lists are a TREE -- a child can itself be a TPerformList. Without this override
+	// the base no-op stops the walk at the first nested list and every grandchild is silently
+	// skipped, which is exactly how the first version of this hook ended up snapshotting nothing.
+	void sbSnapshotInterp() override { snapshotInterp(); }
+#endif
 	void forEachPerform(JGadget::TSingleLinkList<TPerformLink, 0>::iterator,
 	                    JGadget::TSingleLinkList<TPerformLink, 0>::iterator,
 	                    JDrama::TGraphics*, u32);

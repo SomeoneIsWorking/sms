@@ -59,6 +59,14 @@ public:
 	TObjChara* getChara() { return unk1C; }
 
 public:
+#ifdef SMS_NATIVE_PLATFORM
+	// Managers hold their actors in unk18[0..mObjNum), NOT as perform-list children, so the
+	// list-tree walk reaches the MANAGER but stops there and every actor it owns is silently
+	// skipped. Without this override the interpolation snapshot visited 18 objects and no actors
+	// at all, while looking like it worked.
+	void sbSnapshotInterp() override;   // defined in ObjManager.cpp (THitActor incomplete here)
+#endif
+
 	/* 0x10 */ s32 mCapacity;
 	/* 0x14 */ s32 mObjNum;
 	/* 0x18 */ THitActor** unk18;

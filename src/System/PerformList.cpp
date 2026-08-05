@@ -2,6 +2,7 @@
 #include <JSystem/JDrama/JDRNameRefGen.hpp>
 #include <JSystem/JSupport/JSUInputStream.hpp>   // JSU_BE32
 #ifdef SMS_NATIVE_PLATFORM
+#include <sb_log.h>
 #include <cstdio>
 #include <cstdlib>
 #endif
@@ -16,6 +17,31 @@ void TPerformList::forEachPerform(
 		it->perform(cue, graphics);
 	}
 }
+
+#ifdef SMS_NATIVE_PLATFORM
+// Game-native 60fps interpolation: capture every child's transform before the movement phase.
+//
+// Called EXPLICITLY from TMarDirector::direct() rather than inferred from a phase bit inside
+// forEachPerform -- the first attempt gated on `(mask & link->unk8) & 1` and never fired, because
+// the movement list's dispatch mask is not that simple. Guessing at bit semantics produced a hook
+// that silently did nothing; an explicit call cannot.
+//
+// Dispatched through a virtual on TViewObj so it reaches every object whatever it overrides: 231
+// classes override perform() and most do not chain to their base, so a hook inside perform()
+// misses them (TMario included).
+void TPerformList::snapshotInterp()
+{
+	long n = 0;
+	for (JGadget::TSingleLinkList<TPerformLink, 0>::iterator it = getChildren().begin();
+	     it != getChildren().end(); ++it) {
+		it->unk4->sbSnapshotInterp();
+		++n;
+	}
+	// A snapshot pass that visits nothing is indistinguishable from one that works, so say how
+	// many objects it actually reached at this level.
+	SB_LOG_EVERY("interp", 600, "snapshotInterp visited %ld direct children", n);
+}
+#endif
 
 void TPerformList::perform(u32 param_1, JDrama::TGraphics* param_2)
 {

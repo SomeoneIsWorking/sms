@@ -277,6 +277,11 @@ int TMarDirector::direct()
 			if (unk4E & 1)
 				mShinePfLstMov->perform(uVar4, &local_140);
 			else
+#ifdef SMS_NATIVE_PLATFORM
+				// Capture (prev) immediately before physics runs -- the only moment the pair
+				// (prev, cur) is well defined for interpolation.
+				mPerformListMovement->snapshotInterp();
+#endif
 				mPerformListMovement->perform(uVar4, &local_140);
 
 			u32 uVar44 = 0;

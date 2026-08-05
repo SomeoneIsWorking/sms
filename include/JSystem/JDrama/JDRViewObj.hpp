@@ -52,6 +52,17 @@ public:
 
 	virtual void perform(u32, TGraphics*) = 0;
 
+#ifdef SMS_NATIVE_PLATFORM
+	// Game-native 60fps interpolation: capture this object's transform as it stands BEFORE the
+	// movement phase runs, so a sub-frame can render lerp(prev, cur, alpha).
+	//
+	// It is a SEPARATE virtual rather than a hook inside perform() on purpose: 231 classes
+	// override perform() and most do not chain to their base, so anything placed there silently
+	// misses them (TMario included). Dispatching this from the perform LIST reaches every object
+	// whatever it overrides. Default no-op; TActor implements it.
+	virtual void sbSnapshotInterp() {}
+#endif
+
 public:
 	/* 0xC */ TFlagT<u16> unkC;
 };
