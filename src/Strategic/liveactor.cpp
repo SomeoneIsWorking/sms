@@ -1,4 +1,7 @@
 #ifdef SMS_NATIVE_PLATFORM
+#ifdef SMS_NATIVE_PLATFORM
+#include <sb_log.h>
+#endif
 #include "bas_swap.h"
 #endif
 #include <Strategic/LiveActor.hpp>
@@ -44,6 +47,14 @@ TLiveActor::TLiveActor(const char* name)
 	mBinder        = nullptr;
 	mSpine         = nullptr;
 	unk90          = nullptr;
+
+#ifdef SMS_NATIVE_PLATFORM
+	// Interpolation `prev` starts INVALID: nothing may interpolate from an unwritten transform.
+	// The first tick snapshots and only then is prev meaningful.
+	mSbPrevValid = false;
+	mSbPrevPosition.setAll(0.0f);
+	mSbPrevRotation.setAll(0.0f);
+#endif
 
 	mLinearVelocity.setAll(0.0f);
 	mAngularVelocity.setAll(0.0f);
@@ -355,8 +366,50 @@ void TLiveActor::perform(u32 param_1, JDrama::TGraphics* param_2)
 	if (mLiveFlag & (LIVE_FLAG_UNK200 | LIVE_FLAG_DEAD))
 		return;
 
-	if (param_1 & 1)
+	if (param_1 & 1) {
+#ifdef SMS_NATIVE_PLATFORM
+		// Snapshot the transform BEFORE physics runs. This is the only place the pair
+		// (prev, cur) is well defined: after moveObject the live fields are `cur`, and the
+		// values captured here are what the previous frame displayed.
+		mSbPrevPosition = mPosition;
+		mSbPrevRotation = mRotation;
+		mSbPrevValid    = true;
+#endif
 		moveObject();
+#ifdef SMS_NATIVE_PLATFORM
+		// SB_LOG=interp — does the snapshot actually capture MOTION? An inert prev/cur pair is
+		// indistinguishable from a working one at render time (both produce the current frame),
+		// so "interpolation changed nothing" could mean the snapshot is useless and never say so.
+		// Reports how many actors actually moved this tick and by how much. A `moved=0` reading
+		// means interpolation would be a no-op and the design needs re-examining, not shipping.
+		if (SB_LOG_ON("interp") && mSbPrevValid) {
+			static long s_seen = 0, s_moved = 0;
+			static f32 s_maxDelta = 0.0f;
+			const f32 dx = mPosition.x - mSbPrevPosition.x;
+			const f32 dy = mPosition.y - mSbPrevPosition.y;
+			const f32 dz = mPosition.z - mSbPrevPosition.z;
+			const f32 d2 = dx * dx + dy * dy + dz * dz;
+			++s_seen;
+			if (d2 > 0.0f) {
+				++s_moved;
+				if (d2 > s_maxDelta) s_maxDelta = d2;
+			}
+			if ((s_seen % 20000) == 0) {
+				// DECLARE THE BLIND SPOT. This hook is in TLiveActor::perform, and 231 classes
+				// override perform() without chaining to it — TMario among them. So a moved=0
+				// reading here says "the actors that use the BASE perform did not move", NOT
+				// "nothing in the scene moved". Reading it as the latter would wrongly conclude
+				// that transform interpolation has nothing to do.
+				SB_LOGC("interp",
+				        "snapshots=%ld moved=%ld (%.1f%%) maxStep=%.3f units "
+				        "| COVERS ONLY actors using TLiveActor::perform; 231 classes override it "
+				        "(incl. TMario) and are NOT counted here",
+				        s_seen, s_moved, 100.0 * (double)s_moved / (double)s_seen,
+				        (double)(s_maxDelta > 0.0f ? __builtin_sqrtf(s_maxDelta) : 0.0f));
+			}
+		}
+#endif
+	}
 
 	if (param_1 & 2)
 		updateAnmSound();
