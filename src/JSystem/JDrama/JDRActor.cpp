@@ -5,6 +5,81 @@
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
 #include <cstdlib>
+#include <cmath>
+#include <cstring>
+#include <sb_log.h>
+#endif
+
+#ifdef SMS_NATIVE_PLATFORM
+// SB_LOG=interp -- motion probe over the 60fps interpolation SNAPSHOT population. See the
+// declaration in JDRActor.hpp for why it is out-of-line and why it is designed negative-first.
+void JDrama::TActor::sbInterpMotionProbe(const char* name,
+                                         const JGeometry::TVec3<f32>& prev,
+                                         const JGeometry::TVec3<f32>& cur)
+{
+	if (!SB_LOG_ON("interp"))
+		return;
+
+	static long        s_seen = 0, s_moved = 0;
+	static f32         s_maxD2 = 0.0f;
+	static const char* s_maxName = "(nothing moved)";
+
+	// COVERAGE ROSTER. moved=0 has two completely different causes -- a scene whose actors really
+	// do not move, and a hook that never reaches the actors that do -- and the counters above
+	// cannot tell them apart: both print 0. So the probe also records WHO it saw. If the roster
+	// contains the player, coverage is demonstrated and a low moved% is a fact about the scene;
+	// if it does not, moved% says nothing at all. Bounded to the first 200 ticks and 192 names so
+	// the linear scan cannot become the frame cost.
+	enum { kMaxNames = 4096, kCollectTicks = 200 };
+	static const char* s_names[kMaxNames];
+	static int         s_nNames  = 0;
+	static bool        s_capped  = false;
+	static bool        s_dumped  = false;
+	if (name && sSbInterpTick < (unsigned long)kCollectTicks) {
+		bool known = false;
+		for (int i = 0; i < s_nNames; ++i)
+			if (std::strcmp(s_names[i], name) == 0) { known = true; break; }
+		if (!known) {
+			if (s_nNames < kMaxNames)
+				s_names[s_nNames++] = name;
+			else
+				s_capped = true;
+		}
+	} else if (!s_dumped && s_nNames > 0) {
+		s_dumped = true;
+		SB_LOGC("interp", "ROSTER: %d distinct objects snapshotted in the first %d ticks%s",
+		        s_nNames, (int)kCollectTicks,
+		        s_capped ? " (CAPPED at 4096 -- the real count is higher)" : "");
+		for (int i = 0; i < s_nNames; ++i)
+			SB_LOGC("interp", "  roster[%d] = %s", i, s_names[i]);
+	}
+
+	const f32 dx = cur.x - prev.x;
+	const f32 dy = cur.y - prev.y;
+	const f32 dz = cur.z - prev.z;
+	const f32 d2 = dx * dx + dy * dy + dz * dz;
+
+	++s_seen;
+	if (d2 > 0.0f) {
+		++s_moved;
+		if (d2 > s_maxD2) {
+			s_maxD2   = d2;
+			s_maxName = name ? name : "(unnamed)";
+		}
+	}
+
+	// Report the DENOMINATOR and the largest mover BY NAME on every line. moved=0 must be
+	// readable as "0 of N", never as a bare silence that is indistinguishable from a hook that
+	// was never called -- which is exactly how the previous five attempts at this looked.
+	if ((s_seen % 20000) == 0)
+		SB_LOGC("interp",
+		        "SNAPSHOT pop: samples=%ld moved=%ld (%.1f%%) maxStep=%.3f by \"%s\" "
+		        "| COVERS every object dispatched with CUE_MOVE (incl. perform() overriders); "
+		        "does NOT cover objects never given the MOVE cue, nor non-transform state "
+		        "(JPA particles, dash/ghost trails)",
+		        s_seen, s_moved, 100.0 * (double)s_moved / (double)s_seen,
+		        (double)(s_maxD2 > 0.0f ? std::sqrt(s_maxD2) : 0.0f), s_maxName);
+}
 #endif
 
 void JDrama::TActor::load(JSUMemoryInputStream& stream)

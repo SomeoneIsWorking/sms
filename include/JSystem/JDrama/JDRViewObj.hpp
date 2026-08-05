@@ -58,9 +58,22 @@ public:
 	//
 	// It is a SEPARATE virtual rather than a hook inside perform() on purpose: 231 classes
 	// override perform() and most do not chain to their base, so anything placed there silently
-	// misses them (TMario included). Dispatching this from the perform LIST reaches every object
-	// whatever it overrides. Default no-op; TActor implements it.
-	virtual void sbSnapshotInterp() {}
+	// misses them (TMario included). Default no-op; TActor implements it.
+	//
+	// It is driven from testPerform() -- non-virtual, and the single funnel EVERY container
+	// dispatches through (TPerformList::forEachPerform, TViewObjPtrListT::perform, TStrategy,
+	// TObjManager/enemymanager, TViewConnecter, TScreen, TDirector). Five attempts to reach actors
+	// by walking the object graph from the movement list each stopped at a container type that had
+	// not been anticipated, and TStrategy::perform is a sixth that none of them would have found.
+	// Hooking the funnel needs no knowledge of container types at all: an object that is performed
+	// passes through here by construction, and nothing can override its way around a non-virtual.
+	virtual void sbSnapshotInterp() { }
+
+	// Tick boundary for the snapshot above. Opened once per logic tick by TMarDirector::direct()
+	// before the movement dispatch; TActor snapshots only on the first dispatch of each tick, so an
+	// object performed twice cannot overwrite (prev) with (cur) and silently flatten interpolation.
+	static unsigned long sSbInterpTick;
+	static void sbBeginInterpTick() { ++sSbInterpTick; }
 #endif
 
 public:

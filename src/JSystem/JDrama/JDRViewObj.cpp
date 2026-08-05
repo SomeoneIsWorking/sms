@@ -11,6 +11,10 @@ extern "C" unsigned VIGetRetraceCount(void) __attribute__((weak));
 extern "C" uint64_t sb_trace_seq(void) __attribute__((weak));
 #endif
 
+#ifdef SMS_NATIVE_PLATFORM
+unsigned long JDrama::TViewObj::sSbInterpTick = 0;
+#endif
+
 void JDrama::TViewObj::testPerform(u32 param_1, JDrama::TGraphics* param_2)
 {
 #ifdef SMS_NATIVE_PLATFORM
@@ -37,6 +41,14 @@ void JDrama::TViewObj::testPerform(u32 param_1, JDrama::TGraphics* param_2)
 	}
 	param_1 &= ~unkC.get();
 	if (param_1) {
+#ifdef SMS_NATIVE_PLATFORM
+		// 60fps interpolation: snapshot (prev) here, at the dispatch funnel, immediately before
+		// the object runs its movement. See JDRViewObj.hpp for why this is the funnel and not a
+		// walk of the object graph. Gated on the surviving MOVE cue so it fires exactly when
+		// physics is about to run for this object.
+		if (param_1 & CUE_MOVE)
+			sbSnapshotInterp();
+#endif
 #ifdef SMS_NATIVE_PLATFORM
 		// SB_PLIST_ORDER_DBG(_AFTER=<retrace>): per-dispatch order trace -- names the
 		// exact TViewObj (by NameRef name) about to run its perform() virtual, so a

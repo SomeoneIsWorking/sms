@@ -379,15 +379,18 @@ void TLiveActor::perform(u32 param_1, JDrama::TGraphics* param_2)
 				if (d2 > s_maxDelta) s_maxDelta = d2;
 			}
 			if ((s_seen % 20000) == 0) {
-				// DECLARE THE BLIND SPOT. This hook is in TLiveActor::perform, and 231 classes
-				// override perform() without chaining to it — TMario among them. So a moved=0
-				// reading here says "the actors that use the BASE perform did not move", NOT
-				// "nothing in the scene moved". Reading it as the latter would wrongly conclude
-				// that transform interpolation has nothing to do.
+				// DECLARE THE BLIND SPOT, and keep declaring it: this READOUT sits in
+				// TLiveActor::perform, which 231 classes override without chaining to (TMario
+				// among them). The SNAPSHOT now covers every performed object (it is taken in
+				// TViewObj::testPerform, the dispatch funnel), but this counter still only
+				// reports on actors that reach the base perform. So moved=0 here would mean
+				// "the base-perform actors did not move", never "the scene is static", and a
+				// non-zero reading here says nothing about TMario either way.
 				SB_LOGC("interp",
 				        "snapshots=%ld moved=%ld (%.1f%%) maxStep=%.3f units "
-				        "| population: actors reaching TLiveActor::perform (the SNAPSHOT itself now "
-				        "covers every object via the perform-list dispatch)",
+				        "| READOUT population: actors reaching TLiveActor::perform only "
+				        "(231 overriders, incl. TMario, are NOT counted here); "
+				        "SNAPSHOT population: every object dispatched with CUE_MOVE",
 				        s_seen, s_moved, 100.0 * (double)s_moved / (double)s_seen,
 				        (double)(s_maxDelta > 0.0f ? __builtin_sqrtf(s_maxDelta) : 0.0f));
 			}

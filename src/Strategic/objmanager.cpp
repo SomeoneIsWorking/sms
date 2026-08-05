@@ -142,30 +142,3 @@ JDrama::TNameRef* TObjManager::searchF(u16 key, const char* name)
 	return nullptr;
 }
 
-#ifdef SMS_NATIVE_PLATFORM
-// See the declaration in ObjManager.hpp: managers own their actors in unk18[0..mObjNum), NOT as
-// perform-list children, so the interpolation snapshot walk reaches the MANAGER and stops there
-// unless it forwards the call itself. Without this it visited 18 objects and no actors at all.
-void TObjManager::sbSnapshotInterp()
-{
-	// Report what this forwarder actually reaches. "The pass runs" and "the pass reaches actors"
-	// are different claims, and the previous three attempts all satisfied the first while failing
-	// the second.
-	static long s_calls = 0, s_null = 0, s_fwd = 0;
-	++s_calls;
-	if (unk18 == nullptr) {
-		++s_null;
-		SB_LOG_EVERY("interp", 600, "TObjManager fwd: calls=%ld nullArray=%ld forwarded=%ld",
-		             s_calls, s_null, s_fwd);
-		return;
-	}
-	for (s32 i = 0; i < mObjNum; ++i) {
-		if (unk18[i] != nullptr) {
-			unk18[i]->sbSnapshotInterp();
-			++s_fwd;
-		}
-	}
-	SB_LOG_EVERY("interp", 600, "TObjManager fwd: calls=%ld nullArray=%ld forwarded=%ld (mObjNum=%d)",
-	             s_calls, s_null, s_fwd, (int)mObjNum);
-}
-#endif

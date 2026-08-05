@@ -274,15 +274,24 @@ int TMarDirector::direct()
 			// stages, incl. Delfino Plaza) drives mPerformListMovement. The prior decomp
 			// called mShinePfLstMov in BOTH branches (a misdecompilation that left the
 			// normal-stage movement/calc pass dead → NPC calcRootMatrix never ran).
-			if (unk4E & 1)
-				mShinePfLstMov->perform(uVar4, &local_140);
-			else
 #ifdef SMS_NATIVE_PLATFORM
-				// Capture (prev) immediately before physics runs -- the only moment the pair
-				// (prev, cur) is well defined for interpolation.
-				mPerformListMovement->snapshotInterp();
+			// Open the interpolation tick BEFORE any movement dispatch. The snapshot itself is
+			// taken per-object in JDrama::TViewObj::testPerform (the funnel every container
+			// dispatches through); this only marks the boundary so an object performed twice in
+			// one tick does not overwrite (prev) with (cur).
+			//
+			// NOTE the brace discipline here: this hook previously sat between `else` and the
+			// perform() call with no braces, so under SMS_NATIVE_PLATFORM the `else` bound to the
+			// hook alone and mPerformListMovement->perform() became UNCONDITIONAL -- running the
+			// normal-stage movement list on shine stages too. That is the very
+			// both-branches-drive-the-same-list misdecompilation the comment above warns about.
+			JDrama::TViewObj::sbBeginInterpTick();
 #endif
+			if (unk4E & 1) {
+				mShinePfLstMov->perform(uVar4, &local_140);
+			} else {
 				mPerformListMovement->perform(uVar4, &local_140);
+			}
 
 			u32 uVar44 = 0;
 			if (!(unk4C & 0x4000))
