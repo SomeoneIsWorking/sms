@@ -382,6 +382,7 @@ void J3DTexMtx::load(u32 id) const
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <sb_log.h>
 extern "C" const char* sb_gx_last_marker();
 extern "C" const char* sb_cpu_drawbuf_name();
 // ResTIMG::imageDataOffset is a 32-bit field holding the offset from the
@@ -424,13 +425,13 @@ static void sb_gd_load_texobj_aurora(u32 map, const ResTIMG* img)
 	// intended negative displacement. Same LP64 class as
 	// [[fileselect-cap-texture-setrestimg-lp64]].
 	const void* data = (const u8*)img + sb_timg_image_offset(img);
-	if (getenv("SB_TEXOBJ_DBG")) {
+	{
 		static long n = 0;
 		bool hi = (img->imageDataOffset & 0x80000000u) != 0;
 		if (hi || ++n <= 60)
-			fprintf(stderr, "[texobj] map=%u img=%p off=%08x data=%p %ux%u fmt=%u mips=%u ci=%u%s\n", map,
-			        (void*)img, img->imageDataOffset, data, img->width, img->height, img->format & 0xf,
-			        img->mipmapCount, img->isIndexTexture, hi ? " <BIT31>" : "");
+			SB_LOGC("texobj", "map=%u img=%p off=%08x data=%p %ux%u fmt=%u mips=%u ci=%u%s", map,
+			        (void*)img, img->imageDataOffset, (const void*)data, img->width, img->height,
+			        img->format & 0xf, img->mipmapCount, img->isIndexTexture, hi ? " <BIT31>" : "");
 	}
 	GDOverflowCheck(37);
 	J3DGDWrite_u8(0x50);                     // GX_AURORA opcode
@@ -496,65 +497,73 @@ void loadTexNo(u32 param_1, const u16& param_2)
 	// (scratch/oracle/cloud_ground_truth.txt) says GC binds the 8x8 I4 cloud
 	// puff texture with wrapS=wrapT=Clamp(0). Isolate by texture dims so this
 	// doesn't spam every material bind.
-	if (getenv("SB_CLOUD_DBG") && img->width == 8 && img->height == 8) {
+	if (img->width == 8 && img->height == 8) {
 		static long n = 0;
 		if (++n <= 60)
-			fprintf(stderr,
-			    "[cloud-dbg] map=%u dims=%ux%u fmt=%u wrapS=%u wrapT=%u mipCount=%u minFilt=%u magFilt=%u mark='%s'\n",
+			SB_LOGC("cloudtex",
+			    "map=%u dims=%ux%u fmt=%u wrapS=%u wrapT=%u mipCount=%u minFilt=%u magFilt=%u mark='%s'",
 			    param_1, img->width, img->height, img->format & 0xf, img->wrapS, img->wrapT,
 			    img->mipmapCount, img->minFilter, img->magFilter, sb_gx_last_marker());
 	}
-	// TEMP crosshatch-hunt: dump the exact bytes + owning J3DTexture identity for
-	// the two phantom texobjs (16x16 fmt0, 64x64 fmt1) so we can tell whether the
-	// header content is corrupt or texNo is indexing into the wrong table.
+	// Crosshatch-hunt texture-header dumps. These were `getenv("SB_XH_*") + fprintf` — an
+	// environment scan per texture bind (114,539 calls EACH per 30 s Delfino run, measured with an
+	// LD_PRELOAD getenv counter) for diagnostics that are off. Now on the tracked SB_LOG registry,
+	// where the enable check is cached per callsite. The hex is accumulated into one buffer and
+	// emitted as a single line, because SB_LOGC prefixes every call with the channel name.
 	{
+		auto hex32 = [](const void* p, char* out) {
+			const u8* raw = (const u8*)p;
+			for (int i = 0; i < 0x20; i++) {
+				static const char* kHex = "0123456789abcdef";
+				out[i * 2]     = kHex[raw[i] >> 4];
+				out[i * 2 + 1] = kHex[raw[i] & 0xf];
+			}
+			out[0x40] = '\0';
+		};
+		char hb[0x41];
 		extern int g_sbXhSkyInitDL;
 		if (g_sbXhSkyInitDL) {
 			static long n = 0;
 			if (++n <= 40) {
-				const u8* raw = (const u8*)img;
-				fprintf(stderr,
-				    "[xh-skyinit] texNo=%u map=%u tex=%p num=%u img=%p hex=",
-				    param_2, param_1, (void*)j3dSys.getTexture(),
-				    j3dSys.getTexture() ? j3dSys.getTexture()->getNum() : 0, (void*)img);
-				for (int i = 0; i < 0x20; i++) fprintf(stderr, "%02x", raw[i]);
-				fprintf(stderr, "\n");
+				hex32(img, hb);
+				SB_LOGC("xhskyinit", "texNo=%u map=%u tex=%p num=%u img=%p hex=%s", param_2, param_1,
+				    (void*)j3dSys.getTexture(),
+				    j3dSys.getTexture() ? j3dSys.getTexture()->getNum() : 0, (void*)img, hb);
 			}
 		}
-	}
-	if (getenv("SB_XH_MIRROR_DBG") && img->wrapS == 2 && img->wrapT == 2) {
-		static long n = 0;
-		if (++n <= 60) {
-			const u8* raw = (const u8*)img;
-			fprintf(stderr,
-			    "[xh-mirror] texNo=%u map=%u tex=%p num=%u img=%p caller=%p hex=",
-			    param_2, param_1, (void*)j3dSys.getTexture(),
-			    j3dSys.getTexture() ? j3dSys.getTexture()->getNum() : 0, (void*)img,
-			    __builtin_return_address(1));
-			for (int i = 0; i < 0x20; i++) fprintf(stderr, "%02x", raw[i]);
-			fprintf(stderr, "\n");
-		}
-	}
-	if (getenv("SB_XH_DBG")) {
-		const char* mk = sb_cpu_drawbuf_name();
-		if (getenv("SB_XH_ALL") && mk && strstr(mk, "Sky") != nullptr) {
-			static long an = 0;
-			if (++an <= 400)
-				fprintf(stderr, "[xh-all] map=%u dims=%ux%u fmt=%u mk='%s'\n", param_1,
-				    img->width, img->height, img->format & 0xf, mk ? mk : "(null)");
-		}
-		bool hit = mk && strstr(mk, "Sky Xlu") != nullptr;
-		if (hit) {
+		if (img->wrapS == 2 && img->wrapT == 2) {
 			static long n = 0;
-			if (++n <= 200) {
-				const u8* raw = (const u8*)img;
-				fprintf(stderr,
-				    "[xh-dbg] texNo=%u map=%u tex=%p num=%u img=%p mark='%s' hex=",
-				    param_2, param_1, (void*)j3dSys.getTexture(),
-				    j3dSys.getTexture() ? j3dSys.getTexture()->getNum() : 0,
-				    (void*)img, sb_gx_last_marker());
-				for (int i = 0; i < 0x20; i++) fprintf(stderr, "%02x", raw[i]);
-				fprintf(stderr, "\n");
+			if (++n <= 60) {
+				hex32(img, hb);
+				SB_LOGC("xhmirror", "texNo=%u map=%u tex=%p num=%u img=%p caller=%p hex=%s", param_2,
+				    param_1, (void*)j3dSys.getTexture(),
+				    j3dSys.getTexture() ? j3dSys.getTexture()->getNum() : 0, (void*)img,
+				    __builtin_return_address(1), hb);
+			}
+		}
+		// sb_cpu_drawbuf_name() + strstr are real work on a per-bind path, so they stay behind an
+		// explicit cached enable check rather than inside SB_LOGC's arguments (which are evaluated
+		// before the macro's own gate can help).
+		static int xhEn = -1;
+		if (xhEn < 0)
+			xhEn = sb_log_enabled("xhall") || sb_log_enabled("xhdbg");
+		if (xhEn) {
+			const char* mk = sb_cpu_drawbuf_name();
+			if (mk && strstr(mk, "Sky") != nullptr) {
+				static long an = 0;
+				if (++an <= 400)
+					SB_LOGC("xhall", "map=%u dims=%ux%u fmt=%u mk='%s'", param_1, img->width,
+					    img->height, img->format & 0xf, mk);
+			}
+			if (mk && strstr(mk, "Sky Xlu") != nullptr) {
+				static long n = 0;
+				if (++n <= 200) {
+					hex32(img, hb);
+					SB_LOGC("xhdbg", "texNo=%u map=%u tex=%p num=%u img=%p mark='%s' hex=%s", param_2,
+					    param_1, (void*)j3dSys.getTexture(),
+					    j3dSys.getTexture() ? j3dSys.getTexture()->getNum() : 0, (void*)img,
+					    sb_gx_last_marker(), hb);
+				}
 			}
 		}
 	}

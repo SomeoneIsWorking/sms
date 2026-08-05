@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <sb_log.h>
 #endif
 
 J2DPicture::J2DPicture() { }
@@ -181,10 +182,8 @@ J2DPicture::J2DPicture(J2DPane* parent, JSURandomInputStream* stream,
 	// name it was constructed from, so a later setTevMode() dump (which only has
 	// the pointer, via aurora's GXTexObj) can be matched back to a texture name.
 	// Root-cause tool for the title-logo duotone-stage investigation.
-	if (std::getenv("SB_TEV_NAME_DBG") != nullptr) {
-		std::fprintf(stderr, "[tev-name] this=%p tex0=%p name='%s'\n", (void*)this,
-		             (void*)mTextures[0], dbgTimgNameForLog);
-	}
+	SB_LOGC("tevname", "this=%p tex0=%p name='%s'", (void*)this, (void*)mTextures[0],
+	        dbgTimgNameForLog);
 #endif
 }
 
@@ -592,12 +591,12 @@ void J2DPicture::drawTexCoord(int x, int y, int w, int h, float u1, float v1,
 void J2DPicture::setTevMode()
 {
 #ifdef SMS_NATIVE_PLATFORM
-	if (std::getenv("SB_TEV_NAME_DBG") != nullptr) {
+	{
 		static long n = 0;
 		if ((++n % 30) == 0 || n <= 5) {
-			std::fprintf(stderr,
-			    "[tev-name] setTevMode this=%p tex0=%p mBlack=%08x mWhite=%08x "
-			    "mColorAlpha=%u duotone=%d textureNum=%u tex0Transparency=%d tex0Fmt=%d\n",
+			SB_LOGC("tevname",
+			    "setTevMode this=%p tex0=%p mBlack=%08x mWhite=%08x "
+			    "mColorAlpha=%u duotone=%d textureNum=%u tex0Transparency=%d tex0Fmt=%d",
 			    (void*)this, (void*)mTextures[0], (unsigned)mBlack, (unsigned)mWhite,
 			    (unsigned)mColorAlpha, (mBlack != 0x0 || mWhite != 0xffffffff) ? 1 : 0,
 			    (unsigned)mTextureNum,

@@ -1,4 +1,5 @@
 #include <JSystem/JKernel/JKRHeap.hpp>
+#include <sb_log.h>
 #include <JSystem/JUtility/JUTAssert.hpp>
 #include "dolphin/os.h"
 
@@ -408,7 +409,7 @@ static void* sb_host_malloc(size_t n, int alignment)
 	// Cache the debug-gate env once: getenv linear-scans environ (strncmp per var) and this is the
 	// hot host-allocation path — calling it per alloc dominated the NPC-scene render (gdb showed
 	// sb_host_malloc->getenv->strncmp as a top sample). Read it exactly once.
-	static const bool jkr_dbg = getenv("SB_JKR_DBG") != nullptr;
+	static const bool jkr_dbg = SB_LOG_ON("jkr") != nullptr;
 	if (jkr_dbg && (c <= 8 || (c & (c - 1)) == 0))
 		OSReport("[heap] host malloc fallback #%llu size=%zu align=%d outstanding=%llu MB "
 		         "(JKR plain heap full/absent)\n",

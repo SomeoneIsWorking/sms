@@ -1,4 +1,5 @@
 #include <JSystem/J3D/J3DGraphAnimator/J3DJoint.hpp>
+#include <sb_log.h>
 #include <JSystem/J3D/J3DGraphBase/J3DSys.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DTransform.hpp>
 #include <JSystem/J3D/J3DGraphAnimator/J3DAnimation.hpp>
@@ -373,8 +374,12 @@ void J3DJoint::entryIn()
 		// model's joint/material name tables. Names the DATA-driven purpose of the mask, so
 		// we can decide the clean SMS_NATIVE_PLATFORM handling (typically: don't emit it,
 		// because it exists only for GC's EFB-composite path our native renderer replaces).
-		if (const char* e = std::getenv("SB_JOINT_NAME"); e && e[0] && e[0] != '0') {
+		if (SB_LOG_ON("jointname")) {
 			void* want = (&sb_b76_material) ? sb_b76_material() : nullptr;
+			if (!want)
+				SB_LOG_ONCE("jointname", "INACTIVE: sb_b76_material() is null, so no mesh can match. "
+				                         "This channel only fires once the file-select overbright "
+				                         "capture has published the b76 material.");
 			if (want && (void*)mesh == want) {
 				static int n = 0;
 				if (n < 4) { ++n;
@@ -387,7 +392,7 @@ void J3DJoint::entryIn()
 						if (JUTNameTab* mt = md->getMaterialName())
 							if (const char* s = mt->getName(mesh->getIndex())) mname = s;
 					}
-					std::fprintf(stderr, "[joint-name] b76 mesh=%p joint#=%u name=\"%s\" mat#=%u matName=\"%s\" shape#=%u shapeFlag1=%d\n",
+					sb_logf("jointname", "joint-name: b76 mesh=%p joint#=%u name=\"%s\" mat#=%u matName=\"%s\" shape#=%u shapeFlag1=%d",
 					             (void*)mesh, mJntNo, jname, mesh->getIndex(), mname,
 					             mesh->getShape()->getIndex(),
 					             (int)mesh->getShape()->checkFlag(1));

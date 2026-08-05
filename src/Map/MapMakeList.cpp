@@ -1,4 +1,5 @@
 #include <Map/MapCollisionData.hpp>
+#include <sb_log.h>
 #include <Map/MapCollisionEntry.hpp>
 #include <Map/MapData.hpp>
 #include <types.h>
@@ -211,13 +212,13 @@ void TMapCollisionData::addCheckDataToGrid(TBGCheckData* param_1, int kind)
 	bool gga = getGridArea(param_1, iVar7, &local_ac, &local_b4, &local_b0,
 	                       &local_b8);
 #ifdef SMS_NATIVE_PLATFORM
-	if (getenv("SB_DEATH_DBG")) {
+	if (SB_LOG_ON("death")) {
 		static int s_calls = 0, s_inGrid = 0;
 		++s_calls;
 		if (gga)
 			++s_inGrid;
 		if (s_calls % 200 == 0 || s_calls < 4)
-			fprintf(stderr, "[addgrid] call#%d (inGrid=%d) planeType=%d kind=%d gga=%d cells[z%d..%d,x%d..%d]\n",
+			sb_logf("death", "addgrid: call#%d (inGrid=%d) planeType=%d kind=%d gga=%d cells[z%d..%d,x%d..%d]",
 			        s_calls, s_inGrid, iVar7, kind, (int)gga, local_b4, local_b8, local_ac, local_b0);
 	}
 #endif
@@ -249,11 +250,11 @@ void TMapCollisionData::addCheckDataToGrid(TBGCheckData* param_1, int kind)
 					int iVar4 = j * 1024.0f - mGridExtentX;
 					bool pin = polygonIsInGrid(iVar4, iVar2, iVar3, iVar1, param_1);
 #ifdef SMS_NATIVE_PLATFORM
-					if (iVar7 == 0 && getenv("SB_DEATH_DBG")) {
+					if (iVar7 == 0 && SB_LOG_ON("death")) {
 						static int gl = 0, gtot = 0;
 						++gtot; if (pin) ++gl;
 						if (gtot % 500 == 0 || gtot < 3)
-							fprintf(stderr, "[gndlink] tests=%d linked=%d (cell z%d x%d cellX[%d..%d] triX[%.0f..%.0f])\n",
+							sb_logf("death", "gndlink: tests=%d linked=%d (cell z%d x%d cellX[%d..%d] triX[%.0f..%.0f])",
 							        gtot, gl, i, j, iVar4, iVar3,
 							        param_1->mPoint1.x, param_1->mPoint3.x);
 					}

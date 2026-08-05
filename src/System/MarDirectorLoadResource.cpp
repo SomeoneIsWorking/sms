@@ -1,4 +1,5 @@
 #include <System/MarDirector.hpp>
+#include <sb_log.h>
 #include <JSystem/JParticle/JPAEmitterManager.hpp>
 #include <JSystem/JKernel/JKRMemArchive.hpp>
 #include <JSystem/JKernel/JKRDvdFile.hpp>
@@ -24,7 +25,7 @@ JPAEmitterManager* gpEmitterManager4D2;
 #include <cstdlib>
 #include <cstdio>
 static inline int SB_LR_FAIL(int code, const char* what) {
-	if (getenv("SB_MOVIE_DBG") || getenv("SB_JKR_DBG"))
+	if (SB_LOG_ON("movie") || SB_LOG_ON("jkr"))
 		OSReport("[loadres] FAIL step %d: %s -> return 1\n", code, what);
 	return code ? 1 : 0;
 }

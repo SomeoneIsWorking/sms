@@ -1,4 +1,5 @@
 #include <Map/Map.hpp>
+#include <sb_log.h>
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
 #include <cstdlib>
@@ -408,7 +409,7 @@ void TMap::perform(u32 param_1, JDrama::TGraphics* param_2)
 #ifdef SMS_NATIVE_PLATFORM
 		if (const char* e = std::getenv("SB_MAPXLU_DBG"); e && e[0] && e[0] != '0') {
 			static int n = 0; if (n < 12) { ++n;
-				std::fprintf(stderr, "[mapxlu] TMap::perform flag=0x%x branch=%s xluCount=%d phase=%d\n",
+				sb_logf("death", "mapxlu: TMap::perform flag=0x%x branch=%s xluCount=%d phase=%d",
 				             param_1,
 				             (param_1 & 0x2000000) ? "changeXluJoint(1)"
 				             : (param_1 & 0x4000000) ? "changeXluJoint(0)" : "changeNormalJoint",
@@ -449,9 +450,9 @@ void TMap::load(JSUMemoryInputStream& stream)
 	mWarp->init(stream);
 	mModelManager->mCollision->setUp();
 #ifdef SMS_NATIVE_PLATFORM
-	if (getenv("SB_DEATH_DBG")) {
+	if (SB_LOG_ON("death")) {
 		const TBGCheckData* g = nullptr;
-		fprintf(stderr, "[mapcol] gridExtent(%.0f,%.0f) numTri=%u added=%u numList=%u listUsed=%u\n",
+		sb_logf("death", "mapcol: gridExtent(%.0f,%.0f) numTri=%u added=%u numList=%u listUsed=%u",
 		        mCollisionData->mGridExtentX, mCollisionData->mGridExtentY,
 		        mCollisionData->unk1C, mCollisionData->unk34,
 		        mCollisionData->unk20, mCollisionData->unk38);
@@ -468,7 +469,7 @@ void TMap::load(JSUMemoryInputStream& stream)
 			         mCollisionData->getGridRoot14(cgx, cgz).getGroundList();
 			     p && ln < 9999; p = p->getNext())
 				++ln;
-			fprintf(stderr, "[mapcol] RAIL checkGround(%.0f,%.0f)=%.1f cell(x%d z%d) groundListLen=%d\n",
+			sb_logf("death", "mapcol: RAIL checkGround(%.0f,%.0f)=%.1f cell(x%d z%d) groundListLen=%d",
 			        rx, rz, ry, cgx, cgz, ln);
 		}
 		{

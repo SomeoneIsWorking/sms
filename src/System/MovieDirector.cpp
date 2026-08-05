@@ -1,4 +1,5 @@
 #include <System/MovieDirector.hpp>
+#include <sb_log.h>
 #include <THPPlayer/THPPlayer.h>
 #include <JSystem/JKernel/JKRMemArchive.hpp>
 #include <JSystem/JDrama/JDRDStage.hpp>
@@ -189,7 +190,7 @@ int TMovieDirector::rsetup()
 TMovieDirector::~TMovieDirector()
 {
 #ifdef SMS_NATIVE_PLATFORM
-	if (getenv("SB_MOVIE_DBG"))
+	if (SB_LOG_ON("movie"))
 		OSReport("[movie] ~TMovieDirector (movie=%u) -> THPPlayerStop/Close/Quit\n",
 		         gpApplication.getMovie());
 #endif
@@ -342,7 +343,7 @@ int TMovieDirector::direct()
 		} else if (THPPlayerGetState() == 3) {
 			desiredAppState = decideNextMode(&nextState);
 #ifdef SMS_NATIVE_PLATFORM
-			if (getenv("SB_MOVIE_DBG"))
+			if (SB_LOG_ON("movie"))
 				OSReport("[movie] STATE_PLAYING saw thp==3 -> decideNextMode "
 				         "desiredAppState=%d nextState=%d (movie=%u)\n",
 				         desiredAppState, nextState, gpApplication.getMovie());
@@ -436,7 +437,7 @@ int TMovieDirector::direct()
 	}
 
 #ifdef SMS_NATIVE_PLATFORM
-	if (getenv("SB_MOVIE_DBG")) {
+	if (SB_LOG_ON("movie")) {
 		static int dbgframe = 0;
 		if ((dbgframe++ % 30) == 0)
 			OSReport("[movie] f=%d appstate=%d movie=%u unk1C=%d thpState=%d "

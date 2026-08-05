@@ -1,4 +1,5 @@
 #include <JSystem/JKernel/JKRMemArchive.hpp>
+#include <sb_log.h>
 #include <JSystem/JKernel/JKRDecomp.hpp>
 #include <JSystem/JKernel/JKRDvdRipper.hpp>
 #include <JSystem/JKernel/JKRHeap.hpp>
@@ -135,7 +136,7 @@ JKRArchive::SDIFileEntry* sb_rarc_swap_to_host(void* buffer, JKRHeap* heap)
 		    "no fallback heap could satisfy this. Increase root/plain heap.",
 		    sideBytes, n, heap, curHeap, rootHeap);
 	}
-	if (getenv("SB_JKR_DBG"))
+	if (SB_LOG_ON("jkr"))
 		OSReport("[rarc] swap buffer=%p heap=%p n=%u allocBytes=%u side=%p "
 		         "root=%p rootFree=0x%x cur=%p\n",
 		         buffer, heap, n, sideBytes, side, JKRHeap::getRootHeap(),

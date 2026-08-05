@@ -1,4 +1,5 @@
 #include <JSystem/JDrama/JDRDrawBufObj.hpp>
+#include <sb_log.h>
 #include <JSystem/J3D/J3DGraphBase/J3DDrawBuffer.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DSys.hpp>
 #ifdef SMS_NATIVE_PLATFORM
@@ -119,7 +120,7 @@ void TDrawBufObj::perform(u32 param_1, TGraphics* param_2)
 		// matches GC (the correct phase-1 sea shows through). PROPER FIX: port the water-reflection
 		// MapXlu re-entry (TModelWaterManager / the pass2→pass3 EFB composite). A/B: SB_KEEP_PH6_MAPXLU=1.
 		// 2026-07-02: gate below is DEAD CODE (debug_journal/2026-07-02_overbright_stopgap_is_dead_code.md).
-		// SB_DRAWFLAG_DBG proves `DrawBuf MapXlu` fires only at ph0 (setup) and ph1 (unk40 flush),
+		// SB_LOG=drawflag proves `DrawBuf MapXlu` fires only at ph0 (setup) and ph1 (unk40 flush),
 		// NEVER at ph6 — perform-list routing moved map-translucent draws to `DrawBuf Map 半透明優先`
 		// in ph6. Both SB_KEEP_PH6_MAPXLU=1 and unset measure identical mean|Δ|=58.2 on the
 		// title-screen overbright harness. Kept commented so the intent survives; bandaid-free
@@ -134,12 +135,12 @@ void TDrawBufObj::perform(u32 param_1, TGraphics* param_2)
 		// }
 		// Attribute the shapes this flush captures to THIS draw buffer by name (overbright harness).
 		if (&sb_boot_capture_set_drawbuf) sb_boot_capture_set_drawbuf(getName());
-		// SB_DRAWFLAG_DBG: which phase actually sets the draw bit (0x8) for each named buffer —
+		// SB_LOG=drawflag: which phase actually sets the draw bit (0x8) for each named buffer —
 		// settles whether ph1 and ph4 both genuinely draw() (double-buffer handoff, correct) or one
 		// of them is a phase-mislabeling artifact.
-		if (const char* e = std::getenv("SB_DRAWFLAG_DBG"); e && e[0] && e[0] != '0') {
+		if (SB_LOG_ON("drawflag")) {
 			static long n = 0; if (n < 400) { ++n;
-				std::fprintf(stderr, "[drawflag] phase=%d name='%s' flag=0x%x\n",
+				sb_logf("drawflag", "phase=%d name='%s' flag=0x%x",
 				             &sb_boot_capture_phase ? sb_boot_capture_phase() : -1, getName() ? getName() : "?", param_1);
 			}
 		}

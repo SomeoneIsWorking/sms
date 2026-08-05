@@ -1,4 +1,5 @@
 #include <Player/Mario.hpp>
+#include <sb_log.h>
 #include <System/MarioGamePad.hpp>
 #include <JSystem/JMath.hpp>
 #include <Strategic/LiveActor.hpp>
@@ -1929,10 +1930,10 @@ void TMario::calcGroundMtx(const JGeometry::TVec3<f32>& param_1)
 void TMario::thinkSituation()
 {
 #ifdef SMS_NATIVE_PLATFORM
-	if (isMario() && getenv("SB_DEATH_DBG")) {
+	if (isMario() && SB_LOG_ON("death")) {
 		static int s_h = -999;
 		if ((int)mHealth != s_h) {
-			fprintf(stderr, "[hp] thinkSituation entry: health=%d status=0x%x gameover=%d\n",
+			sb_logf("death", "hp: thinkSituation entry: health=%d status=0x%x gameover=%d",
 			        (int)mHealth, (unsigned)mStatus, checkFlag(MARIO_FLAG_GAME_OVER) ? 1 : 0);
 			s_h = mHealth;
 		}
@@ -1957,11 +1958,11 @@ void TMario::thinkSituation()
 		onFlag(MARIO_FLAG_VISIBLE);
 
 #ifdef SMS_NATIVE_PLATFORM
-	if (isMario() && getenv("SB_DEATH_DBG")) {
+	if (isMario() && SB_LOG_ON("death")) {
 		static int s_once = 0;
 		if (!s_once) {
 			s_once = 1;
-			fprintf(stderr, "[oobkill] touch4cm=%d gpBGType=%d illegal=%d oob=%d status=0x%x optionMap=%d\n",
+			sb_logf("death", "oobkill: touch4cm=%d gpBGType=%d illegal=%d oob=%d status=0x%x optionMap=%d",
 			        (int)isTouchGround4cm(), (int)mGroundPlane->mBGType,
 			        (int)mGroundPlane->isIllegalData(), (int)mGroundPlane->isOob(),
 			        (unsigned)mStatus, (int)SMS_isOptionMap());
@@ -1994,7 +1995,7 @@ void TMario::thinkSituation()
 	                               mPosition.z, &ground);
 
 #ifdef SMS_NATIVE_PLATFORM
-	if (isMario() && getenv("SB_DEATH_DBG")) {
+	if (isMario() && SB_LOG_ON("death")) {
 		static int s_n = 0;
 		if (s_n < 8 || ground->isDeathPlane()) {
 			++s_n;
@@ -2069,10 +2070,10 @@ void TMario::thinkSituation()
 #endif
 		{
 #ifdef SMS_NATIVE_PLATFORM
-			if (getenv("SB_DEATH_DBG")) {
+			if (SB_LOG_ON("death")) {
 				static bool once = false;
 				if (!once) { once = true;
-					fprintf(stderr, "[optparams] mZ=%.1f mXMin=%.1f mXMax=%.1f (Mario pre-clamp x=%.1f z=%.1f)\n",
+					sb_logf("death", "optparams: mZ=%.1f mXMin=%.1f mXMax=%.1f (Mario pre-clamp x=%.1f z=%.1f)",
 					        mOptionParams.mZ.get(), mOptionParams.mXMin.get(),
 					        mOptionParams.mXMax.get(), mPosition.x, mPosition.z);
 				}

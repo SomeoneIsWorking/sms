@@ -6,6 +6,7 @@
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
 #include <cstdlib>
+#include <sb_log.h>
 #endif
 
 extern const J3DTevSwapModeInfo j3dDefaultTevSwapMode;
@@ -172,16 +173,16 @@ public:
 		u8* wrote = __GDCurrentDL ? __GDCurrentDL->ptr : nullptr;
 		J3DGDWriteBPCmd(colorCmd);
 		J3DGDWriteBPCmd(alphaCmd);
-		if (getenv("SB_TEV_DBG")) {
+		{
 			static long n = 0;
 			++n;
 			if (wrote != nullptr && (wrote[0] != 0x61 || wrote[5] != 0x61)) {
-				fprintf(stderr,
-				        "[tevstage-load] n=%ld CORRUPT-AT-WRITE ptr=%p bytes=%02x %02x %02x %02x %02x %02x\n",
+				SB_LOGC("tevstage",
+				        "n=%ld CORRUPT-AT-WRITE ptr=%p bytes=%02x %02x %02x %02x %02x %02x",
 				        n, (void*)wrote, wrote[0], wrote[1], wrote[2], wrote[3], wrote[4], wrote[5]);
 			}
 			if (n <= 12)
-				fprintf(stderr, "[tevstage-load] n=%ld color=%08x alpha=%08x gdptr=%p\n",
+				SB_LOGC("tevstage", "n=%ld color=%08x alpha=%08x gdptr=%p",
 				        n, colorCmd, alphaCmd, (void*)wrote);
 		}
 #else

@@ -1,4 +1,5 @@
 #include <System/MarDirector.hpp>
+#include <sb_log.h>
 #include <System/PerformList.hpp>
 #include <System/EventWatcher.hpp>
 #ifdef SMS_NATIVE_PLATFORM
@@ -84,7 +85,7 @@ u32 TMarDirector::setup(JDrama::TDisplay* param_1, TMarioGamePad** param_2,
 	mMap  = param_3;
 	mScenario = param_4;
 #ifdef SMS_NATIVE_PLATFORM
-	if (getenv("SB_JKR_DBG") || getenv("SB_MOVIE_DBG"))
+	if (SB_LOG_ON("jkr") || SB_LOG_ON("movie"))
 		OSReport("[mardir] TMarDirector::setup spawning setup thread "
 		         "(map=%d unk30=%p)\n",
 		         mMap, (void*)gpApplication.unk30);

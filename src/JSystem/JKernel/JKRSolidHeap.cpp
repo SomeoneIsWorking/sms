@@ -1,4 +1,5 @@
 #include <JSystem/JKernel/JKRSolidHeap.hpp>
+#include <sb_log.h>
 #include <JSystem/JUtility/JUTConsole.hpp>
 #include <macros.h>
 #ifdef SMS_NATIVE_PLATFORM
@@ -21,7 +22,7 @@ JKRSolidHeap* JKRSolidHeap::create(u32 size, JKRHeap* parent, bool errorFlag)
 	void* ptr     = JKRHeap::alloc(alignedSize, 0x10, parent);
 	void* dataPtr = (char*)ptr + expHeapSize;
 #ifdef SMS_NATIVE_PLATFORM
-	if (getenv("SB_JKR_DBG"))
+	if (SB_LOG_ON("jkr"))
 		OSReport("[jkr] SolidHeap::create size=0x%x parent=%p -> ptr=%p dataPtr=%p "
 		         "expHeapSize=0x%x alignedSize=0x%x\n",
 		         size, parent, ptr, dataPtr, expHeapSize, alignedSize);
@@ -80,7 +81,7 @@ void* JKRSolidHeap::allocFromHead(u32 size, int align)
 	char* alignedStart = (char*)ALIGN_NEXT((uintptr_t)mCurStart, align);
 	u32 requiredSize   = (alignedStart - (char*)mCurStart) + size;
 #ifdef SMS_NATIVE_PLATFORM
-	if (getenv("SB_JKR_DBG") && (uintptr_t)alignedStart < 0x10000)
+	if (SB_LOG_ON("jkr") && (uintptr_t)alignedStart < 0x10000)
 		OSReport("[jkr] SolidHeap %p allocFromHead DEGENERATE: mStart=%p mEnd=%p "
 		         "mCurStart=%p mFreeSize=0x%x size=0x%x align=%d -> alignedStart=%p\n",
 		         this, mStart, mEnd, mCurStart, mFreeSize, size, align, alignedStart);

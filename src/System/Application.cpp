@@ -1,4 +1,5 @@
 #include <System/Application.hpp>
+#include <sb_log.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <types.h>
@@ -451,7 +452,7 @@ void TApplication::initialize_bootAfter()
 void TApplication::initialize_nlogoAfter()
 {
 #ifdef SMS_NATIVE_PLATFORM
-	if (getenv("SB_JKR_DBG"))
+	if (SB_LOG_ON("jkr"))
 		OSReport("[app] >>> initialize_nlogoAfter ENTER (mAppState=%d)\n",
 		         mAppState);
 #endif
@@ -474,7 +475,7 @@ void TApplication::initialize_nlogoAfter()
 		    TNameRefPtrAryT<TNameRefAryT<TScenarioArchiveName> > >(
 		    "ステージ毎シナリオアーカイブ名群");
 #ifdef SMS_NATIVE_PLATFORM
-		if (getenv("SB_JKR_DBG"))
+		if (SB_LOG_ON("jkr"))
 			OSReport("[app] initialize_nlogoAfter set unk30=%p\n",
 			         (void*)unk30);
 #endif
@@ -806,7 +807,7 @@ void TApplication::proc()
 		}
 
 #ifdef SMS_NATIVE_PLATFORM
-		if (getenv("SB_MOVIE_DBG"))
+		if (SB_LOG_ON("movie"))
 			OSReport("[app] proc: mAppState=%d -> nextState=%d (iVar9=%d "
 			         "isSomethingPushed=%d)\n",
 			         mAppState, nextState, iVar9,
@@ -1030,13 +1031,13 @@ JKRMemArchive* TApplication::mountStageArchive()
 	JKRMemArchive* result = nullptr;
 
 #ifdef SMS_NATIVE_PLATFORM
-	if (getenv("SB_JKR_DBG"))
+	if (SB_LOG_ON("jkr"))
 		OSReport("[app] mountStageArchive entry unk30=%p stage=%d scen=%d\n",
 		         (void*)unk30, mCurrArea.getStage(), mCurrArea.getScenario());
 #endif
 	TNameRefPtrAryT<TNameRefAryT<TScenarioArchiveName> >& tmp = *unk30;
 #ifdef SMS_NATIVE_PLATFORM
-	if (getenv("SB_MOVIE_DBG") || getenv("SB_JKR_DBG"))
+	if (SB_LOG_ON("movie") || SB_LOG_ON("jkr"))
 		OSReport("[app] mountStageArchive: tmp.size()=%d stage=%d scen=%d\n",
 		         (int)tmp.size(), mCurrArea.getStage(), mCurrArea.getScenario());
 	if (getenv("SB_STAGE_DUMP")) {
@@ -1062,7 +1063,7 @@ JKRMemArchive* TApplication::mountStageArchive()
 			void* archBlob
 			    = SMSLoadArchive(scenarioArcName, nullptr, 0, nullptr);
 #ifdef SMS_NATIVE_PLATFORM
-			if (getenv("SB_MOVIE_DBG") || getenv("SB_JKR_DBG"))
+			if (SB_LOG_ON("movie") || SB_LOG_ON("jkr"))
 				OSReport("[app] mountStageArchive: arcName='%s' archBlob=%p\n",
 				         scenarioArcName ? scenarioArcName : "(null)", archBlob);
 #endif

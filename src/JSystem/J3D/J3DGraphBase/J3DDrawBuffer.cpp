@@ -1,4 +1,7 @@
 #include <JSystem/J3D/J3DGraphBase/J3DDrawBuffer.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <sb_log.h>
+#endif
 #include <JSystem/J3D/J3DGraphBase/J3DSys.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DTexture.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DMaterial.hpp>
@@ -16,8 +19,13 @@
 #include <cstring>      // SB_DBFILL_BT name match
 // WEAK: only defined inside the sms-boot executable (native/render/sms_boot_j3d_capture.cpp),
 // not in any linkable library — a debug-only build target that links game logic without the
-// render-capture pipeline (e.g. sms-j3dload_test) must still link cleanly. Safe because every
-// call site below is gated behind a getenv() debug flag, never hit in a normal test run.
+// render-capture pipeline (e.g. sms-j3dload_test) must still link cleanly.
+//
+// The gate is NOT what makes this safe — that claim used to be written here and was wrong. A weak
+// symbol that stays undefined resolves to address 0, so an unguarded call jumps to 0 and SIGSEGVs
+// the moment anyone actually turns the diagnostic on; enabling SB_LOG=entrymat did exactly that
+// (exit 139) because the switch had never been exercised. Every call site must test the ADDRESS
+// (`(&f) ? f() : fallback`), gated or not.
 extern "C" int sb_boot_capture_phase() __attribute__((weak));   // SB_DBHEAD_DBG: which pass this drawHead flush is in
 extern "C" void* sb_b76_material() __attribute__((weak));       // SB_ENTRY_MAT: the b76 mask material ptr (published by capture)
 extern "C" void sb_gx_get_color_alpha_update(int*, int*);  // SB_DBHEAD_PKT: live cU/aU at flush
@@ -79,10 +87,10 @@ extern "C" void sb_fi_watch_register(J3DDrawBuffer* opa, J3DDrawBuffer* xlu)
 void J3DDrawBuffer::frameInit()
 {
 #ifdef SMS_NATIVE_PLATFORM
-	if ((this == g_sb_fi_watch[0] || this == g_sb_fi_watch[1]) && getenv("SB_FI_TRACE")) {
+	if ((this == g_sb_fi_watch[0] || this == g_sb_fi_watch[1]) && SB_LOG_ON("fitrace")) {
 		static int s_fi = 0;
 		if (s_fi < 12) { ++s_fi;
-			std::fprintf(stderr, "[fi-trace] frameInit on WATCHED scene buf %p:\n", this);
+			sb_logf("fitrace", "frameInit on WATCHED scene buf %p:", this);
 			void* frames[24]; int nf = backtrace(frames, 24);
 			backtrace_symbols_fd(frames, nf, 2);
 		}
@@ -103,18 +111,21 @@ void J3DDrawBuffer::frameInit()
 			const char* eAfter = std::getenv("SB_DBHEAD_DBG_AFTER");
 			s_dbheadAfter2 = (eAfter && eAfter[0]) ? std::atol(eAfter) : -1;
 		}
-		bool dbheadOn2 = false;
-		if (const char* e = std::getenv("SB_DBHEAD_DBG"); e && e[0] && e[0] != '0') dbheadOn2 = true;
+		// Channel enable is looked up ONCE (sb_log_enabled caches nothing itself, so the static
+		// does). This used to be an uncached getenv on a per-buffer-clear path: 296,819 calls per
+		// 30 s Delfino run, measured with an LD_PRELOAD getenv counter.
+		static const int s_dbheadChan2 = sb_log_enabled("dbhead");
+		bool dbheadOn2 = s_dbheadChan2 != 0;
 		if (s_dbheadAfter2 >= 0 && &VIGetRetraceCount && static_cast<long>(VIGetRetraceCount()) >= s_dbheadAfter2)
 			dbheadOn2 = true;
 		if (dbheadOn2) {
 			const char* bn = (&sb_boot_drawbuf_name) ? sb_boot_drawbuf_name((const void*)this) : nullptr;
 			sb_dbfill_note_clear((const void*)this);
 			if (&sb_trace_seq) {
-				std::fprintf(stderr, "[dbclear] seq=%lu buf=%p name=\"%s\"\n",
+				sb_logf("dbhead", "dbclear: seq=%lu buf=%p name=\"%s\"",
 				             (unsigned long)sb_trace_seq(), (const void*)this, bn ? bn : "(unknown)");
 			} else {
-				std::fprintf(stderr, "[dbclear] buf=%p name=\"%s\"\n", (const void*)this, bn ? bn : "(unknown)");
+				sb_logf("dbhead", "dbclear: buf=%p name=\"%s\"", (const void*)this, bn ? bn : "(unknown)");
 			}
 		}
 	}
@@ -134,8 +145,19 @@ bool J3DDrawBuffer::entryMatSort(J3DMatPacket* packet)
 	// SB_ENTRY_MAT=1: backtrace the entry of the b76 mask material's packet → names the scene object
 	// that enters it into THIS buffer (and which buffer = `this`). The target material ptr comes from
 	// the capture (sb_b76_material, published once b76 is seen), so it tracks the per-run heap address.
-	if (const char* e = std::getenv("SB_ENTRY_MAT"); e && e[0] && e[0] != '0') {
-		void* want = sb_b76_material();
+	if (SB_LOG_ON("entrymat")) {
+		// sb_b76_material is declared WEAK: when the overbright capture is not linked in, the
+		// symbol resolves to 0 and calling it jumps to address 0. Enabling this diagnostic used to
+		// SIGSEGV for that reason (exit 139) — it had never been exercised because the old
+		// getenv gate was always off. Test the address first, exactly as the J3DJoint site does.
+		void* want = (&sb_b76_material) ? sb_b76_material() : nullptr;
+		// Say so when the harness has nothing to look for. Without this the channel is silent in
+		// every scene that is not the file-select overbright case, and silence reads identically to
+		// "the instrument is broken" — see the negative-design rule in CLAUDE.md.
+		SB_LOG_ONCE("entrymat", "ARMED: watching for packets whose material == %p (sb_b76_material). "
+		                        "A null target means the file-select overbright capture has not "
+		                        "published one, so nothing can ever match; no further output means "
+		                        "the target was never entered into a buffer in this scene.", want);
 		if (want && (void*)packet->getMaterial() == want) {
 			// Fire per (buffer, shape) pair — each combination gets ONE line + backtrace so we
 			// see every distinct draw buffer this material enters, not just the first 3 calls.
@@ -149,10 +171,10 @@ bool J3DDrawBuffer::entryMatSort(J3DMatPacket* packet)
 				seen[nseen].buf = (const void*)this; seen[nseen].shp = shp; ++nseen;
 				const char* bufname = (&sb_boot_drawbuf_name)
 				                          ? sb_boot_drawbuf_name((const void*)this) : nullptr;
-				std::fprintf(stderr, "[entry-mat] mat=%p packet=%p shape=%p buf(this)=%p buf-name=\"%s\" phase=%d backtrace:\n",
+				sb_logf("entrymat", " mat=%p packet=%p shape=%p buf(this)=%p buf-name=\"%s\" phase=%d backtrace:",
 				             (void*)packet->getMaterial(), (void*)packet, shp, (const void*)this,
 				             bufname ? bufname : "(unknown)",
-				             sb_boot_capture_phase());
+				             (&sb_boot_capture_phase) ? sb_boot_capture_phase() : -1);
 				void* fr[40]; int nf = ::backtrace(fr, 40); ::backtrace_symbols_fd(fr, nf, 2);
 			}
 		}
@@ -390,8 +412,8 @@ namespace {
 	// with [dbclear]/[dbhead] into a clear→fill→flush lifecycle timeline without flooding
 	// stderr (a scene buffer can take hundreds of entries per frame).
 	void sb_dbfill_first_print(const void* buf, const char* how) {
-		bool on = false;
-		if (const char* e = std::getenv("SB_DBHEAD_DBG"); e && e[0] && e[0] != '0') on = true;
+		static const int s_dbheadChanFill = sb_log_enabled("dbhead");
+		bool on = s_dbheadChanFill != 0;
 		static long s_after = -2;
 		if (s_after == -2) {
 			const char* eAfter = std::getenv("SB_DBHEAD_DBG_AFTER");
@@ -403,10 +425,10 @@ namespace {
 			return;
 		const char* bn = (&sb_boot_drawbuf_name) ? sb_boot_drawbuf_name(buf) : nullptr;
 		if (&sb_trace_seq) {
-			std::fprintf(stderr, "[dbfill-first] seq=%lu buf=%p via=%s name=\"%s\"\n",
+			sb_logf("dbhead", "dbfill-first: seq=%lu buf=%p via=%s name=\"%s\"",
 			             (unsigned long)sb_trace_seq(), buf, how, bn ? bn : "(unknown)");
 		} else {
-			std::fprintf(stderr, "[dbfill-first] buf=%p via=%s name=\"%s\"\n", buf, how, bn ? bn : "(unknown)");
+			sb_logf("dbhead", "dbfill-first: buf=%p via=%s name=\"%s\"", buf, how, bn ? bn : "(unknown)");
 		}
 		// SB_DBFILL_BT=<substring>: backtrace the first fill of any buffer whose name
 		// contains the substring — names the code path (actor/group perform) that enters
@@ -519,8 +541,8 @@ void J3DDrawBuffer::drawHead() const
 		const char* eAfter = std::getenv("SB_DBHEAD_DBG_AFTER");
 		s_dbheadAfter = (eAfter && eAfter[0]) ? std::atol(eAfter) : -1;
 	}
-	bool dbheadOn = false;
-	if (const char* e = std::getenv("SB_DBHEAD_DBG"); e && e[0] && e[0] != '0') dbheadOn = true;
+	static const int s_dbheadChanFlush = sb_log_enabled("dbhead");
+	bool dbheadOn = s_dbheadChanFlush != 0;
 	if (s_dbheadAfter >= 0 && &VIGetRetraceCount && static_cast<long>(VIGetRetraceCount()) >= s_dbheadAfter)
 		dbheadOn = true;
 	if (dbheadOn) {
@@ -536,7 +558,7 @@ void J3DDrawBuffer::drawHead() const
 				for (J3DPacket* p = mBuffer[i]; p && mn < 180; p = p->getNextPacket())
 					mn += std::snprintf(mats + mn, sizeof(mats) - mn, " %06x",
 					        (unsigned)((uintptr_t)static_cast<J3DMatPacket*>(p)->getMaterial() & 0xffffff));
-			std::fprintf(stderr, "[dbhead-mat] phase=6 buf=%p packets=%ld mats=%s\n",
+			sb_logf("dbhead", "dbhead-mat: phase=6 buf=%p packets=%ld mats=%s",
 			             (const void*)this, np, mats);
 		}
 		if (np > 0) {
@@ -549,22 +571,26 @@ void J3DDrawBuffer::drawHead() const
 				traceSeqOn = (eSeq && eSeq[0] && eSeq[0] != '0') ? 1 : 0;
 			}
 			if (traceSeqOn && &sb_trace_seq) {
-				std::fprintf(stderr, "[dbhead] seq=%lu phase=%d buf=%p packets=%ld name=\"%s\"\n",
+				sb_logf("dbhead", "dbhead: seq=%lu phase=%d buf=%p packets=%ld name=\"%s\"",
 				             (unsigned long)sb_trace_seq(),
 				             (&sb_boot_capture_phase) ? sb_boot_capture_phase() : -1, (const void*)this, np,
 				             bn ? bn : "(unknown)");
 			} else {
-				std::fprintf(stderr, "[dbhead] phase=%d buf=%p packets=%ld name=\"%s\"\n",
+				sb_logf("dbhead", "dbhead: phase=%d buf=%p packets=%ld name=\"%s\"",
 				             (&sb_boot_capture_phase) ? sb_boot_capture_phase() : -1, (const void*)this, np,
 				             bn ? bn : "(unknown)");
 			}
 		}
 	}
-	// SB_DBHEAD_PKT=1: at each flush of a buffer that holds the sea-mask material (c97c48), print the
+	// SB_LOG=dbheadpkt: at each flush of a buffer that holds the sea-mask material (c97c48), print the
 	// live GXSetColorUpdate/AlphaUpdate + every packet's (phase, model, modelData, material) so ph1 vs
 	// ph6 MapXlu contents + the pass-level colorUpdate can be compared directly (the overbright question:
 	// does GC's ph6 buffer really lack the mask, or is native's cU wrong?). Gated to a settled window.
-	if (const char* e = std::getenv("SB_DBHEAD_PKT"); e && e[0] && e[0] != '0') {
+	if (SB_LOG_ON("dbheadpkt")) {
+		SB_LOG_ONCE("dbheadpkt", "ARMED: scanning every flushed buffer for a packet whose material "
+		                         "low-24 bits are 0xc97c48 (the sea-mask material). No output after "
+		                         "this line means that material was never flushed in this scene, not "
+		                         "that the scan did not run.");
 		bool hasMask = false;
 		for (u32 i = 0; i < mSize; i++)
 			for (J3DPacket* p = mBuffer[i]; p; p = p->getNextPacket())
@@ -574,8 +600,9 @@ void J3DDrawBuffer::drawHead() const
 		if (hasMask && s_pktN < 24) {
 			++s_pktN;
 			int cu = 1, au = 1; sb_gx_get_color_alpha_update(&cu, &au);
-			std::fprintf(stderr, "[dbhead-pkt] phase=%d buf=%p cU=%d aU=%d\n",
-			             sb_boot_capture_phase(), (const void*)this, cu, au);
+			sb_logf("dbheadpkt", " phase=%d buf=%p cU=%d aU=%d",
+			             (&sb_boot_capture_phase) ? sb_boot_capture_phase() : -1,
+			             (const void*)this, cu, au);
 			for (u32 i = 0; i < mSize; i++)
 				for (J3DPacket* p = mBuffer[i]; p; p = p->getNextPacket()) {
 					J3DMatPacket* mp = static_cast<J3DMatPacket*>(p);

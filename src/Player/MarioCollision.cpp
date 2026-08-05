@@ -1,4 +1,5 @@
 #include <Player/Mario.hpp>
+#include <sb_log.h>
 
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
@@ -206,7 +207,7 @@ void TMario::normalizeNozzle()
 void TMario::loserExec()
 {
 #ifdef SMS_NATIVE_PLATFORM
-	if (getenv("SB_DEATH_DBG"))
+	if (SB_LOG_ON("death"))
 		fprintf(stderr, "[loserExec] status=0x%x health=%d hpMax=%d air=%.1f pos(%.1f %.1f %.1f)\n",
 		        (unsigned)mStatus, (int)mHealth, (int)mDeParams.mHpMax.get(), mAir,
 		        mPosition.x, mPosition.y, mPosition.z);

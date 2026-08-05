@@ -1,4 +1,5 @@
 #include <JSystem/JParticle/JPAResourceManager.hpp>
+#include <sb_log.h>
 #include <JSystem/JParticle/JPAEmitterLoader.hpp>
 #include <JSystem/JUtility/JUTAssert.hpp>
 #include <JSystem/JKernel/JKRHeap.hpp>
@@ -79,7 +80,7 @@ int JPAResourceManager::load(const char* name, u16 userIndex)
 int JPAResourceManager::load(const void* binData, u16 userIndex)
 {
 #ifdef SMS_NATIVE_PLATFORM
-	if (getenv("SB_JKR_DBG")) {
+	if (SB_LOG_ON("jkr")) {
 		JPAEmitterData* d
 		    = JPAEmitterLoaderDataBase::load((const u8*)param_1, unk0, unk8);
 		OSReport("[jpa] load id=%u jpaData=%p emitterData=%p heap=%p\n",

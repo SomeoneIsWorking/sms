@@ -1,4 +1,5 @@
 #include <M3DUtil/MActor.hpp>
+#include <sb_log.h>
 #include <M3DUtil/MActorAnm.hpp>
 #include <MarioUtil/LightUtil.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DSys.hpp>
@@ -151,7 +152,7 @@ void MActor::setModel(J3DModel* param_1, u32 param_2)
 			mat->setMaterialAnm(anm);
 		}
 #ifdef SMS_NATIVE_PLATFORM
-		if (const char* e = std::getenv("SB_MATANM_DBG"); e && e[0] && e[0] != '0')
+		if (SB_LOG_ON("matanm"))
 			fprintf(stderr, "[matanm-setModel] this=%p i=%u/%u unk30=%u unk2C=%u pre_anm=%p post_anm=%p\n",
 			             (void*)this, i, unk34, unk30[i], unk2C[i], (void*)anm,
 			             (void*)mat->getMaterialAnm());
@@ -660,9 +661,9 @@ void MActor::updateMatAnm()
 	for (u16 i = 0; i < unk34; ++i)
 		if (unk30[i] != 0x32 || unk2C[i] != 0x32) {
 #ifdef SMS_NATIVE_PLATFORM
-			if (const char* e = std::getenv("SB_MATANM_DBG"); e && e[0] && e[0] != '0') {
+			if (SB_LOG_ON("matanm")) {
 				J3DMaterial* m = unk4->getModelData()->getMaterialNodePointer(i);
-				fprintf(stderr, "[matanm-update] this=%p i=%u/%u unk30=%u unk2C=%u anm=%p\n",
+				sb_logf("matanm", "matanm-update: this=%p i=%u/%u unk30=%u unk2C=%u anm=%p",
 				             (void*)this, i, unk34, unk30[i], unk2C[i],
 				             (void*)m->getMaterialAnm());
 			}

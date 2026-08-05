@@ -1,4 +1,5 @@
 #include <System/Params.hpp>
+#include <sb_log.h>
 #include <JSystem/JSupport/JSUMemoryInputStream.hpp>
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
@@ -25,7 +26,7 @@ void TParams::load(JSUMemoryInputStream& stream)
 			for (param = mHead; param != nullptr; param = param->next) {
 				if (keyCode == param->keyCode && !strcmp(buffer, param->name)) {
 #ifdef SMS_NATIVE_PLATFORM
-					if (g_sb_prm_dbg_name && getenv("SB_PRM_DBG")
+					if (g_sb_prm_dbg_name && SB_LOG_ON("params")
 					    && strstr(g_sb_prm_dbg_name, "Option")) {
 						s32 pos = stream.getPosition();
 						stream.skip(4);
@@ -33,7 +34,7 @@ void TParams::load(JSUMemoryInputStream& stream)
 						f32 v;
 						__builtin_memcpy(&v, &bits, 4);
 						stream.seekPos(pos, JSUStreamSeekFrom_SET);
-						fprintf(stderr, "[prm] %s: '%s' key=0x%x val=%.2f (0x%08x)\n",
+						sb_logf("params", "prm: %s: '%s' key=0x%x val=%.2f (0x%08x)",
 						        g_sb_prm_dbg_name, buffer, keyCode, v, bits);
 					}
 #endif

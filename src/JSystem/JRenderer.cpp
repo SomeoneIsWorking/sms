@@ -1,4 +1,7 @@
 #include <JSystem/JRenderer.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <sb_log.h>
+#endif
 
 #ifdef SMS_NATIVE_PLATFORM
 // GC SDK BP register-id tables for texture maps 0-7 (defined in J3DTevs.cpp;
@@ -564,10 +567,10 @@ void JRNISetTevOrder(GXTevStageID param_1, GXTexCoordID param_2,
 
 #ifdef SMS_NATIVE_PLATFORM
 	// SB_TEVORDER_DBG=1: log the raw TevOrder args reaching the TREF writer.
-	if (getenv("SB_TEVORDER_DBG")) {
+	{
 		static long n = 0;
 		if (++n <= 400)
-			fprintf(stderr, "[tevorder] n=%ld stage=%d texCoord=%d texMap=%d colorChan=%d\n",
+			SB_LOGC("tevorder", "n=%ld stage=%d texCoord=%d texMap=%d colorChan=%d",
 			        n, (int)param_1, (int)param_2, (int)param_3, (int)param_4);
 	}
 #endif

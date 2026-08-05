@@ -1,4 +1,5 @@
 #include <JSystem/JParticle/JPAEmitterManager.hpp>
+#include <sb_log.h>
 #include <JSystem/JParticle/JPAParticle.hpp>
 #include <JSystem/JParticle/JPAEmitter.hpp>
 #include <JSystem/JParticle/JPAField.hpp>
@@ -37,7 +38,7 @@ JPAEmitterManager::JPAEmitterManager(JPAResourceManager* param_1, s32 param_2,
 	    = ALIGN_NEXT(param_2 * sizeof(JPAParticle), 0x20) + solidHdr;
 	unkC = JKRCreateSolidHeap(bytesForParticles, param_5, false);
 #ifdef SMS_NATIVE_PLATFORM
-	if (getenv("SB_JKR_DBG"))
+	if (SB_LOG_ON("jkr"))
 		OSReport("[jpa] EmitterMgr p2=%d p3=%d p4=%d heap=%p sizeofP=%zu sizeofE=%zu "
 		         "sizeofF=%zu bytesP=0x%x unkC=%p\n",
 		         param_2, param_3, param_4, param_5, sizeof(JPABaseParticle),
@@ -253,7 +254,7 @@ JPABaseEmitter* JPAEmitterManager::createEmitterBase(
 	if (unkA4[param_3]) {
 #ifdef SMS_NATIVE_PLATFORM
 		if (getenv("SB_JPA_DBG"))
-			fprintf(stderr, "[jpa] createEmitterBase id=%d grp=%d res=%p res->unk4=%p\n",
+			sb_logf("jkr", "jpa: createEmitterBase id=%d grp=%d res=%p res->unk4=%p",
 			        (int)param_1, (int)param_3, (void*)unkA4[param_3],
 			        (void*)unkA4[param_3]->unk4);
 #endif
