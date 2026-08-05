@@ -33,6 +33,20 @@ public:
 		}
 	}
 
+#ifdef SMS_NATIVE_PLATFORM
+	// The scene's group objects (map group, manager group, player group, ...) are these, NOT
+	// TPerformLists. Without this override the 60fps interpolation snapshot walk stopped dead at
+	// the first level: it visited 18 children and recursed 0 times, so no actor was ever reached
+	// while the pass looked like it was running.
+	void sbSnapshotInterp() override
+	{
+		typedef typename JGadget::TList_pointer<T*>::iterator I;
+		for (I it = getChildren().begin(); it != getChildren().end(); ++it) {
+			it->sbSnapshotInterp();
+		}
+	}
+#endif
+
 	virtual void loadAfter()
 	{
 		loadAfterSuper();

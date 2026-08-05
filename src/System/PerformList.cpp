@@ -7,6 +7,10 @@
 #include <cstdlib>
 #endif
 
+#ifdef SMS_NATIVE_PLATFORM
+long TPerformList::sSbRecurseCount = 0;
+#endif
+
 void TPerformList::forEachPerform(
     JGadget::TSingleLinkList<TPerformLink, 0>::iterator b,
     JGadget::TSingleLinkList<TPerformLink, 0>::iterator e,
@@ -39,7 +43,21 @@ void TPerformList::snapshotInterp()
 	}
 	// A snapshot pass that visits nothing is indistinguishable from one that works, so say how
 	// many objects it actually reached at this level.
-	SB_LOG_EVERY("interp", 600, "snapshotInterp visited %ld direct children", n);
+	SB_LOG_EVERY("interp", 600, "snapshotInterp visited %ld direct children | nested-list recursions so far=%ld",
+	             n, sSbRecurseCount);
+	// NAME them. Three attempts have now guessed at what sits in this list and been wrong; the
+	// list can simply say what it holds.
+	{
+		static int s_named = 0;
+		if (!s_named) {
+			s_named = 1;
+			for (JGadget::TSingleLinkList<TPerformLink, 0>::iterator it = getChildren().begin();
+			     it != getChildren().end(); ++it) {
+				const char* nm = it->unk4 ? it->unk4->getName() : "(null)";
+				SB_LOGC("interp", "  movement child: %s", nm ? nm : "(unnamed)");
+			}
+		}
+	}
 }
 #endif
 

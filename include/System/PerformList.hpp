@@ -56,7 +56,10 @@ public:
 	// The perform lists are a TREE -- a child can itself be a TPerformList. Without this override
 	// the base no-op stops the walk at the first nested list and every grandchild is silently
 	// skipped, which is exactly how the first version of this hook ended up snapshotting nothing.
-	void sbSnapshotInterp() override { snapshotInterp(); }
+	void sbSnapshotInterp() override { ++sSbRecurseCount; snapshotInterp(); }
+	// Does the recursion actually descend into the group objects? 0 means the groups are not
+	// TPerformLists and the walk stops at them.
+	static long sSbRecurseCount;
 #endif
 	void forEachPerform(JGadget::TSingleLinkList<TPerformLink, 0>::iterator,
 	                    JGadget::TSingleLinkList<TPerformLink, 0>::iterator,
