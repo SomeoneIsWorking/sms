@@ -599,11 +599,11 @@ void TRedCoinSwitch::load(JSUMemoryInputStream& stream)
 	TMapObjBase::load(stream);
 	u32 tmp;
 	stream >> tmp;
-	mTimerDuration = tmp;
-	if (mTimerDuration <= 0)
-		mTimerDuration = 1200;
+	unk138 = tmp;
+	if (unk138 <= 0)
+		unk138 = 1200;
 	else
-		mTimerDuration *= 10;
+		unk138 *= 10;
 
 	u8 shineId = SMS_getShineIDofExStage(gpMarDirector->getCurrentMap());
 	if (shineId != 0xFF
@@ -615,7 +615,7 @@ void TRedCoinSwitch::load(JSUMemoryInputStream& stream)
 TRedCoinSwitch::TRedCoinSwitch(const char* name)
     : TMapObjBase(name)
 {
-	mTimerDuration   = 0;
+	unk138   = 0;
 	unk13C.r = 0xFF;
 	unk13C.g = 0xFF;
 	unk13C.b = 0xFF;

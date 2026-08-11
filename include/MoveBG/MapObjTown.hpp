@@ -189,7 +189,7 @@ public:
 	// Countdown budget (frame-ish units) for the red-coin mission the switch triggers.
 	// Populated by ::load from the scene stream: non-positive seed → 1200 default (~20 s
 	// @ 60 fps), else seed × 10.
-	/* 0x138 */ s32 mTimerDuration;
+	/* 0x138 */ s32 unk138;
 	/* 0x13C */ GXColorS10 unk13C;
 };
 

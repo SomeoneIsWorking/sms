@@ -427,7 +427,7 @@ public:
 	{
 		u8* src = (u8*)mBinary->getText(mProgramCounter);
 		f32 result;
-		spc_fetch4((u8*)&result, mBinary->getText(mProgramCounter));
+		spc_fetch4((u8*)&result, src);
 		mProgramCounter += 4;
 		return result;
 	}
@@ -435,7 +435,7 @@ public:
 	{
 		u8* src = (u8*)mBinary->getText(mProgramCounter);
 		s32 result;
-		spc_fetch4((u8*)&result, mBinary->getText(mProgramCounter));
+		spc_fetch4((u8*)&result, src);
 		mProgramCounter += 4;
 		return result;
 	}
@@ -444,7 +444,7 @@ public:
 	{
 		u8* src = (u8*)mBinary->getText(mProgramCounter);
 		u32 result;
-		spc_fetch4((u8*)&result, mBinary->getText(mProgramCounter));
+		spc_fetch4((u8*)&result, src);
 		mProgramCounter += 4;
 		return result;
 	}
