@@ -1,4 +1,3 @@
-#include <JSystem/JSupport/JSUInputStream.hpp> // JSU_BE32 / JSU_BE32_INPLACE
 #include <GC2D/HelpActor.hpp>
 #include <GC2D/GCConsole2.hpp>
 #include <System/MarDirector.hpp>
@@ -20,11 +19,8 @@ void THelpActor::load(JSUMemoryInputStream& stream)
 	THitActor::load(stream);
 	u32 auStack_c;
 	u32 local_10;
-	stream.read(&auStack_c, 4);
-	stream.read(&local_10, 4);
-	// BE dwords on disc; raw read(&x,4) does not swap (JSU raw-read class).
-	// auStack_c is read-and-discarded; local_10 feeds the message id unk68.
-	local_10 = JSU_BE32(local_10);
+	stream >> auStack_c;
+	stream >> local_10;
 	unk6C = stream.readString();
 	initHitActor(0x40000320, 1, -0x80000000, mScaling.x * 100.0f,
 	             mScaling.y * 100.0f, 1.0f, 1.0f);
@@ -50,9 +46,9 @@ int THelpActor::getHelpID()
 	return -1;
 }
 
-void THelpActor::perform(u32 param_1, JDrama::TGraphics* param_2)
+void THelpActor::perform(u32 cue, JDrama::TGraphics*)
 {
-	if (param_1 & 1) {
+	if (cue & CUE_MOVE) {
 		if (unk74) {
 			if (getHelpID() == -1)
 				if (SMSGetMarDirector()->getConsole()->startDisappearBalloon(
@@ -65,8 +61,6 @@ void THelpActor::perform(u32 param_1, JDrama::TGraphics* param_2)
 					unk74 = true;
 		}
 	}
-	// TODO: skill issue
-	char trash[0x10];
 }
 
 bool THelpActor::check() { return unk70->checkLiveFlag(LIVE_FLAG_DEAD); }
