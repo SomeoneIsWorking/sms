@@ -34,11 +34,18 @@ public:
 	void perform(u32, JDrama::TGraphics*);
 
 public:
-	/* 0x10 */ char unk10[0xC0 - 0x10];
+	// unk10 and unk164 were inside the padding arrays; broken out for the native port because
+	// startMoveCursor writes both (US 0x8017b450: `stw r0,0x10(r3)` with 9, `stb r0,0x164(r3)`
+	// with 0). Adding named fields is safe here — every access in this tree is BY NAME, so the
+	// host offset does not have to match the guest's; only raw-offset access would care.
+	/* 0x10 */ u32 unk10;
+	/* 0x14 */ char unk14[0xC0 - 0x14];
 	/* 0xC0 */ TMarioGamePad* unkC0;
 	/* 0xC4 */ u8 unkC4;
 	/* 0xC5 */ u8 unkC5;
-	/* 0xC6 */ char unkC6[0x6f8 - 0xC6];
+	/* 0xC6 */ char unkC6[0x164 - 0xC6];
+	/* 0x164 */ u8 unk164;
+	/* 0x165 */ char unk165[0x6f8 - 0x165];
 };
 
 #endif
