@@ -2,6 +2,8 @@
 #include <JSystem/JKernel/JKRMemArchive.hpp>
 #include <System/Application.hpp>
 #include <System/MarDirector.hpp>
+#include <JSystem/J2D/J2DPane.hpp>
+#include <sms_boot_guide.h>
 #include <JSystem/JDrama/JDRViewObj.hpp>
 #include <JSystem/JSupport/JSUMemoryInputStream.hpp>
 
@@ -94,4 +96,44 @@ void TGuide::startMoveCursor()
 {
 	unk10  = 9;
 	unk164 = 0;
+}
+
+// TGuide::checkPoint — US 0x8017a6bc, 0x134 bytes. Which pane, if any, contains the point.
+//
+//   pass one   14 panes at this+0x168, rect copied from pane+0x14
+//   pass two   10 panes at this+0x44c, same, only if pass one found nothing
+//   gate       0 <= hit < 10 and pass-two pane not visible -> -1
+//
+// Retail copies each JUTRect to the stack before comparing (bl JUTRect::copy at 0x8017a6f4 and
+// 0x8017a760) rather than reading the pane's rect in place. That copy is not reproduced: it is a
+// compiler artefact of taking a JUTRect by value, and it cannot be observed — nothing writes the
+// rect during the loop. The comparisons, which CAN be observed, are reproduced exactly, including
+// that every edge is strict; see sms-boot/shims/sms_boot_guide.h.
+int TGuide::checkPoint(int x, int y)
+{
+	int hit = -1;
+
+	for (int i = 0; i < sb::guide::kPassOnePanes; ++i) {
+		const JUTRect& r = unk168[i]->mBounds;
+		if (sb::guide::point_in_rect(x, y, r.x1, r.y1, r.x2, r.y2)) {
+			hit = i;
+			break;
+		}
+	}
+
+	if (hit == -1) {
+		for (int i = 0; i < sb::guide::kPassTwoPanes; ++i) {
+			const JUTRect& r = unk44c[i]->mBounds;
+			if (sb::guide::point_in_rect(x, y, r.x1, r.y1, r.x2, r.y2)) {
+				hit = i;
+				break;
+			}
+		}
+	}
+
+	// NOTE the index, not the pass, decides whether the gate applies — a pass-one hit below 10
+	// is validated against the pass-TWO pane at the same index. That is what 0x8017a7ac does.
+	const bool visible
+	    = (hit >= 0 && hit < sb::guide::kPassTwoPanes) ? unk44c[hit]->mVisible : false;
+	return sb::guide::gate_hit(hit, visible);
 }
