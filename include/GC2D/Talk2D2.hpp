@@ -18,7 +18,7 @@ public:
 
 	virtual void load(JSUMemoryInputStream&);
 	virtual void loadAfter();
-	virtual void perform(u32, JDrama::TGraphics*);
+	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
 
 	void setMessageID(u32, u32);
 	void forceCloseTalk();
@@ -44,11 +44,14 @@ public:
 
 	static void* cColorTable;
 
-	int getTalkMode() const { return mTalkMode; }
+	int getTalkMode() const { return unk248; }
+	s8 getSelectedValue() const { return unk214; }
 
 public:
-	/* 0x10 */ char unk10[0x248 - 0x10];
-	/* 0x248 */ u32 mTalkMode;
+	/* 0x10 */ char unk10[0x214 - 0x10];
+	/* 0x214 */ s8 unk214; // the line the player selected in a choice window
+	/* 0x215 */ char unk215[0x248 - 0x215];
+	/* 0x248 */ u32 unk248; // talk mode
 	/* 0x24C */ char unk24C[0x344 - 0x24C];
 };
 

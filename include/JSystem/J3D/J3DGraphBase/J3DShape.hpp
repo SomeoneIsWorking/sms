@@ -150,6 +150,13 @@ public:
 	J3DShapeDraw* getShapeDraw(u16 idx) const { return mDraws[idx]; }
 	u32 getBumpMtxOffset() const { return mBumpMtxOffset; }
 
+	// Upstream's J3DPacket.cpp calls these; our copy of this header had been carried forward from
+	// before they existed, so adopting upstream's J3DPacket.cpp left them unresolved. Bound to our
+	// field names rather than reverting the whole header, which the rest of our tree calls by name.
+	void setDrawMtx(Mtx** pDrawMtx) { mDrawMatrices = pDrawMtx; }
+	void setNrmMtx(Mtx33** pNrmMtx) { mNormMatrices = pNrmMtx; }
+	void setCurrentViewNoPtr(u32* pViewNoPtr) { mCurrentViewNo = pViewNoPtr; }
+
 	void setScaleFlagArray(u8* pScaleFlagArray) { mScaleFlagArray = pScaleFlagArray; }
 
 	void setDrawMtxDataPointer(J3DDrawMtxData* pMtxData) { mDrawMtxData = pMtxData; }

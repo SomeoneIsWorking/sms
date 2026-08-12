@@ -64,9 +64,8 @@ public:
 	J3DPacket* getNextPacket() const { return mpNext; }
 	void setNextPacket(J3DPacket* packet) { mpNext = packet; }
 
-	// Weird, but TP debug says this is the signature
-	void setUserArea(uintptr_t area) { unkC = (void*)area; }
-	uintptr_t getUserArea() const { return (uintptr_t)unkC; }
+	void setUserArea(uintptr_t area) { mpUserData = (void*)area; }
+	uintptr_t getUserArea() const { return (uintptr_t)mpUserData; }
 
 protected:
 	/* 0x4 */ J3DPacket* mpNext;
@@ -201,6 +200,9 @@ public:
 	void setVtxPos(void* pVtxPos) { mpVertexPositions = pVtxPos; }
 	void setVtxNrm(void* pVtxNrm) { mpVertexNormals = pVtxNrm; }
 	void setVtxCol(GXColor* pVtxCol) { mpVertexColors = pVtxCol; }
+
+	// fabricated — the native J3D health census in J3DDrawBuffer.cpp counts packets with no shape
+	J3DShape* getShape() const { return mpShape; }
 
 	// fabriacted
 	void hide() { mVisible = false; }

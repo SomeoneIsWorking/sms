@@ -1234,7 +1234,7 @@ u8 TMarDirector::updateGameMode()
 		if (unk4C & 0x40) {
 			mNextGameState = 4;
 		} else {
-			if (unkB0->mTalkMode == 0)
+			if (unkB0->getTalkMode() == 0)
 				mNextGameState = 0;
 		}
 		break;

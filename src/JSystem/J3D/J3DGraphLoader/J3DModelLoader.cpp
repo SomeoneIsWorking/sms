@@ -322,10 +322,10 @@ void J3DModelLoader::readVertex(const J3DVertexBlock* i_block)
 	if (vertex_data.mVtxNormArray == NULL) {
 		vertex_data.mNrmNum = 0;
 	} else if (nrm_end != NULL) {
-		vertex_data.unk4
+		vertex_data.mNrmNum
 		    = ((uintptr_t)nrm_end - (uintptr_t)vertex_data.mVtxNormArray) / 12 + 1;
 	} else {
-		vertex_data.unk4
+		vertex_data.mNrmNum
 		    = (i_block->mSize - (uintptr_t)i_block->mpVtxNrmArray) / 12 + 1;
 	}
 
@@ -339,10 +339,10 @@ void J3DModelLoader::readVertex(const J3DVertexBlock* i_block)
 	if (vertex_data.mVtxColorArray[0] == NULL) {
 		vertex_data.mColNum = 0;
 	} else if (color0_end != NULL) {
-		vertex_data.unk8
+		vertex_data.mColNum
 		    = ((uintptr_t)color0_end - (uintptr_t)vertex_data.mVtxColorArray[0]) / 4 + 1;
 	} else {
-		vertex_data.unk8
+		vertex_data.mColNum
 		    = (i_block->mSize - (uintptr_t)i_block->mpVtxColorArray[0]) / 4 + 1;
 	}
 }

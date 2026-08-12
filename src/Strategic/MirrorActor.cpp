@@ -26,11 +26,11 @@ void TMirrorActor::checkIsInMirror()
 
 	if (mFlags & 2) {
 		if (!gpMirrorModelManager->isCurrentMirrorPresent() && !(mFlags & 4)) {
-			if (mMirrorModel->getShapePacket(0)->unk30 != 0)
+			if (mMirrorModel->getShapePacket(0)->isVisible())
 				SMS_HideAllShapePacket(mMirrorModel);
 			mInMirror = 0;
 		} else {
-			if (mMirrorModel->getShapePacket(0)->unk30 == 0)
+			if (!mMirrorModel->getShapePacket(0)->isVisible())
 				SMS_ShowAllShapePacket(mMirrorModel);
 			mInMirror = 1;
 		}

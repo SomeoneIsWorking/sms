@@ -11,13 +11,32 @@
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdlib>
 #include <cstdio>
+#include <cstring>
 extern "C" u32 aurora_gx_scan_dl(const u8* data, u32 size, u32 allowDraws);
 
+// SB_DL_VALIDATE=1 runs the same structural scan at BUILD time (endDL) and at REPLAY time
+// (callDL). Build-clean plus replay-corrupt brackets the corruption window to [endDL .. callDL];
+// a malformed buffer caught at the fifo drain instead names nobody.
 static u32 sb_dl_validate_enabled()
 {
 	static int dbg = -1;
 	if (dbg < 0) { const char* e = getenv("SB_DL_VALIDATE"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
 	return (u32)dbg;
+}
+
+static void sb_dl_check(const void* data, u32 size, const char* where)
+{
+	if (!sb_dl_validate_enabled())
+		return;
+	u32 bad = aurora_gx_scan_dl((const u8*)data, size, 0);
+	if (bad == 0xFFFFFFFFu)
+		return;
+	const u8* d = (const u8*)data;
+	fprintf(stderr, "[dl-validate] MALFORMED at %s dl=%p size=%u off=%u:", where, data, size, bad);
+	for (u32 i = (bad > 16 ? bad - 16 : 0); i < bad + 16 && i < size; ++i)
+		fprintf(stderr, " %02x%s", d[i], i == bad ? "<" : "");
+	fprintf(stderr, "\n");
+	OSPanic(__FILE__, __LINE__, "malformed display list (see [dl-validate])");
 }
 #endif
 
@@ -25,17 +44,16 @@ int J3DDrawPacket::sInterruptFlag;
 
 void J3DDisplayListObj::newDisplayList(u32 param_1)
 {
-	unkC = param_1 + 0x1f & 0xffffffe0;
-	unk0 = new (0x20) char[unkC];
-	unk4 = new (0x20) char[unkC];
-	unk8 = 0;
+	mCapacity = ALIGN_NEXT(param_1, 0x20);
+	mpData[0] = new (0x20) char[mCapacity];
+	mpData[1] = new (0x20) char[mCapacity];
+	mSize     = 0;
 #ifdef SMS_NATIVE_PLATFORM
-	// Poison fresh DL buffers with an invalid fifo opcode. Replaying a
-	// buffer that was never built (double-buffer bookkeeping bug, stale
-	// size) must FAIL FAST at the drain with an unambiguous 0xEE signature
-	// instead of executing heap junk as GX commands.
-	memset(unk0, 0xEE, unkC);
-	memset(unk4, 0xEE, unkC);
+	// Poison fresh DL buffers with an invalid fifo opcode. Replaying a buffer that was never built
+	// (double-buffer bookkeeping bug, stale size) must FAIL FAST at the drain with an unambiguous
+	// 0xEE signature instead of executing heap junk as GX commands.
+	memset(mpData[0], 0xEE, mCapacity);
+	memset(mpData[1], 0xEE, mCapacity);
 #endif
 }
 
@@ -49,25 +67,9 @@ void J3DDisplayListObj::swapBuffer()
 void J3DDisplayListObj::callDL()
 {
 #ifdef SMS_NATIVE_PLATFORM
-	// SB_DL_VALIDATE=1 (replay side): the same structural scan that endDL
-	// runs at build time. Build-clean + replay-corrupt brackets the
-	// corruption window to [endDL .. callDL]; the OSPanic backtrace names
-	// the material/model driving this replay.
-	{
-		if (sb_dl_validate_enabled()) {
-			u32 bad = aurora_gx_scan_dl((const u8*)unk0, unk8, 0);
-			if (bad != 0xFFFFFFFFu) {
-				const u8* d = (const u8*)unk0;
-				fprintf(stderr, "[dl-validate] MALFORMED at REPLAY dl=%p size=%u off=%u:", unk0, unk8, bad);
-				for (u32 i = (bad > 16 ? bad - 16 : 0); i < bad + 16 && i < unk8; ++i)
-					fprintf(stderr, " %02x%s", d[i], i == bad ? "<" : "");
-				fprintf(stderr, "\n");
-				OSPanic(__FILE__, __LINE__, "callDL replaying a malformed display list");
-			}
-		}
-	}
+	sb_dl_check(mpData[0], mSize, "REPLAY");
 #endif
-	GXCallDisplayList(unk0, unk8);
+	GXCallDisplayList(mpData[0], mSize);
 }
 
 bool J3DPacket::isSame(J3DMatPacket*) const { return false; }
@@ -105,7 +107,10 @@ J3DDrawPacket::J3DDrawPacket()
 
 J3DDrawPacket::~J3DDrawPacket() { }
 
-void J3DDrawPacket::draw() { GXCallDisplayList(unk30->unk0, unk30->unk8); }
+void J3DDrawPacket::draw()
+{
+	GXCallDisplayList(mpDisplayListObj->mpData[0], mpDisplayListObj->mSize);
+}
 
 void J3DDrawPacket::beginDL()
 {
@@ -122,29 +127,21 @@ u32 J3DDrawPacket::endDL()
 	OSRestoreInterrupts(sInterruptFlag);
 	mpDisplayListObj->mSize = mGDList.ptr - mGDList.start;
 	GDFlushCurrToMem();
-	__GDCurrentDL = 0;
+	GDSetCurrent(nullptr);
 #ifdef SMS_NATIVE_PLATFORM
-	// SB_DL_VALIDATE=1: structurally validate the just-built material DL.
-	// A malformed buffer HERE names the builder while its context is live;
-	// the same bytes failing later in the fifo drain names nobody.
-	{
-		static int dbg = -1;
-		if (dbg < 0) { const char* e = getenv("SB_DL_VALIDATE"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
-		if (dbg) {
-			u32 bad = aurora_gx_scan_dl((const u8*)unk30->unk0, unk30->unk8, 0);
-			if (bad != 0xFFFFFFFFu) {
-				const u8* d = (const u8*)unk30->unk0;
-				fprintf(stderr, "[dl-validate] MALFORMED material DL %p size=%u at off=%u:", unk30->unk0,
-				        unk30->unk8, bad);
-				for (u32 i = (bad > 16 ? bad - 16 : 0); i < bad + 16 && i < unk30->unk8; ++i)
-					fprintf(stderr, " %02x%s", d[i], i == bad ? "<" : "");
-				fprintf(stderr, "\n");
-				OSPanic(__FILE__, __LINE__, "endDL built a malformed display list (see [dl-validate])");
-			}
-		}
-	}
+	// Validate the material DL the moment it is built, while the builder's context is live.
+	sb_dl_check(mpDisplayListObj->mpData[0], mpDisplayListObj->mSize, "BUILD (endDL)");
 #endif
-	return unk30->unk8;
+	return mpDisplayListObj->mSize;
+}
+
+void J3DDrawPacket::beginPatch() { beginDL(); }
+
+u32 J3DDrawPacket::endPatch()
+{
+	OSRestoreInterrupts(sInterruptFlag);
+	GDSetCurrent(nullptr);
+	return mpDisplayListObj->mSize;
 }
 
 J3DMatPacket::J3DMatPacket()

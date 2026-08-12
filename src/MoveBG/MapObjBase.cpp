@@ -328,7 +328,9 @@ void TMapObjBase::makeObjDead()
 // (vtable+0x104, per [[session11-mapobjbase-vtable-slot-0x104]]). RE'd from the US DOL: the
 // body is a thunk `lwz r12,0(r3); lwz r12,0x104(r12); mtlr r12; blrl` — i.e. a virtual call to
 // makeObjDead, so a subclass override runs. Writing makeObjDead() reproduces that dispatch.
-void TMapObjBase::kill() { makeObjDead(); }
+// UPSTREAM now inlines this in MapObjBase.hpp with the identical body, independently of our
+// RE, so the definition lives there and ours is deleted. The derivation above is kept
+// because it is the evidence, and it agrees.
 
 // TMapObjBase::getHitObjNumMax (JP 0x80105224, size 0x8): base default max hit-object count.
 // RE'd via the US vtable slot 59 (anchored by TEggYoshi's override) = `li r3, 5; blr`.
@@ -529,10 +531,10 @@ void TMapObjBase::perform(u32 param_1, JDrama::TGraphics* graphics)
 
 		if ((param_1 & 2) && mMActor) {
 			if (checkLiveFlag(LIVE_FLAG_CLIPPED_OUT | LIVE_FLAG_UNK200)) {
-				if (getModel()->mShapePackets->unk30 != 0)
+				if (getModel()->mShapePackets->isVisible())
 					SMS_HideAllShapePacket(getModel());
 			} else {
-				if (getModel()->mShapePackets->unk30 == 0)
+				if (!getModel()->mShapePackets->isVisible())
 					SMS_ShowAllShapePacket(getModel());
 			}
 		}
@@ -584,10 +586,10 @@ void TMapObjBase::perform(u32 param_1, JDrama::TGraphics* graphics)
 		calc();
 		if (mMActor) {
 			if (checkLiveFlag(LIVE_FLAG_CLIPPED_OUT | LIVE_FLAG_UNK200)) {
-				if (getModel()->mShapePackets->unk30 != 0)
+				if (getModel()->mShapePackets->isVisible())
 					SMS_HideAllShapePacket(getModel());
 			} else {
-				if (getModel()->mShapePackets->unk30 == 0)
+				if (!getModel()->mShapePackets->isVisible())
 					SMS_ShowAllShapePacket(getModel());
 			}
 		}

@@ -484,10 +484,10 @@ void J3DDrawBuffer::draw() const
 					for (J3DPacket* p = mBuffer[i]; p; p = p->getNextPacket()) {
 						++pkts;
 						for (J3DShapePacket* sp = ((J3DMatPacket*)p)->getShapePacket(); sp;
-						     sp = (J3DShapePacket*)sp->unk4) {
+						     sp = (J3DShapePacket*)sp->getNextPacket()) {
 							++shpTotal;
-							if (sp->unk30 != 0) ++shpEnabled;
-							if (sp->unk14 == nullptr) ++shpNullShape;
+							if (sp->isVisible()) ++shpEnabled;
+							if (sp->getShape() == nullptr) ++shpNullShape;
 						}
 					}
 				const char* nm = sb_boot_drawbuf_name((const void*)this);
