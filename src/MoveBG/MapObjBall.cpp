@@ -7,6 +7,7 @@
 #include <System/MarDirector.hpp>
 #include <System/FlagManager.hpp>
 #include <dolphin/mtx.h>
+#include <dolphin/os.h>
 #include <MarioUtil/PacketUtil.hpp>
 #include <dolphin/gx/GXEnum.h>
 #include <Map/MapData.hpp>
@@ -24,8 +25,27 @@ static bool sFruitDbg()
 	return v;
 }
 #define FR_LOG(...) do { if (sFruitDbg()) std::fprintf(stderr, __VA_ARGS__); } while (0)
+
+// An unported TResetFruit::control state announces itself ONCE, on stderr, unconditionally --
+// this is the [STUB-CALLED] convention and is deliberately not routed through SB_LOG, because a
+// behaviour the game asks for and does not get must be visible on a default run, not behind a
+// channel someone has to know to enable. LOGGER-EXEMPT.
+//
+// The latch is per CALL SITE (a function-local static), so two states sharing one body report
+// once between them, matching retail's one-body-for-states-2-and-3.
+#define SB_RESET_FRUIT_UNPORTED(state, addr, insns)                                            \
+	do {                                                                                       \
+		static bool _once = false;                                                             \
+		if (!_once) {                                                                          \
+			_once = true;                                                                      \
+			OSReport("[STUB-CALLED] TResetFruit::control state %d: unported "                 \
+			         "(US 0x%08x, %d insn)\n",                                                 \
+			    (int)(state), (unsigned)(addr), (int)(insns));                                 \
+		}                                                                                      \
+	} while (0)
 #else
 #define FR_LOG(...) do {} while (0)
+#define SB_RESET_FRUIT_UNPORTED(state, addr, insns) do {} while (0)
 #endif
 
 // Native port of TResetFruit::perform (@0x801e21d0). RE at
@@ -445,4 +465,105 @@ void TResetFruit::makeObjAppeared()
 	unkE8 = 0;
 	if (checkMapObjFlag(MAP_OBJ_FLAG_UNK4000000))
 		mState = 0xb;
+}
+
+// TResetFruit::control -- US 0x801e23b4, 396 instructions. Per-frame behaviour of the plaza
+// fruit, and one of the [STUB-CALLED] stubs a Delfino run prints, i.e. really executed.
+//
+// The instruction count is misleading: the body is a switch on mState (u16 at +0xfc) through a
+// 14-entry jump table at 0x803D2818 with only SEVEN distinct targets. Seven of the fourteen
+// states jump straight to the function epilogue (0x801e29c4 -- verified to be nothing but
+// register restores), so they genuinely do nothing. Out-of-range states do nothing either:
+// the prologue is `lhz r0,0xfc(r3); cmplwi r0,0xd; bgt <epilogue>`, so anything above 13 is
+// silently ignored rather than indexing off the end of the table. Full map:
+// docs/re_notes/tresetfruit_control_state_map.md.
+//
+// PORTED HERE: state 6 and the seven no-op states. The other six states are NOT ported and say
+// so out loud -- a silent no-op there would be a behaviour change dressed as a stub (see the
+// FAIL-FAST / no-silent-stubs rule); their addresses are in the report so the next porter has
+// the target without re-deriving the table.
+void TResetFruit::control()
+{
+	switch (mState) {
+	// ── the seven no-op states ──────────────────────────────────────────────────────────────
+	// Table entries for 0, 4, 5, 7, 8, 9 and 10 all point at the epilogue. Reproduced as an
+	// explicit empty case rather than folded into `default:` so that "this state does nothing"
+	// stays distinguishable from "this state is not ported".
+	case 0:
+	case 4:
+	case 5:
+	case 7:
+	case 8:
+	case 9:
+	case 10:
+		break;
+
+	// ── state 6: the fruit is being carried, and this is the drop check ─────────────────────
+	// 0x801e26e4, 33 instructions, ported complete:
+	//
+	//   801e26e8  bl   control__11TMapObjBallFv     ; the ball physics still run
+	//   801e26f0  lwz  r0,0xf8(r30) ; rlwinm. 0,5,5 ; MAP_OBJ_FLAG_UNK4000000 -> bail
+	//   801e26f8  lwz  r0,0x104(r30); cmpwi/ble     ; state timer still running -> bail
+	//   801e2718  lwz  r3,0x68(r30) ; cmplwi/beq    ; mHolder
+	//   801e2730  lwz  r12,0xa0(r12); blrl          ; virtual on the HOLDER, args (this, 8)
+	//   801e273c  stw  r0,0x6c(r3)  ; stw r0,0x68(r30)   ; clear BOTH ends of the hold
+	//   801e274c  lfs  f0,-0x2428(r2) = 0.0f ; stfs 0xac/0xb0/0xb4  ; velocity killed
+	//   801e2760  sth  r0,0xfc(r30) with r0 = 0xc   ; advance to state 12
+	//
+	// The virtual at vtable byte 0xa0 is receiveMessage. That identification was WRONG in an
+	// earlier pass of this RE and is worth recording, because the error is systematic: MWCC
+	// vtables carry two leading zero words and the vptr points at the OBJECT START, so every
+	// dispatch offset already includes that +8. Measured rather than assumed -- across the whole
+	// US .text the smallest `lwz r12,X(r12)` is X=8 (174 sites) and X=0/4 never occur, which
+	// only holds if slot 0 lives at +8. With the bias applied, __vt__10TTakeActor (size 0xB4,
+	// so its last slot is at 0xB0) puts getRadiusAtY at 0xb0, moveRequest 0xac,
+	// ensureTakeSituation 0xa8, getTakingMtx 0xa4 and receiveMessage at 0xa0. Reading the offset
+	// as unbiased shifted every one of those by two slots and made this call look like
+	// ensureTakeSituation -- a no-argument method, which cannot be what a three-argument call
+	// site invokes. Independently corroborated: TBGGesso does the identical thing in the same
+	// held-object context (src/Enemy/bossgesso.cpp:269).
+	case 6: {
+		TMapObjBall::control();
+
+		if (checkMapObjFlag(MAP_OBJ_FLAG_UNK4000000))
+			break;
+		if (mStateTimer > 0)
+			break;
+
+		if (mHolder != nullptr) {
+			mHolder->receiveMessage(this, HIT_MESSAGE_UNK8);
+			mHolder->mHeldObject = nullptr;
+			mHolder              = nullptr;
+		}
+
+		mVelocity.x = 0.0f;
+		mVelocity.y = 0.0f;
+		mVelocity.z = 0.0f;
+		mState      = 12;
+		break;
+	}
+
+	// ── not ported ─────────────────────────────────────────────────────────────────────────
+	// Each is a separate body in retail; sizes are instruction counts, not bytes.
+	case 1:
+		SB_RESET_FRUIT_UNPORTED(1, 0x801e23f8, 90);
+		break;
+	case 2:
+	case 3:
+		SB_RESET_FRUIT_UNPORTED(mState, 0x801e2768, 60);
+		break;
+	case 11:
+		SB_RESET_FRUIT_UNPORTED(11, 0x801e2560, 97);
+		break;
+	case 12:
+		SB_RESET_FRUIT_UNPORTED(12, 0x801e2858, 35);
+		break;
+	case 13:
+		SB_RESET_FRUIT_UNPORTED(13, 0x801e28e4, 56);
+		break;
+
+	// Retail's `cmplwi r0,0xd; bgt` -- states above 13 are ignored, not an error.
+	default:
+		break;
+	}
 }
