@@ -12,6 +12,13 @@
 #include <System/ParamInst.hpp>
 #include <JSystem/J3D/J3DGraphLoader/J3DModelLoaderFlags.hpp>
 #include <dolphin/os.h>
+#include <MoveBG/MapObjManager.hpp>
+#include <MoveBG/MapObjBase.hpp>
+#include <MarioUtil/PacketUtil.hpp>
+#include <System/FlagManager.hpp>
+#include <System/MarDirector.hpp>
+#include <JSystem/JUtility/JUTNameTab.hpp>
+#include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
 
 // ============================================================================
 // Delfino-plaza BIRD chain — RE'd US GMSE01 (wide-RE workflow 2026-07-17,
@@ -160,21 +167,100 @@ void TAnimalBird::calcRootMatrix()
 	getModel()->mBaseMtx[1][3] += 35.0f;
 }
 
-// --- pending full specs (unreachable until the factory registers birds) ---
-// STOPGAP: TAnimalBird::load (US 0x8000dea8, 0x154) is NOT a flock spawn — it calls
-// TSpineEnemy::load, reads a 4-byte param, selects mBirdKind (species 0..3), sets flags,
-// and loads species-specific model/anim (callees 0x801b5610/0x80294580/0x80218a50/0x80235df4
-// + the 0x80373988 species table still to resolve). Full RE pending (the wide-RE agent for
-// this one method hit the schema-retry cap). Until then, do the stream-safe minimum so
-// scene-stream alignment is preserved if ever reached; do NOT call TAnimalBase::load (that
-// would wrongly spawn a clone flock). Birds are not factory-registered yet, so this is dead.
+// TAnimalBird::load — US GMSE01 0x8000dea8, 0x154 bytes. Fully RE'd 2026-08-12; this replaces
+// a stopgap that consumed the stream param and did nothing else.
+//
+// It is NOT a flock spawn (calling TAnimalBase::load here would wrongly clone a flock). It reads
+// one 4-byte event id, spawns the ITEM this bird carries, derives the bird's species from that
+// item's actor type, and tints the body material accordingly.
+//
+// The species tint table is US .data 0x80373988: four GXColorS10 (four s16 each, which is exactly
+// the 8-byte stride the code indexes it by, `slwi r3, r4, 3`).
+static const GXColorS10 bird_body_color[4] = {
+	/* 0 */ { 0, 100, 255, 0 },
+	/* 1 */ { 0, 200, 0, 0 },
+	/* 2 */ { 255, 200, 0, 0 },
+	/* 3 */ { 255, 0, 0, 0 },
+};
+
 void TAnimalBird::load(JSUMemoryInputStream& stream)
 {
-	BIRD_TODO("TAnimalBird::load (stopgap: species/model load unported)");
 	TSpineEnemy::load(stream);
-	s32 param;
-	stream.read(&param, sizeof(param));   // consume the 4-byte param load() reads
+
+	s32 eventId;
+	stream.read(&eventId, sizeof(eventId));
+
+	// The carried item. A NEGATIVE id means "no specific event" and falls back to event 100 with
+	// an EMPTY name; both name strings were read out of the image rather than guessed
+	// (SDA2 r2-0x7e40 = "鳥用" / bird-use, r2-0x7e38 = "").
+	TMapObjBase* item;
+	if (eventId >= 0) {
+		item = TMapObjBaseManager::newAndRegisterObjByEventID(eventId, "鳥用");
+	} else {
+		item = TMapObjBaseManager::newAndRegisterObjByEventID(100, "");
+	}
+
+	// Retail dereferences this unconditionally. Ours must not, because our
+	// newAndRegisterObjByEventID has a `default: return nullptr` for every event id it does not
+	// implement yet — so a null here means AN UNPORTED ITEM TYPE, not a bird problem. Loud and
+	// once, naming the id, so it reads as the porting gap it is.
+	if (item == nullptr) {
+		BIRD_TODO("TAnimalBird::load: newAndRegisterObjByEventID returned NULL "
+		          "(unported item event id) - species defaults, no tint");
+		mBirdKind = 1; // the `default:` species retail picks for an unrecognised actor type
+		return;
+	}
+
+	// STORED AT 0x150, WHICH IS TAnimalBase::mFrameTimer'S SLOT. That reuse is retail's, not a
+	// mistake here: `stw r3, 0x150(r31)`. It is safe for birds specifically — TAnimalBird's ctor
+	// nulls mFrameTimer and its init() never allocates the int[2] that TAnimalBase::init does, so
+	// nothing ever reads this slot as a timer for a bird. Reproduced through the same storage
+	// rather than given a new field, because a separate field would silently diverge if a bird
+	// ever DID run the shared AnimalNerve timer path.
+	mFrameTimer = reinterpret_cast<int*>(item);
+
+	// Species from the item's actor type. Compared against mActorType directly (`cmpw`), not via
+	// isActorType(), matching the disassembly. Raw hex constants match the decomp's own style for
+	// these ids (see MoveBG/MapObjHide.cpp).
+	switch (item->mActorType) {
+	case 0x20000010:
+		mBirdKind = 0;
+		// A bird whose blue coin has ALREADY been collected is born dead: mLiveFlag |= 1 is
+		// LIVE_FLAG_DEAD. The coin is keyed by (current map, event id truncated to a byte).
+		// SDA1[-0x6060] is gpFlagManager, which is TFlagManager::getInstance() (same identity
+		// established in MoveBG/MapObjBall.cpp).
+		if (TFlagManager::getInstance()->getBlueCoinFlag(gpMarDirector->mMap, (u8)eventId)) {
+			mLiveFlag |= 1;
+		}
+		break;
+	case 0x20000013: mBirdKind = 2; break;
+	case 0x2000000F: mBirdKind = 3; break;
+	default:         mBirdKind = 1; break;
+	}
+
+	// Tint the body material, found BY NAME through the model data's material name table —
+	// "_mat_body1", read from the image at SDA2 r2-0x7eb0.
+	//
+	// DOCUMENTED SEAM, with a real root cause behind it. getModel() is mMActor->unk4, and our
+	// TAnimalBird::init() is what creates mMActor ("bird_man.bmd") — but in this port init() has
+	// not run by the time load() does, so mMActor is null here and retail's unconditional
+	// getModel() segfaults. Verified from a core dump: the fault is in this function, frame #0,
+	// under TMarDirector::setupObjects.
+	//
+	// That ORDERING is the defect, not this line. Retail reaches load() with the actor already
+	// initialised because the manager creates and inits its objects first; our birds are not
+	// manager-created yet. The proper fix is that creation order, which is the TAnimalBirdManager
+	// arc — NOT a null check here. Until then this reports and skips, so the species selection
+	// and blue-coin logic above still run and the missing piece is the tint alone.
+	if (mMActor == nullptr) {
+		BIRD_TODO("TAnimalBird::load: no MActor at load() time - init() has not run, so the "
+		          "body tint is skipped (manager-driven init ordering unported)");
+		return;
+	}
+	const u16 matIdx = (u16)getModel()->getModelData()->mMaterialName->getIndex("_mat_body1");
+	SMS_InitPacket_OneTevColor(getModel(), matIdx, GX_TEVREG1, &bird_body_color[mBirdKind]);
 }
+
 BOOL TAnimalBird::receiveMessage(THitActor*, u32) { BIRD_TODO("TAnimalBird::receiveMessage"); return 0; }
 
 // Bird override of TAnimalBase::init: register with the manager, build the MActor from the
