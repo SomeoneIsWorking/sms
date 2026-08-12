@@ -6,11 +6,14 @@
 #include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
 #include <System/MarDirector.hpp>
 #include <System/FlagManager.hpp>
+#include <System/Particles.hpp>
+#include <MSound/MSound.hpp>
+#include <MSound/SoundEffects.hpp>
 #include <dolphin/mtx.h>
-#include <dolphin/os.h>
 #include <MarioUtil/PacketUtil.hpp>
 #include <dolphin/gx/GXEnum.h>
 #include <Map/MapData.hpp>
+#include <MarioUtil/MapUtil.hpp>
 #include <cmath>
 #include "sms_boot_reset_fruit.h"
 #include "sms_boot_coverfruit.h"
@@ -26,26 +29,8 @@ static bool sFruitDbg()
 }
 #define FR_LOG(...) do { if (sFruitDbg()) std::fprintf(stderr, __VA_ARGS__); } while (0)
 
-// An unported TResetFruit::control state announces itself ONCE, on stderr, unconditionally --
-// this is the [STUB-CALLED] convention and is deliberately not routed through SB_LOG, because a
-// behaviour the game asks for and does not get must be visible on a default run, not behind a
-// channel someone has to know to enable. LOGGER-EXEMPT.
-//
-// The latch is per CALL SITE (a function-local static), so two states sharing one body report
-// once between them, matching retail's one-body-for-states-2-and-3.
-#define SB_RESET_FRUIT_UNPORTED(state, addr, insns)                                            \
-	do {                                                                                       \
-		static bool _once = false;                                                             \
-		if (!_once) {                                                                          \
-			_once = true;                                                                      \
-			OSReport("[STUB-CALLED] TResetFruit::control state %d: unported "                 \
-			         "(US 0x%08x, %d insn)\n",                                                 \
-			    (int)(state), (unsigned)(addr), (int)(insns));                                 \
-		}                                                                                      \
-	} while (0)
 #else
 #define FR_LOG(...) do {} while (0)
-#define SB_RESET_FRUIT_UNPORTED(state, addr, insns) do {} while (0)
 #endif
 
 // Native port of TResetFruit::perform (@0x801e21d0). RE at
@@ -74,11 +59,12 @@ void TResetFruit::perform(u32 param_1, JDrama::TGraphics* param_2)
 	const int state    = (int)mState;
 	const float vx     = mVelocity.x, vy = mVelocity.y, vz = mVelocity.z;
 	const float vel_sq = vx * vx + vy * vy + vz * vz;
-	// Rest threshold: SDA2 [-0x23F8] in the RE. Not resolved from the DOL yet; use a small
-	// positive value that matches the "at rest" intent. STOPGAP: hard-coded 0.01 (1cm/frame^2 in
-	// game units) — refined once the DOL constant is looked up. Doesn't matter at file-select
-	// (stage != 7 short-circuits the predicate immediately).
-	constexpr float kRestThresholdSq = 0.01f;
+	// Rest threshold: SDA2 r2-0x23f8, now READ OUT OF THE IMAGE rather than guessed. The word
+	// at guest 0x804147a8 is 0x36800000 = 3.8147e-06 (2^-18), which is nothing like the 0.01
+	// this line used to hard-code as a STOPGAP -- four orders of magnitude tighter, i.e. very
+	// nearly "exactly stopped". The same constant is loaded by control()'s states 2 and 3 at
+	// 0x801e27f0 for the same velocity-squared test, which is what turned it up.
+	constexpr float kRestThresholdSq = 3.8147e-06f;
 	if (sb::reset_fruit_should_enter_pinna_park_branch(stage, state, vel_sq, kRestThresholdSq)) {
 		FR_LOG("[fruit] Pinna Park branch predicate fires - body unimplemented, delegating anyway\n");
 		// See DOCUMENTED GAP above. Delegate rather than silently continue as if the branch ran.
@@ -401,6 +387,7 @@ void TMapObjBall::calcCurrentMtx()
 // stub removed from movebg_stubs.cpp.
 TResetFruit::TResetFruit(const char* name) : TMapObjBall(name)
 {
+	unk194 = 0; // see the header: retail leaves this uninitialised, the port must not
 	unk198 = 0.0f;
 	unk1a4 = 0;
 	unk19c.r = 0xff;
@@ -482,6 +469,42 @@ void TResetFruit::makeObjAppeared()
 // so out loud -- a silent no-op there would be a behaviour change dressed as a stub (see the
 // FAIL-FAST / no-silent-stubs rule); their addresses are in the report so the next porter has
 // the target without re-deriving the table.
+// The tail shared by control()'s states 6 and 11. Both table entries end in the identical 21
+// instructions (0x801e26e4..0x801e2764 and 0x801e2660..0x801e26e0 -- same opcodes, same operands,
+// same order), which is what an inline expanded at two call sites looks like. Reconstructed as
+// that inline rather than copy-pasted twice, so a later correction cannot land in only one copy.
+//
+// "Let go of whoever is holding this, stop dead, and go to state 12." Both ends of the holding
+// relationship are cleared, because TTakeActor::ensureTakeSituation would otherwise null one of
+// them on the next frame anyway and the message would have been sent to a stale holder.
+static void reset_fruit_release_and_drop(TResetFruit* self)
+{
+	self->TMapObjBall::control();
+
+	if (self->checkMapObjFlag(TMapObjBase::MAP_OBJ_FLAG_UNK4000000))
+		return;
+	if (self->mStateTimer > 0)
+		return;
+
+	if (self->mHolder != nullptr) {
+		self->mHolder->receiveMessage(self, HIT_MESSAGE_UNK8);
+		self->mHolder->mHeldObject = nullptr;
+		self->mHolder              = nullptr;
+	}
+
+	self->mVelocity.x = 0.0f;
+	self->mVelocity.y = 0.0f;
+	self->mVelocity.z = 0.0f;
+	self->mState      = 12;
+}
+
+// The respawn delay, read from the global at guest 0x8040c924 (SDA1 r13-0x789c). Its value in
+// the image is 360 and NO instruction anywhere in .text stores to it -- checked by scanning every
+// word in the seven text sections for an r13-relative access with that displacement, which found
+// seven sites, all `lwz`, all inside TResetFruit's own address range (0x801e1d80..0x801e36ec).
+// A global only one class reads and nothing writes is that class's constant, so it is one here.
+static const int sFruitWaitTimeToAppear = 360;
+
 void TResetFruit::control()
 {
 	switch (mState) {
@@ -522,44 +545,219 @@ void TResetFruit::control()
 	// ensureTakeSituation -- a no-argument method, which cannot be what a three-argument call
 	// site invokes. Independently corroborated: TBGGesso does the identical thing in the same
 	// held-object context (src/Enemy/bossgesso.cpp:269).
-	case 6: {
-		TMapObjBall::control();
-
-		if (checkMapObjFlag(MAP_OBJ_FLAG_UNK4000000))
-			break;
-		if (mStateTimer > 0)
-			break;
-
-		if (mHolder != nullptr) {
-			mHolder->receiveMessage(this, HIT_MESSAGE_UNK8);
-			mHolder->mHeldObject = nullptr;
-			mHolder              = nullptr;
-		}
-
-		mVelocity.x = 0.0f;
-		mVelocity.y = 0.0f;
-		mVelocity.z = 0.0f;
-		mState      = 12;
+	case 6:
+		reset_fruit_release_and_drop(this);
 		break;
-	}
 
 	// ── not ported ─────────────────────────────────────────────────────────────────────────
 	// Each is a separate body in retail; sizes are instruction counts, not bytes.
-	case 1:
-		SB_RESET_FRUIT_UNPORTED(1, 0x801e23f8, 90);
+	// ── state 1 (STATE_NORMAL): the fruit is lying in the world, taking collisions ──────────
+	// 0x801e23f8, 90 instructions, ported complete. This is the state the plaza fruit is
+	// ACTUALLY in -- it is the one the loud report above turned up on a real SB_STAGE=1 run,
+	// which is why it was ported next rather than the largest body.
+	//
+	//   801e23f8  lwz 0x64 ; rlwinm 0,0,0x1e ; stw   ; mHitFlags &= ~1 (bit 0 only)
+	//   801e252c  lhz r0,0x48(r30) ; cmpw r31,r0     ; loop over mColCount, SIGNED compare
+	//   801e241c  lwzx r4, r3, r29                   ; mCollisions[i], byte-stepped by 4
+	//   801e2410  lhz r5,0xfc(r30)  RE-READ each iteration — touchActor can change mState,
+	//                                and the four skip-tests below then fire on later passes
+	//   801e2490  bl touchActor__11TMapObjBallFP9THitActor   ; DIRECT call, not a vtable slot
+	//   801e2500  lwz r12,0x164(r12)                 ; = getLivingTime (see the note in case 6
+	//                                                  for why that offset resolves this way)
+	//   801e2550  lwz r12,0x1ec(r12)                 ; = calcCurrentMtx
+	//
+	// The `offLiveFlag(LIVE_FLAG_UNK10)` near the end is reproduced although it cannot change
+	// anything: the loop already skipped this iteration if that bit was set, and the only call
+	// between the test and the clear is getLivingTime, which is const. It is retail's
+	// instruction and costs nothing, so it stays rather than being "cleaned up" -- deleting it
+	// would be a silent divergence for a reader who later diffs against the disassembly.
+	//
+	// mGroundPlane is dereferenced WITHOUT a null check, exactly as retail does. TLiveActor
+	// always has a ground plane by the time control() runs; if that ever stops being true the
+	// crash is the correct outcome per the FAIL-FAST rule, and a null guard here would hide it.
+	case 1: {
+		mHitFlags &= ~1;
+
+		for (int i = 0; i < (int)mColCount; ++i) {
+			THitActor* other = mCollisions[i];
+
+			const u16 st = mState;
+			if (st == 2 || st == 3 || st == 12 || st == 10)
+				continue;
+
+			TMapObjBall::touchActor(other);
+
+			if (checkMapObjFlag(MAP_OBJ_FLAG_UNK4000000))
+				continue;
+			if (mState != STATE_NORMAL)
+				continue;
+			if (checkLiveFlag(LIVE_FLAG_UNK10))
+				continue;
+
+			if (mStateTimer <= 0) {
+				unkF8 |= MAP_OBJ_FLAG_DISAPPEARING;
+				mStateTimer = getLivingTime();
+			}
+			offLiveFlag(LIVE_FLAG_UNK10);
+			mState = 0xb;
+		}
+
+		// Resting on a moving platform: the plane carries the actor it belongs to, and the
+		// fruit's matrix has to be rebuilt from it every frame.
+		if (mGroundPlane->mActor != nullptr)
+			calcCurrentMtx();
 		break;
+	}
+	// ── states 2 and 3: carried / in flight ────────────────────────────────────────────────
+	// 0x801e2768, 60 instructions, ported complete. ONE body serves both states in retail (two
+	// jump-table entries, one target), so they share a case here too.
+	//
+	//   801e276c  bl control__14TMapObjGeneralFv   ; the GENERAL control, not the ball's
+	//   801e2770  unk194 countdown, floored at 0 rather than allowed to go negative
+	//   801e27ac  vtable 0xa4 on mHolder = getTakingMtx  (bias-corrected; 0xa0 is receiveMessage)
+	//   801e27c0  r1+0xac is stack Mtx row 1 col 3 -> the held matrix is lifted by unk190
+	//   801e27d8  lwz r4, 0x58(r3) after getModel  ; J3DModel::mNodeMatrices, copied INTO
+	//   801e27f0  SDA2 r2-0x23f8 = 3.8147e-06f, against |mVelocity|^2
+	//   801e2828  cror cr0eq, cr0lt, cr0eq         ; makes the test <=, not <
+	//
+	// The velocity copy through the stack at r1+0xc0 is a by-value TVec3 argument the compiler
+	// spilled; it is not reproduced because it cannot be observed.
 	case 2:
-	case 3:
-		SB_RESET_FRUIT_UNPORTED(mState, 0x801e2768, 60);
+	case 3: {
+		TMapObjGeneral::control();
+
+		if (unk194 != 0)
+			unk194 -= 1;
+
+		if (mState == 6) {
+			// Carried: track the holder's hand, raised by the fruit's own offset.
+			Mtx held;
+			PSMTXCopy(mHolder->getTakingMtx(), held);
+			held[1][3] += unk190;
+			PSMTXCopy(held, getModel()->mNodeMatrices[0]);
+			break;
+		}
+
+		// Not carried: rebuild the matrix unless the fruit is both at rest AND not resting on
+		// an actor-backed plane, in which case nothing it depends on can have moved.
+		const f32 velSq = mVelocity.z * mVelocity.z
+		    + (mVelocity.x * mVelocity.x + mVelocity.y * mVelocity.y);
+		if (velSq <= 3.8147e-06f && mGroundPlane->mActor == nullptr)
+			break;
+
+		calcCurrentMtx();
 		break;
-	case 11:
-		SB_RESET_FRUIT_UNPORTED(11, 0x801e2560, 97);
+	}
+	// ── state 11: settled on the ground, with the Gelato sand special case ─────────────────
+	// 0x801e2560, 97 instructions, ported complete. State 1 advances here.
+	//
+	// Its second half, from `bl control__11TMapObjBallFv` at 0x801e2664 to the end, is
+	// INSTRUCTION-FOR-INSTRUCTION the same as state 6's — see reset_fruit_release_and_drop.
+	//
+	//   801e256c  gpMarDirector->mMap == 4                 ; Gelato Beach
+	//   801e25bc  SDA2 r2-0x23f4 = 200.0f, + mGroundHeight (0xc8), vs mPosition.y
+	//   801e25dc  ground->mActorType == 0x400000cd         ; the sand
+	//   801e2624  bl SMS_GetSandRiseUpRatio(ground)        ; r3 is the GROUND ACTOR, not this
+	//   801e2630  SDA2 r2-0x23f0 = 0.05f ; r2-0x2408 = 20.0f
+	//
+	// The ratio is stored in unk198 and compared against its own PREVIOUS value, so the fruit
+	// is pushed up (mVelocity.y += 20) only while the sand is still RISING, not merely while it
+	// is high. That is why unk198 is reset to 0 the moment the fruit is not standing on an
+	// actor-backed plane -- otherwise a stale high-water mark would suppress the next rise.
+	//
+	// The 0x400000cd test appears TWICE in the disassembly with identical operands, the second
+	// as the negated form. Reproduced once: it is an MWCC artefact of the branch structure and
+	// the two tests cannot disagree.
+	case 11: {
+		mHitFlags &= ~1;
+
+		if (gpMarDirector->mMap == 4 && checkLiveFlag(LIVE_FLAG_UNK10))
+			offLiveFlag(LIVE_FLAG_UNK10);
+
+		if (mGroundPlane->mActor != nullptr) {
+			if (checkLiveFlag(LIVE_FLAG_UNK10))
+				offLiveFlag(LIVE_FLAG_UNK10);
+
+			if (mPosition.y < 200.0f + mGroundHeight) {
+				const TLiveActor* ground = mGroundPlane->mActor;
+				if (ground->mActorType == 0x400000cd) {
+					const f32 prevRatio = unk198;
+					unk198              = SMS_GetSandRiseUpRatio(ground);
+					if (unk198 > 0.05f && unk198 > prevRatio)
+						mVelocity.y += 20.0f;
+				}
+			}
+		} else {
+			unk198 = 0.0f;
+		}
+
+		reset_fruit_release_and_drop(this);
 		break;
+	}
+	// ── state 12: the fruit that was just dropped vanishes ─────────────────────────────────
+	// 0x801e2858, 35 instructions, ported complete. State 6 sets mState = 12, so this is the
+	// step immediately after the drop and the two belong together.
+	//
+	//   801e2870  fmadds f0, f2, f1, f0   ; mPosition.y += mBodyRadius * 0.5f
+	//                                       (0xbc = mBodyRadius; SDA2 r2-0x2404 = 0x3f000000)
+	//   801e287c  0x124/0x128/0x12c -> 0x24/0x28/0x2c  ; mScaling = mInitialScaling
+	//   801e2894  bl emitAndScale(0xe5, 0, &mPosition) ; PARTICLE_MS_ENM_DISAP_A_W
+	//   801e28a0  bl gateCheck(0x387d) then the 6-arg start   ; the inlined body of
+	//                                       MSound::startSoundActor, gpMSound at r13-0x6044
+	//   801e28cc  mStateTimer = 0xf0 ; bl sleep ; mState = 13
+	//
+	// The scale restore is deliberate and not redundant: the fruit shrinks while it is carried,
+	// and it has to be back at its authored size before the disappear particle is scaled to it.
 	case 12:
-		SB_RESET_FRUIT_UNPORTED(12, 0x801e2858, 35);
+		mPosition.y += mBodyRadius * 0.5f;
+
+		mScaling.x = mInitialScaling.x;
+		mScaling.y = mInitialScaling.y;
+		mScaling.z = mInitialScaling.z;
+
+		emitAndScale(PARTICLE_MS_ENM_DISAP_A_W, 0, &mPosition);
+		SMSGetMSound()->startSoundActor(
+		    MSD_SE_SMOKE_EFFECT, &mPosition, 0, nullptr, 0, 4);
+
+		mStateTimer = 0xf0;
+		sleep();
+		mState = 13;
 		break;
+	// ── state 13: the wait is over, put the fruit back ─────────────────────────────────────
+	// 0x801e28e4, 56 instructions, ported complete. State 12 advances here after 0xf0 frames.
+	//
+	//   801e2904  li 0xff ; sth 0x19c/0x19e/0x1a0   ; unk19c is a GXColorS10 -- r,g,b restored,
+	//                                                 ALPHA (0x1a2) deliberately untouched
+	//   801e2918  bl awake__11TMapObjBaseFv
+	//   801e2920  mState = 0xb   <-- set, then overwritten with 0xa at 0x801e2990. Retail does
+	//                                both; the four calls in between can read it.
+	//   801e292c  vtable 0x158 = makeObjDefault ; 0x104 = makeObjDead ; 0xc0 = calcRootMatrix
+	//   801e296c  getModel()->vtable 0x10 = J3DModel::calc  (update/entry/calc/viewCalc are
+	//                                declared BEFORE ~J3DModel, so calc is index 2 = byte 0x10)
+	//   801e2988  rlwinm r3,r3,0,0xe,0xc  clears bit 13 = 0x40000 = MAP_OBJ_FLAG_DISAPPEARING
+	//   801e2994  gpMarDirector->mMap == 3 (Ricco Harbour) && unk1a4 -> makeObjDead again
 	case 13:
-		SB_RESET_FRUIT_UNPORTED(13, 0x801e28e4, 56);
+		if (mStateTimer > 0)
+			break;
+
+		unk19c.r = 255;
+		unk19c.g = 255;
+		unk19c.b = 255;
+
+		awake();
+		mState = 0xb;
+
+		makeObjDefault();
+		makeObjDead();
+		calcRootMatrix();
+		getModel()->calc();
+
+		mStateTimer = sFruitWaitTimeToAppear;
+		unkF8 &= ~MAP_OBJ_FLAG_DISAPPEARING;
+		mState = 10;
+
+		if (gpMarDirector->mMap == 3 && unk1a4 != 0)
+			makeObjDead();
 		break;
 
 	// Retail's `cmplwi r0,0xd; bgt` -- states above 13 are ignored, not an error.

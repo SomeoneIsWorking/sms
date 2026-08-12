@@ -92,6 +92,13 @@ public:
 	u32 mFruitWaitTimeToAppear;
 	u32 mRottenColor;
 
+	// A countdown that TResetFruit::kicked (a store at 0x801e2e30) sets and control()'s
+	// states 2 and 3 decrement toward zero (0x801e2770). Retail's ctor does NOT initialise it
+	// -- only 0x198/0x19c/0x1a4 are written there -- so the port zeroes it explicitly rather
+	// than inheriting whatever the heap held, which is a deviation and is deliberate: the
+	// decrement is guarded by `!= 0`, so garbage here would count down for two billion frames.
+	/* 0x194 */ int unk194;
+
 	// Set by the ctor (@0x801e1bf4). GUEST offsets 0x198/0x19c/0x1a4; on the LP64 host these
 	// are just named members (host offset irrelevant — accessed by name only). unk19c is the
 	// fruit's TEV register-0 tint, bound in initMapObj via SMS_InitPacket_OneTevColor.
