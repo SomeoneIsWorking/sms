@@ -23,11 +23,21 @@
 // lives here and not in a header.
 //
 // Semantics, from those five sites: setup and load set it to 0x10 when there is NO archive to
-// mount, and the destructor decrements it and, on reaching zero, calls
-// SMSSwitch2DArchive(<rodata string>, gArBkGuide) — i.e. it is a countdown that defers releasing
-// the shared "guide" 2D archive. The destructor is NOT ported here (it is large and branches into
-// pane teardown), so nothing decrements this yet; it is defined so the two functions that WRITE it
-// are faithful, and so the next porter finds the analysis instead of redoing it.
+// mount, and it is decremented once per call by TGuide::perform, which on reaching zero calls
+// SMSSwitch2DArchive(<rodata string>, gArBkGuide). It is therefore a FRAME DELAY — sixteen frames
+// after a mountless load, the shared 2D archive is switched.
+//
+// CORRECTED 2026-08-12, same day: this first said the DESTRUCTOR decrements it. It does not. The
+// three reads/writes sit at 0x801791ec..0x80179208, which is past the end of __dt__6TGuideFv —
+// the dtor is only 0x74 bytes and TGuide::perform starts at 0x801791d0. perform is WEAK and so
+// absent from the US symbol list, which is why the disassembly around those instructions rendered
+// as "__dt__6TGuideFv+0x..." and read as destructor code. Resolving perform's real entry through
+// its vtable slot (index 6, shared with TConsoleStr, both direct JDrama::TViewObj subclasses)
+// settled it, and 0x801791d0 begins mflr/stwu/stmw with three incoming arguments — a function
+// entry, not a continuation.
+//
+// perform is NOT ported here, so nothing decrements this yet; it is defined so the two functions
+// that WRITE it are faithful, and so the next porter finds the analysis instead of redoing it.
 static u8 sGuideMountCountdown;
 
 // TGuide::setup — US 0x8017b464, 0x5C bytes.
