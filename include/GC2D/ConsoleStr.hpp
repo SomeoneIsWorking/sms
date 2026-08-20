@@ -8,6 +8,7 @@ class J2DSetScreen;
 class TExPane;
 class J2DTextBox;
 class TBoundPane;
+class JPABaseEmitter;
 
 class TConsoleStr : public JDrama::TViewObj {
 public:
@@ -53,11 +54,9 @@ public:
 	/* 0x298 */ TExPane* unk298;
 	/* 0x29C */ TExPane* unk29C;
 	/* 0x2A0 */ J2DTextBox* unk2A0[2];
-	/* 0x2A8 */ u8 unk2A8;
-	/* 0x2A9 */ u8 unk2A9;
-	/* 0x2AC */ void* unk2AC;
-	/* 0x2B0 */ void* unk2B0;
-	/* 0x2B4 */ void* unk2B4;
+	/* 0x2A8 */ JPABaseEmitter* unk2A8[3];
+	/* 0x2B4 */ u8 unk2B4;
+	/* 0x2B5 */ u8 unk2B5;
 	/* 0x2B8 */ int unk2B8;
 	/* 0x2BC */ int unk2BC;
 };

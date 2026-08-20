@@ -2,7 +2,17 @@
 #include <JSystem/JKernel/JKRMemArchive.hpp>
 #include <System/Application.hpp>
 #include <System/MarDirector.hpp>
+#include <System/MarioGamePad.hpp>
+#include <System/StageUtil.hpp>
+#include <JSystem/J2D/J2DOrthoGraph.hpp>
 #include <JSystem/J2D/J2DPane.hpp>
+#include <JSystem/J2D/J2DScreen.hpp>
+#include <JSystem/J2D/J2DTextBox.hpp>
+#include <JSystem/JUtility/JUTResFont.hpp>
+#include <GC2D/ExPane.hpp>
+#include <GC2D/BoundPane.hpp>
+#include <GC2D/ScrnFader.hpp>
+#include <sb_log.h>
 #include <sms_boot_guide.h>
 #include <JSystem/JDrama/JDRViewObj.hpp>
 #include <JSystem/JSupport/JSUMemoryInputStream.hpp>
@@ -10,9 +20,8 @@
 // Native port of the parts of TGuide (the pause-menu guide/map screen) that are fully determined
 // by the US GMSE01 disassembly. Guide.cpp is empty upstream, so everything here is cold RE.
 //
-// WHAT IS PORTED: setup (0x8017b464) and startMoveCursor (0x8017b450), both complete, plus the
-// archive-mount half of load (0x8017c180). WHAT IS NOT: the pane construction that the rest of
-// load does, and perform — those remain the LOUD stubs they were, see sms-boot/boot_stubs.
+// WHAT IS PORTED: setup (0x8017b464), startMoveCursor (0x8017b450), and the screen/pane ownership
+// half of load (0x8017c180). The input/marker state machine is still being ported from the DOL.
 
 // ── the mount-state byte at r13-0x63a8 (guest 0x8040de18) ──────────────────────────────────────
 //
@@ -77,9 +86,9 @@ void TGuide::setup(JKRMemArchive* archive)
 // The previous version mounted UNCONDITIONALLY and set neither byte, so a null shared archive
 // dereferenced instead of taking the branch retail has for exactly that case.
 //
-// STILL UNPORTED, deliberately: everything from 0x8017c1d8 on, which allocates (li r3,0xf4) and
-// builds this screen's panes. That is why perform() below is still a stub and the screen draws
-// nothing — the gap is in the pane build, not in the mount.
+// The retail body next allocates a J2DSetScreen for guide_1.blo and then resolves every pane that
+// the guide state machine owns.  The screen and the stable pane tables are constructed here first;
+// the animated markers/textures are filled in by the remaining state-machine port.
 void TGuide::load(JSUMemoryInputStream& stream)
 {
 	unkC5 = 0;
@@ -91,6 +100,46 @@ void TGuide::load(JSUMemoryInputStream& stream)
 		sGuideMountCountdown = 0x10;
 	}
 	unkC4 = 0;
+
+	unkBC = new J2DSetScreen("guide_1.blo", shared);
+
+	// US GMSE01 creates the same screen then assigns the system font to these four static labels
+	// before the per-location labels are populated.  Do this as a table so every failed lookup is
+	// surfaced by J2DScreen::search rather than silently leaving a label with stale font state.
+	const u32 font_panes[] = { 'a_ic', 'a_tx', 'b_ic', 'b_tx' };
+	for (u32 tag : font_panes) {
+		J2DPane* pane = unkBC->search(tag);
+		if (pane != nullptr)
+			static_cast<J2DTextBox*>(pane)->setFont(gpSystemFont);
+	}
+
+	// The guide has thirteen location panes and ten selectable point panes.  These are the exact
+	// four-character tag progressions from 0x8017c2f4..0x8017c4a8; the final location pane at
+	// [13] is the separate 0x19c entry in retail and intentionally remains part of unk168.
+	for (u32 i = 0; i < 13; ++i) {
+		const u32 row = (i / 10) * 0xF6 + i;
+		unk168[i]  = unkBC->search(0x3030 + row);
+		unk1C0[i]  = new TExPane(unkBC, (0x3030 + row) << 16 | 0x5F30);
+		unk218[i] = unk1C0[i]->getInitialBounds();
+		unk378[i]  = new TExPane(unkBC, (0x3030 + row) << 16 | 0x5F31);
+	}
+	unk168[13] = unkBC->search('20');
+	unk1F4 = new TExPane(unkBC, 'lwin');
+	unk2E8 = unk1F4->getInitialBounds();
+	unk3AC = new TExPane(unkBC, 'llin');
+	for (u32 i = 0; i < 10; ++i)
+		unk44c[i] = unkBC->search(0x706E3030 + i);
+
+	unk124 = unkBC->search('s_mn');
+	unk128[0] = new TExPane(unkBC, 'cu_a');
+	unk128[1] = new TExPane(unkBC, 'cu_b');
+	unk430 = unkBC->search('01mi');
+	unk434 = unkBC->search('01_9')->getBounds();
+	unk444 = new TBoundPane(unkBC, '20');
+	unk478 = new TExPane(unkBC, 'mark');
+	unkC5 = 1;
+	SB_LOGC("guide", "load screen=%p cursor=(%p,%p) panes=(%p,%p)", (void*)unkBC,
+	        (void*)unk128[0], (void*)unk128[1], (void*)unk168[0], (void*)unk168[13]);
 }
 
 // TGuide::startMoveCursor — US 0x8017b450, 0x14 bytes, complete:
@@ -106,6 +155,80 @@ void TGuide::startMoveCursor()
 {
 	unk10  = 9;
 	unk164 = 0;
+}
+
+// TGuide::perform — US 0x801791d0, draw and mount-delay spine.
+//
+// Retail deliberately keeps the guide screen out of the draw pass while its archive switch and
+// wipe are in flight (states 8/9).  Once the director's wipe admits the guide state, it draws the
+// `guide_1.blo` hierarchy through the normal J2D orthographic graph.  The previous native stub
+// omitted this entire shared path, which is why the C/Z guide transition could only remain black.
+// The state-specific cursor/map marker branches are ported below this spine as their object and
+// flag contracts are recovered; keeping the draw gate retail-shaped means those branches cannot
+// accidentally expose a partially-built screen during the transition.
+void TGuide::perform(u32 cue, JDrama::TGraphics* graphics)
+{
+	if (sGuideMountCountdown != 0) {
+		--sGuideMountCountdown;
+		if (sGuideMountCountdown == 0) {
+			SMSSwitch2DArchive("guide", gArBkGuide);
+			unkC4 = 0;
+		}
+	}
+
+	if ((cue & 8) != 0 && unkBC != nullptr && unk10 != 8 && unk10 != 9) {
+		SB_LOG_EVERY("guide", 30, "draw state=%u screen=%p", unk10, (void*)unkBC);
+		J2DOrthoGraph graph(graphics->getViewport());
+		graph.setup2D();
+		unkBC->draw(0, 0, &graph);
+		graphics->setScissor(graphics->getScissor());
+	}
+
+	if ((cue & 1) != 0) {
+		if (unk10 == 9) {
+			// Retail keeps both cursor layers pinned to the current shine-stage pane while
+			// the outgoing gameplay wipe covers the scene (US 0x80179620..0x801796b0).
+			const u32 stage = SMS_getShineStage(gpApplication.mCurrArea.getStage());
+			if (stage < 14) {
+				const JUTRect& bounds = unk168[stage]->getBounds();
+				unk128[0]->getPane()->move(bounds.x1 + 6, bounds.y1 - 1);
+				unk128[1]->getPane()->move(bounds.x1 + 6, bounds.y1 - 1);
+			}
+		}
+		const bool closeRequested = unk10 == 0
+		    && ((unkC0->mEnabledFrameMeaning & TMarioGamePad::MEANING_0x40) != 0
+		        || (unkC0->mButton.mTrigger & PAD_TRIGGER_Z) != 0);
+		if (unk10 == 0)
+			unkC0->onFlag(TMarioGamePad::PAD_FLAG_0x80);
+
+		const sb::guide::Transition transition = sb::guide::step_transition(
+		    unk10, unkC5 != 0, gpApplication.mFader->isFullyFadedOut(),
+		    gpApplication.mFader->isFullyFadedIn(), closeRequested);
+		const u32 oldState = unk10;
+		unk10 = transition.next_state;
+
+		if (transition.wipe == sb::guide::kWipeIn5)
+			gpApplication.mFader->startWipe(5, 1.0f, 0.0f);
+		else if (transition.wipe == sb::guide::kWipeOut6) {
+			gpApplication.mFader->startWipe(6, 1.0f, 0.0f);
+			unkC0->offFlag(TMarioGamePad::PAD_FLAG_0x80);
+		}
+		if (transition.clear_selection) {
+			unk424 = nullptr;
+			unk428 = nullptr;
+			unk128[0]->getPane()->setAlpha(0xff);
+			unk128[1]->getPane()->setAlpha(0x50);
+		}
+		if (transition.return_to_gameplay) {
+			if (unk424 != nullptr && unk424->getPane()->isVisible())
+				unk424->getPane()->hide();
+			if (unk428 != nullptr && unk428->getPane()->isVisible())
+				unk428->getPane()->hide();
+			unkC4 = 1;
+		}
+		if (unk10 != oldState)
+			SB_LOGC("guide", "state %u -> %u", oldState, unk10);
+	}
 }
 
 // TGuide::checkPoint — US 0x8017a6bc, 0x134 bytes. Which pane, if any, contains the point.

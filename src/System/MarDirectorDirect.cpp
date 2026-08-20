@@ -31,6 +31,7 @@
 #include <MoveBG/MapObjDolpic.hpp>
 #include <NPC/NpcBase.hpp>
 #include <dolphin/gx.h>
+#include <sb_log.h>
 
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdint>
@@ -658,9 +659,26 @@ int TMarDirector::changeState()
 		break;
 
 	case STATE_UNK2:
-		if (!unkE0->unk26
-		    && !gpMarioOriginal->checkStatusType(MARIO_STATUS_FLAG_UNK1000))
+		{
+			const bool sunglassActive = unkE0->unk26 != 0;
+			const bool marioBlocked
+			    = gpMarioOriginal->checkStatusType(MARIO_STATUS_FLAG_UNK1000);
+#ifdef SMS_NATIVE_PLATFORM
+			if (SB_LOG_ON("guide")) {
+				static u32 s_state2Samples = 0;
+				++s_state2Samples;
+				if (s_state2Samples == 1 || (s_state2Samples % 120) == 0)
+					SB_LOGC("guide",
+					        "Delfino entrance state2 samples=%u sunglassActive=%u "
+					        "sunglassStep=%u/%u marioBlocked=%u marioStatus=0x%x",
+					        s_state2Samples, (u32)sunglassActive, (u32)unkE0->unk24,
+					        (u32)unkE0->unk22, (u32)marioBlocked,
+					        (u32)gpMarioOriginal->mStatus);
+			}
+#endif
+			if (!sunglassActive && !marioBlocked)
 			nextState = STATE_UNK4;
+		}
 		break;
 
 	case STATE_UNK4:
@@ -881,6 +899,16 @@ void TMarDirector::setMario()
 	if (!marioSetPosition || marioSetPosition->unkD0 == 0)
 		uVar10 = 0;
 
+	// Native fastboot bypasses TCardLoad's moveToLoadFromTitle transition, whose retail body calls
+	// waitingStart.  Consume that one-shot at the same player-initialisation seam; without it the
+	// freshly-created Mario stays DISAPPEAR (0x133f), so entrance state 2 never admits gameplay.
+#ifdef SMS_NATIVE_PLATFORM
+	extern bool sb_fastboot_take_title_player_start() asm("sb_fastboot_take_title_player_start");
+	const bool skippedTitleStart = sb_fastboot_take_title_player_start();
+	if (skippedTitleStart)
+		gpMarioOriginal->waitingStart(nullptr, 0.0f);
+	else
+#endif
 	switch (unkD1) {
 	case 1: {
 		f32 fVar1 = 0.0f;
@@ -1113,6 +1141,27 @@ void TMarDirector::nextStateInitialize(u8 next_state)
 u8 TMarDirector::updateGameMode()
 {
 	u8 r29 = mState;
+
+#ifdef SMS_NATIVE_PLATFORM
+	// Negative-first guide diagnostic: this sits before the mGameState switch so a run which never
+	// reaches normal gameplay says so explicitly instead of producing the same silence as "Z was
+	// never pressed".  Report the first sample, every state/trigger change, and a bounded heartbeat.
+	if (SB_LOG_ON("guide")) {
+		static u8 s_lastGameState = 0xff;
+		static u32 s_lastTrigger = ~0u;
+		static u32 s_samples = 0;
+		const u32 trigger = unk18[0]->mButton.mTrigger;
+		++s_samples;
+		if (mGameState != s_lastGameState || trigger != s_lastTrigger || (s_samples % 120) == 0) {
+			SB_LOGC("guide",
+			        "director samples=%u gameState=%u state=%u trigger=0x%x gates=0x%x map=%u",
+			        s_samples, (u32)mGameState, (u32)mState, trigger, unk4C & 0x1fff,
+			        (u32)mMap);
+			s_lastGameState = mGameState;
+			s_lastTrigger = trigger;
+		}
+	}
+#endif
 
 	switch (mGameState) {
 	case 0:

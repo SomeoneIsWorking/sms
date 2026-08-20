@@ -49,6 +49,7 @@ extern "C" unsigned int sb_seq_size;
 #endif
 #include <System/MarNameRefGen.hpp>
 #include <System/StageUtil.hpp>
+#include <Player/Mario.hpp>
 #include <System/GCLogoDir.hpp>
 #include <System/MovieDirector.hpp>
 #include <System/SelectDir.hpp>
@@ -76,6 +77,19 @@ static void* arcBufMario;
 static void* arcBufCmn;
 static void* bufStageArcBin;
 static void* spGameHeapBlock;
+
+#ifdef SMS_NATIVE_PLATFORM
+// Fastboot bypasses CardLoad's PUSH START transition before the gameplay director exists.  Carry
+// that one skipped semantic across the scene boundary and let TMarDirector::setMario consume it
+// once gpMarioOriginal is live.  A bool is sufficient because fastboot is one-shot.
+static bool sFastbootTitlePlayerStartPending;
+extern "C" bool sb_fastboot_take_title_player_start()
+{
+	const bool pending = sFastbootTitlePlayerStartPending;
+	sFastbootTitlePlayerStartPending = false;
+	return pending;
+}
+#endif
 
 TARAMBlock gArBkConsole;
 TARAMBlock gArBkGuide;
@@ -683,6 +697,11 @@ void TApplication::proc()
 					scenario = (u8)strtoul(sc, nullptr, 0);
 				mCurrArea.set(stage, scenario, 0);
 				mNextArea.set(stage, scenario, 0);
+				// The normal title path calls TMario::waitingStart when TCardLoad accepts
+				// PUSH START (CardLoad.cpp, the moveToLoadFromTitle transition).  Fastboot
+				// skips that scene; remember the skipped semantic until the gameplay
+				// director has a live Mario to receive it.
+				sFastbootTitlePlayerStartPending = true;
 				mAppState = APP_STATE_GAMEPLAY;
 				// Match the mMovie side-effect of the case APP_STATE_DONE → APP_STATE_MOVIE
 				// fallthrough at :662-673. Oracle-side fastboot goes through that switch case

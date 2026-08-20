@@ -14,6 +14,7 @@
 #include <JSystem/J2D/J2DOrthoGraph.hpp>
 #include <JSystem/JKernel/JKRFileLoader.hpp>
 #include <JSystem/JParticle/JPAEmitterManager.hpp>
+#include <JSystem/JParticle/JPAEmitter.hpp>
 #include <JSystem/JUtility/JUTResFont.hpp>
 #include <dolphin/gx/GXCull.h>
 #include <stdio.h>
@@ -31,7 +32,8 @@ TConsoleStr::TConsoleStr(const char* name)
     , unk14(nullptr)
     , unk20(0xB4)
     , unk24(0)
-    , unk2A8(0)
+	, unk2B4(0)
+	, unk2B5(0)
     , unk2B8(0)
     , unk2BC(7)
 {
@@ -101,9 +103,8 @@ void TConsoleStr::load(JSUMemoryInputStream& stream)
 void TConsoleStr::loadAfter()
 {
 	JDrama::TViewObj::loadAfter();
-	unk2AC = 0;
-	unk2B0 = 0;
-	unk2B4 = 0;
+	for (int i = 0; i < 3; ++i)
+		unk2A8[i] = nullptr;
 #ifdef SMS_NATIVE_PLATFORM
 	// Decomp gap: TGCConsole2::unk94 (the scenario-name banner TConsoleStr) is
 	// read all over TMarDirector::direct (startAppearScenario/startOpenWipe/...)
@@ -205,7 +206,7 @@ void TConsoleStr::perform(u32 param_1, JDrama::TGraphics* param_2)
 					unk2BC = 4;
 				}
 			} else if (unk2BC == 1) {
-				if (unk2A8 != 0)
+				if (unk2B4 != 0)
 					startCloseWipe(false);
 			}
 
@@ -215,22 +216,22 @@ void TConsoleStr::perform(u32 param_1, JDrama::TGraphics* param_2)
 			unk18 += 0.5f;
 		}
 
-		if (!unk2A9 && gpMarDirector->mState != 4) {
-			if (unk2AC)
+		if (!unk2B5 && gpMarDirector->mState != 4) {
+			if (unk2A8[1])
 				;
 
 			// TODO: uknown stuff
 
-			unk2A9 = true;
+			unk2B5 = true;
 		}
 
-		if (unk2A9 && gpMarDirector->mState != 4) {
-			if (unk2AC)
+		if (unk2B5 && gpMarDirector->mState != 4) {
+			if (unk2A8[1])
 				;
 
 			// TODO: uknown stuff
 
-			unk2A9 = false;
+			unk2B5 = false;
 		}
 	}
 
@@ -288,7 +289,7 @@ void TConsoleStr::startAppearReady()
 
 	unk2B8 = 1;
 	unk18  = 0.0f;
-	unk2A9 = 0;
+	unk2B5 = 0;
 	unk28[0]->unk0->hide();
 	unk28[1]->unk0->hide();
 	unk28[2]->unk0->hide();
@@ -304,7 +305,7 @@ void TConsoleStr::startAppearGo()
 
 	unk2B8 = 1;
 	unk18  = 0.0f;
-	unk2A9 = 0;
+	unk2B5 = 0;
 	unk28[0]->getPane()->hide();
 	unk28[1]->getPane()->hide();
 	unk28[2]->getPane()->hide();
@@ -418,40 +419,70 @@ extern JPAEmitterManager* gpEmitterManager4D2;
 
 bool TConsoleStr::processGo(float param_1)
 {
-	if (param_1 >= 90.0f) {
-		if (param_1 >= 95.0f) {
-			if (param_1 == 95.0f) {
-				unk28[0]->setPanePosition(0x50, JUTPoint(0, 0),
-				                          JUTPoint(170, 180),
-				                          JUTPoint(340, 360));
-				unk28[1]->setPanePosition(0x50, JUTPoint(0, 0),
-				                          JUTPoint(170, 180),
-				                          JUTPoint(340, 360));
-				unk28[2]->setPanePosition(0x50, JUTPoint(0, 0),
-				                          JUTPoint(170, 180),
-				                          JUTPoint(340, 360));
-				for (int i = 0; i < 3; ++i) {
-					for (int j = 0; j < 16; ++j) {
-						// TODO: all wrong
-						// JUTRect local_88 = unk28[i]->unk24;
-					}
+	bool complete = false;
+	if (param_1 < 90.0f) {
+		for (int i = 0; i < 3; ++i) {
+			if (param_1 == i * 10.0f) {
+				unk28[i]->setPanePosition(40, JUTPoint(0, 60), JUTPoint(0, -40),
+				                              JUTPoint(0, -40));
+				unk28[i]->getPane()->show();
+			}
+			const JUTRect before = unk28[i]->getPane()->getBounds();
+			if (unk28[i]->update() && (before.x1 != 0 || before.y1 != 0))
+				unk28[i]->setPanePosition(30, JUTPoint(0, -40), JUTPoint(0, -40),
+				                              JUTPoint(0, 0));
+		}
+		return false;
+	}
 
-					JGeometry::TVec3<f32> local_a4;
-					gpEmitterManager4D2->createEmitter(local_a4, 0x1FD, nullptr,
-					                                   nullptr);
-					unk2A0[i]->mVisible = gpEmitterManager4D2->unkC8[0][0];
-				}
-			} else if (param_1 >= 175.0f) {
-				if (param_1 == 175.0f) {
-					for (int i = 0; i < 3; ++i) {
-						//
-					}
-				} else {
-					// TODO:
-				}
+	if (param_1 == 95.0f) {
+		unk28[0]->setPanePosition(80, JUTPoint(0, 0), JUTPoint(-170, -180),
+		                              JUTPoint(-340, -360));
+		unk28[1]->setPanePosition(80, JUTPoint(0, 0), JUTPoint(-440, -220),
+		                              JUTPoint(0, 0));
+		unk28[2]->setPanePosition(80, JUTPoint(0, 0), JUTPoint(160, -180),
+		                              JUTPoint(320, -360));
+		for (int i = 0; i < 3; ++i) {
+			const JUTRect bounds = unk28[i]->getPane()->getBounds();
+			for (int j = 0; j < 16; ++j)
+				unk34[i * 16 + j] = JUTPoint(bounds.x1, bounds.y1);
+			JGeometry::TVec3<f32> center(bounds.x1 + bounds.getWidth() * 0.5f,
+			                                bounds.y1 + bounds.getHeight() * 0.5f, 0.0f);
+			gpEmitterManager4D2->createEmitter(center, 0x1FD, nullptr, nullptr);
+			unk2A8[i] = gpEmitterManager4D2->unkC8[0][0];
+		}
+	} else if (param_1 > 95.0f && param_1 < 175.0f) {
+		const bool recordTrail = (static_cast<int>(param_1) & 1) == 0;
+		for (int i = 0; i < 3; ++i) {
+			J2DPane* pane = unk28[i]->getPane();
+			pane->setAlpha(pane->getAlpha() > 4 ? pane->getAlpha() - 4 : 0);
+			const JUTRect bounds = pane->getBounds();
+			pane->resize(bounds.getWidth() + 2, bounds.getHeight() + 2);
+			if (unk2A8[i]) {
+				unk2A8[i]->unk160.set(bounds.x1 + bounds.getWidth() * 0.5f,
+				                       bounds.y1 + bounds.getHeight() * 0.5f, 0.0f);
+			}
+			unk28[i]->update();
+			if (recordTrail) {
+				for (int j = 15; j > 0; --j)
+					unk34[i * 16 + j] = unk34[i * 16 + j - 1];
+				unk34[i * 16] = JUTPoint(bounds.x1, bounds.y1);
 			}
 		}
+	} else if (param_1 == 175.0f) {
+		for (int i = 0; i < 3; ++i) {
+			const JUTRect bounds = unk28[i]->getPane()->getBounds();
+			unk28[i]->getPane()->move(bounds.getWidth() - 80, bounds.getHeight() - 80);
+		}
+	} else if (param_1 > 175.0f) {
+		for (int i = 0; i < 3; ++i) {
+			unk28[i]->getPane()->hide();
+			if (unk2A8[i])
+				unk2A8[i]->mStatus |= 1;
+		}
+		complete = true;
 	}
+	return complete;
 }
 
 bool TConsoleStr::processShineGet(int param_1)
@@ -633,7 +664,7 @@ void TConsoleStr::startCloseWipe(bool param_1)
 
 		unk2BC = 8;
 		unk2B8 = 4;
-		unk2A8 = 1;
+		unk2B4 = 1;
 	} else if (unk2BC == 1) {
 		unk2BC           = 2;
 		JUTRect local_88 = unk290[0]->getPane()->getBounds();
@@ -647,13 +678,13 @@ void TConsoleStr::startCloseWipe(bool param_1)
 		                       local_88.getHeight(), 0);
 		unk290[1]->setPaneAlpha(30, 100, 255);
 	} else {
-		unk2A8 = 1;
+		unk2B4 = 1;
 	}
 }
 
 void TConsoleStr::startOpenWipe()
 {
-	unk2A8 = 0;
+	unk2B4 = 0;
 	unk2BC = 5;
 	unk290[0]->getPane()->hide();
 	unk298->getPane()->show();
