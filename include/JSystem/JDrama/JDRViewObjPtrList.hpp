@@ -10,7 +10,6 @@
 namespace JDrama {
 
 template <class T, class U = TViewObj>
-
 class TViewObjPtrListT : public U, public JGadget::TList_pointer<T*> {
 public:
 	TViewObjPtrListT(const char* name = "<TViewObjPtrListT>")

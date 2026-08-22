@@ -14,19 +14,19 @@ void TLight::load(JSUMemoryInputStream& stream)
 	GXInitLightColor(&unk24, color);
 }
 
-void TLight::perform(u32 param_1, TGraphics* param_2)
+void TLight::perform(u32 cue, TGraphics* graphics)
 {
-	if (!(param_1 & 0x20))
+	if (!(cue & CUE_LIGHT))
 		return;
-	correct(param_2);
-	GXLoadLightObjImm(&unk24, (GXLightID)(param_2->unkE4 + GX_LIGHT0));
+	correct(graphics);
+	GXLoadLightObjImm(getLightObj(), (GXLightID)(graphics->unkE4 + GX_LIGHT0));
 }
 
 void TLight::correct(TGraphics* param_1) const
 {
 	Vec pos;
 	MTXMultVec(param_1->getViewMtx(), (Vec*)&mPosition, &pos);
-	GXInitLightPos(const_cast<GXLightObj*>(&unk24), pos.x, pos.y, pos.z);
+	GXInitLightPos(getLightObj(), pos.x, pos.y, pos.z);
 }
 
 JStage::TELight TLight::JSGGetLightType() const { return mLightType; }
@@ -58,7 +58,7 @@ GXColor TLight::JSGGetColor() const
 	return result;
 }
 
-void TLight::JSGSetColor(GXColor color) { GXInitLightColor(&unk24, color); }
+void TLight::JSGSetColor(GXColor color) { setColor(color); }
 
 void TLightAry::load(JSUMemoryInputStream& stream)
 {
@@ -98,16 +98,16 @@ void TLightAry::setLightNum(s32 num)
 		mLights[i].setLightIdx(i);
 }
 
-void TLightAry::perform(u32 param_1, TGraphics* param_2)
+void TLightAry::perform(u32 cue, TGraphics* graphics)
 {
-	if (!(param_1 & 0x20))
+	if (!(cue & CUE_LIGHT))
 		return;
 
-	for (int i = 0; i < mLightCount; ++i)
-		mLights[i].correct(param_2);
+	for (int i = 0; i < getLightNum(); ++i)
+		mLights[i].correct(graphics);
 
 	DCFlushRange(mLights, mLightCount * sizeof(TIdxLight));
-	GXSetArray(GX_LIGHT_ARRAY, &mLights[0].unk24, sizeof(TIdxLight));
+	GXSetArray(GX_LIGHT_ARRAY, mLights[0].getLightObj(), sizeof(TIdxLight));
 }
 
 void TAmbColor::load(JSUMemoryInputStream& stream)
@@ -116,10 +116,10 @@ void TAmbColor::load(JSUMemoryInputStream& stream)
 	mColor.set(stream.readU32());
 }
 
-void TAmbColor::perform(u32 param_1, TGraphics* param_2)
+void TAmbColor::perform(u32 cue, TGraphics* graphics)
 {
 
-	if (!(param_1 & 0x20))
+	if (!(cue & CUE_LIGHT))
 		return;
 
 	GXSetChanAmbColor(GX_COLOR0A0, mColor);
@@ -127,7 +127,7 @@ void TAmbColor::perform(u32 param_1, TGraphics* param_2)
 
 GXColor TAmbColor::JSGGetColor() const { return mColor; }
 
-void TAmbColor::JSGSetColor(GXColor color) { mColor = color; }
+void TAmbColor::JSGSetColor(GXColor color) { setColor(color); }
 
 void TAmbAry::load(JSUMemoryInputStream& stream)
 {
@@ -178,15 +178,15 @@ void TLightMap::load(JSUMemoryInputStream& stream)
 	}
 }
 
-void TLightMap::perform(u32 param_1, TGraphics* param_2)
+void TLightMap::perform(u32 cue, TGraphics* graphics)
 {
-	if (!(param_1 & 0x20))
+	if (!(cue & CUE_LIGHT))
 		return;
 
 	for (int i = 0; i < mLightInfoCount; ++i) {
 		if (mLightInfos[i].unk4) {
-			param_2->unkE4 = mLightInfos[i].unk0;
-			mLightInfos[i].unk4->perform(param_1, param_2);
+			graphics->unkE4 = mLightInfos[i].unk0;
+			mLightInfos[i].unk4->perform(cue, graphics);
 		}
 	}
 }

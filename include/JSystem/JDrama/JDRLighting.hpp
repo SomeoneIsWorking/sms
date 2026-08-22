@@ -6,6 +6,7 @@
 #include <JSystem/JDrama/JDRPlacement.hpp>
 #include <JSystem/JStage/JSGAmbientLight.hpp>
 #include <dolphin/gx/GXLighting.h>
+#include <dolphin/gx/GXGet.h>
 
 namespace JDrama {
 
@@ -32,7 +33,7 @@ public:
 	}
 
 	virtual void load(JSUMemoryInputStream&);
-	virtual void perform(u32, TGraphics*);
+	virtual void perform(u32 cue, TGraphics* graphics);
 
 public:
 	/* 0x10 */ s32 mLightInfoCount;
@@ -46,11 +47,11 @@ public:
 	    , mLightType(JStage::TELIGHT_Unk1)
 	{
 		GXInitLightAttn(&unk24, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f);
-		GXInitLightColor(&unk24, JUtility::TColor(0xff, 0xff, 0xff, 0xff));
+		setColor(JUtility::TColor(0xff, 0xff, 0xff, 0xff));
 	}
 
 	virtual void load(JSUMemoryInputStream&);
-	virtual void perform(u32, TGraphics*);
+	virtual void perform(u32 cue, TGraphics* graphics);
 
 	virtual JStage::TELight JSGGetLightType() const;
 	virtual void JSGSetLightType(JStage::TELight);
@@ -62,6 +63,16 @@ public:
 	virtual void JSGSetColor(GXColor);
 
 	void correct(TGraphics*) const;
+
+	GXLightObj* getLightObj() const { return const_cast<GXLightObj*>(&unk24); }
+
+	void setColor(GXColor color) { GXInitLightColor(&unk24, color); }
+	GXColor getColor()
+	{
+		GXColor result;
+		GXGetLightColor(&unk24, &result);
+		return result;
+	}
 
 public:
 	/* 0x24 */ GXLightObj unk24;
@@ -94,9 +105,15 @@ public:
 
 	virtual void load(JSUMemoryInputStream&);
 	virtual TNameRef* searchF(u16, const char*);
-	virtual void perform(u32, TGraphics*);
+	virtual void perform(u32 cue, TGraphics* graphics);
 
 	void setLightNum(s32);
+
+	// getLightNum() is real: TLightAry::perform only matches when its loop
+	// bound goes through it. getLight() is still fabricated -- using it in
+	// load() breaks that function.
+	TIdxLight* getLight(int idx) { return &mLights[idx]; }
+	s32 getLightNum() const { return mLightCount; }
 
 public:
 	/* 0x10 */ TIdxLight* mLights;
@@ -112,9 +129,20 @@ public:
 	}
 
 	virtual void load(JSUMemoryInputStream&);
-	virtual void perform(u32, TGraphics*);
+	virtual void perform(u32 cue, TGraphics* graphics);
 	virtual GXColor JSGGetColor() const;
 	virtual void JSGSetColor(GXColor color);
+
+	// Reconstructed from codegen, so treat the pair as provisional: the ROM's
+	// JSGSetColor passes the colour through one by-value GXColor parameter and
+	// then one by-value TColor parameter, and nothing else reproduces its
+	// frame. No map lists either overload, but TLight::setColor is on the same
+	// footing and a by-value TColor setter is the house style elsewhere
+	// (TSMSFader::setColor(JUtility::TColor) is in the map).
+	void setColor(GXColor color) { setColor(JUtility::TColor(color)); }
+	void setColor(JUtility::TColor color) { mColor = color; }
+
+	const JUtility::TColor& getColor() const { return mColor; }
 
 public:
 	/* 0x14 */ JUtility::TColor mColor;
@@ -132,9 +160,13 @@ public:
 
 	virtual void load(JSUMemoryInputStream&);
 	virtual TNameRef* searchF(u16, const char*);
-	virtual void perform(u32, TGraphics*) { }
+	virtual void perform(u32 cue, TGraphics* graphics) { }
 
 	void setAmbNum(s32);
+
+	// fabricated
+	TAmbColor* getAmb(int idx) { return &mAmbColors[idx]; }
+	s32 getAmbNum() const { return mAmbColorCount; }
 
 public:
 	/* 0x10 */ TAmbColor* mAmbColors;
