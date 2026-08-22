@@ -181,7 +181,8 @@ public:
 	// fakematch), but on LP64 -O2 the compiler proves the dangling reference is
 	// UB, folds the caller's `.length()` load to address 0 and emits `ud2`
 	// (the TMarioCap::perform null-float trap). Return by value natively — the
-	// arithmetic result is identical; only the dangling-reference UB is removed.
+	// arithmetic result is identical; only the dangling-reference UB is
+	// removed.
 #ifdef SMS_NATIVE_PLATFORM
 	friend TVec3 operator-(TVec3 fst, const TVec3& snd)
 	{
@@ -334,6 +335,14 @@ public:
 			y = min.y;
 		if (z >= min.z)
 			z = min.z;
+	}
+
+	// Fabricated from the equivalent SDK-era helper used by later titles.
+	bool epsilonEquals(const TVec3& other) const
+	{
+		return TUtil<f32>::epsilonEquals(x, other.x)
+		       && TUtil<f32>::epsilonEquals(y, other.y)
+		       && TUtil<f32>::epsilonEquals(z, other.z);
 	}
 
 	// TODO: SMG's operator== uses epsilonEquals. Maybe this wasn't operator==
