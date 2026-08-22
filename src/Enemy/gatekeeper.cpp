@@ -212,7 +212,7 @@ TBGKMtxCalc::TBGKMtxCalc(TBiancoGateKeeper* owner)
 void TBGKMtxCalc::joinAnm(int param_1)
 {
 	J3DAnmTransformKey* anm
-	    = mOwner->getActorKeeper()->getMActorAnmData()->getUnk2C()->getAnmPtr(
+	    = mOwner->getActorKeeper()->getMActorAnmData()->getBckData()->getAnmPtr(
 	        param_1);
 
 	if (mAnmTransformNew == anm)
@@ -220,18 +220,18 @@ void TBGKMtxCalc::joinAnm(int param_1)
 
 	mAnmTransformOld = mAnmTransformNew;
 	mAnmTransformNew = anm;
-	unk50 = 1.0f;
+	unk50            = 1.0f;
 }
 
 void TBGKMtxCalc::setAnm(int param_1)
 {
 	J3DAnmTransformKey* anm
-	    = mOwner->getActorKeeper()->getMActorAnmData()->getUnk2C()->getAnmPtr(
+	    = mOwner->getActorKeeper()->getMActorAnmData()->getBckData()->getAnmPtr(
 	        param_1);
 
 	mAnmTransformNew = anm;
 	mAnmTransformOld = 0;
-	unk50 = 0.0f;
+	unk50            = 0.0f;
 }
 
 void TBGKMtxCalc::calc(u16 param_1)
@@ -384,7 +384,7 @@ void TBiancoGateKeeper::init(TLiveManager* manager)
 	MActorAnmData* anmData = mMActorKeeper->getMActorAnmData();
 	mMultiBtk              = new TMultiBtk(2, getModel()->getModelData());
 	for (int i = 0; i < 2; i++)
-		mMultiBtk->setNthData(i, anmData->getUnk38()->getAnmPtr(i));
+		mMultiBtk->setNthData(i, anmData->getBtkData()->getAnmPtr(i));
 
 	mObstacle = new TBGKObstacle(this, "TBGKObstacle");
 

@@ -729,11 +729,11 @@ void THinokuri2::changeBck(int param_1)
 		    || curBck == 0x16 && param_1 == 0xB
 		    || curBck == 0xB && param_1 == 0x18) {
 			unk1A0->addTransform(
-			    getActorKeeper()->getMActorAnmData()->getUnk2C()->getAnmPtr(
+			    getActorKeeper()->getMActorAnmData()->getBckData()->getAnmPtr(
 			        param_1));
 		} else {
-			unk1A0->setAnmTransform(
-			    getActorKeeper()->getMActorAnmData()->getUnk2C()->getAnmPtr(
+			unk1A0->setTransform(
+			    getActorKeeper()->getMActorAnmData()->getBckData()->getAnmPtr(
 			        param_1));
 		}
 

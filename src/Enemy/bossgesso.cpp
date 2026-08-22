@@ -359,7 +359,7 @@ TBossGessoMtxCalc::TBossGessoMtxCalc(TBossGesso* owner)
 void TBossGessoMtxCalc::joinAnm(int param_1)
 {
 	J3DAnmTransformKey* anm
-	    = mOwner->getActorKeeper()->getMActorAnmData()->getUnk2C()->getAnmPtr(
+	    = mOwner->getActorKeeper()->getMActorAnmData()->getBckData()->getAnmPtr(
 	        param_1);
 
 	if (mAnmTransformNew == anm)
@@ -367,7 +367,7 @@ void TBossGessoMtxCalc::joinAnm(int param_1)
 
 	mAnmTransformOld = mAnmTransformNew;
 	mAnmTransformNew = anm;
-	unk50 = 1.0f;
+	unk50            = 1.0f;
 }
 
 void TBossGessoMtxCalc::setAnm(int param_1) { }

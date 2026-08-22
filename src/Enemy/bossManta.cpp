@@ -361,7 +361,7 @@ void TBossManta::startWalkAnim()
 	getMActor()->setBckFromIndex(3);
 
 	J3DAnmTransform* oldAnm
-	    = getActorKeeper()->getMActorAnmData()->getUnk2C()->getAnmPtr(4);
+	    = getActorKeeper()->getMActorAnmData()->getBckData()->getAnmPtr(4);
 	getMActor()->setBckOldMotionBlendAnmPtr(oldAnm);
 	getMActor()->setMotionBlendRatioForBck(0.5f);
 
@@ -829,8 +829,7 @@ void TBossMantaManager::TMantaBattleState::update()
 		if (sDefeatSE == nullptr) {
 			JDrama::TNameRefGen::search<TMapEventSirenaSink>(
 			    "イベント（ホテル沈む）")
-			    ->unk64
-			    = true;
+			    ->unk64 = true;
 			mState++;
 		}
 		break;
@@ -1084,7 +1083,7 @@ const JUtility::TColor& TBossMantaManager::getMantaColor()
 	TBossMantaParams* params = (TBossMantaParams*)getSaveParam();
 	f32 t                    = (f32)unk84 / 15.0f;
 	unk80.r                  = (u8)((1.0f - t) * (f32)params->mSLMantaRed.get()
-                   + t * (f32)params->mSLAngryMantaRed.get());
+	                                + t * (f32)params->mSLAngryMantaRed.get());
 	unk80.g = (u8)((1.0f - t) * (f32)params->mSLMantaGreen.get()
 	               + t * (f32)params->mSLAngryMantaGreen.get());
 	unk80.b = (u8)((1.0f - t) * (f32)params->mSLMantaBlue.get()

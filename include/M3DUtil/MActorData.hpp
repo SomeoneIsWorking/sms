@@ -93,21 +93,22 @@ public:
 	void addIncidentalAnm(const char*, int);
 	u32 partsNameToIdx(const char*);
 
-	// fabricated. getUnk2C..getUnk40/getUnk48 keep their names (widely called); they now
-	// return the renamed fields. The per-anm-kind counts (unkN) double as write indices
-	// during addFileTable's second pass (reset to 0 after init), hence the plain `Num`.
+	// Fabricated accessors named for the animation resource each typed table
+	// owns. The per-anm-kind counts double as write indices during
+	// addFileTable's second pass.
 	s32 getIncidentalAnmNum() { return mIncidentalAnmNum; }
-	SampleCtrlModelData* getUnk48() { return mSampleModelData; }
-	MActorAnmDataEach<J3DAnmTransformKey>* getUnk2C() { return mBckData; }
-	MActorAnmDataEach<J3DAnmColorKey>* getUnk30() { return mBpkData; }
-	MActorAnmDataEach<J3DAnmTexPattern>* getUnk34() { return mBtpData; }
-	MActorAnmDataEach<J3DAnmTextureSRTKey>* getUnk38() { return mBtkData; }
-	MActorAnmDataEach<J3DAnmTevRegKey>* getUnk3C() { return mBrkData; }
-	MActorAnmDataEach<J3DAnmClusterKey>* getUnk40() { return mBlkData; }
+	SampleCtrlModelData* getSampleModelData() { return mSampleModelData; }
+	MActorAnmDataEach<J3DAnmTransformKey>* getBckData() { return mBckData; }
+	MActorAnmDataEach<J3DAnmColorKey>* getBpkData() { return mBpkData; }
+	MActorAnmDataEach<J3DAnmTexPattern>* getBtpData() { return mBtpData; }
+	MActorAnmDataEach<J3DAnmTextureSRTKey>* getBtkData() { return mBtkData; }
+	MActorAnmDataEach<J3DAnmTevRegKey>* getBrkData() { return mBrkData; }
+	MActorAnmDataEach<J3DAnmClusterKey>* getBlkData() { return mBlkData; }
 
 public:
-	/* 0x0 */ int mIncidentalAnmNum;  // incidental sub-BCK count (== mIncidentalAnmList len)
-	/* 0x4 */ int mBckNum;            // per-kind file counts (also reused as indices)
+	/* 0x0 */ int mIncidentalAnmNum; // incidental sub-BCK count (==
+	                                 // mIncidentalAnmList len)
+	/* 0x4 */ int mBckNum; // per-kind file counts (also reused as indices)
 	/* 0x8 */ int mBlkNum;
 	/* 0xC */ int mBpkNum;
 	/* 0x10 */ int mBtpNum;

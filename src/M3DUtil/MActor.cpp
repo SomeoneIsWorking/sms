@@ -48,56 +48,58 @@ MActor::MActor(MActorAnmData* anm_data)
 	mAnmByType[4] = nullptr;
 	mAnmByType[5] = nullptr;
 
-	if (anm_data->getUnk2C()) {
-		mAnmBck = new MActorAnmBck;
-		mAnmBck->setUnk1C(anm_data->getUnk2C());
-		mAnmByType[ANM_TYPE_BCK] = mAnmBck;
+	if (param_1->getBckData()) {
+		unkC = new MActorAnmBck;
+		unkC->setUnk1C(param_1->getBckData());
+		unk28[0] = unkC;
 	}
 
-	if (anm_data->getUnk30()) {
-		mAnmBpk = new MActorAnmBpk;
-		mAnmBpk->setUnk1C(anm_data->getUnk30());
-		mAnmBpk->setMatColorAnmKeyPtr();
-		mAnmByType[ANM_TYPE_BPK] = mAnmBpk;
+	if (param_1->getBpkData()) {
+		unk14 = new MActorAnmBpk;
+		unk14->setUnk1C(param_1->getBpkData());
+		unk14->setMatColorAnmKeyPtr();
+		unk28[2] = unk14;
 	}
 
-	if (anm_data->getUnk34()) {
-		mAnmBtp = new MActorAnmBtp;
-		mAnmBtp->setUnk1C(anm_data->getUnk34());
-		mAnmBtp->setTexNoAnmFullPtr();
-		mAnmByType[ANM_TYPE_BTP] = mAnmBtp;
+	if (param_1->getBtpData()) {
+		unk18 = new MActorAnmBtp;
+		unk18->setUnk1C(param_1->getBtpData());
+		unk18->setTexNoAnmFullPtr();
+		unk28[3] = unk18;
 	}
 
-	if (anm_data->getUnk38()) {
-		mAnmBtk = new MActorAnmBtk;
-		mAnmBtk->setUnk1C(anm_data->getUnk38());
-		mAnmBtk->setTexMtxAnmKeyPtr();
-		mAnmByType[ANM_TYPE_BTK] = mAnmBtk;
+	if (param_1->getBtkData()) {
+		unk1C = new MActorAnmBtk;
+		unk1C->setUnk1C(param_1->getBtkData());
+		unk1C->setTexMtxAnmKeyPtr();
+		unk28[4] = unk1C;
 	}
 
-	if (anm_data->getUnk3C()) {
-		mAnmBrk = new MActorAnmBrk;
-		mAnmBrk->setUnk1C(anm_data->getUnk3C());
-		mAnmBrk->setTevColorAnmKeyPtr();
-		mAnmBrk->setTevKColorAnmKeyPtr();
-		mAnmByType[ANM_TYPE_BRK] = mAnmBrk;
+	if (param_1->getBrkData()) {
+		unk20 = new MActorAnmBrk;
+		unk20->setUnk1C(param_1->getBrkData());
+		unk20->setTevColorAnmKeyPtr();
+		unk20->setTevKColorAnmKeyPtr();
+		unk28[5] = unk20;
 	}
 
-	if (anm_data->getUnk40()) {
-		mAnmBlk = new MActorAnmBlk;
-		mAnmBlk->setUnk1C(anm_data->getUnk40());
-		mAnmByType[ANM_TYPE_BLK] = mAnmBlk;
+	if (param_1->getBlkData()) {
+		unk24 = new MActorAnmBlk;
+		unk24->setUnk1C(param_1->getBlkData());
+		unk28[1] = unk24;
 	}
 
 	if (param_1->getIncidentalAnmNum() > 0) {
 		unk10 = new MActorAnmBck*[param_1->getIncidentalAnmNum()];
 
-		JGadget::TList<MActorSubAnmInfo>::iterator it = unk0->mIncidentalAnmList.begin();
-		JGadget::TList<MActorSubAnmInfo>::iterator e  = unk0->mIncidentalAnmList.end();
+		JGadget::TList<MActorSubAnmInfo>::iterator it
+		    = unk0->mIncidentalAnmList.begin();
+		JGadget::TList<MActorSubAnmInfo>::iterator e
+		    = unk0->mIncidentalAnmList.end();
 
 		for (int i = 0; it != e; ++it, ++i) {
 			unk10[i] = new MActorAnmBck;
-			unk10[i]->setUnk1C(anm_data->getUnk2C());
+			unk10[i]->setUnk1C(param_1->getBckData());
 			unk10[i]->unk28 = it->unk0;
 		}
 	}
@@ -135,8 +137,10 @@ void MActor::setModel(J3DModel* param_1, u32 param_2)
 	}
 
 	if (unk0->getIncidentalAnmNum() > 0) {
-		JGadget::TList<MActorSubAnmInfo>::iterator it = unk0->mIncidentalAnmList.begin();
-		JGadget::TList<MActorSubAnmInfo>::iterator e  = unk0->mIncidentalAnmList.end();
+		JGadget::TList<MActorSubAnmInfo>::iterator it
+		    = unk0->mIncidentalAnmList.begin();
+		JGadget::TList<MActorSubAnmInfo>::iterator e
+		    = unk0->mIncidentalAnmList.end();
 		for (int i = 0; it != e; ++it, ++i) {
 			unk10[i]->setModel(mModel);
 		}
@@ -153,17 +157,19 @@ void MActor::setModel(J3DModel* param_1, u32 param_2)
 		}
 #ifdef SMS_NATIVE_PLATFORM
 		if (SB_LOG_ON("matanm"))
-			fprintf(stderr, "[matanm-setModel] this=%p i=%u/%u unk30=%u unk2C=%u pre_anm=%p post_anm=%p\n",
-			             (void*)this, i, unk34, unk30[i], unk2C[i], (void*)anm,
-			             (void*)mat->getMaterialAnm());
+			fprintf(stderr,
+			        "[matanm-setModel] this=%p i=%u/%u unk30=%u unk2C=%u "
+			        "pre_anm=%p post_anm=%p\n",
+			        (void*)this, i, unk34, unk30[i], unk2C[i], (void*)anm,
+			        (void*)mat->getMaterialAnm());
 #endif
 		unk2C[i] = 0x32;
 	}
 
 	initDL();
 
-	if (!mAnmData->getUnk48())
-		mAnmData->createSampleModelData(mModel->getModelData());
+	if (!unk0->getSampleModelData())
+		unk0->createSampleModelData(unk4->getModelData());
 }
 
 bool MActor::isCurAnmAlreadyEnd(int type)
@@ -662,10 +668,13 @@ void MActor::updateMatAnm()
 		if (unk30[i] != 0x32 || unk2C[i] != 0x32) {
 #ifdef SMS_NATIVE_PLATFORM
 			if (SB_LOG_ON("matanm")) {
-				J3DMaterial* m = unk4->getModelData()->getMaterialNodePointer(i);
-				sb_logf("matanm", "matanm-update: this=%p i=%u/%u unk30=%u unk2C=%u anm=%p",
-				             (void*)this, i, unk34, unk30[i], unk2C[i],
-				             (void*)m->getMaterialAnm());
+				J3DMaterial* m
+				    = unk4->getModelData()->getMaterialNodePointer(i);
+				sb_logf(
+				    "matanm",
+				    "matanm-update: this=%p i=%u/%u unk30=%u unk2C=%u anm=%p",
+				    (void*)this, i, unk34, unk30[i], unk2C[i],
+				    (void*)m->getMaterialAnm());
 			}
 #endif
 			SMS_CalcMatAnmAndMakeDL(unk4, i);
