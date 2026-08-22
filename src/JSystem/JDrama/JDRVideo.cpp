@@ -11,6 +11,19 @@ using namespace JDrama;
 extern "C" void sb_frame_present(unsigned retraces);
 #endif
 
+void InitRenderModeVIParams(GXRenderModeObj* obj)
+{
+	obj->viTVmode  = (VITVMode)-1;
+	obj->fbWidth   = 0;
+	obj->efbHeight = 0;
+	obj->xfbHeight = 0;
+	obj->viXOrigin = 0;
+	obj->viYOrigin = 0;
+	obj->viWidth   = 0;
+	obj->viHeight  = 0;
+	obj->xFBmode   = (VIXFBMode)-1;
+}
+
 TVideo::TVideo()
 {
 	mCurFrameBuffer   = nullptr;

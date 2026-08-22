@@ -92,9 +92,11 @@ void TEfbCtrlTex::perform(u32 param_1, TGraphics* param_2)
 	if (const char* e = getenv("SB_EFBTEX_DBG"); e && e[0] && e[0] != '0') {
 		static int n = 0;
 		if (n++ < 40)
-			fprintf(stderr, "[efbtex] name='%s' param_1=0x%x mImagePtr=%p mWidth=%u mHeight=%u draw(0x8)=%d\n",
-			        getName() ? getName() : "?", param_1, (void*)mImagePtr, mWidth, mHeight,
-			        (param_1 & 0x8) != 0);
+			fprintf(stderr,
+			        "[efbtex] name='%s' param_1=0x%x mImagePtr=%p mWidth=%u "
+			        "mHeight=%u draw(0x8)=%d\n",
+			        getName() ? getName() : "?", param_1, (void*)mImagePtr,
+			        mSize.mWidth, mSize.mHeight, (param_1 & 0x8) != 0);
 	}
 #endif
 	if (param_1 & 0x80) {

@@ -26,6 +26,12 @@ void TSmJ3DAct::initModDat()
 	}
 }
 
+void TSmJ3DAct::load(JSUMemoryInputStream& stream)
+{
+	TActor::load(stream);
+	initModDat();
+}
+
 void TSmJ3DAct::perform(u32 cue, TGraphics* graphics)
 {
 	if (cue & CUE_CALC_ANIM) {

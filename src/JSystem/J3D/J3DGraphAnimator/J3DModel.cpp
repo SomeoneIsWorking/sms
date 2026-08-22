@@ -495,21 +495,22 @@ J3DModel::~J3DModel() { }
 
 void J3DModel::initialize()
 {
-	unkC        = nullptr;
-	unk8        = 0;
-	mModelData  = nullptr;
-	mDeformData = 0;
-	mSkinDeform = nullptr;
-	mBaseScale.x     = 1.0;
-	mBaseScale.y     = 1.0;
-	mBaseScale.z     = 1.0;
+
+	unkC         = nullptr;
+	unk8         = 0;
+	mModelData   = nullptr;
+	mDeformData  = 0;
+	mSkinDeform  = nullptr;
+	mBaseScale.x = 1.0;
+	mBaseScale.y = 1.0;
+	mBaseScale.z = 1.0;
 
 	MTXIdentity(mBaseMtx);
 
 	mScaleFlagArr     = nullptr;
 	mEvlpScaleFlagArr = nullptr;
 	mNodeMatrices     = nullptr;
-	mWEvlpMtx             = nullptr;
+	mWEvlpMtx         = nullptr;
 
 	mDrawMtxBuf[0] = nullptr;
 	mDrawMtxBuf[1] = nullptr;
@@ -541,8 +542,8 @@ void J3DModel::entryModelData(J3DModelData* pModelData, u32 mdlFlags,
 		mNodeMatrices = new Mtx[pModelData->getJointNum()];
 	}
 
-	if (param_1->getWEvlpMtxNum())
-		mWEvlpMtx = new Mtx[param_1->getWEvlpMtxNum()];
+	if (pModelData->getWEvlpMtxNum())
+		mWEvlpMtx = new Mtx[pModelData->getWEvlpMtxNum()];
 
 	if (mtxNum != 0) {
 		for (int i = 0; i < 2; ++i) {
@@ -553,22 +554,29 @@ void J3DModel::entryModelData(J3DModelData* pModelData, u32 mdlFlags,
 	}
 
 	for (int i = 0; i < 2; ++i) {
-		for (int j = 0; j < param_3; ++j) {
-			if (param_1->getDrawMtxNum()) {
-				mDrawMtxBuf[i][j] = new (0x20) Mtx[param_1->getDrawMtxNum()];
-				mNrmMtxBuf[i][j]  = new (0x20) Mtx33[param_1->getDrawMtxNum()];
+		for (int j = 0; j < mtxNum; ++j) {
+			if (pModelData->getDrawMtxNum()) {
+				mDrawMtxBuf[i][j] = new (0x20) Mtx[pModelData->getDrawMtxNum()];
+				mNrmMtxBuf[i][j]
+				    = new (0x20) Mtx33[pModelData->getDrawMtxNum()];
 #ifdef SMS_NATIVE_PLATFORM
 				// SB_LOG=j3dbuf: buffer->model registry, to match aurora's
 				// [pnzero] zero-matrix upload array bases to their model.
-				SB_LOGC("j3dbuf", "model=%p buf[%d][view=%d] draw=%p nrm=%p drawMtxNum=%d joints=%d views=%d",
-				        (void*)this, i, j, (void*)mDrawMtxBuf[i][j], (void*)mNrmMtxBuf[i][j],
-				        (int)param_1->getDrawMtxNum(), (int)param_1->getJointNum(), (int)param_3);
+				SB_LOGC("j3dbuf",
+				        "model=%p buf[%d][view=%d] draw=%p nrm=%p "
+				        "drawMtxNum=%d joints=%d views=%d",
+				        (void*)this, i, j, (void*)mDrawMtxBuf[i][j],
+				        (void*)mNrmMtxBuf[i][j],
+				        (int)pModelData->getDrawMtxNum(),
+				        (int)pModelData->getJointNum(), (int)mtxNum);
 				// SB_LOG=j3dbt: one-shot creation backtrace per big skinned
 				// model — names WHO creates the extra Mario-body models that
 				// viewCalc without ever running the envelope blend.
-				if (i == 0 && j == 0 && param_1->getDrawMtxNum() > 100 && sb_log_enabled("j3dbt")) {
-					sb_logf("j3dbt", "entryModelData model=%p drawMtxNum=%d backtrace:", (void*)this,
-					        (int)param_1->getDrawMtxNum());
+				if (i == 0 && j == 0 && pModelData->getDrawMtxNum() > 100
+				    && sb_log_enabled("j3dbt")) {
+					sb_logf("j3dbt",
+					        "entryModelData model=%p drawMtxNum=%d backtrace:",
+					        (void*)this, (int)pModelData->getDrawMtxNum());
 					void* fr[24];
 					int nf = backtrace(fr, 24);
 					backtrace_symbols_fd(fr, nf, 2);
@@ -588,12 +596,13 @@ void J3DModel::entryModelData(J3DModelData* pModelData, u32 mdlFlags,
 	if (pModelData->getMaterialNum()) {
 		mMatPackets = new J3DMatPacket[pModelData->getMaterialNum()];
 
-		for (int i = 0; i < param_1->getMaterialNum(); ++i) {
-			mMatPackets[i].setMaterial(param_1->getMaterialNodePointer(i));
+		for (int i = 0; i < pModelData->getMaterialNum(); ++i) {
+			mMatPackets[i].setMaterial(pModelData->getMaterialNodePointer(i));
 			mMatPackets[i].addShapePacket(
-			    &mShapePackets
-			        [param_1->getMaterialNodePointer(i)->getShape()->mIndex]);
-			mMatPackets[i].mTexture = param_1->getTexture();
+			    &mShapePackets[pModelData->getMaterialNodePointer(i)
+			                       ->getShape()
+			                       ->getIndex()]);
+			mMatPackets[i].setTexture(pModelData->getTexture());
 
 			if (mdlFlags & 0x20000) {
 				J3DMaterial* mat = pModelData->getMaterialNodePointer(i);
@@ -707,21 +716,25 @@ void J3DModel::setSkinDeform(J3DSkinDeform* pSkinDeform,
 void J3DModel::calcWeightEnvelopeMtx()
 {
 #ifdef SMS_NATIVE_PLATFORM
-	// PORT (decomp coverage): the retail/base body is empty and no other TU writes the weighted
-	// envelope matrices (mWEvlpMtx) — so envelope-skinned joints stayed at stale/world matrices and a
-	// per-vertex-skinned mesh (Mario's body/FLUDD mount) smeared. The EVP1 data IS loaded by
-	// J3DModelLoader::readEnvelop (unk88=influence count, unk8C=joint index, unk90=weight,
-	// unk94=inverse-bind / mpInvJointMtx). Compute the canonical J3D envelope blend at the existing,
-	// already-wired call site (calc() runs this before viewCalc reads mWEvlpMtx):
+	// PORT (decomp coverage): the retail/base body is empty and no other TU
+	// writes the weighted envelope matrices (mWEvlpMtx) — so envelope-skinned
+	// joints stayed at stale/world matrices and a per-vertex-skinned mesh
+	// (Mario's body/FLUDD mount) smeared. The EVP1 data IS loaded by
+	// J3DModelLoader::readEnvelop (unk88=influence count, unk8C=joint index,
+	// unk90=weight, unk94=inverse-bind / mpInvJointMtx). Compute the canonical
+	// J3D envelope blend at the existing, already-wired call site (calc() runs
+	// this before viewCalc reads mWEvlpMtx):
 	//   mWEvlpMtx[e] = Σ_k weight_k · ( mNodeMatrices[idx_k] · invBind[idx_k] )
-	// (joint world pose × inverse-bind = the skin matrix; the weighted sum is the envelope matrix).
+	// (joint world pose × inverse-bind = the skin matrix; the weighted sum is
+	// the envelope matrix).
 	if (!mModelData)
 		return;
 	const u16 evlpNum = mModelData->getWEvlpMtxNum();
-	if (evlpNum == 0 || !mModelData->mWEvlpMixMtxNum || !mModelData->mWEvlpMixIndex || !mModelData->mWEvlpMixWeight
+	if (evlpNum == 0 || !mModelData->mWEvlpMixMtxNum
+	    || !mModelData->mWEvlpMixIndex || !mModelData->mWEvlpMixWeight
 	    || !mModelData->mInvJointMtx || !mWEvlpMtx)
 		return;
-	u32 k = 0;   // running index into the flattened index/weight arrays
+	u32 k = 0; // running index into the flattened index/weight arrays
 	for (u16 e = 0; e < evlpNum; ++e) {
 		const u8 num = mModelData->mWEvlpMixMtxNum[e];
 		Mtx acc;
@@ -732,7 +745,8 @@ void J3DModel::calcWeightEnvelopeMtx()
 			const u16 mtxIdx = mModelData->mWEvlpMixIndex[k];
 			const f32 w      = mModelData->mWEvlpMixWeight[k];
 			Mtx skin;
-			MTXConcat(getAnmMtx(mtxIdx), mModelData->mInvJointMtx[mtxIdx], skin);
+			MTXConcat(getAnmMtx(mtxIdx), mModelData->mInvJointMtx[mtxIdx],
+			          skin);
 			for (int r = 0; r < 3; ++r)
 				for (int c = 0; c < 4; ++c)
 					acc[r][c] += w * skin[r][c];
@@ -745,13 +759,16 @@ void J3DModel::calcWeightEnvelopeMtx()
 		// draw entries).
 		if (acc[0][0] == 0.f && acc[0][1] == 0.f && acc[0][2] == 0.f) {
 			float wsum = 0.f;
-			u32 kk = k - num;
+			u32 kk     = k - num;
 			int maxIdx = -1;
 			for (u8 j = 0; j < num; ++j) {
 				wsum += mModelData->mWEvlpMixWeight[kk + j];
-				if (mModelData->mWEvlpMixIndex[kk + j] > maxIdx) maxIdx = mModelData->mWEvlpMixIndex[kk + j];
+				if (mModelData->mWEvlpMixIndex[kk + j] > maxIdx)
+					maxIdx = mModelData->mWEvlpMixIndex[kk + j];
 			}
-			SB_LOGC("evlp", "model=%p e=%d/%d num=%d wsum=%.3f maxJntIdx=%d joints=%d anm0[maxIdx]=%.4f",
+			SB_LOGC("evlp",
+			        "model=%p e=%d/%d num=%d wsum=%.3f maxJntIdx=%d joints=%d "
+			        "anm0[maxIdx]=%.4f",
 			        (void*)this, (int)e, (int)evlpNum, (int)num, wsum, maxIdx,
 			        (int)mModelData->getJointNum(),
 			        maxIdx >= 0 ? getAnmMtx((u16)maxIdx)[0][0] : 0.f);
@@ -812,17 +829,26 @@ void J3DModel::calc()
 #ifdef SMS_NATIVE_PLATFORM
 	{
 		static int dbg = -1;
-		if (dbg < 0) { const char* e = getenv("SB_J3D_DBG"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
+		if (dbg < 0) {
+			const char* e = getenv("SB_J3D_DBG");
+			dbg           = (e && e[0] && e[0] != '0') ? 1 : 0;
+		}
 		static long s_n = 0;
 		if (dbg && (++s_n % 1000) == 0) {
 			MtxPtr v = j3dSys.getViewMtx();
-			int pt; float pj[6]; float vp[6];
+			int pt;
+			float pj[6];
+			float vp[6];
 			sb_gx_get_projection(&pt, pj, vp);
 			fprintf(stderr,
-			    "[j3dmodel] calc() calls=%ld view=[%.2f %.2f %.2f %.2f / %.2f %.2f %.2f %.2f / %.2f %.2f %.2f %.2f] "
-			    "projType=%d proj=[%.3f %.3f %.3f %.3f %.3f %.3f] vp=[%.0f %.0f %.0f %.0f]\n",
-			    s_n, v[0][0],v[0][1],v[0][2],v[0][3], v[1][0],v[1][1],v[1][2],v[1][3], v[2][0],v[2][1],v[2][2],v[2][3],
-			    pt, pj[0],pj[1],pj[2],pj[3],pj[4],pj[5], vp[0],vp[1],vp[2],vp[3]);
+			        "[j3dmodel] calc() calls=%ld view=[%.2f %.2f %.2f %.2f / "
+			        "%.2f %.2f %.2f %.2f / %.2f %.2f %.2f %.2f] "
+			        "projType=%d proj=[%.3f %.3f %.3f %.3f %.3f %.3f] vp=[%.0f "
+			        "%.0f %.0f %.0f]\n",
+			        s_n, v[0][0], v[0][1], v[0][2], v[0][3], v[1][0], v[1][1],
+			        v[1][2], v[1][3], v[2][0], v[2][1], v[2][2], v[2][3], pt,
+			        pj[0], pj[1], pj[2], pj[3], pj[4], pj[5], vp[0], vp[1],
+			        vp[2], vp[3]);
 		}
 	}
 #endif
@@ -863,32 +889,49 @@ void J3DModel::calc()
 	// zero/garbage rotation enters (actor base vs the joint-tree recursion).
 	{
 		static int dbg = -1;
-		if (dbg < 0) { const char* e = getenv("SB_CALC_DBG"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
+		if (dbg < 0) {
+			const char* e = getenv("SB_CALC_DBG");
+			dbg           = (e && e[0] && e[0] != '0') ? 1 : 0;
+		}
 		if (dbg) {
 			static long n = 0;
 			++n;
 			if ((n % 400) == 0 || n <= 12) {
 				const float* b = (const float*)mBaseMtx; // mBaseMtx
 				const float* a = (const float*)getAnmMtx(0);
-				fprintf(stderr,
-				        "[calc-dbg] n=%ld model=%p base0=[%.3f %.3f %.3f %.1f] baseS=(%g %g %g) anm0=[%.3f %.3f %.3f %.1f] mtxCalc=%p\n",
-				        n, (void*)this, b[0], b[1], b[2], b[3], mBaseScale.x, mBaseScale.y, mBaseScale.z,
-				        a[0], a[1], a[2], a[3], (void*)mModelData->unk14);
+				fprintf(
+				    stderr,
+				    "[calc-dbg] n=%ld model=%p base0=[%.3f %.3f %.3f %.1f] "
+				    "baseS=(%g %g %g) anm0=[%.3f %.3f %.3f %.1f] mtxCalc=%p\n",
+				    n, (void*)this, b[0], b[1], b[2], b[3], mBaseScale.x,
+				    mBaseScale.y, mBaseScale.z, a[0], a[1], a[2], a[3],
+				    (void*)mModelData->unk14);
 			}
-			// One-shot backtrace per model whose base matrix has a zero rotation
-			// row — names the actor perform() path that failed to build it.
+			// One-shot backtrace per model whose base matrix has a zero
+			// rotation row — names the actor perform() path that failed to
+			// build it.
 			{
 				const float* b = (const float*)mBaseMtx;
-				if (fabsf(b[0]) < 1e-20f && fabsf(b[1]) < 1e-20f && fabsf(b[2]) < 1e-20f) {
+				if (fabsf(b[0]) < 1e-20f && fabsf(b[1]) < 1e-20f
+				    && fabsf(b[2]) < 1e-20f) {
 					static const void* seen[8];
 					static int nseen = 0;
-					bool novel = true;
-					for (int i = 0; i < nseen; ++i) if (seen[i] == (void*)this) { novel = false; break; }
+					bool novel       = true;
+					for (int i = 0; i < nseen; ++i)
+						if (seen[i] == (void*)this) {
+							novel = false;
+							break;
+						}
 					if (novel && nseen < 8) {
 						seen[nseen++] = (void*)this;
-						fprintf(stderr, "[calc-zero-base] model=%p row0=(%g %g %g) trans=(%.1f %.1f %.1f) backtrace:\n",
-						        (void*)this, b[0], b[1], b[2], b[3], b[7], b[11]);
-						void* fr[24]; int nf = backtrace(fr, 24); backtrace_symbols_fd(fr, nf, 2);
+						fprintf(stderr,
+						        "[calc-zero-base] model=%p row0=(%g %g %g) "
+						        "trans=(%.1f %.1f %.1f) backtrace:\n",
+						        (void*)this, b[0], b[1], b[2], b[3], b[7],
+						        b[11]);
+						void* fr[24];
+						int nf = backtrace(fr, 24);
+						backtrace_symbols_fd(fr, nf, 2);
 					}
 				}
 			}
@@ -910,10 +953,14 @@ void J3DModel::entry()
 #ifdef SMS_NATIVE_PLATFORM
 	{
 		static int dbg = -1;
-		if (dbg < 0) { const char* e = getenv("SB_J3D_DBG"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
+		if (dbg < 0) {
+			const char* e = getenv("SB_J3D_DBG");
+			dbg           = (e && e[0] && e[0] != '0') ? 1 : 0;
+		}
 		static long s_n = 0;
 		if (dbg && (++s_n % 1000) == 0)
-			fprintf(stderr, "[j3dmodel] entry() calls=%ld (this=%p)\n", s_n, (void*)this);
+			fprintf(stderr, "[j3dmodel] entry() calls=%ld (this=%p)\n", s_n,
+			        (void*)this);
 	}
 #endif
 
@@ -957,7 +1004,10 @@ void J3DModel::viewCalc()
 		// "anm/node matrices are zero" when draw matrices come out degenerate.
 		{
 			static int dbg = -1;
-			if (dbg < 0) { const char* e = getenv("SB_VIEWCALC_DBG"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
+			if (dbg < 0) {
+				const char* e = getenv("SB_VIEWCALC_DBG");
+				dbg           = (e && e[0] && e[0] != '0') ? 1 : 0;
+			}
 			if (dbg) {
 				static long n = 0;
 				++n;
@@ -965,13 +1015,17 @@ void J3DModel::viewCalc()
 					const float* v = (const float*)viewMtx;
 					const float* a = (const float*)mNodeMatrices;
 					const J3DTransformInfo& ti
-					    = mModelData->getJointNodePointer(0)->getTransformInfo();
+					    = mModelData->getJointNodePointer(0)
+					          ->getTransformInfo();
 					fprintf(stderr,
-					        "[viewcalc] n=%ld model=%p view0=[%.3f %.3f %.3f %.1f] view1=[%.3f %.3f %.3f %.1f] "
-					        "anm0=[%.3f %.3f %.3f %.1f] j0Scale=(%g %g %g) j0Rot=(%d %d %d) j0T=(%g %g %g)\n",
-					        n, (void*)this, v[0], v[1], v[2], v[3], v[4], v[5], v[6], v[7],
-					        a[0], a[1], a[2], a[3], ti.mScale.x, ti.mScale.y, ti.mScale.z,
-					        (int)ti.mRotation.x, (int)ti.mRotation.y, (int)ti.mRotation.z,
+					        "[viewcalc] n=%ld model=%p view0=[%.3f %.3f %.3f "
+					        "%.1f] view1=[%.3f %.3f %.3f %.1f] "
+					        "anm0=[%.3f %.3f %.3f %.1f] j0Scale=(%g %g %g) "
+					        "j0Rot=(%d %d %d) j0T=(%g %g %g)\n",
+					        n, (void*)this, v[0], v[1], v[2], v[3], v[4], v[5],
+					        v[6], v[7], a[0], a[1], a[2], a[3], ti.mScale.x,
+					        ti.mScale.y, ti.mScale.z, (int)ti.mRotation.x,
+					        (int)ti.mRotation.y, (int)ti.mRotation.z,
 					        ti.mTranslate.x, ti.mTranslate.y, ti.mTranslate.z);
 				}
 			}
@@ -983,36 +1037,40 @@ void J3DModel::viewCalc()
 			    getDrawMtxPtr(), mModelData->getDrawFullWgtMtxNum());
 		}
 		if (mModelData->getDrawMtxNum() > mModelData->getDrawFullWgtMtxNum()) {
-			// Envelope draw slots [fullWgt, DrawMtxNum) reference the wEvlp envelope
-			// matrices BY INDEX (mDrawMtxIndex, repeats allowed) — Mario has 86
-			// envelope entries over 43 envelope matrices. The previous bulk
-			// sequential ArrayConcat(count=wEvlpNum) left every slot past
-			// fullWgt+wEvlpNum ZERO (garbage nrm palette -> black patches on skinned
-			// draws). Use the indexed concat exactly like the joint path above.
+			// Envelope draw slots [fullWgt, DrawMtxNum) reference the wEvlp
+			// envelope matrices BY INDEX (mDrawMtxIndex, repeats allowed) —
+			// Mario has 86 envelope entries over 43 envelope matrices. The
+			// previous bulk sequential ArrayConcat(count=wEvlpNum) left every
+			// slot past fullWgt+wEvlpNum ZERO (garbage nrm palette -> black
+			// patches on skinned draws). Use the indexed concat exactly like
+			// the joint path above.
 			const u16 fullWgt = mModelData->getDrawFullWgtMtxNum();
 #ifdef SMS_NATIVE_PLATFORM
 			// SB_LOG=drwidx: one-shot dump of the envelope-range DRW1 tables
 			// (flag + index per entry) — checks whether index-mapped envelope
 			// fill reads past the wEvlp array (heap zeros -> black patches).
 			SB_LOG_ONCE("drwidx", "model=%p drawMtxNum=%d fullWgt=%d wEvlp=%d",
-			            (void*)this, (int)mModelData->getDrawMtxNum(), (int)fullWgt,
-			            (int)mModelData->getWEvlpMtxNum());
+			            (void*)this, (int)mModelData->getDrawMtxNum(),
+			            (int)fullWgt, (int)mModelData->getWEvlpMtxNum());
 			if (sb_log_enabled("drwidx")) {
 				static const void* dumped[8];
 				static int nd = 0;
-				bool seen = false;
-				for (int s = 0; s < nd; ++s) if (dumped[s] == (void*)this) seen = true;
+				bool seen     = false;
+				for (int s = 0; s < nd; ++s)
+					if (dumped[s] == (void*)this)
+						seen = true;
 				if (!seen && nd < 8 && mModelData->getDrawMtxNum() > 60) {
 					dumped[nd++] = (void*)this;
 					for (u16 i = 0; i < mModelData->getDrawMtxNum(); ++i)
-						sb_logf("drwidx", "model=%p entry=%d flag=%d idx=%d", (void*)this, (int)i,
+						sb_logf("drwidx", "model=%p entry=%d flag=%d idx=%d",
+						        (void*)this, (int)i,
 						        (int)mModelData->getDrawMtxFlag(i),
 						        (int)mModelData->mDrawMtxData.mDrawMtxIndex[i]);
 				}
 			}
 #endif
 			J3DMTXConcatArrayIndexedSrc(
-			    viewMtx, (const float(*)[3][4])getWeightAnmMtx(0),
+			    viewMtx, (const float (*)[3][4])getWeightAnmMtx(0),
 			    mModelData->mDrawMtxData.mDrawMtxIndex + fullWgt,
 			    getDrawMtxPtr() + fullWgt,
 			    (u32)(mModelData->getDrawMtxNum() - fullWgt));
@@ -1039,17 +1097,22 @@ void J3DModel::calcNrmMtx()
 		int zeroCnt = 0, firstZero = -1;
 		for (u16 i = 0; i < mModelData->getDrawMtxNum(); i++) {
 			const float* m = &mDrawMtxBuf[1][mCurrentViewNo][i][0][0];
-			if (m[0] == 0.f && m[1] == 0.f && m[2] == 0.f && m[4] == 0.f && m[5] == 0.f && m[6] == 0.f) {
+			if (m[0] == 0.f && m[1] == 0.f && m[2] == 0.f && m[4] == 0.f
+			    && m[5] == 0.f && m[6] == 0.f) {
 				++zeroCnt;
-				if (firstZero < 0) firstZero = i;
+				if (firstZero < 0)
+					firstZero = i;
 			}
 		}
 		if (zeroCnt)
-			SB_LOGC("nrmmtx", "model=%p drawMtxBuf=%p zeroDrawMtx=%d/%d first=%d fullWgt=%d wEvlp=%d joints=%d",
-			             (void*)this, (void*)mDrawMtxBuf[1][mCurrentViewNo], zeroCnt,
-			             (int)mModelData->getDrawMtxNum(), firstZero,
-			             (int)mModelData->getDrawFullWgtMtxNum(), (int)mModelData->getWEvlpMtxNum(),
-			             (int)mModelData->getJointNum());
+			SB_LOGC("nrmmtx",
+			        "model=%p drawMtxBuf=%p zeroDrawMtx=%d/%d first=%d "
+			        "fullWgt=%d wEvlp=%d joints=%d",
+			        (void*)this, (void*)mDrawMtxBuf[1][mCurrentViewNo], zeroCnt,
+			        (int)mModelData->getDrawMtxNum(), firstZero,
+			        (int)mModelData->getDrawFullWgtMtxNum(),
+			        (int)mModelData->getWEvlpMtxNum(),
+			        (int)mModelData->getJointNum());
 	}
 #endif
 	for (u16 i = 0; i < mModelData->getDrawMtxNum(); i++) {

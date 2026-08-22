@@ -46,7 +46,7 @@ public:
 	    , mLightType(JStage::TELIGHT_Unk1)
 	{
 		GXInitLightAttn(&unk24, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f);
-		setColor(JUtility::TColor(0xff, 0xff, 0xff, 0xff));
+		GXInitLightColor(&unk24, JUtility::TColor(0xff, 0xff, 0xff, 0xff));
 	}
 
 	virtual void load(JSUMemoryInputStream&);

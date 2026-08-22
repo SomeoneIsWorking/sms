@@ -7,12 +7,14 @@ J3DShapeFactory::J3DShapeFactory(const J3DShapeBlock& block)
 {
 	mpShapeInitData = JSUConvertOffsetToPtr<J3DShapeInitData>(
 	    &block, (u32)(uintptr_t)block.mpShapeInitData);
-	mpIndexTable  = JSUConvertOffsetToPtr<u16>(&block, (u32)(uintptr_t)block.mpIndexTable);
+	mpIndexTable = JSUConvertOffsetToPtr<u16>(
+	    &block, (u32)(uintptr_t)block.mpIndexTable);
 	mpVtxDescList = JSUConvertOffsetToPtr<GXVtxDescList>(
 	    &block, (u32)(uintptr_t)block.mpVtxDescList);
-	mpMtxTable = JSUConvertOffsetToPtr<u16>(&block, (u32)(uintptr_t)block.mpMtxTable);
-	mpDisplayListData
-	    = JSUConvertOffsetToPtr<u8>(&block, (u32)(uintptr_t)block.mpDisplayListData);
+	mpMtxTable
+	    = JSUConvertOffsetToPtr<u16>(&block, (u32)(uintptr_t)block.mpMtxTable);
+	mpDisplayListData = JSUConvertOffsetToPtr<u8>(
+	    &block, (u32)(uintptr_t)block.mpDisplayListData);
 	mpMtxInitData = JSUConvertOffsetToPtr<J3DShapeMtxInitData>(
 	    &block, (u32)(uintptr_t)block.mpMtxInitData);
 	mpDrawInitData = JSUConvertOffsetToPtr<J3DShapeDrawInitData>(
@@ -25,7 +27,7 @@ J3DShape* J3DShapeFactory::create(int no, J3DMdlDataFlag flag,
 {
 	J3DShape* shape      = new J3DShape();
 	shape->mElementCount = getMtxGroupNum(no);
-	shape->unkC          = getRadius(no);
+	shape->mRadius       = getRadius(no);
 	shape->mVtxDescList  = getVtxDescList(no);
 	shape->mMatrices     = new J3DShapeMtx*[shape->mElementCount];
 	shape->mDraws        = new J3DShapeDraw*[shape->mElementCount];

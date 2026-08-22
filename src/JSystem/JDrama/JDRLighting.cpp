@@ -26,7 +26,7 @@ void TLight::correct(TGraphics* param_1) const
 {
 	Vec pos;
 	MTXMultVec(param_1->getViewMtx(), (Vec*)&mPosition, &pos);
-	GXInitLightPos(getLightObj(), pos.x, pos.y, pos.z);
+	GXInitLightPos(const_cast<GXLightObj*>(&unk24), pos.x, pos.y, pos.z);
 }
 
 JStage::TELight TLight::JSGGetLightType() const { return mLightType; }
@@ -58,7 +58,7 @@ GXColor TLight::JSGGetColor() const
 	return result;
 }
 
-void TLight::JSGSetColor(GXColor color) { setColor(color); }
+void TLight::JSGSetColor(GXColor color) { GXInitLightColor(&unk24, color); }
 
 void TLightAry::load(JSUMemoryInputStream& stream)
 {
@@ -107,7 +107,7 @@ void TLightAry::perform(u32 param_1, TGraphics* param_2)
 		mLights[i].correct(param_2);
 
 	DCFlushRange(mLights, mLightCount * sizeof(TIdxLight));
-	GXSetArray(GX_LIGHT_ARRAY, mLights[0].getLightObj(), sizeof(TIdxLight));
+	GXSetArray(GX_LIGHT_ARRAY, &mLights[0].unk24, sizeof(TIdxLight));
 }
 
 void TAmbColor::load(JSUMemoryInputStream& stream)
@@ -127,7 +127,7 @@ void TAmbColor::perform(u32 param_1, TGraphics* param_2)
 
 GXColor TAmbColor::JSGGetColor() const { return mColor; }
 
-void TAmbColor::JSGSetColor(GXColor color) { setColor(color); }
+void TAmbColor::JSGSetColor(GXColor color) { mColor = color; }
 
 void TAmbAry::load(JSUMemoryInputStream& stream)
 {

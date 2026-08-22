@@ -284,7 +284,9 @@ template <typename T, int I> struct TLinkList : public TNodeLinkList {
 		}
 		const T& operator*() const
 		{
-			T* p = operator->();
+			// SMS_NATIVE_PLATFORM: preserve constness required by the C++17
+			// host compiler.
+			const T* p = operator->();
 			JUT_ASSERT(586, p != nullptr);
 			return *p;
 		}

@@ -84,10 +84,10 @@ public:
 	}
 	u16 getDrawMtxNum() const { return mDrawMtxData.mEntryNum; }
 	u16 getWEvlpMtxNum() const { return mWEvlpMtxNum; }
-	u8 getWEvlpMixMtxNum(u16 idx) const { return unk88[idx]; }
-	u16* getWEvlpMixMtxIndex() const { return unk8C; }
-	f32* getWEvlpMixWeight() const { return unk90; }
-	MtxPtr getInvJointMtx(u16 idx) const { return unk94[idx]; }
+	u8 getWEvlpMixMtxNum(u16 idx) const { return mWEvlpMixMtxNum[idx]; }
+	u16* getWEvlpMixMtxIndex() const { return mWEvlpMixIndex; }
+	f32* getWEvlpMixWeight() const { return mWEvlpMixWeight; }
+	MtxPtr getInvJointMtx(u16 idx) const { return mInvJointMtx[idx]; }
 	u16 getJointNum() const { return mJointNum; }
 	u16 getShapeNum() const { return mShapeNum; }
 	u16 getMaterialNum() const { return mMaterialNum; }

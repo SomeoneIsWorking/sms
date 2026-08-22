@@ -48,11 +48,11 @@ void TSilhouette::loadAfter()
 	f32 fVar5 = (fVar1 * fVar1 - fVar2 * fVar2) * 0.9f * 0.5f;
 	f32 fVar6 = (fVar2 - fVar3) * 0.5f * 0.05f;
 	unk38     = (fVar6 * -0.4f - fVar4 * -0.45f)
-	        / (fVar5 * fVar6
-	           - (fVar2 * fVar2 - fVar3 * fVar3) * 0.5f * 0.05f * fVar4);
-	unk34 = -(fVar5 * unk38 - -0.4f) / fVar4;
-	unk30 = 0.9 - (unk38 * fVar1 * fVar1 + fVar1 * unk34);
-	unk3C = 8e-05f;
+	            / (fVar5 * fVar6
+	               - (fVar2 * fVar2 - fVar3 * fVar3) * 0.5f * 0.05f * fVar4);
+	unk34     = -(fVar5 * unk38 - -0.4f) / fVar4;
+	unk30     = 0.9 - (unk38 * fVar1 * fVar1 + fVar1 * unk34);
+	unk3C     = 8e-05f;
 
 	if (gpPollution->getJointModelNum() > 0) {
 		TPollutionLayer* pJVar9
@@ -388,11 +388,12 @@ void SMS_DrawBillboardLine(const JDrama::TGraphics*,
 {
 }
 
-// Transcribed from retail 0x80225d00 (scratch/decomp_shadow/80225d00.c): 6 quads,
-// 24 direct-position verts, exact retail vertex order. Load-bearing for the
-// TMBindShadowManager dst-alpha stamp pass (was an empty silent stub — the
+// Transcribed from retail 0x80225d00 (scratch/decomp_shadow/80225d00.c): 6
+// quads, 24 direct-position verts, exact retail vertex order. Load-bearing for
+// the TMBindShadowManager dst-alpha stamp pass (was an empty silent stub — the
 // 2026-07-16 shadow RE map names it as the alpha-stamp emitter).
-void SMS_DrawCube(const JGeometry::TVec3<f32>& min, const JGeometry::TVec3<f32>& max)
+void SMS_DrawCube(const JGeometry::TVec3<f32>& min,
+                  const JGeometry::TVec3<f32>& max)
 {
 	GXBegin(GX_QUADS, GX_VTXFMT0, 24);
 	// bottom (y = min.y)
@@ -432,11 +433,12 @@ void SMS_SettingDrawShape(J3DModelData* param_1, u16 param_2)
 {
 	J3DShape* shape = param_1->getShapeNodePointer(param_2);
 	// Retail replays the fixed 0xC0 VcdVat window; on this port the window is
-	// J3DShape::kVcdVatDLSize (Aurora bakes 64-bit array bases — see J3DShape.hpp).
+	// J3DShape::kVcdVatDLSize (Aurora bakes 64-bit array bases — see
+	// J3DShape.hpp).
 	GXCallDisplayList(shape->getDrawList(), J3DShape::kVcdVatDLSize);
 	J3DVertexData& data = param_1->getVertexData();
-	j3dSys.unk10C       = data.getVtxPosArray();
-	j3dSys.unk110       = data.getVtxNormArray();
+	j3dSys.setVtxPos(data.getVtxPosArray());
+	j3dSys.setVtxNrm(data.getVtxNormArray());
 	shape->loadVtxArray();
 }
 
@@ -496,15 +498,20 @@ void SMS_CalcMatAnmAndMakeDL(J3DModel* param_1, u16 param_2)
 {
 	J3DMaterial* mat = param_1->getModelData()->getMaterialNodePointer(param_2);
 #ifdef SMS_NATIVE_PLATFORM
-	// Defensive fail-safe: updateMatAnm only reaches here for materials it believes have a live
-	// J3DMaterialAnm, so a null here means a material-anm-setup bug upstream. The real cause of the
-	// once-pervasive null was J3DMaterial::getMaterialAnm()'s GC pointer-range guard (< 0xC0000000)
-	// nulling every valid 64-bit host pointer — now fixed there. This guard remains only so a future
-	// regression logs + draws-without-anm instead of NULL-derefing three frames deep.
+	// Defensive fail-safe: updateMatAnm only reaches here for materials it
+	// believes have a live J3DMaterialAnm, so a null here means a
+	// material-anm-setup bug upstream. The real cause of the once-pervasive
+	// null was J3DMaterial::getMaterialAnm()'s GC pointer-range guard (<
+	// 0xC0000000) nulling every valid 64-bit host pointer — now fixed there.
+	// This guard remains only so a future regression logs + draws-without-anm
+	// instead of NULL-derefing three frames deep.
 	if (mat->getMaterialAnm() == nullptr) {
 		static int warned = 0;
-		if (!warned) { warned = 1;
-			fprintf(stderr, "[matanm] WARN: null J3DMaterialAnm for model=%p mat=%u -- drawing "
+		if (!warned) {
+			warned = 1;
+			fprintf(stderr,
+			        "[matanm] WARN: null J3DMaterialAnm for model=%p mat=%u -- "
+			        "drawing "
 			        "without anm (material-anm setup bug upstream)\n",
 			        (void*)param_1, param_2);
 		}

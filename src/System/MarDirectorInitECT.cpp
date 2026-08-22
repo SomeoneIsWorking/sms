@@ -25,14 +25,7 @@ void TMarDirector::initECTGft(
 		TBathWaterManager* bathtubWater
 		    = JDrama::TNameRefGen::search<TBathWaterManager>("バスタブの水");
 		if (bathtubWater)
-			param_2->push_back(bathtubWater->getPreprocessor(), 8);
-	} else {
-		JDrama::TViewObjPtrListT<JDrama::TViewObj>* graffitiGroup
-		    = JDrama::TNameRefGen::search<
-		        JDrama::TViewObjPtrListT<JDrama::TViewObj> >("落書きグループ");
-		JDrama::TViewObj* drawInit
-		    = JDrama::TNameRefGen::search<JDrama::TViewObj>("SMS Draw Init");
-
+			param_2->push_back(bathtubWater->getPreprocessor(), CUE_DRAW);
 		return;
 	}
 
@@ -52,11 +45,10 @@ void TMarDirector::initECTGft(
 	param_1->push_back(graffitiEfbTex, CUE_DRAW_INIT);
 
 	param_1->push_back(new JDrama::TViewport(rect, "graffito"), CUE_DRAW);
-	param_1->push_back(
-	    new JDrama::TOrthoProj(-1.0f, 1.0f, 0.0f, 0.0f, 512.0f, 512.0f),
-	    CUE_SET_PROJECTION);
+	param_1->push_back(new JDrama::TOrthoProj(0.0f, 0.0f, 512.0f, 512.0f),
+	                   CUE_SET_PROJECTION);
 	param_1->push_back(drawInit, CUE_DRAW);
-	param_1->push_back(graffitiGroup, CUE_UNK1000000);
+	param_1->push_back(graffitiGroup, 0x1000000);
 	param_1->push_back(graffitiEfbTex, CUE_DRAW);
 
 	for (int i = 0; i < gpPollution->getJointModelNum(); ++i) {
@@ -70,37 +62,17 @@ void TMarDirector::initECTGft(
 		efbTex->setDstSize(size);
 		efbTex->setTexFmt(GX_CTF_R8);
 		JDrama::TRect rect;
-		rect.set(0, 0, 0x200, 0x200);
-		graffitiEfbTex->setSrcRect(rect);
-		param_1->push_back(graffitiEfbTex, 0x80);
+		rect.set(0, 0, size.mWidth, size.mHeight);
+		efbTex->setSrcRect(rect);
 
-		param_1->push_back(new JDrama::TViewport(rect, "graffito"), 0x8);
-		param_1->push_back(new JDrama::TOrthoProj(0.0f, 0.0f, 512.0f, 512.0f),
-		                   0x10);
-		param_1->push_back(drawInit, 0x8);
-		param_1->push_back(graffitiGroup, 0x1000000);
-		param_1->push_back(graffitiEfbTex, 0x8);
-
-		for (int i = 0; i < gpPollution->getJointModelNum(); ++i) {
-			JDrama::TEfbCtrlTex* efbTex = new JDrama::TEfbCtrlTex("graffito");
-			scene->insert(efbTex);
-			const ResTIMG* img = gpPollution->getLayer(i)->getPollutionImage();
-			efbTex->mImagePtr  = (u8*)&img + img->imageDataOffset;
-			efbTex->mWidth     = img->width;
-			efbTex->mHeight    = img->height;
-			efbTex->mTexFmt    = GX_CTF_R8;
-			JDrama::TRect rect;
-			rect.set(0, 0, img->width, img->height);
-			efbTex->setSrcRect(rect);
-			param_2->push_back(efbTex, 0x80);
-			param_2->push_back(new JDrama::TViewport(rect, "graffito"), 0x8);
-			param_2->push_back(
-			    new JDrama::TOrthoProj(0.0f, 0.0f, img->width, img->height),
-			    0x10);
-			param_1->push_back(drawInit, 0x8);
-			param_1->push_back(graffitiGroup, (i << 16) | 0x2000008);
-			param_1->push_back(efbTex, 0x8);
-		}
+		param_2->push_back(efbTex, CUE_DRAW_INIT);
+		param_2->push_back(new JDrama::TViewport(rect, "graffito"), CUE_DRAW);
+		param_2->push_back(
+		    new JDrama::TOrthoProj(0.0f, 0.0f, img->width, img->height),
+		    CUE_SET_PROJECTION);
+		param_1->push_back(drawInit, CUE_DRAW);
+		param_1->push_back(graffitiGroup, (i << 16) | 0x2000008);
+		param_1->push_back(efbTex, CUE_DRAW);
 	}
 }
 
@@ -150,9 +122,9 @@ void TMarDirector::initECDisp(
 	    = JDrama::TNameRefGen::search<JDrama::TViewObj>("太陽モデル");
 
 	if (sunModel) {
-		// Sun-model scene -> sun volume (/scene/sun). The original decomp passed
-		// `true` here (sunset volume /scene/sunset), but that matches the
-		// 夕日モデル branch below, not this one: a sun-only stage has no
+		// Sun-model scene -> sun volume (/scene/sun). The original decomp
+		// passed `true` here (sunset volume /scene/sunset), but that matches
+		// the 夕日モデル branch below, not this one: a sun-only stage has no
 		// /scene/sunset and TLensGlow's glow.bmd load would null-deref. The
 		// false/true (sun/sunset) split mirrors TSunModel::load's volumeName
 		// selection (cSunVolumeName vs cSunsetVolumeName).

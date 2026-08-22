@@ -91,9 +91,13 @@ J3DShapeDraw::J3DShapeDraw(const u8* list, u32 size)
 	// TEMP probe (shadow-DL desync): first bytes of each constructed draw DL.
 	{
 		static int n = 0;
-		if (n < 40 && getenv("SB_SHAPEDRAW_DBG")) { ++n;
-			fprintf(stderr, "[shapedraw-ctor] #%d dl=%p size=%u first=[%02x %02x %02x %02x]\n",
-			        n, (void*)list, size, list?list[0]:0, list?list[1]:0, list?list[2]:0, list?list[3]:0);
+		if (n < 40 && getenv("SB_SHAPEDRAW_DBG")) {
+			++n;
+			fprintf(stderr,
+			        "[shapedraw-ctor] #%d dl=%p size=%u first=[%02x %02x %02x "
+			        "%02x]\n",
+			        n, (void*)list, size, list ? list[0] : 0,
+			        list ? list[1] : 0, list ? list[2] : 0, list ? list[3] : 0);
 		}
 	}
 #endif
@@ -107,16 +111,21 @@ void J3DShapeDraw::draw() const
 	// [draw-stats] to tell "DL never reaches fifo" from "fifo drops it".
 	{
 		static int dbg = -1;
-		if (dbg < 0) { const char* e = getenv("SB_SHAPEDRAW_DBG"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
+		if (dbg < 0) {
+			const char* e = getenv("SB_SHAPEDRAW_DBG");
+			dbg           = (e && e[0] && e[0] != '0') ? 1 : 0;
+		}
 		if (dbg) {
 			static long n = 0;
 			++n;
 			if ((n % 500) == 0 || n <= 30) {
 				const u8* d = (const u8*)mDisplayList;
-				fprintf(stderr, "[shapedraw] n=%ld dl=%p size=%u first=[%02x %02x %02x %02x %02x %02x %02x %02x]\n",
-				        n, (void*)mDisplayList, mDisplayListSize,
-				        d ? d[0] : 0, d ? d[1] : 0, d ? d[2] : 0, d ? d[3] : 0,
-				        d ? d[4] : 0, d ? d[5] : 0, d ? d[6] : 0, d ? d[7] : 0);
+				fprintf(stderr,
+				        "[shapedraw] n=%ld dl=%p size=%u first=[%02x %02x %02x "
+				        "%02x %02x %02x %02x %02x]\n",
+				        n, (void*)mDisplayList, mDisplayListSize, d ? d[0] : 0,
+				        d ? d[1] : 0, d ? d[2] : 0, d ? d[3] : 0, d ? d[4] : 0,
+				        d ? d[5] : 0, d ? d[6] : 0, d ? d[7] : 0);
 			}
 		}
 	}
@@ -126,27 +135,27 @@ void J3DShapeDraw::draw() const
 
 void J3DShape::initialize()
 {
-	unk0           = 0;
-	mIndex         = 0xffff;
-	mElementCount  = 0;
-	unk8           = 0;
-	unkC           = 0;
-	unk10.x        = 0.0f;
-	unk10.y        = 0.0f;
-	unk10.z        = 0.0f;
-	unk1C.x        = 0.0f;
-	unk1C.y        = 0.0f;
-	unk1C.z        = 0.0f;
-	mVtxDescList          = nullptr;
-	mMatrices      = nullptr;
-	mDraws         = nullptr;
-	mVertexData    = 0;
-	mDrawMtxData   = 0;
-	mScaleFlagArray          = 0;
-	mDrawMatrices  = nullptr;
-	mNormMatrices  = nullptr;
-	mCurrentViewNo = &j3dDefaultViewNo;
-	unk30          = 0;
+	unk0            = 0;
+	mIndex          = 0xffff;
+	mElementCount   = 0;
+	mFlags          = 0;
+	mRadius         = 0;
+	mMin.x          = 0.0f;
+	mMin.y          = 0.0f;
+	mMin.z          = 0.0f;
+	mMax.x          = 0.0f;
+	mMax.y          = 0.0f;
+	mMax.z          = 0.0f;
+	mVtxDescList    = nullptr;
+	mMatrices       = nullptr;
+	mDraws          = nullptr;
+	mVertexData     = nullptr;
+	mDrawMtxData    = nullptr;
+	mScaleFlagArray = nullptr;
+	mDrawMatrices   = nullptr;
+	mNormMatrices   = nullptr;
+	mCurrentViewNo  = &j3dDefaultViewNo;
+	unk30           = 0;
 }
 
 J3DShape::~J3DShape() { }
@@ -218,7 +227,8 @@ void J3DShape::makeVtxArrayCmd()
 			break;
 		}
 	}
-	for (GXVtxDescList* piVar5 = mVtxDescList; piVar5->attr != GX_VA_NULL; ++piVar5) {
+	for (GXVtxDescList* piVar5 = mVtxDescList; piVar5->attr != GX_VA_NULL;
+	     ++piVar5) {
 		if ((piVar5->attr == GX_VA_NBT) && (piVar5->type != GX_NONE)) {
 			unk30 = 1;
 			stride[1] *= 3;
@@ -239,7 +249,11 @@ void J3DShape::makeVcdVatCmd()
 #ifdef SMS_NATIVE_PLATFORM
 	if (getenv("SB_MAKEVCD_DBG")) {
 		static long n = 0;
-		if (n < 20) { ++n; fprintf(stderr, "[makevcdvat] #%ld this=%p mVtxDescList=%p\n", n, (void*)this, (void*)mVtxDescList); }
+		if (n < 20) {
+			++n;
+			fprintf(stderr, "[makevcdvat] #%ld this=%p mVtxDescList=%p\n", n,
+			        (void*)this, (void*)mVtxDescList);
+		}
 	}
 #endif
 	GDLObj list;
@@ -256,12 +270,12 @@ void J3DShape::makeVcdVatCmd()
 
 void J3DShape::loadVtxArray() const
 {
-	J3DLoadArrayBasePtr(GX_VA_POS, j3dSys.unk10C);
+	J3DLoadArrayBasePtr(GX_VA_POS, j3dSys.getVtxPos());
 	if (unk30 == 0) {
-		void* l = j3dSys.unk110;
+		void* l = j3dSys.getVtxNrm();
 		J3DLoadArrayBasePtr(GX_VA_NRM, l);
 	}
-	J3DLoadArrayBasePtr(GX_VA_CLR0, j3dSys.unk114);
+	J3DLoadArrayBasePtr(GX_VA_CLR0, j3dSys.getVtxCol());
 
 #ifdef SMS_NATIVE_PLATFORM
 	// TEX0-7 array bases are STATIC per-shape (unlike POS/NRM/CLR0 above, which
@@ -281,25 +295,30 @@ void J3DShape::loadVtxArray() const
 	// so every draw call gets ITS OWN shape's texcoord array bound -- matching
 	// the per-frame refresh already proven correct for POS/NRM/CLR0 just above.
 	for (u8 i = 0; i < 8; ++i)
-		J3DLoadArrayBasePtr((GXAttr)(GX_VA_TEX0 + i), mVertexData->getVtxTexCoordArray(i));
+		J3DLoadArrayBasePtr((GXAttr)(GX_VA_TEX0 + i),
+		                    mVertexData->getVtxTexCoordArray(i));
 #endif
 }
 
 #ifdef SMS_NATIVE_PLATFORM
-// PC-native renderer (single owned path): capture this active shape's geometry into the native
-// renderer's frame buffer (native/render/sms_boot_j3d_capture.cpp drains it at present). Driven by
-// scene_drive.cpp's TSmJ3DScn::perform(8). WEAK so builds that link this TU but NOT the capture
-// body (e.g. the j3dmesh_test/loader tests) resolve it to null and skip the hook.
+// PC-native renderer (single owned path): capture this active shape's geometry
+// into the native renderer's frame buffer
+// (native/render/sms_boot_j3d_capture.cpp drains it at present). Driven by
+// scene_drive.cpp's TSmJ3DScn::perform(8). WEAK so builds that link this TU but
+// NOT the capture body (e.g. the j3dmesh_test/loader tests) resolve it to null
+// and skip the hook.
 extern "C" bool sb_boot_capture_j3d(J3DShape* shape) __attribute__((weak));
 #endif
 
 void J3DShape::draw() const
 {
 #ifdef SMS_NATIVE_PLATFORM
-	if (&sb_boot_capture_j3d && sb_boot_capture_j3d(const_cast<J3DShape*>(this))) {
-		// Captured natively; the GX issue below is a no-op on this platform anyway, so
-		// continuing is harmless — but return to skip the per-element matrix loads /
-		// mDraws[i]->draw() (also no-ops) and keep the draw path cheap when capturing.
+	if (&sb_boot_capture_j3d
+	    && sb_boot_capture_j3d(const_cast<J3DShape*>(this))) {
+		// Captured natively; the GX issue below is a no-op on this platform
+		// anyway, so continuing is harmless — but return to skip the
+		// per-element matrix loads / mDraws[i]->draw() (also no-ops) and keep
+		// the draw path cheap when capturing.
 		return;
 	}
 #endif
@@ -320,8 +339,10 @@ void J3DShape::draw() const
 		if (s_skipDbg < 0)
 			s_skipDbg = getenv("SB_J3DSHAPE_SKIP_DBG") ? 1 : 0;
 		if (s_skipDbg)
-			OSReport("[SBDBG] J3DShape::draw skipping shape=%p mIndex=%u mDraw=%p mNrm=%p (owner J3DModel never updated)\n",
-			         (void*)this, (unsigned)mIndex, (void*)mDrawMatrices, (void*)mNormMatrices);
+			OSReport("[SBDBG] J3DShape::draw skipping shape=%p mIndex=%u "
+			         "mDraw=%p mNrm=%p (owner J3DModel never updated)\n",
+			         (void*)this, (unsigned)mIndex, (void*)mDrawMatrices,
+			         (void*)mNormMatrices);
 		return;
 	}
 #endif
@@ -338,25 +359,36 @@ void J3DShape::draw() const
 	// elements / truncated DLs)" vs "strips lost in the fifo parse".
 	{
 		static int dbg = -1;
-		if (dbg < 0) { const char* e = getenv("SB_SHAPE_STATS"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
+		if (dbg < 0) {
+			const char* e = getenv("SB_SHAPE_STATS");
+			dbg           = (e && e[0] && e[0] != '0') ? 1 : 0;
+		}
 		if (dbg) {
 			static const J3DShape* seen[512];
 			static int nSeen = 0;
-			bool isNew = true;
+			bool isNew       = true;
 			for (int s = 0; s < nSeen; ++s)
-				if (seen[s] == this) { isNew = false; break; }
+				if (seen[s] == this) {
+					isNew = false;
+					break;
+				}
 			if (isNew && nSeen < 512) {
 				seen[nSeen++] = this;
-				u32 total = 0;
-				char sizes[256]; int sp = 0;
+				u32 total     = 0;
+				char sizes[256];
+				int sp = 0;
 				for (u16 i = 0; i < mElementCount; ++i) {
 					u32 sz = mDraws[i] ? mDraws[i]->getDisplayListSize() : 0;
 					total += sz;
 					if (sp < (int)sizeof(sizes) - 16)
-						sp += snprintf(sizes + sp, sizeof(sizes) - sp, " %u%s", sz, mMatrices[i] ? "" : "/nomtx");
+						sp += snprintf(sizes + sp, sizeof(sizes) - sp, " %u%s",
+						               sz, mMatrices[i] ? "" : "/nomtx");
 				}
-				fprintf(stderr, "[shape-stats] shape=%p idx=%u elems=%u dlbytes=%u sizes=[%s ]\n",
-				        (void*)this, (unsigned)mIndex, (unsigned)mElementCount, total, sizes);
+				fprintf(stderr,
+				        "[shape-stats] shape=%p idx=%u elems=%u dlbytes=%u "
+				        "sizes=[%s ]\n",
+				        (void*)this, (unsigned)mIndex, (unsigned)mElementCount,
+				        total, sizes);
 			}
 		}
 	}

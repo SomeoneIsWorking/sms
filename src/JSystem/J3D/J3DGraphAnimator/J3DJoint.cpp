@@ -13,7 +13,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-extern "C" void* sb_b76_material() __attribute__((weak));   // SB_ENTRY_MAT: b76 mask material ptr
+extern "C" void* sb_b76_material()
+    __attribute__((weak)); // SB_ENTRY_MAT: b76 mask material ptr
 #endif
 
 // TODO: what is this? This isn't part of mtx.h =/
@@ -195,6 +196,7 @@ void J3DMtxCalcSoftimage::calcTransform(u16 param_0,
 
 void J3DMtxCalcMaya::calcTransform(u16 param_1, const J3DTransformInfo& param_2)
 {
+	Mtx mtx;
 	J3DModel* model    = j3dSys.getModel();
 	u8 scaleCompensate = model->getModelData()
 	                         ->getJointNodePointer(param_1)
@@ -369,33 +371,45 @@ void J3DJoint::entryIn()
 
 	for (J3DMaterial* mesh = mMesh; mesh != nullptr;) {
 #ifdef SMS_NATIVE_PLATFORM
-		// SB_JOINT_NAME=1: at each entry of the b76 material (whichever joint owns the mask
-		// packet the file-select overbright chases), print the joint index + name from the
-		// model's joint/material name tables. Names the DATA-driven purpose of the mask, so
-		// we can decide the clean SMS_NATIVE_PLATFORM handling (typically: don't emit it,
-		// because it exists only for GC's EFB-composite path our native renderer replaces).
+		// SB_JOINT_NAME=1: at each entry of the b76 material (whichever joint
+		// owns the mask packet the file-select overbright chases), print the
+		// joint index + name from the model's joint/material name tables. Names
+		// the DATA-driven purpose of the mask, so we can decide the clean
+		// SMS_NATIVE_PLATFORM handling (typically: don't emit it, because it
+		// exists only for GC's EFB-composite path our native renderer
+		// replaces).
 		if (SB_LOG_ON("jointname")) {
 			void* want = (&sb_b76_material) ? sb_b76_material() : nullptr;
 			if (!want)
-				SB_LOG_ONCE("jointname", "INACTIVE: sb_b76_material() is null, so no mesh can match. "
-				                         "This channel only fires once the file-select overbright "
-				                         "capture has published the b76 material.");
+				SB_LOG_ONCE(
+				    "jointname",
+				    "INACTIVE: sb_b76_material() is null, so no mesh can "
+				    "match. "
+				    "This channel only fires once the file-select overbright "
+				    "capture has published the b76 material.");
 			if (want && (void*)mesh == want) {
 				static int n = 0;
-				if (n < 4) { ++n;
-					J3DModelData* md = j3dSys.getModel() ? j3dSys.getModel()->getModelData() : nullptr;
+				if (n < 4) {
+					++n;
+					J3DModelData* md  = j3dSys.getModel()
+					                        ? j3dSys.getModel()->getModelData()
+					                        : nullptr;
 					const char* jname = "?";
 					const char* mname = "?";
 					if (md) {
 						if (JUTNameTab* jt = md->getJointName())
-							if (const char* s = jt->getName(mJntNo)) jname = s;
+							if (const char* s = jt->getName(mJntNo))
+								jname = s;
 						if (JUTNameTab* mt = md->getMaterialName())
-							if (const char* s = mt->getName(mesh->getIndex())) mname = s;
+							if (const char* s = mt->getName(mesh->getIndex()))
+								mname = s;
 					}
-					sb_logf("jointname", "joint-name: b76 mesh=%p joint#=%u name=\"%s\" mat#=%u matName=\"%s\" shape#=%u shapeFlag1=%d",
-					             (void*)mesh, mJntNo, jname, mesh->getIndex(), mname,
-					             mesh->getShape()->getIndex(),
-					             (int)mesh->getShape()->checkFlag(1));
+					sb_logf("jointname",
+					        "joint-name: b76 mesh=%p joint#=%u name=\"%s\" "
+					        "mat#=%u matName=\"%s\" shape#=%u shapeFlag1=%d",
+					        (void*)mesh, mJntNo, jname, mesh->getIndex(), mname,
+					        mesh->getShape()->getIndex(),
+					        (int)mesh->getShape()->checkFlag(1));
 				}
 			}
 		}
