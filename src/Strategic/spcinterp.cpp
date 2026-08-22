@@ -1,60 +1,8 @@
 #include <Strategic/spcinterp.hpp>
 #include <macros.h>
 #ifdef SMS_NATIVE_PLATFORM
-#include <cstring>
 #include <dolphin/os.h>
-#include <JSystem/sb_host_swapset.h>
-
-// On-disc SPC ("SPCB") script binaries are big-endian; TSpcBinary reads every
-// header/symbol/data-offset u32 by raw struct cast (and the interpreter reads
-// bytecode operands via raw memcpy in fetchU32/S32/F32), so on a little-endian
-// host the symbol count etc. are misread -> wild getSymbol() deref in
-// calcAndStoreKeys. Swap the STRUCTURAL sections (fixed-layout: header, symbol
-// array, data-offset table) here at construction; the BYTECODE operand stream
-// can't be pre-swapped without decoding every opcode, so fetchU32/S32/F32
-// byteswap at read time instead (spcinterp.hpp). Data blob = string bytes (only
-// consumed by fetchString) -> left as-is.
-static inline void spc_sw32(u8* p)
-{
-	u8 t;
-	t = p[0]; p[0] = p[3]; p[3] = t;
-	t = p[1]; p[1] = p[2]; p[2] = t;
-}
-static inline u32 spc_be32(const u8* p)
-{
-	return ((u32)p[0] << 24) | ((u32)p[1] << 16) | ((u32)p[2] << 8) | p[3];
-}
-static void spc_swap_blob(u8* d)
-{
-	// Idempotent across re-loads of the same cached archive resource. Host-malloc-backed so
-	// the game's per-scene JKRHeap::freeAll doesn't free this process-global set's nodes
-	// (see JSystem/sb_host_swapset.h — that dangling caused the _Rb_tree insert crash).
-	static smsport::HostPtrSet swapped;
-	if (!swapped.insert(d).second)
-		return;
-	if (std::memcmp(d, "SPCB", 4) != 0)
-		OSPanic(__FILE__, __LINE__,
-		        "SPC binary bad magic: %02X %02X %02X %02X (expected 'SPCB')",
-		        d[0], d[1], d[2], d[3]);
-	// Read header counts/offsets big-endian BEFORE swapping the header.
-	u32 dataOff = spc_be32(d + 0x08);
-	u32 dataNum = spc_be32(d + 0x0C);
-	u32 symOff  = spc_be32(d + 0x10);
-	u32 symNum  = spc_be32(d + 0x14);
-	// Header: mMagic[4] stays; swap the 6 u32 at 0x04..0x18.
-	for (u32 o = 0x04; o <= 0x18; o += 4)
-		spc_sw32(d + o);
-	// Symbol array: symNum x TSpcSymbol (stride 0x14). Swap mType/mNameOffset/
-	// mData/mNameHash (0x00..0x0C); mNativeCall@0x10 is 0 on disc.
-	for (u32 i = 0; i < symNum; ++i) {
-		u8* s = d + symOff + i * 0x14;
-		spc_sw32(s + 0x00); spc_sw32(s + 0x04);
-		spc_sw32(s + 0x08); spc_sw32(s + 0x0C);
-	}
-	// Data-offset table: dataNum x u32 at dataOff (offsets into the string blob).
-	for (u32 i = 0; i < dataNum; ++i)
-		spc_sw32(d + dataOff + i * 4);
-}
+#include <spc_swap.hpp>
 #endif
 
 static void spcYield(TSpcInterp* interp, u32 arg_count)
@@ -161,8 +109,19 @@ TSpcBinary::TSpcBinary(void* data)
     : mData((u8*)data)
 {
 #ifdef SMS_NATIVE_PLATFORM
-	if (mData)
-		spc_swap_blob(mData);
+	if (mData) {
+		const SbSpcSwapResult result = sb_spc_swap_to_host(mData);
+		if (result == SbSpcSwapResult::BadMagic)
+			OSPanic(
+			    __FILE__, __LINE__,
+			    "SPC binary bad magic: %02X %02X %02X %02X (expected 'SPCB')",
+			    mData[0], mData[1], mData[2], mData[3]);
+		if (result == SbSpcSwapResult::BadLayout)
+			OSPanic(
+			    __FILE__, __LINE__,
+			    "SPC binary has invalid text offset bytes: %02X %02X %02X %02X",
+			    mData[4], mData[5], mData[6], mData[7]);
+	}
 #endif
 }
 
@@ -232,8 +191,9 @@ void TSpcBinary::bindSystemDataToSymbol(const char* name, void* param_2)
 		SpcTrace("TSpcBinary : unknown symbol %s\n", name);
 	} else {
 		// Keep mNativeCall as a 32-bit presence flag (the on-disk slot stays
-		// 0x14 bytes wide); hold the real pointer-width value in the side table.
-		symbol->mNativeCall   = param_2 ? 1u : 0u;
+		// 0x14 bytes wide); hold the real pointer-width value in the side
+		// table.
+		symbol->mNativeCall     = param_2 ? 1u : 0u;
 		mNativeCallPtrs[symbol] = param_2;
 	}
 }
