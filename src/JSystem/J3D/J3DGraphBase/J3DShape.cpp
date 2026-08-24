@@ -347,8 +347,9 @@ void J3DShape::draw() const
 	}
 #endif
 
-	j3dSys.setModelDrawMtx(mDrawMatrices[*mCurrentViewNo]);
-	j3dSys.setModelNrmMtx(mNormMatrices[*mCurrentViewNo]);
+	const u32 drawMtxCount = mDrawMtxData->mEntryNum;
+	j3dSys.setModelDrawMtx(mDrawMatrices[*mCurrentViewNo], drawMtxCount);
+	j3dSys.setModelNrmMtx(mNormMatrices[*mCurrentViewNo], drawMtxCount);
 
 	JRNLoadCurrentMtx(0, unk3C[0], unk3C[1], unk3C[2], unk3C[3], unk3C[4],
 	                  unk3C[5], unk3C[6], unk3C[7]);

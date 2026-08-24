@@ -42,16 +42,24 @@ public:
 	void ErrorReport(J3DErrType) const;
 
 	// From TP debug
-	void setModelDrawMtx(Mtx* mtx)
+	void setModelDrawMtx(Mtx* mtx, u32 count)
 	{
 		mCurrentDrawMtx = mtx;
+#ifdef SMS_AURORA
+		GXSetArray(GX_POS_MTX_ARRAY, mCurrentDrawMtx, count * sizeof(Mtx), sizeof(Mtx), true);
+#else
 		GXSetArray(GX_POS_MTX_ARRAY, mCurrentDrawMtx, sizeof(Mtx));
+#endif
 	}
 
-	void setModelNrmMtx(Mtx33* mtx)
+	void setModelNrmMtx(Mtx33* mtx, u32 count)
 	{
 		mCurrentNormMtx = mtx;
+#ifdef SMS_AURORA
+		GXSetArray(GX_NRM_MTX_ARRAY, mCurrentNormMtx, count * sizeof(Mtx33), sizeof(Mtx33), true);
+#else
 		GXSetArray(GX_NRM_MTX_ARRAY, mCurrentNormMtx, sizeof(Mtx33));
+#endif
 	}
 
 	J3DTexture* getTexture() { return mTexture; }

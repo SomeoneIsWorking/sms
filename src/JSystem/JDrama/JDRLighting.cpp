@@ -107,7 +107,12 @@ void TLightAry::perform(u32 cue, TGraphics* graphics)
 		mLights[i].correct(graphics);
 
 	DCFlushRange(mLights, mLightCount * sizeof(TIdxLight));
+#ifdef SMS_AURORA
+	GXSetArray(GX_LIGHT_ARRAY, mLights[0].getLightObj(), mLightCount * sizeof(TIdxLight),
+	           sizeof(TIdxLight), true);
+#else
 	GXSetArray(GX_LIGHT_ARRAY, mLights[0].getLightObj(), sizeof(TIdxLight));
+#endif
 }
 
 void TAmbColor::load(JSUMemoryInputStream& stream)
