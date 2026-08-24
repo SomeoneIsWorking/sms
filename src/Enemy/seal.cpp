@@ -44,7 +44,7 @@ void TSealManager::createModelData()
 
 void TSealManager::load(JSUMemoryInputStream& stream)
 {
-	TEnemyManager::load(stream);   // base does the real work; seal adds no config
+	TEnemyManager::load(stream); // base does the real work; seal adds no config
 }
 
 // ---------------------------------------------------------------------------
@@ -57,7 +57,7 @@ TSeal::TSeal(const char* name)
 	onLiveFlag(LIVE_FLAG_UNK10);
 }
 
-TSeal::~TSeal() {}
+TSeal::~TSeal() { }
 
 void TSeal::init(TLiveManager* manager)
 {
@@ -72,7 +72,8 @@ void TSeal::init(TLiveManager* manager)
 	initHitActor(0x10000024, 1, 0x81000000, r, r, r, r);
 	offHitFlag(1);
 
-	// register into the 敵グループ enemy-group hit-check list (same idiom as the animals)
+	// register into the 敵グループ enemy-group hit-check list (same idiom as
+	// the animals)
 	JDrama::TNameRefGen::search<TIdxGroupObj>("敵グループ")->add(this);
 
 	// face-pitch offset +270deg, normalized to [0,360)
@@ -88,14 +89,13 @@ void TSeal::init(TLiveManager* manager)
 
 	mHitPoints = getSaveParam() ? getSaveParam()->mSLHitPointMax.get() : 1;
 
-	mSpine->initWith(&TNerveSealSleep::theNerve());   // starts asleep
+	mSpine->initWith(&TNerveSealSleep::theNerve()); // starts asleep
 }
 
 void TSeal::calcRootMatrix()
 {
 	J3DModel* model = getModel();
-	MsMtxSetXYZRPH(model->getBaseTRMtx(),
-	               mPosition.x, mPosition.y, mPosition.z,
+	MsMtxSetXYZRPH(model->getBaseTRMtx(), mPosition.x, mPosition.y, mPosition.z,
 	               mRotation.x, mRotation.y, mRotation.z);
 	model->setBaseScale(mScaling);
 }
@@ -129,16 +129,20 @@ void TSeal::perform(u32 param_1, JDrama::TGraphics* graphics)
 
 BOOL TSeal::receiveMessage(THitActor* sender, u32 message)
 {
-	if (sender->mActorType != 0x01000001 || message != 0xF /* SPRAYED_BY_WATER */)
+	if (sender->mActorType != 0x01000001
+	    || message != 0xF /* SPRAYED_BY_WATER */)
 		return FALSE;
 
-	gpMarioParticleManager->emit(PARTICLE_MS_ENM_WATHIT, &sender->mPosition, 0, nullptr);
-	gpMSound->startSoundSet(MSD_SE_EN_COMMON_W_HIT_OK, &sender->mPosition, 0, 0.0f, 0, 0, 4);
+	gpMarioParticleManager->emit(PARTICLE_MS_ENM_WATHIT, &sender->mPosition, 0,
+	                             nullptr);
+	gpMSound->startSoundSet(MSD_SE_EN_COMMON_W_HIT_OK, &sender->mPosition, 0,
+	                        0.0f, 0, 0, 4);
 
 	if (gpModelWaterManager->unk5D5F == 0)
-		return TRUE;   // acknowledged, no kill
+		return TRUE; // acknowledged, no kill
 
-	gpMSound->startSoundSet(MSD_SE_ERASE_SCRAWL, &sender->mPosition, 0, 0.0f, 0, 0, 4);
+	gpMSound->startSoundSet(MSD_SE_ERASE_SCRAWL, &sender->mPosition, 0, 0.0f, 0,
+	                        0, 4);
 
 	if (mSpine->getLatestNerve() != &TNerveSealDie::theNerve()) {
 		mMapCollisionManager->getUnk8()->remove();
@@ -161,11 +165,12 @@ DEFINE_NERVE(TNerveSealSleep, TLiveActor)
 			mActor->setBckFromIndex(-1);
 	}
 
-	if (seal->getDistToMarioSquared() < 2250000.0f) {   // Mario near -> wake
+	if (seal->getDistToMarioSquared() < 2250000.0f) { // Mario near -> wake
 		spine->pushAfterCurrent(&TNerveSealWait::theNerve());
 		return TRUE;
 	} else {
-		if (mActor->curAnmEndsNext(0, nullptr) && mActor->checkCurBckFromIndex(1))
+		if (mActor->curAnmEndsNext(0, nullptr)
+		    && mActor->checkCurBckFromIndex(1))
 			mActor->setBckFromIndex(-1);
 	}
 	return FALSE;
@@ -184,7 +189,7 @@ DEFINE_NERVE(TNerveSealWait, TLiveActor)
 			mActor->setBckFromIndex(2);
 	}
 
-	if (seal->getDistToMarioSquared() > 2250000.0f) {   // Mario far -> sleep
+	if (seal->getDistToMarioSquared() > 2250000.0f) { // Mario far -> sleep
 		if (mActor->curAnmEndsNext(0, nullptr)) {
 			mActor->setBckFromIndex(1);
 			spine->pushAfterCurrent(&TNerveSealSleep::theNerve());
@@ -199,20 +204,21 @@ DEFINE_NERVE(TNerveSealDie, TLiveActor)
 	TSeal* seal = static_cast<TSeal*>(spine->getBody());
 
 	if (spine->getTime() == 0) {
-		seal->getMActor()->setBckFromIndex(0);   // death anim
+		seal->getMActor()->setBckFromIndex(0); // death anim
 		MtxPtr mtx = seal->getMActor()->getModel()->mBaseMtx;
-		if (JPABaseEmitter* e = gpMarioParticleManager->emitAndBindToMtxPtr(0xD1, mtx, 0, seal)) {
-			e->unk154.set(seal->mScaling);
-			e->unk174.set(seal->mScaling);
+		if (JPABaseEmitter* e
+		    = gpMarioParticleManager->emitAndBindToMtxPtr(0xD1, mtx, 0, seal)) {
+			e->setGlobalScale(seal->mScaling);
 		}
-		if (JPABaseEmitter* e = gpMarioParticleManager->emitAndBindToMtxPtr(0xD2, mtx, 0, seal)) {
-			e->unk154.set(seal->mScaling);
-			e->unk174.set(seal->mScaling);
+		if (JPABaseEmitter* e
+		    = gpMarioParticleManager->emitAndBindToMtxPtr(0xD2, mtx, 0, seal)) {
+			e->setGlobalScale(seal->mScaling);
 		}
 	}
 
 	if (gpMSound->gateCheck(0x6010))
-		MSoundSESystem::MSoundSE::startSoundActor(0x6010, &seal->mPosition, 0, nullptr, 0, 4);
+		MSoundSESystem::MSoundSE::startSoundActor(0x6010, &seal->mPosition, 0,
+		                                          nullptr, 0, 4);
 
 	if (seal->getMActor()->curAnmEndsNext(0, nullptr)) {
 		seal->mHitFlags |= 1;

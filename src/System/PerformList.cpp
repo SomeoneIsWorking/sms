@@ -1,9 +1,7 @@
 #include <System/PerformList.hpp>
 #include <JSystem/JDrama/JDRNameRefGen.hpp>
-#include <JSystem/JSupport/JSUInputStream.hpp>   // JSU_BE32
 #ifdef SMS_NATIVE_PLATFORM
-#include <cstdio>
-#include <cstdlib>
+#include <sb_log.h>
 #endif
 
 void TPerformList::forEachPerform(
@@ -16,61 +14,35 @@ void TPerformList::forEachPerform(
 		it->perform(cue, graphics);
 	}
 }
-
-
-void TPerformList::perform(u32 param_1, JDrama::TGraphics* param_2)
+void TPerformList::perform(u32 cue, JDrama::TGraphics* graphics)
 {
-	forEachPerform(getChildren().begin(), getChildren().end(), param_2,
-	               param_1);
+	forEachPerform(getChildren().begin(), getChildren().end(), graphics, cue);
 }
 
 void TPerformList::load(JSUMemoryInputStream& stream)
 {
 	JDrama::TViewObj::load(stream);
 
-#ifdef SMS_NATIVE_PLATFORM
-	// Own env (SB_PL_DBG): this dump is ~150 lines per scene load — keep it off the
-	// per-frame SB_J3D_DBG channel.
-	static int dbg = -1;
-	if (dbg < 0) { const char* e = getenv("SB_PL_DBG"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
-#endif
+	JDrama::TViewObj* obj;
+	char elementName[80];
+
 	while (stream.getLength() - stream.getPosition() > 0) {
 		stream.readString(elementName, 80);
 
 		obj = JDrama::TNameRefGen::search<JDrama::TViewObj>(elementName);
 
 		u32 value = stream.readU32();
-
-		// TODO: feels fake and stack is missing, needs more tinkering
-		u32 value;
-		stream.read(&value, 4);
-		// The perform-list data file stores each entry's filter as a big-endian dword;
-		// JSUInputStream::read is a raw readData (no byteswap — see the JSU_BE16 usage in
-		// readString). On a little-endian host the raw read yields a byteswapped filter
-		// (e.g. the calc op bit 0x2 read as 0x2000000, movement 0x1 as 0x1000000), which
-		// no actor/manager acts on → the whole movement/calc perform pass was inert and
-		// NPC calcRootMatrix never ran. JSU_BE32 is a no-op on big-endian, bswap on LE.
-		value = JSU_BE32(value);
-		u32 uVar5 = value;
-		if (value & 1)
-			uVar5 = value | 0x3000;
 #ifdef SMS_NATIVE_PLATFORM
-		// Draw-phase keystone: dump every (list, entry, filter) so we can see which loaded
-		// list registers "camera 1" and whether any entry carries the control bit 0x1.
-		if (dbg)
-			fprintf(stderr, "[plload] list='%s' entry='%s' filter=0x%x eff=0x%x found=%d\n",
-			        getName() ? getName() : "?", acStack_6c, value, uVar5, obj != nullptr);
-		// FAIL LOUD (not fail fast -- GC ships PerformLists.bin with entries that are
-		// legitimately absent depending on scene/stage config, e.g. optional emitter
-		// groups). Silently dropping a name-search miss here previously hid the TMapObjWave
-		// ("波") registration-order bug for an unbounded number of sessions; log every drop
-		// unconditionally (not gated on SB_PL_DBG) so the next miss is visible without
-		// re-deriving this diagnostic.
-		if (!obj)
-			fprintf(stderr,
-			        "[plload] DROPPED: list='%s' entry='%s' not found in NameRef tree "
-			        "-- perform-list load will not dispatch to it\n",
-			        getName() ? getName() : "?", acStack_6c);
+		const u32 rawValue = value;
+#endif
+
+		if (value & CUE_MOVE)
+			value |= (CUE_MOVEMENT_GATE_A | CUE_MOVEMENT_GATE_B);
+#ifdef SMS_NATIVE_PLATFORM
+		// Optional stage entries may legitimately miss the NameRef tree, so the channel records the
+		// lookup result without turning an expected configuration difference into a process error.
+		SB_LOGC("performlist", "list='%s' entry='%s' raw=0x%x effective=0x%x found=%d",
+		        getName() ? getName() : "?", elementName, rawValue, value, obj != nullptr);
 #endif
 		if (obj)
 			push_back(obj, value);

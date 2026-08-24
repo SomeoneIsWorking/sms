@@ -43,10 +43,10 @@
 // Common J3DModelLoaderFlag combinations used by the actor data table below.
 // Spelled out as named constants to keep the table rows compact.
 enum {
-	kMdlF_PE1 = J3DMLF_MaterialPEFull | J3DMLF_UseUniqueMaterials
-	            | (1 << J3DMLF_TevStageNumShift), // kMdlF_PE1
-	kMdlF_PE2 = J3DMLF_MaterialPEFull | J3DMLF_UseUniqueMaterials
-	            | (2 << J3DMLF_TevStageNumShift), // kMdlF_PE2
+	kMdlF_PE1    = J3DMLF_MaterialPEFull | J3DMLF_UseUniqueMaterials
+	               | (1 << J3DMLF_TevStageNumShift), // kMdlF_PE1
+	kMdlF_PE2    = J3DMLF_MaterialPEFull | J3DMLF_UseUniqueMaterials
+	               | (2 << J3DMLF_TevStageNumShift), // kMdlF_PE2
 	kMdlF_IndPE1 = J3DMLF_MaterialPEFull | J3DMLF_MaterialUseIndirect
 	               | J3DMLF_UseUniqueMaterials
 	               | (1 << J3DMLF_TevStageNumShift), // kMdlF_IndPE1
@@ -187,7 +187,7 @@ void TMapStaticObj::calcUnique(JPABaseEmitter* emitter)
 		if (emitter) {
 			JGeometry::TVec3<f32> scale(mEffectCoronaScale, mEffectCoronaScale,
 			                            mEffectCoronaScale);
-			emitter->setScale(scale);
+			emitter->setGlobalScale(scale);
 		}
 		break;
 	default:
@@ -197,27 +197,6 @@ void TMapStaticObj::calcUnique(JPABaseEmitter* emitter)
 
 void TMapStaticObj::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-#ifdef SMS_NATIVE_PLATFORM
-	// SB_SEA_DBG: trace the "sea"/reflective static objects — which perform flag, whether the
-	// 0x80 (DrawBuf AfterIndirect) enter branch fires, and the model shape count. The pass-3
-	// indirect reflective sea is a flag-0x80 static obj entered into DrawBuf AfterIndirect.
-	static int s_seaDbg0 = -1;
-	if (s_seaDbg0 < 0) { const char* e = getenv("SB_SEA_DBG"); s_seaDbg0 = (e && e[0] && e[0] != '0') ? 1 : 0; }
-	if (s_seaDbg0) {
-		if (mActorName && (strcmp(mActorName, "sea") == 0
-		    || strcmp(mActorName, "SeaIndirect") == 0
-		    || strcmp(mActorName, "ReflectSky") == 0
-		    || strcmp(mActorName, "ReflectParts") == 0)) {
-			static int sn = 0;
-			if (sn < 60) { ++sn;
-				fprintf(stderr, "[sea] '%s' perform(0x%x) mFlags=0x%x model=%p enter80=%d\n",
-				        mActorName, param_1,
-				        mActorData ? mActorData->mFlags : 0, (void*)mMActor,
-				        (int)((param_1 & 0x200) && mActorData && (mActorData->mFlags & 0x80)));
-			}
-		}
-	}
-#endif
 	if (param_1 & 2) {
 		if (mSoundId != -1)
 			SMSGetMSound()->startSoundActor(mSoundId, &mPosition, 0, nullptr, 0,
@@ -262,22 +241,6 @@ void TMapStaticObj::perform(u32 param_1, JDrama::TGraphics* param_2)
 			               mPosition.z, mRotation.x, mRotation.y, mRotation.z);
 			getModel()->setBaseScale(mScaling);
 		}
-
-#ifdef SMS_NATIVE_PLATFORM
-		{
-			static int s_seaDbg = -1;
-			if (s_seaDbg < 0) { const char* e = getenv("SB_SEA_DBG"); s_seaDbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
-			if (s_seaDbg && mActorData) {
-				static int sn = 0;
-				if (sn < 200) { ++sn;
-					fprintf(stderr, "[sea-perform] '%s' param_1=0x%x mFlags=0x%x UNK80=%d has200=%d\n",
-					        mActorName ? mActorName : "?", param_1, mActorData->mFlags,
-					        (int)((mActorData->mFlags & TActorData::FLAG_UNK80) != 0),
-					        (int)((param_1 & 0x200) != 0));
-				}
-			}
-		}
-#endif
 		if ((param_1 & 0x200)
 		    && (mActorData->mFlags & TActorData::FLAG_UNK80)) {
 			J3DDrawBuffer* oldOpaBuf = j3dSys.getDrawBuffer(0);
@@ -372,13 +335,15 @@ void TMapStaticObj::init(const char* name)
 	mActorName = name;
 
 #ifdef SMS_NATIVE_PLATFORM
-	// FAIL FAST: on the GC the sentinel `while (strcmp(name, tbl[i].mActorName))`
-	// walks off the end into rodata garbage on an unknown name — subtle. Native
-	// side turns that into an OSPanic that names the bad key.
+	// FAIL FAST: on the GC the sentinel `while (strcmp(name,
+	// tbl[i].mActorName))` walks off the end into rodata garbage on an unknown
+	// name — subtle. Native side turns that into an OSPanic that names the bad
+	// key.
 	for (int i = 0;; ++i) {
 		if (actor_data_table[i].mActorName == nullptr)
 			OSPanic(__FILE__, __LINE__,
-			        "TMapStaticObj::init: name '%s' not in actor_data_table", name);
+			        "TMapStaticObj::init: name '%s' not in actor_data_table",
+			        name);
 		if (strcmp(name, actor_data_table[i].mActorName) == 0) {
 			mActorData = &actor_data_table[i];
 			break;
@@ -426,13 +391,6 @@ void TMapStaticObj::init(const char* name)
 		        mActorData->mIdxGroupName);
 		group->getChildren().push_back(this);
 	}
-#ifdef SMS_NATIVE_PLATFORM
-	if (const char* e = getenv("SB_STATICOBJ_DBG"); e && e[0] && e[0] != '0')
-		fprintf(stderr,
-		    "[staticobj] created name='%s' mFlags=0x%x model=%p group='%s'\n",
-		    mActorName ? mActorName : "?", mActorData->mFlags, (void*)mMActor,
-		    mActorData->mIdxGroupName ? mActorData->mIdxGroupName : "(null)");
-#endif
 
 	if (mActorData->mFlags & TActorData::FLAG_IS_INDIRECT) {
 		TScreenTexture* ref = JDrama::TNameRefGen::search<TScreenTexture>(

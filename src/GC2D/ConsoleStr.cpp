@@ -32,8 +32,8 @@ TConsoleStr::TConsoleStr(const char* name)
     , unk14(nullptr)
     , unk20(0xB4)
     , unk24(0)
-	, unk2B4(0)
-	, unk2B5(0)
+    , unk2B4(0)
+    , unk2B5(0)
     , unk2B8(0)
     , unk2BC(7)
 {
@@ -107,13 +107,14 @@ void TConsoleStr::loadAfter()
 		unk2A8[i] = nullptr;
 #ifdef SMS_NATIVE_PLATFORM
 	// Decomp gap: TGCConsole2::unk94 (the scenario-name banner TConsoleStr) is
-	// read all over TMarDirector::direct (startAppearScenario/startOpenWipe/...)
-	// but is NEVER assigned in the decompiled source -- the original wiring lives
-	// in an undecompiled function, so the native build left unk94 uninitialized
+	// read all over TMarDirector::direct
+	// (startAppearScenario/startOpenWipe/...) but is NEVER assigned in the
+	// decompiled source -- the original wiring lives in an undecompiled
+	// function, so the native build left unk94 uninitialized
 	// -> SEGV reading a null `this` in startAppearScenario. The console object
-	// ("GCコンソール") and this TConsoleStr ("コンソール文字") are siblings in the
-	// NameRef tree (all load()ed before any loadAfter), so  ourselves
-	// with the console here. Faithful reconstruction of the missing cache, not a
+	// ("GCコンソール") and this TConsoleStr ("コンソール文字") are siblings in
+	// the NameRef tree (all load()ed before any loadAfter), so  ourselves with
+	// the console here. Faithful reconstruction of the missing cache, not a
 	// guard around the symptom.
 	if (TGCConsole2* console
 	    = JDrama::TNameRefGen::search<TGCConsole2>("GCコンソール"))
@@ -424,30 +425,31 @@ bool TConsoleStr::processGo(float param_1)
 		for (int i = 0; i < 3; ++i) {
 			if (param_1 == i * 10.0f) {
 				unk28[i]->setPanePosition(40, JUTPoint(0, 60), JUTPoint(0, -40),
-				                              JUTPoint(0, -40));
+				                          JUTPoint(0, -40));
 				unk28[i]->getPane()->show();
 			}
 			const JUTRect before = unk28[i]->getPane()->getBounds();
 			if (unk28[i]->update() && (before.x1 != 0 || before.y1 != 0))
-				unk28[i]->setPanePosition(30, JUTPoint(0, -40), JUTPoint(0, -40),
-				                              JUTPoint(0, 0));
+				unk28[i]->setPanePosition(30, JUTPoint(0, -40),
+				                          JUTPoint(0, -40), JUTPoint(0, 0));
 		}
 		return false;
 	}
 
 	if (param_1 == 95.0f) {
 		unk28[0]->setPanePosition(80, JUTPoint(0, 0), JUTPoint(-170, -180),
-		                              JUTPoint(-340, -360));
+		                          JUTPoint(-340, -360));
 		unk28[1]->setPanePosition(80, JUTPoint(0, 0), JUTPoint(-440, -220),
-		                              JUTPoint(0, 0));
+		                          JUTPoint(0, 0));
 		unk28[2]->setPanePosition(80, JUTPoint(0, 0), JUTPoint(160, -180),
-		                              JUTPoint(320, -360));
+		                          JUTPoint(320, -360));
 		for (int i = 0; i < 3; ++i) {
 			const JUTRect bounds = unk28[i]->getPane()->getBounds();
 			for (int j = 0; j < 16; ++j)
 				unk34[i * 16 + j] = JUTPoint(bounds.x1, bounds.y1);
 			JGeometry::TVec3<f32> center(bounds.x1 + bounds.getWidth() * 0.5f,
-			                                bounds.y1 + bounds.getHeight() * 0.5f, 0.0f);
+			                             bounds.y1 + bounds.getHeight() * 0.5f,
+			                             0.0f);
 			gpEmitterManager4D2->createEmitter(center, 0x1FD, nullptr, nullptr);
 			unk2A8[i] = gpEmitterManager4D2->unkC8[0][0];
 		}
@@ -459,8 +461,9 @@ bool TConsoleStr::processGo(float param_1)
 			const JUTRect bounds = pane->getBounds();
 			pane->resize(bounds.getWidth() + 2, bounds.getHeight() + 2);
 			if (unk2A8[i]) {
-				unk2A8[i]->unk160.set(bounds.x1 + bounds.getWidth() * 0.5f,
-				                       bounds.y1 + bounds.getHeight() * 0.5f, 0.0f);
+				unk2A8[i]->setGlobalTranslation(
+				    bounds.x1 + bounds.getWidth() * 0.5f,
+				    bounds.y1 + bounds.getHeight() * 0.5f, 0.0f);
 			}
 			unk28[i]->update();
 			if (recordTrail) {
@@ -472,7 +475,8 @@ bool TConsoleStr::processGo(float param_1)
 	} else if (param_1 == 175.0f) {
 		for (int i = 0; i < 3; ++i) {
 			const JUTRect bounds = unk28[i]->getPane()->getBounds();
-			unk28[i]->getPane()->move(bounds.getWidth() - 80, bounds.getHeight() - 80);
+			unk28[i]->getPane()->move(bounds.getWidth() - 80,
+			                          bounds.getHeight() - 80);
 		}
 	} else if (param_1 > 175.0f) {
 		for (int i = 0; i < 3; ++i) {
