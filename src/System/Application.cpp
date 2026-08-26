@@ -1063,20 +1063,20 @@ JKRMemArchive* TApplication::mountStageArchive()
 		for (int s = 0; s < (int)tmp.size(); ++s) {
 			int n = (int)tmp[s].size();
 			TScenarioArchiveName& e0 = tmp[s][0];
-			OSReport("[stagetab] [%d] n=%d mName='%s' unkC='%s'\n", s, n,
+			OSReport("[stagetab] [%d] n=%d mName='%s' archive='%s'\n", s, n,
 			         e0.getName() ? e0.getName() : "(null)",
-			         e0.unkC ? e0.unkC : "(null)");
+			         e0.mArchiveName ? e0.mArchiveName : "(null)");
 		}
 	}
 #endif
 	if (mCurrArea.getStage() < tmp.size()) {
 		if (mCurrArea.getScenario() < tmp[mCurrArea.getStage()].size()) {
 			// The loadable archive filename is the SECOND string of the
-			// TScenarioArchiveName record (unkC, e.g. "airport0.arc"); getName()
+			// TScenarioArchiveName record (mArchiveName, e.g. "airport0.arc"); getName()
 			// (mName) is the SJIS editor DISPLAY name (e.g. "空港 0") and does not
 			// name a file on the disc. Loading getName() fails for every stage.
 			const char* scenarioArcName
-			    = tmp[mCurrArea.getStage()][mCurrArea.getScenario()].unkC;
+			    = tmp[mCurrArea.getStage()][mCurrArea.getScenario()].mArchiveName;
 
 			DVDChangeDir("/data/scene");
 			void* archBlob

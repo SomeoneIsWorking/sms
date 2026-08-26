@@ -1,5 +1,6 @@
 #include "MoveBG/MapObjCorona.hpp"
 #include "MoveBG/MapObjBase.hpp"
+#include "JSystem/JMath.hpp"
 #include "JSystem/JParticle/JPAResourceManager.hpp"
 
 extern JPAResourceManager* gpResourceManager;
@@ -45,7 +46,17 @@ void TBathtub::quake(const JGeometry::TVec3<f32>&) { }
 
 u8 TBathtub::getNumGripsDead() const { return 0; }
 
-void TBathtub::tumble(f32, f32) { }
+void TBathtub::tumble(f32 angle, f32 strength)
+{
+	if (unk29A != 0)
+		return;
+
+	f32 magnitude   = strength * 0.0001f;
+	s16 short_angle = static_cast<s16>(DEG2SHORTANGLE(angle));
+	unk1E8 += magnitude * JMASSin(short_angle);
+	unk1EC += 0.0f;
+	unk1F0 += magnitude * -JMASCos(short_angle);
+}
 
 MtxPtr TBathtub::getTakingMtx() { return nullptr; }
 
