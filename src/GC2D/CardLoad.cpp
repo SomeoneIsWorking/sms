@@ -1444,7 +1444,8 @@ s8 TCardLoad::waitForChoice(TEProgress param_1, TEProgress param_2, int param_3)
 				        "(gpEmitterManager4D2 missing resource 0x1FA)");
 #endif
 			mCursorSparkle->setRotation(0, 0, DEG2SHORTANGLE(12));
-			mCursorSparkle->setUnk190(0.9f, 1.0f, 0.1f);
+			mCursorSparkle->setEmitterScale(
+			    JGeometry::TVec3<f32>(0.9f, 1.0f, 0.1f));
 		} else if (unkC4 == 44) {
 			unk484[unkB7]->setCenteredSize(20, unk48C[unkB7].getWidth(),
 			                               unk48C[unkB7].getHeight(),
@@ -1634,7 +1635,8 @@ s8 TCardLoad::waitForChoiceBM(TEProgress param_1, TEProgress param_2,
 #endif
 			{
 				mCursorSparkle->setRotation(0, 0, DEG2SHORTANGLE(12));
-				mCursorSparkle->setUnk190(0.9f, 1.0f, 0.1f);
+				mCursorSparkle->setEmitterScale(
+				    JGeometry::TVec3<f32>(0.9f, 1.0f, 0.1f));
 			}
 		} else if (unkC4 == 44) {
 			unk4D8[unkB7]->setCenteredSize(40, unk4E0[unkB7].getWidth(),
@@ -2432,7 +2434,8 @@ s8 TCardLoad::selectFunction()
 				                                   nullptr);
 				mCursorSparkle = gpEmitterManager4D2->unkC8[0][0];
 				mCursorSparkle->setRotation(0, 0, DEG2SHORTANGLE(12));
-				mCursorSparkle->setUnk190(0.9f, 1.0f, 0.1f);
+				mCursorSparkle->setEmitterScale(
+				    JGeometry::TVec3<f32>(0.9f, 1.0f, 0.1f));
 			} else if (unkC4 == 44) {
 				unk378[mSelectedFile][mFunctionCursor]->setCenteredSize(
 				    20, unk3A8[mSelectedFile][mFunctionCursor].getWidth(),

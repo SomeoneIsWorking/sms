@@ -29,7 +29,7 @@
 #include <JSystem/J2D/J2DPrint.hpp>
 #include <JSystem/J2D/J2DOrthoGraph.hpp>
 #include <JSystem/J2D/J2DScreen.hpp>
-#include <JSystem/J2D/J2DOrthoGraph.hpp>
+#include <JSystem/J2D/J2DWindow.hpp>
 #include <JSystem/JParticle/JPAEmitter.hpp>
 #include <JSystem/JParticle/JPAEmitterManager.hpp>
 #include <JSystem/JUtility/JUTResFont.hpp>
@@ -214,7 +214,7 @@ static inline void updateYoshiJuiceIconState(TGCConsole2* console)
 // fabricated
 static inline void playHudMoveSound(u32 soundID)
 {
-	if (gpMarDirector->unk124 != 0)
+	if (gpMarDirector->mGameState != 0)
 		return;
 	if (gpMarioOriginal->mHealth == 0)
 		return;
@@ -386,8 +386,8 @@ static inline void updateLifeMeterColors(TGCConsole2* console, bool airMode)
 static inline void playLifeChangeSound(u32 sound)
 {
 	if (gpMarDirector->mState == TMarDirector::STATE_UNK4
-	    && gpMarDirector->unk124 == 0) {
-		SMSGetMSound()->startSoundSystemSE(sound, 0, nullptr, 0);
+	    && gpMarDirector->mGameState == 0 && SMSGetMSound()->gateCheck(sound)) {
+		MSoundSESystem::MSoundSE::startSoundSystemSE(sound, 0, nullptr, 0);
 	}
 }
 
@@ -1071,7 +1071,7 @@ static inline void updateStarHudAutoHide(TGCConsole2* console)
 		return;
 	if (console->unk50 || console->unk16C != 0 || console->unk8A != 0)
 		return;
-	if (gpMarDirector->unk124 == 2)
+	if (gpMarDirector->mGameState == 2)
 		return;
 
 	console->startDisappearStar();
@@ -1098,7 +1098,7 @@ static inline void updateLifeMeterBlink(TGCConsole2* console)
 		if (console->unk1CC[0] <= 3 && console->unk1CC[0] != 0
 		    && console->unk86 == (int)(1.5f * rate)
 		    && gpMarDirector->mState == TMarDirector::STATE_UNK4
-		    && gpMarDirector->unk124 == 0
+		    && gpMarDirector->mGameState == 0
 		    && SMSGetMSound()->gateCheck(0x4800)) {
 			MSoundSESystem::MSoundSE::startSoundSystemSE(0x4800, 0, nullptr, 0);
 		}
@@ -1363,7 +1363,7 @@ static inline void updateTelopState(TGCConsole2* console, u32 flags)
 	}
 
 	if (gpMarDirector->mState != TMarDirector::STATE_UNK5
-	    && gpMarDirector->unk124 == 0 && console->unk55C < 0xffffffff)
+	    && gpMarDirector->mGameState == 0 && console->unk55C < 0xffffffff)
 		++console->unk55C;
 }
 
@@ -2224,10 +2224,10 @@ void TGCConsole2::startAppearTank()
 		return;
 	}
 
-	// TODO: needs  swapping
-	unk34[17] = 1;
-	unk59     = 1;
-	unk7C     = 0;
+	// TODO: needs register swapping
+	unk45 = 1;
+	unk59 = 1;
+	unk7C = 0;
 
 	unk2F8->getPane()->show();
 	unk2F8->setPaneOffset(unk98, 0, 0, 0, 465 - unk2F8->mInitialBounds.y1);

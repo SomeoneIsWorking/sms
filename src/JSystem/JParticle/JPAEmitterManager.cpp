@@ -254,9 +254,11 @@ JPABaseEmitter* JPAEmitterManager::createEmitterBase(
 	if (unkA4[param_3]) {
 #ifdef SMS_NATIVE_PLATFORM
 		if (getenv("SB_JPA_DBG"))
-			sb_logf("jkr", "jpa: createEmitterBase id=%d grp=%d res=%p res->unk4=%p",
+			sb_logf("jkr",
+			        "jpa: createEmitterBase id=%d grp=%d res=%p "
+			        "emitter-resource=%p",
 			        (int)param_1, (int)param_3, (void*)unkA4[param_3],
-			        (void*)unkA4[param_3]->unk4);
+			        (void*)unkA4[param_3]->getEmitterResource());
 #endif
 		JPAEmitterData* emitterData
 		    = unkA4[param_3]->getEmitterResource()->getByUserIndex(param_1);
