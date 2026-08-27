@@ -1,4 +1,7 @@
 #include <JSystem/J2D/J2DPicture.hpp>
+#ifdef SMS_NATIVE_PLATFORM
+#include <sb_native_picture.h>
+#endif
 #include <JSystem/JUtility/JUTPalette.hpp>
 #include <JSystem/JUtility/JUTTexture.hpp>
 #include <JSystem/JUtility/JUTResource.hpp>
@@ -61,11 +64,11 @@ J2DPicture::J2DPicture(J2DPane* parent, JSURandomInputStream* stream,
 		if (fields != 0) {
 			u8 mirror = stream->readU8();
 			mMirror   = (J2DMirror)(mirror & 3);
-			unk130    = mirror & 4;
+			mFlip     = mirror & 4;
 			fields -= 1;
 		} else {
 			mMirror = MIRROR0;
-			unk130  = false;
+			mFlip   = false;
 		}
 		if (fields != 0) {
 			u8 wrapMode  = stream->readU8();
@@ -126,7 +129,7 @@ J2DPicture::J2DPicture(J2DPane* parent, JSURandomInputStream* stream,
 		mBinding     = (J2DBinding)stream->readU8();
 		u8 mode      = stream->readU8();
 		mMirror      = (J2DMirror)(mode & 3);
-		unk130       = mode & 4;
+		mFlip        = mode & 4;
 		mWrapmodeHor = (J2DWrapmode)(mode >> 3 & 3);
 		mWrapmodeVer = mWrapmodeHor;
 		stream->align(4);
@@ -165,16 +168,16 @@ J2DPicture::J2DPicture(J2DPane* parent, JSURandomInputStream* stream,
 		mTextures[0]->attachPalette(mPalette);
 	}
 
-	unk104[0] = 1.0;
-	unk104[1] = 1.0;
-	unk104[2] = 1.0;
-	unk104[3] = 1.0;
+	mBlendColorWeights[0] = 1.0;
+	mBlendColorWeights[1] = 1.0;
+	mBlendColorWeights[2] = 1.0;
+	mBlendColorWeights[3] = 1.0;
 	setBlendKonstColor();
 
-	unk114[0] = 1.0;
-	unk114[1] = 1.0;
-	unk114[2] = 1.0;
-	unk114[3] = 1.0;
+	mBlendAlphaWeights[0] = 1.0;
+	mBlendAlphaWeights[1] = 1.0;
+	mBlendAlphaWeights[2] = 1.0;
+	mBlendAlphaWeights[3] = 1.0;
 	setBlendKonstAlpha();
 
 #ifdef SMS_NATIVE_PLATFORM
@@ -232,15 +235,15 @@ bool J2DPicture::insert(JUTTexture* tex, u8 idx, float alpha)
 		return false;
 
 	for (u8 i = 3; idx < i; --i) {
-		mTextures[i] = mTextures[i - 1];
-		unk104[i]    = unk104[i - 1];
-		unk114[i]    = unk104[i + 3];
-		unkFD[i]     = unkFD[i - 1];
+		mTextures[i]          = mTextures[i - 1];
+		mBlendColorWeights[i] = mBlendColorWeights[i - 1];
+		mBlendAlphaWeights[i] = mBlendColorWeights[i + 3];
+		unkFD[i]              = unkFD[i - 1];
 	}
-	mTextures[idx] = tex;
-	unkFD[idx]     = 0;
-	unk104[idx]    = alpha;
-	unk114[idx]    = alpha;
+	mTextures[idx]          = tex;
+	unkFD[idx]              = 0;
+	mBlendColorWeights[idx] = alpha;
+	mBlendAlphaWeights[idx] = alpha;
 	if (mTextureNum == 0) {
 		JUTRect newBounds(0, 0, mTextures[0]->getWidth(),
 		                  mTextures[0]->getHeight());
@@ -261,10 +264,10 @@ bool J2DPicture::remove(u8 idx)
 		delete mTextures[idx];
 
 	for (u8 i = idx; i < mTextureNum - 1; ++i) {
-		mTextures[i] = mTextures[i + 1];
-		unk104[i]    = unk104[i + 1];
-		unk114[i]    = unk114[i + 1];
-		unkFD[i]     = unkFD[i + 1];
+		mTextures[i]          = mTextures[i + 1];
+		mBlendColorWeights[i] = mBlendColorWeights[i + 1];
+		mBlendAlphaWeights[i] = mBlendAlphaWeights[i + 1];
+		unkFD[i]              = unkFD[i + 1];
 	}
 	--mTextureNum;
 	setBlendKonstColor();
@@ -308,6 +311,10 @@ void J2DPicture::drawSelf(int x, int y, Mtx* mtx)
 	if (!mTextures[0])
 		return;
 #ifdef SMS_NATIVE_PLATFORM
+	// Publish game-semantic picture state before the retained GX body mutates
+	// render state. The sink is absent until a PC-native backend owns the
+	// frame, so Aurora remains unchanged today.
+	sb_native_picture_submit(this, mtx);
 	// SB_SKIP_DUOTONE=1 (diagnostic): drop duotone (mBlack!=0/mWhite!=white) pictures
 	// — the fly-in glyph/highlight layers — to see the base logo texture alone.
 	if (const char* e = std::getenv("SB_SKIP_DUOTONE");
@@ -326,7 +333,7 @@ void J2DPicture::drawSelf(int x, int y, Mtx* mtx)
 	int h = mBounds.getHeight();
 	int w = mBounds.getWidth();
 	drawFullSet(mGlobalBounds.x1 + x, mGlobalBounds.y1 + y, w, h, mBinding,
-	            mMirror, unk130, mWrapmodeHor, mWrapmodeVer, mtx);
+	            mMirror, mFlip, mWrapmodeHor, mWrapmodeVer, mtx);
 }
 
 void J2DPicture::drawFullSet(int x, int y, int w, int h, J2DBinding binding,
@@ -708,9 +715,9 @@ void J2DPicture::setBlendKonstColor()
 	for (u8 i = 1; i < mTextureNum; ++i) {
 		float sum = 0.0;
 		for (u8 j = 0; j < i; ++j)
-			sum += unk104[j];
+			sum += mBlendColorWeights[j];
 
-		float nextSum = sum + unk104[i];
+		float nextSum = sum + mBlendColorWeights[i];
 		if (0.0f != nextSum) {
 			u8 alpha = (u8)(255.0f * (1.0f - sum / nextSum));
 			result |= alpha << ((i - 1) * 8);
@@ -727,9 +734,9 @@ void J2DPicture::setBlendKonstAlpha()
 	for (u8 i = 1; i < mTextureNum; ++i) {
 		float sum = 0.0;
 		for (u8 j = 0; j < i; ++j)
-			sum += unk114[j];
+			sum += mBlendAlphaWeights[j];
 
-		float nextSum = sum + unk114[i];
+		float nextSum = sum + mBlendAlphaWeights[i];
 		if (0.0f != nextSum) {
 			u8 alpha = (u8)(255.0f * (1.0f - sum / nextSum));
 			result |= alpha << ((i - 1) * 8);

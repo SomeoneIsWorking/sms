@@ -83,18 +83,18 @@ public:
 	// fabricated
 	void setBlendKonstColor(f32 r, f32 g, f32 b, f32 a)
 	{
-		unk104[0] = r;
-		unk104[1] = g;
-		unk104[2] = b;
-		unk104[3] = a;
+		mBlendColorWeights[0] = r;
+		mBlendColorWeights[1] = g;
+		mBlendColorWeights[2] = b;
+		mBlendColorWeights[3] = a;
 		setBlendKonstColor();
 	}
 	void setBlendKonstAlpha(f32 r, f32 g, f32 b, f32 a)
 	{
-		unk114[0] = r;
-		unk114[1] = g;
-		unk114[2] = b;
-		unk114[3] = a;
+		mBlendAlphaWeights[0] = r;
+		mBlendAlphaWeights[1] = g;
+		mBlendAlphaWeights[2] = b;
+		mBlendAlphaWeights[3] = a;
 		setBlendKonstAlpha();
 	}
 
@@ -108,12 +108,12 @@ public:
 	/* 0xEC */ JUTTexture* mTextures[4];
 	/* 0xFC */ u8 mTextureNum;
 	/* 0xFD */ u8 unkFD[4];
-	/* 0x104 */ f32 unk104[4];
-	/* 0x114 */ f32 unk114[4];
+	/* 0x104 */ f32 mBlendColorWeights[4];
+	/* 0x114 */ f32 mBlendAlphaWeights[4];
 	/* 0x124 */ JUTPalette* mPalette;
 	/* 0x128 */ J2DBinding mBinding;
 	/* 0x12C */ J2DMirror mMirror;
-	/* 0x130 */ bool unk130;
+	/* 0x130 */ bool mFlip;
 	/* 0x134 */ J2DWrapmode mWrapmodeHor;
 	/* 0x138 */ J2DWrapmode mWrapmodeVer;
 	/* 0x13C */ JUtility::TColor mWhite;
