@@ -83,6 +83,9 @@ public:
 	inline bool processAppearTimer(int);
 	inline bool processAppearBalloon();
 	inline bool processDisappearBalloon();
+	// Retail GMSE01 bodies are 0x80144840 and 0x801441e0 respectively. The recomp renderer's
+	// interpolation seam uses these identities; the native path still needs the bodies below
+	// carried through GCConsole2.cpp before it can serve as a gauge-motion oracle.
 	inline void drawJuice(J2DOrthoGraph&, u32);
 	inline void drawWater(J2DOrthoGraph&);
 

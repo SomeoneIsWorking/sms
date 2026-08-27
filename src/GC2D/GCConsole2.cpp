@@ -2792,6 +2792,9 @@ void TGCConsole2::startAppearStar()
 
 void TGCConsole2::drawWaterBack()
 {
+	// Retail GMSE01 0x801492a4. Together with drawWater (0x801441e0) and drawJuice
+	// (0x80144840), this is the animated direct-vertex gauge family identified by the recomp
+	// interpolation audit. Keep those names/evidence aligned across both runtimes.
 	if (gpMarioOriginal->getHealth() == 0 || gpMarioOriginal->getAir() == 0)
 		return;
 
