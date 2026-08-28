@@ -9,6 +9,7 @@
 #include <dolphin/os.h>
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdlib>
+#include <sb_native_picture.h>
 #endif
 
 J2DScreen::~J2DScreen() { }
@@ -156,12 +157,24 @@ void J2DScreen::draw(int x, int y, const J2DGrafContext* pCtx)
 {
 	if (pCtx) {
 		J2DGrafContext ctx(*pCtx);
+#ifdef SMS_NATIVE_PLATFORM
+		sb_native_picture_context_push(pCtx, mbClipToParent);
+#endif
 		J2DPane::draw(x, y, pCtx, mbClipToParent);
+#ifdef SMS_NATIVE_PLATFORM
+		sb_native_picture_context_pop();
+#endif
 		ctx.setScissor();
 	} else {
 		J2DOrthoGraph graph(0, 0, 640, 480);
 		graph.setPort();
+#ifdef SMS_NATIVE_PLATFORM
+		sb_native_picture_context_push(&graph, mbClipToParent);
+#endif
 		J2DPane::draw(x, y, &graph, mbClipToParent);
+#ifdef SMS_NATIVE_PLATFORM
+		sb_native_picture_context_pop();
+#endif
 		graph.setScissor();
 	}
 	GXSetNumTexGens(0);

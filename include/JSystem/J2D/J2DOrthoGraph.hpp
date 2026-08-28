@@ -11,6 +11,7 @@ public:
 	void setOrtho(const JUTRect&, float, float);
 	void setOrigin(int, int);
 	void scissorBounds(JUTRect*, JUTRect*);
+	const JUTRect& getOrtho() const { return mOrtho; }
 
 	virtual ~J2DOrthoGraph() { }
 	virtual void setPort();
