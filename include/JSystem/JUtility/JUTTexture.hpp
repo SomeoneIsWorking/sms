@@ -11,6 +11,25 @@ class JUTPalette;
 class JUTTexture {
 public:
 	JUTTexture()
+#ifdef SMS_NATIVE_PLATFORM
+	    : mTexInfo(nullptr)
+	    , mTexData(nullptr)
+	    , field_0x2c(nullptr)
+	    , mTlutName(0)
+	    , mFormat(0)
+	    , mAlphaEnabled(0)
+	    , mWidth(0)
+	    , mHeight(0)
+	    , mWrapS(0)
+	    , mWrapT(0)
+	    , mMinFilter(0)
+	    , mMagFilter(0)
+	    , mMinLOD(0)
+	    , mMaxLOD(0)
+	    , mLODBias(0)
+	    , mFlags(0)
+	    , field_0x4c(nullptr)
+#endif
 	{
 		unk50       = 0;
 		mEmbPalette = nullptr;
