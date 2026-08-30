@@ -72,25 +72,63 @@ public:
 
 	// Possibly inline
 	const JUTRect& getContentsBounds() const { return mContentsBounds; }
+	const Texture* getFrameTextureTopLeft() const
+	{
+		return mFrameTextureTopLeft;
+	}
+	const Texture* getFrameTextureTopRight() const
+	{
+		return mFrameTextureTopRight;
+	}
+	const Texture* getFrameTextureBottomLeft() const
+	{
+		return mFrameTextureBottomLeft;
+	}
+	const Texture* getFrameTextureBottomRight() const
+	{
+		return mFrameTextureBottomRight;
+	}
+	const Texture* getContentsTexture() const { return mContentsTexture; }
+	u32 getMirrorFlags() const { return mMirrorFlags; }
+	JUtility::TColor getContentsColorTopLeft() const
+	{
+		return mContentsColorTopLeft;
+	}
+	JUtility::TColor getContentsColorTopRight() const
+	{
+		return mContentsColorTopRight;
+	}
+	JUtility::TColor getContentsColorBottomLeft() const
+	{
+		return mContentsColorBottomLeft;
+	}
+	JUtility::TColor getContentsColorBottomRight() const
+	{
+		return mContentsColorBottomRight;
+	}
+	JUtility::TColor getFrameWhite() const { return mFrameWhite; }
+	JUtility::TColor getFrameBlack() const { return mFrameBlack; }
+	int getMinimumWidth() const { return mMinimumWidth; }
+	int getMinimumHeight() const { return mMinimumHeight; }
 
 protected:
 	/* 0xEC */ JUTRect mContentsBounds;
-	/* 0xFC */ void* unkFC;
-	/* 0x100 */ Texture* unk100;
-	/* 0x104 */ Texture* unk104;
-	/* 0x108 */ Texture* unk108;
-	/* 0x10C */ Texture* unk10C;
-	/* 0x110 */ Texture* unk110;
-	/* 0x114 */ int unk114;
-	/* 0x118 */ JUtility::TColor unk118;
-	/* 0x120 */ JUtility::TColor unk120;
-	/* 0x11C */ JUtility::TColor unk11C;
-	/* 0x124 */ JUtility::TColor unk124;
-	/* 0x128 */ JUtility::TColor unk128;
-	/* 0x12C */ JUtility::TColor unk12C;
-	/* 0x130 */ int unk130;
-	/* 0x134 */ int unk134;
-	/* 0x138 */ int unk138;
+	/* 0xFC */ JUTPalette* mPalette;
+	/* 0x100 */ Texture* mFrameTextureTopLeft;
+	/* 0x104 */ Texture* mFrameTextureTopRight;
+	/* 0x108 */ Texture* mFrameTextureBottomLeft;
+	/* 0x10C */ Texture* mFrameTextureBottomRight;
+	/* 0x110 */ Texture* mContentsTexture;
+	/* 0x114 */ int mMirrorFlags;
+	/* 0x118 */ JUtility::TColor mContentsColorTopLeft;
+	/* 0x11C */ JUtility::TColor mContentsColorTopRight;
+	/* 0x120 */ JUtility::TColor mContentsColorBottomLeft;
+	/* 0x124 */ JUtility::TColor mContentsColorBottomRight;
+	/* 0x128 */ JUtility::TColor mFrameWhite;
+	/* 0x12C */ JUtility::TColor mFrameBlack;
+	/* 0x130 */ int mMinimumWidth;
+	/* 0x134 */ int mMinimumHeight;
+	/* 0x138 */ int mUnknown138;
 };
 
 #endif

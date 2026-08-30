@@ -5,6 +5,9 @@
 #include <JSystem/JUtility/JUTResource.hpp>
 #include <JSystem/JUtility/JUTTexture.hpp>
 #include <dolphin/gx.h>
+#ifdef SMS_NATIVE_PLATFORM
+#include <sb_native_j2d.h>
+#endif
 
 // NOTE: for .sdata ordering
 static void dummy(float* f) { *f = 1.0f; }
@@ -25,11 +28,11 @@ J2DWindow::J2DWindow(const char* name, J2DTextureBase base) { }
 
 J2DWindow::J2DWindow(J2DPane* parent, JSURandomInputStream* stream, bool is_ex)
     : J2DPane(parent, stream, is_ex)
-    , unkFC(nullptr)
-    , unk100(nullptr)
-    , unk104(nullptr)
-    , unk108(nullptr)
-    , unk10C(nullptr)
+    , mPalette(nullptr)
+    , mFrameTextureTopLeft(nullptr)
+    , mFrameTextureTopRight(nullptr)
+    , mFrameTextureBottomLeft(nullptr)
+    , mFrameTextureBottomRight(nullptr)
 {
 	JUTResReference res;
 	mInfoTag = 0x11;
@@ -42,38 +45,38 @@ J2DWindow::J2DWindow(J2DPane* parent, JSURandomInputStream* stream, bool is_ex)
 		mContentsBounds.y2 = mContentsBounds.y1 + stream->readU16();
 
 		if (ResTIMG* timg = (ResTIMG*)res.getResource(stream, 'TIMG', nullptr))
-			unk100 = new Texture(timg);
+			mFrameTextureTopLeft = new Texture(timg);
 		if (ResTIMG* timg = (ResTIMG*)res.getResource(stream, 'TIMG', nullptr))
-			unk104 = new Texture(timg);
+			mFrameTextureTopRight = new Texture(timg);
 		if (ResTIMG* timg = (ResTIMG*)res.getResource(stream, 'TIMG', nullptr))
-			unk108 = new Texture(timg);
+			mFrameTextureBottomLeft = new Texture(timg);
 		if (ResTIMG* timg = (ResTIMG*)res.getResource(stream, 'TIMG', nullptr))
-			unk10C = new Texture(timg);
+			mFrameTextureBottomRight = new Texture(timg);
 		if (ResTLUT* tlut = (ResTLUT*)res.getResource(stream, 'TLUT', nullptr))
-			unkFC = new JUTPalette(GX_TLUT0, tlut);
+			mPalette = new JUTPalette(GX_TLUT0, tlut);
 
-		unk114 = stream->readU8();
-		unk118.set(stream->readU32());
-		unk120.set(stream->readU32());
-		unk11C.set(stream->readU32());
-		unk124.set(stream->readU32());
+		mMirrorFlags = stream->readU8();
+		mContentsColorTopLeft.set(stream->readU32());
+		mContentsColorTopRight.set(stream->readU32());
+		mContentsColorBottomLeft.set(stream->readU32());
+		mContentsColorBottomRight.set(stream->readU32());
 		fields -= 14;
 
-		unk110 = nullptr;
+		mContentsTexture = nullptr;
 		if (fields) {
 			if (ResTIMG* timg
 			    = (ResTIMG*)res.getResource(stream, 'TIMG', nullptr))
-				unk110 = new Texture(timg);
+				mContentsTexture = new Texture(timg);
 			fields--;
 		}
-		unk12C = 0;
-		unk128 = 0xffffffff;
+		mFrameBlack = 0;
+		mFrameWhite = 0xffffffff;
 		if (fields) {
-			unk12C = stream->readU32();
+			mFrameBlack = stream->readU32();
 			fields--;
 		}
 		if (fields) {
-			unk128 = stream->readU32();
+			mFrameWhite = stream->readU32();
 		}
 		stream->align(4);
 	} else {
@@ -83,33 +86,36 @@ J2DWindow::J2DWindow(J2DPane* parent, JSURandomInputStream* stream, bool is_ex)
 		mContentsBounds.y2 = mContentsBounds.y1 + stream->readU16();
 
 		if (ResTIMG* timg = (ResTIMG*)res.getResource(stream, 'TIMG', nullptr))
-			unk100 = new Texture(timg);
+			mFrameTextureTopLeft = new Texture(timg);
 		if (ResTIMG* timg = (ResTIMG*)res.getResource(stream, 'TIMG', nullptr))
-			unk104 = new Texture(timg);
+			mFrameTextureTopRight = new Texture(timg);
 		if (ResTIMG* timg = (ResTIMG*)res.getResource(stream, 'TIMG', nullptr))
-			unk108 = new Texture(timg);
+			mFrameTextureBottomLeft = new Texture(timg);
 		if (ResTIMG* timg = (ResTIMG*)res.getResource(stream, 'TIMG', nullptr))
-			unk10C = new Texture(timg);
+			mFrameTextureBottomRight = new Texture(timg);
 		if (ResTLUT* tlut = (ResTLUT*)res.getResource(stream, 'TLUT', nullptr))
-			unkFC = new JUTPalette(GX_TLUT0, tlut);
+			mPalette = new JUTPalette(GX_TLUT0, tlut);
 
-		unk114 = stream->readU8();
-		unk118.set(stream->readU32());
-		unk120.set(stream->readU32());
-		unk11C.set(stream->readU32());
-		unk124.set(stream->readU32());
+		mMirrorFlags = stream->readU8();
+		mContentsColorTopLeft.set(stream->readU32());
+		mContentsColorTopRight.set(stream->readU32());
+		mContentsColorBottomLeft.set(stream->readU32());
+		mContentsColorBottomRight.set(stream->readU32());
 
 		stream->align(4);
-		unk110 = nullptr;
-		unk12C = 0x0;
-		unk128 = 0xffffffff;
+		mContentsTexture = nullptr;
+		mFrameBlack      = 0x0;
+		mFrameWhite      = 0xffffffff;
 	}
-	if (unk100 && unk104 && unk108 && unk10C) {
-		unk130 = unk100->getWidth() + unk104->getWidth();
-		unk134 = unk100->getHeight() + unk108->getHeight();
+	if (mFrameTextureTopLeft && mFrameTextureTopRight && mFrameTextureBottomLeft
+	    && mFrameTextureBottomRight) {
+		mMinimumWidth  = mFrameTextureTopLeft->getWidth()
+		                 + mFrameTextureTopRight->getWidth();
+		mMinimumHeight = mFrameTextureTopLeft->getHeight()
+		                 + mFrameTextureBottomLeft->getHeight();
 	} else {
-		unk130 = 1;
-		unk134 = 1;
+		mMinimumWidth  = 1;
+		mMinimumHeight = 1;
 	}
 }
 
@@ -151,18 +157,18 @@ J2DWindowMirror J2DConvertMirror(J2DTextureBase base)
 
 J2DWindow::~J2DWindow()
 {
-	if (unk100)
-		delete unk100;
-	if (unk104)
-		delete unk104;
-	if (unk108)
-		delete unk108;
-	if (unk10C)
-		delete unk10C;
-	if (unkFC)
-		delete unkFC;
-	if (unk110)
-		delete unk110;
+	if (mFrameTextureTopLeft)
+		delete mFrameTextureTopLeft;
+	if (mFrameTextureTopRight)
+		delete mFrameTextureTopRight;
+	if (mFrameTextureBottomLeft)
+		delete mFrameTextureBottomLeft;
+	if (mFrameTextureBottomRight)
+		delete mFrameTextureBottomRight;
+	if (mPalette)
+		delete mPalette;
+	if (mContentsTexture)
+		delete mContentsTexture;
 }
 
 void J2DWindow::draw(const JUTRect& param_1) { }
@@ -170,7 +176,11 @@ void J2DWindow::draw(const JUTRect& param_1) { }
 void J2DWindow::draw_private(const JUTRect& param_1, const JUTRect& param_2,
                              Mtx* param_3)
 {
-	if (param_1.getWidth() >= unk130 && param_1.getHeight() >= unk134) {
+	if (param_1.getWidth() >= mMinimumWidth
+	    && param_1.getHeight() >= mMinimumHeight) {
+#ifdef SMS_NATIVE_PLATFORM
+		sb_native_window_submit(this, &param_1, &param_2, param_3);
+#endif
 		Mtx afStack_50;
 		MTXConcat(*param_3, mGlobalMtx, afStack_50);
 		GXLoadPosMtxImm(afStack_50, GX_PNMTX0);
@@ -180,49 +190,60 @@ void J2DWindow::draw_private(const JUTRect& param_1, const JUTRect& param_2,
 		GXSetVtxDesc(GX_VA_CLR0, GX_DIRECT);
 		GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
 		GXSetNumTexGens(1);
-		if (unk100 && unk104 && unk108 && unk10C) {
-			int iVar6        = param_1.getWidth() - unk10C->getWidth();
-			int iVar8        = param_1.getHeight() - unk10C->getHeight();
-			u32 unk100Width  = unk100->getWidth();
-			u32 unk100Height = unk100->getHeight();
-			unk100->draw(0, 0, !!(unk114 & 0x80), !!(unk114 & 0x40),
-			             mColorAlpha, unk12C, unk128);
-			unk104->draw(iVar6, 0, !!(unk114 & 0x20), !!(unk114 & 0x10),
-			             mColorAlpha, unk12C, unk128);
-			unk108->draw(0, iVar8, !!(unk114 & 8), !!(unk114 & 4), mColorAlpha,
-			             unk12C, unk128);
-			unk10C->draw(iVar6, iVar8, !!(unk114 & 2), !!(unk114 & 1),
-			             mColorAlpha, unk12C, unk128);
+		if (mFrameTextureTopLeft && mFrameTextureTopRight
+		    && mFrameTextureBottomLeft && mFrameTextureBottomRight) {
+			int iVar6
+			    = param_1.getWidth() - mFrameTextureBottomRight->getWidth();
+			int iVar8
+			    = param_1.getHeight() - mFrameTextureBottomRight->getHeight();
+			u32 topLeftWidth  = mFrameTextureTopLeft->getWidth();
+			u32 topLeftHeight = mFrameTextureTopLeft->getHeight();
+			mFrameTextureTopLeft->draw(0, 0, !!(mMirrorFlags & 0x80),
+			                           !!(mMirrorFlags & 0x40), mColorAlpha,
+			                           mFrameBlack, mFrameWhite);
+			mFrameTextureTopRight->draw(iVar6, 0, !!(mMirrorFlags & 0x20),
+			                            !!(mMirrorFlags & 0x10), mColorAlpha,
+			                            mFrameBlack, mFrameWhite);
+			mFrameTextureBottomLeft->draw(0, iVar8, !!(mMirrorFlags & 8),
+			                              !!(mMirrorFlags & 4), mColorAlpha,
+			                              mFrameBlack, mFrameWhite);
+			mFrameTextureBottomRight->draw(iVar6, iVar8, !!(mMirrorFlags & 2),
+			                               !!(mMirrorFlags & 1), mColorAlpha,
+			                               mFrameBlack, mFrameWhite);
 
 			u16 a, b, c, d, e;
 
-			b = a = (unk114 & 0x20) ? (u16)0x8000 : (u16)0;
-			c     = (unk114 & 0x10) ? (u16)0 : (u16)0x8000;
+			b = a = (mMirrorFlags & 0x20) ? (u16)0x8000 : (u16)0;
+			c     = (mMirrorFlags & 0x10) ? (u16)0 : (u16)0x8000;
 			d     = c ^ 0x8000;
-			unk104->draw(unk100Width, 0, iVar6 - unk100Width,
-			             unk104->getHeight(), b, c, a, d, mColorAlpha, unk12C,
-			             unk128);
+			mFrameTextureTopRight->draw(topLeftWidth, 0, iVar6 - topLeftWidth,
+			                            mFrameTextureTopRight->getHeight(), b,
+			                            c, a, d, mColorAlpha, mFrameBlack,
+			                            mFrameWhite);
 
-			d = a = (unk114 & 0x2) ? (u16)0x8000 : (u16)0;
-			b     = (unk114 & 0x1) ? (u16)0 : (u16)0x8000;
+			d = a = (mMirrorFlags & 0x2) ? (u16)0x8000 : (u16)0;
+			b     = (mMirrorFlags & 0x1) ? (u16)0 : (u16)0x8000;
 			e     = b ^ 0x8000;
-			unk10C->draw(unk100Width, iVar8, iVar6 - unk100Width,
-			             unk10C->getHeight(), d, b, a, e, mColorAlpha, unk12C,
-			             unk128);
+			mFrameTextureBottomRight->draw(
+			    topLeftWidth, iVar8, iVar6 - topLeftWidth,
+			    mFrameTextureBottomRight->getHeight(), d, b, a, e, mColorAlpha,
+			    mFrameBlack, mFrameWhite);
 
-			a = (unk114 & 0x8) ? (u16)0 : (u16)0x8000;
+			a = (mMirrorFlags & 0x8) ? (u16)0 : (u16)0x8000;
 			b = a ^ 0x8000;
-			d = c = (unk114 & 0x4) ? (u16)0x8000 : (u16)0;
-			unk108->draw(0, unk100Height, unk108->getWidth(),
-			             iVar8 - unk100Height, a, d, b, c, mColorAlpha, unk12C,
-			             unk128);
+			d = c = (mMirrorFlags & 0x4) ? (u16)0x8000 : (u16)0;
+			mFrameTextureBottomLeft->draw(
+			    0, topLeftHeight, mFrameTextureBottomLeft->getWidth(),
+			    iVar8 - topLeftHeight, a, d, b, c, mColorAlpha, mFrameBlack,
+			    mFrameWhite);
 
-			a = (unk114 & 0x2) ? (u16)0 : (u16)0x8000;
+			a = (mMirrorFlags & 0x2) ? (u16)0 : (u16)0x8000;
 			b = a ^ 0x8000;
-			d = c = (unk114 & 0x1) ? (u16)0x8000 : (u16)0;
-			unk10C->draw(iVar6, unk100Height, unk10C->getWidth(),
-			             iVar8 - unk100Height, a, d, b, c, mColorAlpha, unk12C,
-			             unk128);
+			d = c = (mMirrorFlags & 0x1) ? (u16)0x8000 : (u16)0;
+			mFrameTextureBottomRight->draw(
+			    iVar6, topLeftHeight, mFrameTextureBottomRight->getWidth(),
+			    iVar8 - topLeftHeight, a, d, b, c, mColorAlpha, mFrameBlack,
+			    mFrameWhite);
 		}
 		GXSetNumTexGens(0);
 		GXSetTevOp(GX_TEVSTAGE0, GX_PASSCLR);
@@ -287,18 +308,20 @@ void J2DWindow::drawContents(const JUTRect& rect)
 		              GX_COLOR0A0);
 		GXSetChanCtrl(GX_COLOR0A0, 0, GX_SRC_REG, GX_SRC_VTX, 0, GX_DF_NONE,
 		              GX_AF_NONE);
-		if ((unk118 & 0xff) == 0xff && (unk120 & 0xff) == 0xff
-		    && (unk11C & 0xff) == 0xff && (unk124 & 0xff) == 0xff
+		if ((mContentsColorTopLeft & 0xff) == 0xff
+		    && (mContentsColorTopRight & 0xff) == 0xff
+		    && (mContentsColorBottomLeft & 0xff) == 0xff
+		    && (mContentsColorBottomRight & 0xff) == 0xff
 		    && mColorAlpha == 0xff) {
 			GXSetBlendMode(GX_BM_NONE, GX_BL_ONE, GX_BL_ZERO, GX_LO_SET);
 		} else {
 			GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA,
 			               GX_LO_SET);
 		}
-		JUtility::TColor col1 = unk118;
-		JUtility::TColor col2 = unk11C;
-		JUtility::TColor col3 = unk120;
-		JUtility::TColor col4 = unk124;
+		JUtility::TColor col1 = mContentsColorTopLeft;
+		JUtility::TColor col2 = mContentsColorBottomLeft;
+		JUtility::TColor col3 = mContentsColorTopRight;
+		JUtility::TColor col4 = mContentsColorBottomRight;
 		if (mColorAlpha != 0xff) {
 			col1.a = (u8)((col1.a * mColorAlpha) / 0xff);
 			col2.a = (u8)((col2.a * mColorAlpha) / 0xff);
@@ -315,14 +338,15 @@ void J2DWindow::drawContents(const JUTRect& rect)
 		GXPosition3s16(rect.x1, rect.y2, 0);
 		GXColor1u32(col2);
 		GXEnd();
-		if (unk110) {
+		if (mContentsTexture) {
 			GXClearVtxDesc();
 			GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
 			GXSetVtxDesc(GX_VA_CLR0, GX_DIRECT);
 			GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
 			GXSetNumTexGens(1);
-			unk110->drawContentsTexture(rect.x1, rect.y1, rect.x2 - rect.x1,
-			                            rect.y2 - rect.y1, mColorAlpha);
+			mContentsTexture->drawContentsTexture(
+			    rect.x1, rect.y1, rect.x2 - rect.x1, rect.y2 - rect.y1,
+			    mColorAlpha);
 		}
 	}
 }
