@@ -10,16 +10,18 @@ IsLeadByte_func const JUTResFont::saoAboutEncoding_[3] = {
 };
 
 #ifdef SMS_NATIVE_PLATFORM
+#include <sb_native_j2d.h>
 // =============================================================================
 // Native PC build: ResFONT (.bfn) resources are GC BIG-ENDIAN, but the decomp
-// walks them via host-endian struct overlay (numBlocks, every block mType/mSize,
-// and all u16/u32 glyph/map/width header fields) -> misread on a little-endian
-// host (numBlocks huge, mSize wild -> getNext() walks off the buffer -> SEGV in
-// countBlock). Swap the metadata to host endian once at load (the same boundary
-// pattern as the RARC fix and native/assets/bmd_swap.cpp). Glyph TEXTURE bytes
-// and per-glyph WID1 width pairs stay as-is (byte/nibble data the GX texture
-// path and width lookup read directly). Idempotent (guards on the first block's
-// already-host tag) so a re-initiate on the same buffer is a no-op.
+// walks them via host-endian struct overlay (numBlocks, every block
+// mType/mSize, and all u16/u32 glyph/map/width header fields) -> misread on a
+// little-endian host (numBlocks huge, mSize wild -> getNext() walks off the
+// buffer -> SEGV in countBlock). Swap the metadata to host endian once at load
+// (the same boundary pattern as the RARC fix and native/assets/bmd_swap.cpp).
+// Glyph TEXTURE bytes and per-glyph WID1 width pairs stay as-is (byte/nibble
+// data the GX texture path and width lookup read directly). Idempotent (guards
+// on the first block's already-host tag) so a re-initiate on the same buffer is
+// a no-op.
 // =============================================================================
 namespace {
 inline void fsw16(u8* p)
@@ -31,8 +33,12 @@ inline void fsw16(u8* p)
 inline void fsw32(u8* p)
 {
 	u8 t;
-	t = p[0]; p[0] = p[3]; p[3] = t;
-	t = p[1]; p[1] = p[2]; p[2] = t;
+	t    = p[0];
+	p[0] = p[3];
+	p[3] = t;
+	t    = p[1];
+	p[1] = p[2];
+	p[2] = t;
 }
 inline u32 fbe32(const u8* p)
 {
@@ -69,11 +75,13 @@ void bfn_swap_to_host(void* buffer)
 			break; // malformed -> stop rather than walk off the buffer
 
 		switch (type) {
-		case 'INF1': // fontType,ascent,descent,width,leading,defaultCode (6xu16)
+		case 'INF1': // fontType,ascent,descent,width,leading,defaultCode
+		             // (6xu16)
 			for (u32 o = 0x08; o <= 0x12; o += 2)
 				fsw16(p + o);
 			break;
-		case 'WID1': // startCode,endCode (u16); width pairs after are u8 -> leave
+		case 'WID1': // startCode,endCode (u16); width pairs after are u8 ->
+		             // leave
 			fsw16(p + 0x08);
 			fsw16(p + 0x0A);
 			break;
@@ -176,7 +184,8 @@ void JUTResFont::protected_initiate(const ResFONT* font)
 
 	mResFont = font;
 #ifdef SMS_NATIVE_PLATFORM
-	// .bfn is GC big-endian; convert its metadata to host endian before walking.
+	// .bfn is GC big-endian; convert its metadata to host endian before
+	// walking.
 	bfn_swap_to_host((void*)font);
 #endif
 	countBlock();
@@ -266,6 +275,9 @@ void JUTResFont::setBlock()
 
 void JUTResFont::setGX()
 {
+#ifdef SMS_NATIVE_PLATFORM
+	sb_native_font_remap(0, 0xffffffff);
+#endif
 	GXSetNumChans(1);
 	GXSetNumTevStages(1);
 	GXSetNumTexGens(1);
@@ -283,6 +295,9 @@ void JUTResFont::setGX()
 
 void JUTResFont::setGX(JUtility::TColor col1, JUtility::TColor col2)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	sb_native_font_remap((u32)col1, (u32)col2);
+#endif
 	if (col1 == 0 && col2 == -1) {
 		setGX();
 	} else {
@@ -394,10 +409,40 @@ f32 JUTResFont::drawChar_scale(f32 posX, f32 posY, f32 scaleX, f32 scaleY,
 	GXColor1u32(mColor3);
 	GXTexCoord2u16(u1, v2);
 
-	GXEnd(); // decomp dropped this (empty no-op macro on GC, so invisible in the
-	         // DOL); every sibling immediate-mode draw pairs GXBegin/GXEnd, and
-	         // aurora's GX models it as a real balanced pair — omitting it left
-	         // the glyph quad open and OSPanic'd the next GXBegin.
+	GXEnd(); // decomp dropped this (empty no-op macro on GC, so invisible in
+	         // the DOL); every sibling immediate-mode draw pairs GXBegin/GXEnd,
+	         // and aurora's GX models it as a real balanced pair — omitting it
+	         // left the glyph quad open and OSPanic'd the next GXBegin.
+
+#ifdef SMS_NATIVE_PLATFORM
+	ResFONT::GLY1* glyph           = mpGlyphBlocks[field_0x62];
+	SbNativeFontGlyph native_glyph = {
+		this,
+		(u32)chr,
+		flag,
+		posX,
+		posY,
+		scaleX,
+		scaleY,
+		(u32)getWidth(),
+		(u32)getHeight(),
+		(u32)getAscent(),
+		(u32)getDescent(),
+		width.field_0x0,
+		width.field_0x1,
+		(u32)mFixedWidth,
+		mFixed,
+		(u32)mWidth,
+		(u32)mHeight,
+		&glyph->data[mTexPageIdx * glyph->textureSize],
+		glyph->textureWidth,
+		glyph->textureHeight,
+		glyph->textureFormat,
+		glyph->textureSize,
+		{ (u32)mColor1, (u32)mColor2, (u32)mColor3, (u32)mColor4 },
+	};
+	sb_native_font_glyph_submit(&native_glyph);
+#endif
 
 	GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_S16, 0);
 

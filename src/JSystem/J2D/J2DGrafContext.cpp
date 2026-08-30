@@ -1,7 +1,7 @@
 #include <JSystem/J2D/J2DGrafContext.hpp>
 #include <dolphin/gx.h>
 #ifdef SMS_NATIVE_PLATFORM
-#include <sb_native_picture.h>
+#include <sb_native_j2d.h>
 #endif
 
 J2DGrafContext::J2DGrafContext(const JUTRect& rect)

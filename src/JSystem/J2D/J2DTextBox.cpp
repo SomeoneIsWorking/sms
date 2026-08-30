@@ -5,8 +5,7 @@
 #include <JSystem/JSupport/JSURandomInputStream.hpp>
 #include <dolphin/gx.h>
 #ifdef SMS_NATIVE_PLATFORM
-#include <stdio.h>
-#include <stdlib.h>
+#include <sb_native_j2d.h>
 #endif
 
 J2DTextBox::J2DTextBox(const ResFONT* font, const char* str)
@@ -138,13 +137,15 @@ void J2DTextBox::initiate(const ResFONT* font, const char* str,
 
 	mCharColor.set(0xFFFFFFFF);
 	mGradColor.set(0xFFFFFFFF);
-	mBlack      = 0;
-	mWhite      = 0xFFFFFFFF;
-	mHBinding   = hbind;
-	mVBinding   = vbind;
+	mBlack    = 0;
+	mWhite    = 0xFFFFFFFF;
+	mHBinding = hbind;
+	mVBinding = vbind;
 #ifdef SMS_NATIVE_PLATFORM
-	if (!str) // region-tolerant: a missing message (e.g. a US bmg lacking a JP/PAL
-		str = ""; // index) yields null from SMSGetMessageData -> treat as empty text
+	if (!str)     // region-tolerant: a missing message (e.g. a US bmg lacking a
+	              // JP/PAL
+		str = ""; // index) yields null from SMSGetMessageData -> treat as empty
+		          // text
 #endif
 	size_t temp = strlen(str);
 	mText       = new char[temp + 1];
@@ -201,7 +202,13 @@ void J2DTextBox::draw(int x, int y)
 	makeMatrix(x, y);
 	GXLoadPosMtxImm(mPositionMtx, GX_PNMTX0);
 	GXSetCurrentMtx(GX_PNMTX0);
+#ifdef SMS_NATIVE_PLATFORM
+	sb_native_text_context_push(&mClipRect, &mPositionMtx);
+#endif
 	print.print(0, 0, mColorAlpha, "%s", mText);
+#ifdef SMS_NATIVE_PLATFORM
+	sb_native_text_context_pop();
+#endif
 	Mtx mtx;
 	MTXIdentity(mtx);
 	GXLoadPosMtxImm(mtx, GX_PNMTX0);
@@ -224,7 +231,8 @@ size_t J2DTextBox::setString(const char* str, ...)
 		delete[] mText;
 
 #ifdef SMS_NATIVE_PLATFORM
-	if (!str) // region-tolerant: null message (missing US bmg index) -> empty text
+	if (!str) // region-tolerant: null message (missing US bmg index) -> empty
+	          // text
 		str = "";
 #endif
 	size_t sz = strlen(str);
@@ -254,27 +262,6 @@ void J2DTextBox::drawSelf(int x, int y)
 
 void J2DTextBox::drawSelf(int x, int y, Mtx* mtx)
 {
-#ifdef SMS_NATIVE_PLATFORM
-	// SB_TBX_DBG: trace textbox glyph-draw path for the file-select banner. Filtered to
-	// non-empty strings so the per-frame spam stays readable; tells us whether drawSelf is
-	// even reached, mFont is valid, and the size/color/visibility are sane for the banner.
-	if (getenv("SB_TBX_DBG") && mText && mText[0]) {
-		static int once = 0;
-		if (once < 24) {
-			fprintf(stderr, "[tbx] drawSelf x=%d y=%d vis=%d font=%p text=\"%.20s\" "
-			        "szX=%d szY=%d charCol=0x%08x alpha=%d bnd=(%d,%d %dx%d)\n",
-			        x, y, (int)mVisible, (void*)mFont, mText, mFontSizeX, mFontSizeY,
-			        (unsigned)mCharColor, (int)mColorAlpha, mBounds.x1, mBounds.y1,
-			        mBounds.getWidth(), mBounds.getHeight());
-			fprintf(stderr, "[tbx]   mGlobalMtx [%.3f %.3f %.3f %.3f][%.3f %.3f %.3f %.3f]"
-			        "[%.3f %.3f %.3f %.3f]\n",
-			        mGlobalMtx[0][0], mGlobalMtx[0][1], mGlobalMtx[0][2], mGlobalMtx[0][3],
-			        mGlobalMtx[1][0], mGlobalMtx[1][1], mGlobalMtx[1][2], mGlobalMtx[1][3],
-			        mGlobalMtx[2][0], mGlobalMtx[2][1], mGlobalMtx[2][2], mGlobalMtx[2][3]);
-			++once;
-		}
-	}
-#endif
 	J2DPrint print(mFont, mCharSpace, mLineSpace, mCharColor, mGradColor);
 	print.setFontSize(mFontSizeX, mFontSizeY);
 	print.setSomeColors(mBlack, mWhite);
@@ -282,9 +269,15 @@ void J2DTextBox::drawSelf(int x, int y, Mtx* mtx)
 	Mtx transform;
 	MTXConcat(*mtx, mGlobalMtx, transform);
 	GXLoadPosMtxImm(transform, GX_PNMTX0);
+#ifdef SMS_NATIVE_PLATFORM
+	sb_native_text_context_push(&mClipRect, &transform);
+#endif
 	print.locate(x, y);
 	print.printReturn(mText, mBounds.getWidth(), mBounds.getHeight(), mHBinding,
 	                  mVBinding, unk104, unk108, mColorAlpha);
+#ifdef SMS_NATIVE_PLATFORM
+	sb_native_text_context_pop();
+#endif
 }
 
 void J2DTextBox::resize(int w, int h)

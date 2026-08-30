@@ -9,7 +9,7 @@
 #include <dolphin/os.h>
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdlib>
-#include <sb_native_picture.h>
+#include <sb_native_j2d.h>
 #endif
 
 J2DScreen::~J2DScreen() { }
@@ -28,7 +28,8 @@ void J2DScreen::makeHiearachyPanes(J2DPane* parent,
 	if (we_are_root) {
 		u32 magic;
 		stream->peek(&magic, 4);
-		magic  = JSU_BE32(magic); // FourCC read raw (not via readU32) -> swap on LE
+		magic = JSU_BE32(
+		    magic); // FourCC read raw (not via readU32) -> swap on LE
 		is_ex  = magic == 'SCRN' ? true : false;
 		mColor = 0;
 		if (is_ex) {
@@ -60,7 +61,8 @@ void J2DScreen::makeHiearachyPanes(J2DPane* parent,
 			if (stream->peek(&size, 4) != 4) {
 				OSPanic("J2DScreen.cpp", 0x96, "SCRN resource is broken.\n");
 			}
-			size = JSU_BE32(size); // big-endian block size read raw -> swap on LE
+			size = JSU_BE32(
+			    size); // big-endian block size read raw -> swap on LE
 			stream->skip(-4);
 			*out_next_pane_offset = size + stream->getPosition();
 
@@ -190,18 +192,20 @@ void J2DScreen::draw(int x, int y, const J2DGrafContext* pCtx)
 #ifdef SMS_NATIVE_PLATFORM
 #include <new>
 // Region-tolerant pane fallback. The disc is GMSE01 (US) but the engine is the
-// GMSJ01/PAL decomp, so US UI archives lack many panes the loaders look up by tag
-// (e.g. big_tx_1.blo has 6 'sg' panes vs the 9 the code reserves; option/card screens
-// differ further). Rather than null-deref across the hundreds of
-// `screen->search(tag)->method()` sites in the GC2D loaders, J2DScreen::search returns
-// this shared, hidden, inert pane for a tag that isn't present. It is over-allocated
-// past the largest J2D pane type (J2DPicture ~0x160) so the loaders' NON-virtual
-// derived accesses — (J2DPicture*)p->setBlendKonstColor / changeTexture / ->mWhite,
-// (J2DTextBox*)p->setString / setFont — land within the buffer; base J2DPane virtuals
-// dispatch correctly via its real vtable; it is hidden (mVisible=false) and never
-// linked into a screen's child tree, so it never draws. Only J2DScreen::search (the
-// screen-level entry the loaders use) falls back; the recursive J2DPane::search still
-// returns null, so tree traversal and the few null-checking callers are unaffected.
+// GMSJ01/PAL decomp, so US UI archives lack many panes the loaders look up by
+// tag (e.g. big_tx_1.blo has 6 'sg' panes vs the 9 the code reserves;
+// option/card screens differ further). Rather than null-deref across the
+// hundreds of `screen->search(tag)->method()` sites in the GC2D loaders,
+// J2DScreen::search returns this shared, hidden, inert pane for a tag that
+// isn't present. It is over-allocated past the largest J2D pane type
+// (J2DPicture ~0x160) so the loaders' NON-virtual derived accesses —
+// (J2DPicture*)p->setBlendKonstColor / changeTexture / ->mWhite,
+// (J2DTextBox*)p->setString / setFont — land within the buffer; base J2DPane
+// virtuals dispatch correctly via its real vtable; it is hidden
+// (mVisible=false) and never linked into a screen's child tree, so it never
+// draws. Only J2DScreen::search (the screen-level entry the loaders use) falls
+// back; the recursive J2DPane::search still returns null, so tree traversal and
+// the few null-checking callers are unaffected.
 static J2DPane* getRegionTolerantDummyPane()
 {
 	static unsigned char s_buf[0x200] __attribute__((aligned(16)));
@@ -209,19 +213,21 @@ static J2DPane* getRegionTolerantDummyPane()
 	if (!s_dummy) {
 		for (unsigned i = 0; i < sizeof(s_buf); ++i)
 			s_buf[i] = 0;
-		// Construct a J2DTextBox, NOT a bare J2DPane. Callers routinely cast the
-		// search result to a richer subclass — e.g.
+		// Construct a J2DTextBox, NOT a bare J2DPane. Callers routinely cast
+		// the search result to a richer subclass — e.g.
 		//   unk528 = (J2DTextBox*)unkB0->search('tet2');   (GCConsole2.cpp)
-		// With a bare J2DPane in this ZERO-FILLED buffer a J2DTextBox's mText reads
-		// as NULL, so any such caller strlen()s a null pointer. A J2DTextBox IS-A
-		// J2DPane, so plain-pane callers are unaffected while TextBox callers find a
-		// valid empty string. initiate() explicitly tolerates a null font (and
-		// handles mFont==nullptr afterwards), so no font resource is needed.
+		// With a bare J2DPane in this ZERO-FILLED buffer a J2DTextBox's mText
+		// reads as NULL, so any such caller strlen()s a null pointer. A
+		// J2DTextBox IS-A J2DPane, so plain-pane callers are unaffected while
+		// TextBox callers find a valid empty string. initiate() explicitly
+		// tolerates a null font (and handles mFont==nullptr afterwards), so no
+		// font resource is needed.
 		//
-		// SCOPE: this is HARDENING of a real latent null-deref, NOT a fix for the
-		// stage 3/4 crash. Tested: stages 3 and 4 still SIGSEGV in __strlen_avx2
-		// with this in place, so that strlen is NOT reading this dummy's mText —
-		// their root cause is still open. Measured pixel-neutral on stage 1.
+		// SCOPE: this is HARDENING of a real latent null-deref, NOT a fix for
+		// the stage 3/4 crash. Tested: stages 3 and 4 still SIGSEGV in
+		// __strlen_avx2 with this in place, so that strlen is NOT reading this
+		// dummy's mText — their root cause is still open. Measured
+		// pixel-neutral on stage 1.
 		static_assert(sizeof(J2DTextBox) <= sizeof(s_buf),
 		              "region-tolerant dummy buffer must fit a J2DTextBox");
 		s_dummy = new (s_buf) J2DTextBox((const ResFONT*)nullptr, "");
@@ -238,30 +244,39 @@ J2DPane* J2DScreen::search(u32 tag)
 #ifdef SMS_NATIVE_PLATFORM
 	if (J2DPane* p = J2DPane::search(tag))
 		return p;
-	// FAIL-LOUD (not silent): the dummy-pane fallback masks ANY missing pane, so a
-	// genuine bug (wrong archive, parse error, wrong tag) looks identical to a real
-	// US-region absence. We can't hard-crash (US archives legitimately lack panes),
-	// but a tolerated sentinel must be LOUD — log each missing tag ONCE so masked
-	// root causes are visible. SB_PANE_DBG escalates to a panic to pin a specific tag.
+	// FAIL-LOUD (not silent): the dummy-pane fallback masks ANY missing pane,
+	// so a genuine bug (wrong archive, parse error, wrong tag) looks identical
+	// to a real US-region absence. We can't hard-crash (US archives
+	// legitimately lack panes), but a tolerated sentinel must be LOUD — log
+	// each missing tag ONCE so masked root causes are visible. SB_PANE_DBG
+	// escalates to a panic to pin a specific tag.
 	{
 		char t[5] = { (char)(tag >> 24), (char)(tag >> 16), (char)(tag >> 8),
-		              (char)tag, 0 };
+			          (char)tag, 0 };
 		static u32 s_seen[256];
 		static int s_n = 0;
-		bool known = false;
+		bool known     = false;
 		for (int i = 0; i < s_n; ++i)
-			if (s_seen[i] == tag) { known = true; break; }
+			if (s_seen[i] == tag) {
+				known = true;
+				break;
+			}
 		if (!known) {
 			if (s_n < 256)
 				s_seen[s_n++] = tag;
-			OSReport("[j2d] J2DScreen::search MISSING pane tag '%s' (0x%08x) -> "
-			         "region-tolerant dummy\n", t, tag);
+			OSReport(
+			    "[j2d] J2DScreen::search MISSING pane tag '%s' (0x%08x) -> "
+			    "region-tolerant dummy\n",
+			    t, tag);
 			if (getenv("SB_PANE_DBG"))
 				OSPanic(__FILE__, __LINE__,
-				        "J2DScreen::search: pane '%s' (0x%08x) absent - SB_PANE_DBG", t, tag);
+				        "J2DScreen::search: pane '%s' (0x%08x) absent - "
+				        "SB_PANE_DBG",
+				        t, tag);
 		}
 	}
-	return getRegionTolerantDummyPane(); // pane absent in a US (GMSE01) UI archive
+	return getRegionTolerantDummyPane(); // pane absent in a US (GMSE01) UI
+	                                     // archive
 #else
 	return J2DPane::search(tag);
 #endif
@@ -275,8 +290,8 @@ J2DSetScreen::J2DSetScreen(const char* name, JKRArchive* arch)
 	u8* res = (u8*)JKRGetNameResource(name, arch);
 #ifdef SMS_NATIVE_PLATFORM
 	if (::getenv("SB_ARC_DBG"))
-		OSReport("[SBDBG] J2DSetScreen('%s', arch=%p) res=%p\n", name, (void*)arch,
-		         (void*)res);
+		OSReport("[SBDBG] J2DSetScreen('%s', arch=%p) res=%p\n", name,
+		         (void*)arch, (void*)res);
 #endif
 	if (res) {
 		u32 sz = JKRFileLoader::getResSize(res, nullptr);
@@ -287,15 +302,22 @@ J2DSetScreen::J2DSetScreen(const char* name, JKRArchive* arch)
 	}
 #ifdef SMS_NATIVE_PLATFORM
 	if (::getenv("SB_BLO_DBG")) {
-		// Count panes reachable from the screen root + max tree depth, to detect
-		// a truncated/broken hierarchy (created panes that search can't reach).
-		struct C { static void walk(J2DPane* p, int d, int& n, int& md) {
-			++n; if (d > md) md = d;
-			for (JSUTreeIterator<J2DPane> it = p->mPaneTree.getFirstChild();
-			     it != p->mPaneTree.getEndChild(); ++it)
-				walk(it.getObject(), d + 1, n, md);
-		}};
-		int n = 0, md = 0; C::walk(this, 0, n, md);
+		// Count panes reachable from the screen root + max tree depth, to
+		// detect a truncated/broken hierarchy (created panes that search can't
+		// reach).
+		struct C {
+			static void walk(J2DPane* p, int d, int& n, int& md)
+			{
+				++n;
+				if (d > md)
+					md = d;
+				for (JSUTreeIterator<J2DPane> it = p->mPaneTree.getFirstChild();
+				     it != p->mPaneTree.getEndChild(); ++it)
+					walk(it.getObject(), d + 1, n, md);
+			}
+		};
+		int n = 0, md = 0;
+		C::walk(this, 0, n, md);
 		OSReport("[blo] '%s' reachable panes=%d maxDepth=%d\n", name, n, md);
 	}
 #endif

@@ -1,6 +1,6 @@
 #include <JSystem/J2D/J2DPicture.hpp>
 #ifdef SMS_NATIVE_PLATFORM
-#include <sb_native_picture.h>
+#include <sb_native_j2d.h>
 #endif
 #include <JSystem/JUtility/JUTPalette.hpp>
 #include <JSystem/JUtility/JUTTexture.hpp>
