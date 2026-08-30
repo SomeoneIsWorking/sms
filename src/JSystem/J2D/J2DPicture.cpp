@@ -8,6 +8,7 @@
 #include <JSystem/JSupport/JSURandomInputStream.hpp>
 #include <dolphin/gx.h>
 #ifdef SMS_NATIVE_PLATFORM
+#include <dolphin/os.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -34,12 +35,14 @@ J2DPicture::J2DPicture(J2DPane* parent, JSURandomInputStream* stream,
 #ifdef SMS_NATIVE_PLATFORM
 		const s32 dbgPosStart = stream->getPosition();
 		if (std::getenv("SB_J2D_PIC_HEXDUMP") != nullptr) {
-			u8 buf[48] = {};
+			u8 buf[48]         = { };
 			const s32 dumpFrom = dbgPosStart >= 16 ? dbgPosStart - 16 : 0;
 			stream->seek(dumpFrom, JSUStreamSeekFrom_SET);
 			stream->read(buf, sizeof(buf));
 			stream->seek(dbgPosStart, JSUStreamSeekFrom_SET);
-			std::fprintf(stderr, "[j2d-pic-hex] pos0=%d dumpFrom=%d:", dbgPosStart, dumpFrom);
+			std::fprintf(stderr,
+			             "[j2d-pic-hex] pos0=%d dumpFrom=%d:", dbgPosStart,
+			             dumpFrom);
 			for (u8 b : buf)
 				std::fprintf(stderr, " %02x", b);
 			std::fprintf(stderr, "\n");
@@ -103,15 +106,18 @@ J2DPicture::J2DPicture(J2DPane* parent, JSURandomInputStream* stream,
 #ifdef SMS_NATIVE_PLATFORM
 		if (std::getenv("SB_J2D_PIC_DUMP") != nullptr) {
 			std::fprintf(stderr,
-			             "[j2d-pic] pos0=%d fieldsRaw=%u name='%s' dims=%ux%u mBlack=%08x mWhite=%08x "
-			             "corner=[%08x %08x %08x %08x] tlut=%p tlutNumColors=%u tlutFmt=%u "
+			             "[j2d-pic] pos0=%d fieldsRaw=%u name='%s' dims=%ux%u "
+			             "mBlack=%08x mWhite=%08x "
+			             "corner=[%08x %08x %08x %08x] tlut=%p "
+			             "tlutNumColors=%u tlutFmt=%u "
 			             "timgIsIndex=%u timgColorFmt=%u timgNumColors=%u\n",
 			             dbgPosStart, dbgFieldsRaw, dbgTimgName,
-			             timg ? (unsigned)timg->width : 0u, timg ? (unsigned)timg->height : 0u,
-			             (unsigned)mBlack, (unsigned)mWhite,
-			             (unsigned)mCornerColor[0], (unsigned)mCornerColor[1],
-			             (unsigned)mCornerColor[2], (unsigned)mCornerColor[3],
-			             (void*)tlut, tlut ? (unsigned)tlut->numColors : 0u,
+			             timg ? (unsigned)timg->width : 0u,
+			             timg ? (unsigned)timg->height : 0u, (unsigned)mBlack,
+			             (unsigned)mWhite, (unsigned)mCornerColor[0],
+			             (unsigned)mCornerColor[1], (unsigned)mCornerColor[2],
+			             (unsigned)mCornerColor[3], (void*)tlut,
+			             tlut ? (unsigned)tlut->numColors : 0u,
 			             tlut ? (unsigned)tlut->format : 0u,
 			             timg ? (unsigned)timg->isIndexTexture : 0u,
 			             timg ? (unsigned)timg->colorFormat : 0u,
@@ -141,11 +147,12 @@ J2DPicture::J2DPicture(J2DPane* parent, JSURandomInputStream* stream,
 #ifdef SMS_NATIVE_PLATFORM
 		if (std::getenv("SB_J2D_PIC_DUMP") != nullptr) {
 			std::fprintf(stderr,
-			             "[j2d-pic-nonex] name='%s' dims=%ux%u tlut=%p tlutNumColors=%u tlutFmt=%u "
+			             "[j2d-pic-nonex] name='%s' dims=%ux%u tlut=%p "
+			             "tlutNumColors=%u tlutFmt=%u "
 			             "timgIsIndex=%u timgColorFmt=%u timgNumColors=%u\n",
-			             dbgTimgName2,
-			             timg ? (unsigned)timg->width : 0u, timg ? (unsigned)timg->height : 0u,
-			             (void*)tlut, tlut ? (unsigned)tlut->numColors : 0u,
+			             dbgTimgName2, timg ? (unsigned)timg->width : 0u,
+			             timg ? (unsigned)timg->height : 0u, (void*)tlut,
+			             tlut ? (unsigned)tlut->numColors : 0u,
 			             tlut ? (unsigned)tlut->format : 0u,
 			             timg ? (unsigned)timg->isIndexTexture : 0u,
 			             timg ? (unsigned)timg->colorFormat : 0u,
@@ -164,6 +171,13 @@ J2DPicture::J2DPicture(J2DPane* parent, JSURandomInputStream* stream,
 	}
 
 	if (tlut != nullptr) {
+#ifdef SMS_NATIVE_PLATFORM
+		if (mTextures[0] == nullptr) {
+			OSPanic(__FILE__, __LINE__,
+			        "J2DPicture received a palette without texture image data");
+			return;
+		}
+#endif
 		mPalette = new JUTPalette(GX_TLUT0, tlut);
 		mTextures[0]->attachPalette(mPalette);
 	}
@@ -181,12 +195,13 @@ J2DPicture::J2DPicture(J2DPane* parent, JSURandomInputStream* stream,
 	setBlendKonstAlpha();
 
 #ifdef SMS_NATIVE_PLATFORM
-	// SB_TEV_NAME_DBG: correlate this J2DPicture's mTextures[0] pointer with the
-	// name it was constructed from, so a later setTevMode() dump (which only has
-	// the pointer, via aurora's GXTexObj) can be matched back to a texture name.
-	// Root-cause tool for the title-logo duotone-stage investigation.
-	SB_LOGC("tevname", "this=%p tex0=%p name='%s'", (void*)this, (void*)mTextures[0],
-	        dbgTimgNameForLog);
+	// SB_TEV_NAME_DBG: correlate this J2DPicture's mTextures[0] pointer with
+	// the name it was constructed from, so a later setTevMode() dump (which
+	// only has the pointer, via aurora's GXTexObj) can be matched back to a
+	// texture name. Root-cause tool for the title-logo duotone-stage
+	// investigation.
+	SB_LOGC("tevname", "this=%p tex0=%p name='%s'", (void*)this,
+	        (void*)mTextures[0], dbgTimgNameForLog);
 #endif
 }
 
@@ -237,7 +252,10 @@ bool J2DPicture::insert(JUTTexture* tex, u8 idx, float alpha)
 	for (u8 i = 3; idx < i; --i) {
 		mTextures[i]          = mTextures[i - 1];
 		mBlendColorWeights[i] = mBlendColorWeights[i - 1];
-		mBlendAlphaWeights[i] = mBlendColorWeights[i + 3];
+		// The retail expression indexes beyond mBlendColorWeights into the
+		// adjacent alpha array. Preserve that observable field move without
+		// host undefined behavior.
+		mBlendAlphaWeights[i] = mBlendAlphaWeights[i - 1];
 		unkFD[i]              = unkFD[i - 1];
 	}
 	mTextures[idx]          = tex;
@@ -315,8 +333,9 @@ void J2DPicture::drawSelf(int x, int y, Mtx* mtx)
 	// render state. The sink is absent until a PC-native backend owns the
 	// frame, so Aurora remains unchanged today.
 	sb_native_picture_submit(this, mtx);
-	// SB_SKIP_DUOTONE=1 (diagnostic): drop duotone (mBlack!=0/mWhite!=white) pictures
-	// — the fly-in glyph/highlight layers — to see the base logo texture alone.
+	// SB_SKIP_DUOTONE=1 (diagnostic): drop duotone (mBlack!=0/mWhite!=white)
+	// pictures — the fly-in glyph/highlight layers — to see the base logo
+	// texture alone.
 	if (const char* e = std::getenv("SB_SKIP_DUOTONE");
 	    e && e[0] && e[0] != '0' && (mBlack != 0x0 || mWhite != 0xffffffff))
 		return;
@@ -343,15 +362,15 @@ void J2DPicture::drawFullSet(int x, int y, int w, int h, J2DBinding binding,
 #ifdef SMS_NATIVE_PLATFORM
 	if (std::getenv("SB_J2D_DRAW_DUMP") != nullptr && mTextures[0]) {
 		std::fprintf(stderr,
-		    "[j2d-fullset] tag=%08x mBoundsW=%d mBoundsH=%d w=%d h=%d "
-		    "texW=%d texH=%d binding=%d wrapH=%d wrapV=%d mBlack=%08x "
-		    "mWhite=%08x visible=%d mAlpha=%u mColorAlpha=%u\n",
-		    (unsigned)mUserInfoTag,
-		    mBounds.getWidth(), mBounds.getHeight(), w, h,
-		    (int)mTextures[0]->getWidth(), (int)mTextures[0]->getHeight(),
-		    (int)binding, (int)wrap_hor, (int)wrap_vert, (unsigned)mBlack,
-		    (unsigned)mWhite, (int)mVisible, (unsigned)mAlpha,
-		    (unsigned)mColorAlpha);
+		             "[j2d-fullset] tag=%08x mBoundsW=%d mBoundsH=%d w=%d h=%d "
+		             "texW=%d texH=%d binding=%d wrapH=%d wrapV=%d mBlack=%08x "
+		             "mWhite=%08x visible=%d mAlpha=%u mColorAlpha=%u\n",
+		             (unsigned)mUserInfoTag, mBounds.getWidth(),
+		             mBounds.getHeight(), w, h, (int)mTextures[0]->getWidth(),
+		             (int)mTextures[0]->getHeight(), (int)binding,
+		             (int)wrap_hor, (int)wrap_vert, (unsigned)mBlack,
+		             (unsigned)mWhite, (int)mVisible, (unsigned)mAlpha,
+		             (unsigned)mColorAlpha);
 	}
 #endif
 	int renderX = x;
@@ -454,13 +473,16 @@ void J2DPicture::draw(int x, int y, int param_3, int param_4, bool param_5,
 	char trash[0x8];
 
 #ifdef SMS_NATIVE_PLATFORM
-	if (std::getenv("SB_J2D_DRAW_DUMP") != nullptr && mTextureNum > 0 && mTextures[0]) {
+	if (std::getenv("SB_J2D_DRAW_DUMP") != nullptr && mTextureNum > 0
+	    && mTextures[0]) {
 		static long n = 0;
 		if ((++n % 1) == 0) {
 			std::fprintf(stderr,
-			    "[j2d-draw] this=%p tex0=%p x=%d y=%d w=%d h=%d visible=%d alpha=%u mBlack=%08x mWhite=%08x\n",
-			    (void*)this, (void*)mTextures[0], x, y, param_3, param_4, (int)mVisible,
-			    (unsigned)mAlpha, (unsigned)mBlack, (unsigned)mWhite);
+			             "[j2d-draw] this=%p tex0=%p x=%d y=%d w=%d h=%d "
+			             "visible=%d alpha=%u mBlack=%08x mWhite=%08x\n",
+			             (void*)this, (void*)mTextures[0], x, y, param_3,
+			             param_4, (int)mVisible, (unsigned)mAlpha,
+			             (unsigned)mBlack, (unsigned)mWhite);
 		}
 	}
 #endif
@@ -468,13 +490,24 @@ void J2DPicture::draw(int x, int y, int param_3, int param_4, bool param_5,
 	if (!mVisible)
 		return;
 
-	int x2 = x + param_3;
-	int y2 = y + param_4;
+#ifdef SMS_NATIVE_PLATFORM
+	if (mTextureNum > 4) {
+		OSPanic(__FILE__, __LINE__, "J2DPicture has invalid texture count %u",
+		        (unsigned)mTextureNum);
+		return;
+	}
+	for (u8 i = 0; i < mTextureNum; ++i) {
+		if (mTextures[i] == nullptr) {
+			OSPanic(__FILE__, __LINE__, "J2DPicture texture %u is null",
+			        (unsigned)i);
+			return;
+		}
+	}
+#endif
 
 	for (u8 i = 0; i < mTextureNum; ++i) {
 		GXTexMapID idx = (GXTexMapID)i;
-		if (i < mTextureNum)
-			mTextures[idx]->load(idx);
+		mTextures[idx]->load(idx);
 	}
 
 	GXClearVtxDesc();
@@ -491,6 +524,14 @@ void J2DPicture::draw(int x, int y, int param_3, int param_4, bool param_5,
 	mColorAlpha = mAlpha;
 
 	setTevMode();
+
+#ifdef SMS_NATIVE_PLATFORM
+	// This immediate-mode entry point builds its own position matrix instead of
+	// traversing a pane. Publish those exact semantic inputs while retaining
+	// the complete GX body below.
+	sb_native_picture_submit_direct(this, &mPositionMtx, param_3, param_4,
+	                                param_5, param_6, param_7);
+#endif
 
 	GXBegin(GX_QUADS, GX_VTXFMT0, 4);
 
@@ -602,13 +643,15 @@ void J2DPicture::setTevMode()
 		static long n = 0;
 		if ((++n % 30) == 0 || n <= 5) {
 			SB_LOGC("tevname",
-			    "setTevMode this=%p tex0=%p mBlack=%08x mWhite=%08x "
-			    "mColorAlpha=%u duotone=%d textureNum=%u tex0Transparency=%d tex0Fmt=%d",
-			    (void*)this, (void*)mTextures[0], (unsigned)mBlack, (unsigned)mWhite,
-			    (unsigned)mColorAlpha, (mBlack != 0x0 || mWhite != 0xffffffff) ? 1 : 0,
-			    (unsigned)mTextureNum,
-			    mTextures[0] ? (int)mTextures[0]->getTransparency() : -1,
-			    mTextures[0] ? (int)mTextures[0]->getFormat() : -1);
+			        "setTevMode this=%p tex0=%p mBlack=%08x mWhite=%08x "
+			        "mColorAlpha=%u duotone=%d textureNum=%u "
+			        "tex0Transparency=%d tex0Fmt=%d",
+			        (void*)this, (void*)mTextures[0], (unsigned)mBlack,
+			        (unsigned)mWhite, (unsigned)mColorAlpha,
+			        (mBlack != 0x0 || mWhite != 0xffffffff) ? 1 : 0,
+			        (unsigned)mTextureNum,
+			        mTextures[0] ? (int)mTextures[0]->getTransparency() : -1,
+			        mTextures[0] ? (int)mTextures[0]->getFormat() : -1);
 		}
 	}
 #endif

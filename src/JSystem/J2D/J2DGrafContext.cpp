@@ -1,11 +1,20 @@
 #include <JSystem/J2D/J2DGrafContext.hpp>
 #include <dolphin/gx.h>
+#ifdef SMS_NATIVE_PLATFORM
+#include <sb_native_picture.h>
+#endif
 
 J2DGrafContext::J2DGrafContext(const JUTRect& rect)
     : mBounds(rect)
     , mScissorBounds(rect)
     , mPrevPos(0, 0)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	// Retail leaves this base-only discriminator untouched; native semantic
+	// context selection must never mistake indeterminate storage for the
+	// derived J2DOrthoGraph value of one.
+	unk4 = 0;
+#endif
 	setColor(JUtility::TColor());
 	setLineWidth(6);
 }
@@ -15,6 +24,9 @@ J2DGrafContext::J2DGrafContext(int x, int y, int width, int height)
     , mScissorBounds(x, y, x + width, y + height)
     , mPrevPos(0, 0)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	unk4 = 0;
+#endif
 	setColor(JUtility::TColor());
 	setLineWidth(6);
 }
@@ -29,6 +41,9 @@ void J2DGrafContext::setPort()
 
 void J2DGrafContext::setup2D()
 {
+#ifdef SMS_NATIVE_PLATFORM
+	sb_native_picture_context_activate(this);
+#endif
 	GXClearVtxDesc();
 	GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
 	GXSetVtxDesc(GX_VA_CLR0, GX_DIRECT);
