@@ -301,26 +301,19 @@ void J3DShape::loadVtxArray() const
 }
 
 #ifdef SMS_NATIVE_PLATFORM
-// PC-native renderer (single owned path): capture this active shape's geometry
-// into the native renderer's frame buffer
-// (native/render/sms_boot_j3d_capture.cpp drains it at present). Driven by
-// scene_drive.cpp's TSmJ3DScn::perform(8). WEAK so builds that link this TU but
-// NOT the capture body (e.g. the j3dmesh_test/loader tests) resolve it to null
-// and skip the hook.
-extern "C" bool sb_boot_capture_j3d(J3DShape* shape) __attribute__((weak));
+// The renderer-neutral semantic adapter observes the same high-level J3D draw
+// in the native decomp runtime. It is weak so narrow loader tests need not link
+// the host renderer. The original draw body always remains live for
+// compatibility rendering and A/B verification.
+extern "C" void sb_native_j3d_shape_submit(const void* shape)
+    __attribute__((weak));
 #endif
 
 void J3DShape::draw() const
 {
 #ifdef SMS_NATIVE_PLATFORM
-	if (&sb_boot_capture_j3d
-	    && sb_boot_capture_j3d(const_cast<J3DShape*>(this))) {
-		// Captured natively; the GX issue below is a no-op on this platform
-		// anyway, so continuing is harmless — but return to skip the
-		// per-element matrix loads / mDraws[i]->draw() (also no-ops) and keep
-		// the draw path cheap when capturing.
-		return;
-	}
+	if (&sb_native_j3d_shape_submit)
+		sb_native_j3d_shape_submit(this);
 #endif
 	GXCallDisplayList(mGDCommands, kVcdVatDLSize);
 
