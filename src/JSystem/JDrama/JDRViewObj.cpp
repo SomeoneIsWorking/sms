@@ -1,5 +1,6 @@
 #include <JSystem/JDrama/JDRViewObj.hpp>
 #ifdef SMS_NATIVE_PLATFORM
+#include <JSystem/JDrama/JDRGraphics.hpp>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -9,6 +10,13 @@ extern "C" unsigned VIGetRetraceCount(void) __attribute__((weak));
 // SB_TRACE_SEQ=1: prefix plist-order lines with seq=N so this family
 // interleaves exactly with the present-boundary/proj/drawbuf-flush logs.
 extern "C" uint64_t sb_trace_seq(void) __attribute__((weak));
+// The PC-native semantic renderer copies TGraphics camera values around every
+// surviving draw dispatch. Weak hooks keep the decomp independently linkable;
+// the original perform body remains authoritative and always executes for the
+// GX reference path.
+extern "C" void sb_native_j3d_scene_push(const float* projection)
+    __attribute__((weak));
+extern "C" void sb_native_j3d_scene_pop(void) __attribute__((weak));
 #endif
 
 #ifdef SMS_NATIVE_PLATFORM
@@ -18,17 +26,23 @@ unsigned long JDrama::TViewObj::sSbInterpTick = 0;
 void JDrama::TViewObj::testPerform(u32 param_1, JDrama::TGraphics* param_2)
 {
 #ifdef SMS_NATIVE_PLATFORM
-	// Draw-phase keystone trace: for "camera 1" log the RAW incoming flag, the unkC mask,
-	// and what survives — tells us whether ctrl bit 0x1 is passed-then-masked or never passed.
+	// Draw-phase keystone trace: for "camera 1" log the RAW incoming flag, the
+	// unkC mask, and what survives — tells us whether ctrl bit 0x1 is
+	// passed-then-masked or never passed.
 	static int dbg = -1;
-	if (dbg < 0) { const char* e = getenv("SB_J3D_DBG"); dbg = (e && e[0] && e[0] != '0') ? 1 : 0; }
+	if (dbg < 0) {
+		const char* e = getenv("SB_J3D_DBG");
+		dbg           = (e && e[0] && e[0] != '0') ? 1 : 0;
+	}
 	if (dbg) {
 		const char* nm = getName();
 		if (nm && std::strcmp(nm, "camera 1") == 0) {
 			static long n = 0;
 			u32 raw = param_1, mask = unkC.get(), surv = param_1 & ~mask;
 			if ((++n % 200) == 0 || n <= 8)
-				std::fprintf(stderr, "[testPerform camera1] n=%ld raw=0x%x unkC=0x%x survives=0x%x ctrl_b0=%d\n",
+				std::fprintf(stderr,
+				             "[testPerform camera1] n=%ld raw=0x%x unkC=0x%x "
+				             "survives=0x%x ctrl_b0=%d\n",
 				             n, raw, mask, surv, (surv & 1) != 0);
 		}
 	}
@@ -42,51 +56,71 @@ void JDrama::TViewObj::testPerform(u32 param_1, JDrama::TGraphics* param_2)
 	param_1 &= ~unkC.get();
 	if (param_1) {
 #ifdef SMS_NATIVE_PLATFORM
-		// 60fps interpolation: snapshot (prev) here, at the dispatch funnel, immediately before
-		// the object runs its movement. See JDRViewObj.hpp for why this is the funnel and not a
-		// walk of the object graph. Gated on the surviving MOVE cue so it fires exactly when
-		// physics is about to run for this object.
+		// 60fps interpolation: snapshot (prev) here, at the dispatch funnel,
+		// immediately before the object runs its movement. See JDRViewObj.hpp
+		// for why this is the funnel and not a walk of the object graph. Gated
+		// on the surviving MOVE cue so it fires exactly when physics is about
+		// to run for this object.
 		if (param_1 & CUE_MOVE)
 			sbSnapshotInterp();
 #endif
 #ifdef SMS_NATIVE_PLATFORM
-		// SB_PLIST_ORDER_DBG(_AFTER=<retrace>): per-dispatch order trace -- names the
-		// exact TViewObj (by NameRef name) about to run its perform() virtual, so a
-		// GXSetProjection callback captured elsewhere (e.g. SB_PROJ_DBG_AFTER's
-		// backtrace, which only resolves generically to
-		// TPerformList::forEachPerform/testPerform, not the dispatched object) can be
-		// correlated to WHICH scene object issued it, in exact perform-list order.
+		// SB_PLIST_ORDER_DBG(_AFTER=<retrace>): per-dispatch order trace --
+		// names the exact TViewObj (by NameRef name) about to run its perform()
+		// virtual, so a GXSetProjection callback captured elsewhere (e.g.
+		// SB_PROJ_DBG_AFTER's backtrace, which only resolves generically to
+		// TPerformList::forEachPerform/testPerform, not the dispatched object)
+		// can be correlated to WHICH scene object issued it, in exact
+		// perform-list order.
 		{
-			static int dbg = -1;
+			static int dbg          = -1;
 			static long afterThresh = -1;
 			if (dbg < 0) {
-				const char* e = getenv("SB_PLIST_ORDER_DBG");
-				dbg = (e && e[0] && e[0] != '0') ? 1 : 0;
+				const char* e      = getenv("SB_PLIST_ORDER_DBG");
+				dbg                = (e && e[0] && e[0] != '0') ? 1 : 0;
 				const char* eAfter = getenv("SB_PLIST_ORDER_DBG_AFTER");
-				afterThresh = (eAfter && eAfter[0]) ? atol(eAfter) : -1;
+				afterThresh        = (eAfter && eAfter[0]) ? atol(eAfter) : -1;
 			}
 			if (dbg || afterThresh >= 0) {
-				unsigned retrace = (&VIGetRetraceCount) ? VIGetRetraceCount() : 0;
+				unsigned retrace
+				    = (&VIGetRetraceCount) ? VIGetRetraceCount() : 0;
 				if (dbg || static_cast<long>(retrace) >= afterThresh) {
 					static long n = 0;
 					++n;
-					const char* nm = getName();
+					const char* nm        = getName();
 					static int traceSeqOn = -1;
 					if (traceSeqOn < 0) {
 						const char* eSeq = getenv("SB_TRACE_SEQ");
-						traceSeqOn = (eSeq && eSeq[0] && eSeq[0] != '0') ? 1 : 0;
+						traceSeqOn
+						    = (eSeq && eSeq[0] && eSeq[0] != '0') ? 1 : 0;
 					}
 					if (traceSeqOn && &sb_trace_seq) {
-						std::fprintf(stderr, "[plist-order] seq=%lu n=%ld retrace=%u name=\"%s\" flags=0x%x\n",
-						             (unsigned long)sb_trace_seq(), n, retrace, nm ? nm : "<null>", param_1);
-					} else {
-						std::fprintf(stderr, "[plist-order] n=%ld retrace=%u name=\"%s\" flags=0x%x\n", n, retrace,
+						std::fprintf(stderr,
+						             "[plist-order] seq=%lu n=%ld retrace=%u "
+						             "name=\"%s\" flags=0x%x\n",
+						             (unsigned long)sb_trace_seq(), n, retrace,
 						             nm ? nm : "<null>", param_1);
+					} else {
+						std::fprintf(stderr,
+						             "[plist-order] n=%ld retrace=%u "
+						             "name=\"%s\" flags=0x%x\n",
+						             n, retrace, nm ? nm : "<null>", param_1);
 					}
 				}
 			}
 		}
 #endif
+#ifdef SMS_NATIVE_PLATFORM
+		const bool semanticSceneScope = (param_1 & CUE_DRAW)
+		                                && &sb_native_j3d_scene_push
+		                                && &sb_native_j3d_scene_pop;
+		if (semanticSceneScope)
+			sb_native_j3d_scene_push(&param_2->mProjMtx.mMtx[0][0]);
+#endif
 		perform(param_1, param_2);
+#ifdef SMS_NATIVE_PLATFORM
+		if (semanticSceneScope)
+			sb_native_j3d_scene_pop();
+#endif
 	}
 }
