@@ -71,13 +71,13 @@ public:
 	void frameUpdate();
 	void matAnmFrameUpdate();
 	void perform(u32 cue, JDrama::TGraphics* graphics);
-	BOOL checkCurAnm(const char*, int);
-	bool checkCurAnmFromIndex(int, int);
-	bool checkAnmFileExist(const char*, int);
-	J3DFrameCtrl* getFrameCtrl(int);
-	BOOL checkBckPass(float);
-	int getCurAnmIdx(int) const;
-	void setFrameRate(float, int);
+	BOOL checkCurAnm(const char* name, int type);
+	bool checkCurAnmFromIndex(int index, int type);
+	bool checkAnmFileExist(const char* name, int type);
+	J3DFrameCtrl* getFrameCtrl(int type);
+	BOOL checkBckPass(f32 pass_frame);
+	int getCurAnmIdx(int type) const;
+	void setFrameRate(f32 rate, int type);
 	void setBck(const char*);
 	void setBckFromIndex(int);
 	void setSubBckFromIndex(int, int);
@@ -155,10 +155,10 @@ public:
 
 	f32 getMotionBlendRatioForBck()
 	{
-		if (!unkC)
+		if (!mAnmBck)
 			return 0.0f;
 
-		return unkC->getMotionBlendRatio();
+		return mAnmBck->getMotionBlendRatio();
 	}
 
 	void initSimpleMotionBlend(int frame)

@@ -42,15 +42,6 @@ void MActorAnmDataBase::checkLower(const char* param_1)
 	}
 }
 
-// UNUSED (Size: 0x50 in MAP)
-MActorAnmDataBase::MActorAnmDataBase(int param_1)
-{
-	unk0 = param_1;
-	unk8 = new const char*[unk0];
-	unk4 = new u16[unk0];
-	unkC = nullptr;
-}
-
 void MActorAnmDataBase::sortByFileNameRaw(void** param_1)
 {
 	if (unk0 > 1) {
@@ -79,7 +70,6 @@ void MActorAnmDataBase::sortByFileNameRaw(void** param_1)
 }
 
 MActorAnmData::MActorAnmData()
-    : unk0(0)
 {
 	mBckData = nullptr;
 	mBpkData = nullptr;
@@ -91,21 +81,23 @@ MActorAnmData::MActorAnmData()
 	unk44            = 0;
 	mSampleModelData = nullptr;
 
-	// mIncidentalAnmNum is the count of INCIDENTAL sub-BCK anims (the mIncidentalAnmList
-	// length); MActor's ctor sizes `unk10 = new MActorAnmBck*[getIncidentalAnmNum()]` by it
-	// and fills it by iterating mIncidentalAnmList. The list is only populated by
-	// addIncidentalAnm (an unimplemented decomp stub here), so with no incidental anims it
-	// must read 0. The decomp ctor omitted this initializer, so on a non-zeroed heap
-	// allocation it held garbage -> a huge/garbage unk10[] whose unaligned tail entries were
-	// never assigned -> MActor::updateInSubBck dereferenced an uninitialized MActorAnmBck* and
-	// crashed (intermittently, per heap contents). An empty incidental-anm list is exactly 0.
+	// mIncidentalAnmNum is the count of INCIDENTAL sub-BCK anims (the
+	// mIncidentalAnmList length); MActor's ctor sizes `unk10 = new
+	// MActorAnmBck*[getIncidentalAnmNum()]` by it and fills it by iterating
+	// mIncidentalAnmList. The list is only populated by addIncidentalAnm (an
+	// unimplemented decomp stub here), so with no incidental anims it must read
+	// 0. The decomp ctor omitted this initializer, so on a non-zeroed heap
+	// allocation it held garbage -> a huge/garbage unk10[] whose unaligned tail
+	// entries were never assigned -> MActor::updateInSubBck dereferenced an
+	// uninitialized MActorAnmBck* and crashed (intermittently, per heap
+	// contents). An empty incidental-anm list is exactly 0.
 	mIncidentalAnmNum = 0;
-	mBckNum = 0;
-	mBlkNum = 0;
-	mBpkNum = 0;
-	mBtpNum = 0;
-	mBtkNum = 0;
-	mBrkNum = 0;
+	mBckNum           = 0;
+	mBlkNum           = 0;
+	mBpkNum           = 0;
+	mBtpNum           = 0;
+	mBtkNum           = 0;
+	mBrkNum           = 0;
 }
 
 u16 MActorCalcKeyCode(const char* name)
@@ -121,49 +113,47 @@ u32 MActorAnmData::partsNameToIdx(const char* name)
 {
 	typedef JGadget::TList<MActorSubAnmInfo>::iterator I;
 	u32 idx = 0;
-	for (I it = mIncidentalAnmList.begin(), e = mIncidentalAnmList.end(); it != e; ++idx, ++it)
+	for (I it = mIncidentalAnmList.begin(), e = mIncidentalAnmList.end();
+	     it != e; ++idx, ++it)
 		if (strcmp(it->unk4, name) == 0)
 			return idx;
 	return -1;
 }
 
-// UNUSED (Size: 0x58 in MAP)
-void MActorAnmData::addIncidentalAnm(const char*, int) { }
-
-void MActorAnmData::init(const char* anm_folder, const char** additional_files)
+void MActorAnmData::init(const char* param_1, const char** param_2)
 {
-	char fullAnmPath[256];
-	int fullAnmPathLength;
+	char thing[256];
+	int uMVar1;
 
-	if (*anm_folder != '/')
-		fullAnmPathLength
-		    = snprintf(fullAnmPath, 0xff, "%s%s", "/", anm_folder);
+	if (*param_1 != '/')
+		uMVar1 = snprintf(thing, 0xff, "%s%s", "/", param_1);
 	else
-		fullAnmPathLength = snprintf(fullAnmPath, 0xff, "%s", anm_folder);
+		uMVar1 = snprintf(thing, 0xff, "%s", param_1);
 
-	if (fullAnmPathLength < 0 || fullAnmPathLength > 254)
+	if (uMVar1 < 0 || uMVar1 > 0xfe)
 		return;
 
-	char anmFolder[256];
-	snprintf(anmFolder, 0xff, "%s%s", fullAnmPath, "/");
+	char thing2[256];
+	snprintf(thing2, 0xff, "%s%s", thing, "/");
 
-	JKRFileFinder* fileFinder = JKRFileLoader::findFirstFile(fullAnmPath);
+	JKRFileFinder* fileFinder = JKRFileLoader::findFirstFile(thing2);
 
 	JKRFileFinder* finder = fileFinder;
 #ifdef SMS_NATIVE_PLATFORM
-	// findFirstFile returns null when the model/anim directory isn't present in the
-	// mounted archives (a US (GMSE01) asset the JP/PAL decomp expects, or a map-object
-	// resource dir absent on this stage). The original do/while assumes a non-null
-	// finder; guard it so the actor simply gets no animations instead of crashing.
+	// findFirstFile returns null when the model/anim directory isn't present in
+	// the mounted archives (a US (GMSE01) asset the JP/PAL decomp expects, or a
+	// map-object resource dir absent on this stage). The original do/while
+	// assumes a non-null finder; guard it so the actor simply gets no
+	// animations instead of crashing.
 	if (finder)
 #endif
-	do {
-		addFileNum(finder->mBase.mFileName);
-	} while (finder->findNextFile());
+		do {
+			addFileNum(finder->mBase.mFileName);
+		} while (finder->findNextFile());
 
-	if (additional_files != nullptr)
-		for (int i = 0; i == 0 || additional_files[i] != nullptr; ++i)
-			addFileNum(additional_files[i]);
+	if (param_2 != nullptr)
+		for (int i = 0; i == 0 || param_2[i] != nullptr; ++i)
+			addFileNum(param_2[i]);
 
 	delete fileFinder;
 
@@ -189,27 +179,29 @@ void MActorAnmData::init(const char* anm_folder, const char** additional_files)
 
 	fileFinder = JKRFileLoader::findFirstFile(thing2);
 #ifdef SMS_NATIVE_PLATFORM
-	if (fileFinder) // see above: directory may be absent in the mounted archives
+	if (fileFinder) // see above: directory may be absent in the mounted
+	                // archives
 #endif
-	do {
-		strstr(fileFinder->mBase.mFileName, "#");
-		addFileTable(fileFinder->mBase.mFileName);
-	} while (fileFinder->findNextFile());
+		do {
+			strstr(fileFinder->mBase.mFileName, "#");
+			addFileTable(fileFinder->mBase.mFileName);
+		} while (fileFinder->findNextFile());
 
-	if (additional_files != nullptr && *additional_files != nullptr) {
-		for (int i = 0; i == 0 || additional_files[i] != nullptr; ++i)
-			addFileTable(additional_files[i]);
+	if (param_2 != nullptr && *param_2 != nullptr) {
+		for (int i = 0; i == 0 || param_2[i] != nullptr; ++i)
+			addFileTable(param_2[i]);
 	}
 
 	delete fileFinder;
 
-	// loadAnmPtrArray concatenates param_1 + storedName (+ ext) with NO separator,
-	// so param_1 must be the slash-TERMINATED directory (thing2 = "<dir>/"), not the
-	// bare directory (thing = "<dir>"). Passing `thing` built e.g.
+	// loadAnmPtrArray concatenates param_1 + storedName (+ ext) with NO
+	// separator, so param_1 must be the slash-TERMINATED directory (thing2 =
+	// "<dir>/"), not the bare directory (thing = "<dir>"). Passing `thing`
+	// built e.g.
 	// "/yoshiyoshi_born_tx.btp" -> findVolume looks up a volume literally named
 	// "yoshiyoshi_born_tx.btp" -> null -> every anim slot left unloaded -> null
-	// deref in MActorAnmBtp::setTexNoAnmFullPtr. (Decomp transcription bug; wrong on
-	// GC too, hence unguarded.)
+	// deref in MActorAnmBtp::setTexNoAnmFullPtr. (Decomp transcription bug;
+	// wrong on GC too, hence unguarded.)
 	if (mBckData)
 		mBckData->loadAnmPtrArray2(thing2, ".bck");
 	if (mBpkData)
@@ -240,16 +232,6 @@ void MActorAnmData::addFileNum(const char* name)
 		++mBlkNum;
 }
 
-// UNUSED (Size: 0x80 in MAP). Inlined into every addFileTable() branch;
-// the body below is what those branches compile to in the ROM.
-char* MActorAnmData::getSimpleName(const char* file_name)
-{
-	u32 length = strlen(file_name) - (strlen(strrchr(file_name, '.')) - 1);
-	char* simple_name = new char[length];
-	snprintf(simple_name, length, "%s", file_name);
-	return simple_name;
-}
-
 void MActorAnmData::addFileTable(const char* param_1)
 {
 	char* pcVar1;
@@ -266,7 +248,7 @@ void MActorAnmData::addFileTable(const char* param_1)
 		uVar5  = sVar2 - (sVar3 - 1);
 		pcVar1 = new char[uVar5];
 		snprintf(pcVar1, uVar5, "%s", param_1);
-		uVar4             = 0;
+		uVar4                   = 0;
 		mBckData->unk8[mBckNum] = pcVar1;
 		while (*pcVar1 != '\0') {
 			uVar4 = *pcVar1++ + uVar4 * 5;
@@ -283,7 +265,7 @@ void MActorAnmData::addFileTable(const char* param_1)
 		uVar5  = sVar2 - (sVar3 - 1);
 		pcVar1 = new char[uVar5];
 		snprintf(pcVar1, uVar5, "%s", param_1);
-		uVar4             = 0;
+		uVar4                   = 0;
 		mBpkData->unk8[mBpkNum] = pcVar1;
 		while (*pcVar1 != '\0') {
 			uVar4 = *pcVar1++ + uVar4 * 5;
@@ -300,7 +282,7 @@ void MActorAnmData::addFileTable(const char* param_1)
 		uVar5  = sVar2 - (sVar3 - 1);
 		pcVar1 = new char[uVar5];
 		snprintf(pcVar1, uVar5, "%s", param_1);
-		uVar4              = 0;
+		uVar4                   = 0;
 		mBtpData->unk8[mBtpNum] = pcVar1;
 		while (*pcVar1 != '\0') {
 			uVar4 = *pcVar1++ + uVar4 * 5;
@@ -317,7 +299,7 @@ void MActorAnmData::addFileTable(const char* param_1)
 		uVar5  = sVar2 - (sVar3 - 1);
 		pcVar1 = new char[uVar5];
 		snprintf(pcVar1, uVar5, "%s", param_1);
-		uVar4              = 0;
+		uVar4                   = 0;
 		mBtkData->unk8[mBtkNum] = pcVar1;
 		while (*pcVar1 != '\0') {
 			uVar4 = *pcVar1++ + uVar4 * 5;
@@ -334,7 +316,7 @@ void MActorAnmData::addFileTable(const char* param_1)
 		uVar5  = sVar2 - (sVar3 - 1);
 		pcVar1 = new char[uVar5];
 		snprintf(pcVar1, uVar5, "%s", param_1);
-		uVar4              = 0;
+		uVar4                   = 0;
 		mBrkData->unk8[mBrkNum] = pcVar1;
 		while (*pcVar1 != '\0') {
 			uVar4 = *pcVar1++ + uVar4 * 5;
@@ -351,7 +333,7 @@ void MActorAnmData::addFileTable(const char* param_1)
 		uVar5  = sVar2 - (sVar3 - 1);
 		pcVar1 = new char[uVar5];
 		snprintf(pcVar1, uVar5, "%s", param_1);
-		uVar4             = 0;
+		uVar4                   = 0;
 		mBlkData->unk8[mBlkNum] = pcVar1;
 		while (*pcVar1 != '\0') {
 			uVar4 = *pcVar1++ + uVar4 * 5;

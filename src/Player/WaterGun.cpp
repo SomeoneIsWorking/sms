@@ -196,21 +196,21 @@ TNozzleBase::TNozzleBase(const char* name, const char* prm, TWaterGun* fludd)
     , mFludd(fludd)
 {
 	mEmitParams.load(mEmitParams.mPrmPath);
-	unk36C = 2;
+	unk36C    = 2;
 	mGunAngle = 0;
-	unk372 = 0;
-	unk378 = 0.0f;
-	unk37C = 0.0f;
+	unk372    = 0;
+	unk378    = 0.0f;
+	unk37C    = 0.0f;
 }
 #pragma dont_inline off
 
 void TNozzleBase::init()
 {
-	unk36C = 2;
+	unk36C    = 2;
 	mGunAngle = 0;
-	unk372 = 0;
-	unk378 = 0.0f;
-	unk37C = 0.0f;
+	unk372    = 0;
+	unk378    = 0.0f;
+	unk37C    = 0.0f;
 }
 
 void TNozzleBase::calcGunAngle(const TMarioControllerWork& work)
@@ -498,17 +498,17 @@ void TNozzleBase::animation(int param_1)
 void TNozzleTrigger::init()
 {
 	mRumbleOnCharge = false;
-	mSprayState = TNozzleTrigger::INACTIVE;
-	unk36C = 0;
-	unk386 = 0;
-	mTriggerFill = 0.0f;
+	mSprayState     = TNozzleTrigger::INACTIVE;
+	unk36C          = 0;
+	unk386          = 0;
+	mTriggerFill    = 0.0f;
 }
 
 void TNozzleTrigger::movement(const TMarioControllerWork& controllerWork)
 {
 	if (mFludd->mCurrentWater <= 0) {
-		mSprayState = TNozzleTrigger::INACTIVE;
-		unk386 = 0;
+		mSprayState  = TNozzleTrigger::INACTIVE;
+		unk386       = 0;
 		mTriggerFill = 0.0f;
 		return;
 	}
@@ -524,9 +524,9 @@ void TNozzleTrigger::movement(const TMarioControllerWork& controllerWork)
 			check = false;
 		}
 		if (!check || unk386 <= 0) {
-			mSprayState = TNozzleTrigger::DEAD;
+			mSprayState  = TNozzleTrigger::DEAD;
 			mTriggerFill = 0.0f;
-			unk386 = 0;
+			unk386       = 0;
 		}
 	}
 	// Spam spray sound?
@@ -579,7 +579,7 @@ void TNozzleTrigger::movement(const TMarioControllerWork& controllerWork)
 	if (mTriggerFill > mEmitParams.mInsidePressureMax.get()) {
 		mTriggerFill = mEmitParams.mInsidePressureMax.get();
 		if (!mRumbleOnCharge && mSprayState == TNozzleTrigger::INACTIVE) {
-			mSprayState      = TNozzleTrigger::ACTIVE;
+			mSprayState = TNozzleTrigger::ACTIVE;
 			unk386      = mEmitParams.mTriggerTime.get();
 			u32 soundId = mSoundID;
 			if (soundId != 0xffffffff) {
@@ -608,7 +608,8 @@ void TNozzleTrigger::movement(const TMarioControllerWork& controllerWork)
 
 void TNozzleTrigger::emit(int param_1)
 {
-	if (mFludd->mCurrentWater > 0 && (u8)mSprayState == TNozzleTrigger::ACTIVE) {
+	if (mFludd->mCurrentWater > 0
+	    && (u8)mSprayState == TNozzleTrigger::ACTIVE) {
 		TWaterEmitInfo* emitInfo = mFludd->mEmitInfo;
 		emitCommon(param_1, emitInfo);
 
@@ -1207,12 +1208,13 @@ TWaterGun::TWaterGun(TMario* mario)
 // Region tolerance (GMSE01 US disc vs the GMSJ01/PAL decomp): the US watergun
 // nozzle models name their joints differently than the decomp hardcodes — e.g.
 // /mario/watergun2/normal_wg/normal_wg.bmd on the US disc has joints
-// chn_muzzle_1/2/3 + null_G_muzzle, NOT chn_muzzle_l / jnt_nozzle_L / jnt_nozzle_R
-// / chn_back_nozzle_prop / jnt_back_nozzle_neck. So JUTNameTab::getIndex returns
-// -1, getJointNodePointer(u16)-1 is a null/OOB joint node, and ->setCallBack
-// derefs null -> SEGV. Skip the callback bind when the joint is absent instead of
-// dereferencing. (User directive: tolerate missing region assets, never switch
-// discs — memory us-disc-vs-jp-decomp-region-tolerance.)
+// chn_muzzle_1/2/3 + null_G_muzzle, NOT chn_muzzle_l / jnt_nozzle_L /
+// jnt_nozzle_R / chn_back_nozzle_prop / jnt_back_nozzle_neck. So
+// JUTNameTab::getIndex returns -1, getJointNodePointer(u16)-1 is a null/OOB
+// joint node, and ->setCallBack derefs null -> SEGV. Skip the callback bind
+// when the joint is absent instead of dereferencing. (User directive: tolerate
+// missing region assets, never switch discs — memory
+// us-disc-vs-jp-decomp-region-tolerance.)
 static void sb_setJointCallBack(J3DModelData* md, const char* name,
                                 J3DNodeCallBack cb)
 {
@@ -1229,15 +1231,15 @@ static void sb_setJointCallBack(J3DModelData* md, const char* name,
 
 void TWaterGun::init()
 {
-	mFlags                     = 0;
-	mNozzleList[Spray]         = &mNozzleDeform;
-	mNozzleList[Rocket]        = &mNozzleRocket;
-	mNozzleList[Underwater]    = &mNozzleUnderWater;
-	mNozzleList[Yoshi]         = &mNozzleYoshiDeform;
-	mNozzleList[Hover]         = &mNozzleHover;
-	mNozzleList[Turbo]         = &mNozzleTurbo;
-	mCurrentNozzle             = Spray;
-	mSecondNozzle              = Hover;
+	mFlags                       = 0;
+	mNozzleList[Spray]           = &mNozzleDeform;
+	mNozzleList[Rocket]          = &mNozzleRocket;
+	mNozzleList[Underwater]      = &mNozzleUnderWater;
+	mNozzleList[Yoshi]           = &mNozzleYoshiDeform;
+	mNozzleList[Hover]           = &mNozzleHover;
+	mNozzleList[Turbo]           = &mNozzleTurbo;
+	mCurrentNozzle               = Spray;
+	mSecondNozzle                = Hover;
 	mNozzleRocket.mSoundID       = MSD_SE_PO_ROCKET_TRIGGER;
 	mNozzleTurbo.mSoundID        = MSD_SE_PO_SNIPER_TRIGGER;
 	mNozzleDeform.mBomb.mSoundID = MSD_SE_PO_SHOTGUN_TRIGGER;
@@ -1259,7 +1261,7 @@ void TWaterGun::init()
 
 	mEmitInfo = new TWaterEmitInfo("/Mario/GunEmit.prm");
 
-	unk1D08                         = 0;
+	unk1D08                                  = 0;
 	mNozzleDeform.mBomb.mRumbleOnCharge      = true;
 	mNozzleYoshiDeform.mBomb.mRumbleOnCharge = true;
 
@@ -1274,8 +1276,8 @@ void TWaterGun::init()
 
 	mNozzleSpeedY = 0.0f;
 	mNozzleSpeedZ = 0.0f;
-	unk1CD0 = 0;
-	unk1CD2 = 0;
+	unk1CD0       = 0;
+	unk1CD2       = 0;
 
 	// This is definitely an inlined funciton. Creating a model seems quite
 	// useful
@@ -1294,7 +1296,7 @@ void TWaterGun::init()
 	mFluddModel->setModel(fluddModel, 0);
 
 	MTXCopy(mMario->mModel->unk8->getAnmMtx(mMario->mJointIdChnChest),
-	        mFluddModel->unk4->mBaseMtx);
+	        mFluddModel->getModel()->mBaseMtx);
 
 	mFluddModel->mModel->calc();
 
@@ -1318,7 +1320,8 @@ void TWaterGun::init()
 		unk1CDC->setup(mFluddModel->getModel(), "Mario/WaterGun");
 	}
 
-	mCurFluddTransformIdx = mFluddModel->unk4->mModelData->unkB0->getIndex("nozzle_center");
+	mCurFluddTransformIdx
+	    = mFluddModel->getModel()->mModelData->unkB0->getIndex("nozzle_center");
 
 	for (int i = 0; i < 6; ++i) {
 		if (nozzleBmdData.getPath(i)) {
@@ -1369,9 +1372,9 @@ void TWaterGun::init()
 	}
 
 #ifdef SMS_NATIVE_PLATFORM
-	// Region-tolerant joint-callback binds (see sb_setJointCallBack above): the US
-	// disc's Spray nozzle model lacks these GMSJ01/PAL joint names, so bind only
-	// the joints that actually exist instead of dereferencing a null node.
+	// Region-tolerant joint-callback binds (see sb_setJointCallBack above): the
+	// US disc's Spray nozzle model lacks these GMSJ01/PAL joint names, so bind
+	// only the joints that actually exist instead of dereferencing a null node.
 	{
 		J3DModelData* sprayMd
 		    = mNozzleList[Spray]->unk380->getModel()->getModelData();
@@ -1484,7 +1487,7 @@ MtxPtr TWaterGun::getEmitMtx(int jointIndex)
 
 MtxPtr TWaterGun::getNozzleMtx()
 {
-	return mFluddModel->unk4->getAnmMtx(mCurFluddTransformIdx);
+	return mFluddModel->getModel()->getAnmMtx(mCurFluddTransformIdx);
 }
 
 void TWaterGun::changeNozzle(TNozzleType nozzleType, bool animate)
@@ -1519,8 +1522,10 @@ void TWaterGun::movement()
 		unk1CC4 = 0;
 	}
 
-	mNozzleSpeedY += (unk1CC2 - mNozzleSpeedY) * mWatergunParams.mChangeSpeed.get();
-	mNozzleSpeedZ += (unk1CC4 - mNozzleSpeedZ) * mWatergunParams.mChangeSpeed.get();
+	mNozzleSpeedY
+	    += (unk1CC2 - mNozzleSpeedY) * mWatergunParams.mChangeSpeed.get();
+	mNozzleSpeedZ
+	    += (unk1CC4 - mNozzleSpeedZ) * mWatergunParams.mChangeSpeed.get();
 
 	rotateProp(getCurrentNozzle()->unk378);
 
@@ -1598,7 +1603,7 @@ void TWaterGun::setBaseTRMtx(Mtx mtx)
 	MsMtxSetRotRPH(temp, 0.0f, 0.0f, angleDegrees);
 
 	MTXConcat(mtx, temp, result);
-	MTXCopy(result, mFluddModel->unk4->mBaseMtx);
+	MTXCopy(result, mFluddModel->getModel()->mBaseMtx);
 }
 
 void TWaterGun::calcAnimation(JDrama::TGraphics* graphics)
@@ -1688,7 +1693,8 @@ void TWaterGun::perform(u32 flags, JDrama::TGraphics* graphics)
 	if ((flags & 0x2) != 0) {
 		MActor* p2 = getCurrentNozzle()->unk380;
 		if (p2 != nullptr) {
-			p2->getModel()->setBaseTRMtx(getModel()->getAnmMtx(mCurFluddTransformIdx));
+			p2->getModel()->setBaseTRMtx(
+			    getModel()->getAnmMtx(mCurFluddTransformIdx));
 		}
 
 		for (s32 index = 0;

@@ -262,7 +262,8 @@ void TLiveActor::calcRootMatrix()
 	if (getenv("SB_ROOTMTX_DBG")) {
 		static long n = 0;
 		if ((++n % 200) == 1)
-			fprintf(stderr, "[rootmtx] calcRootMatrix #%ld '%s' pos=%.1f,%.1f,%.1f\n",
+			fprintf(stderr,
+			        "[rootmtx] calcRootMatrix #%ld '%s' pos=%.1f,%.1f,%.1f\n",
 			        n, getName(), mPosition.x, mPosition.y, mPosition.z);
 	}
 #endif
@@ -361,38 +362,49 @@ void TLiveActor::perform(u32 param_1, JDrama::TGraphics* param_2)
 	if (param_1 & 1) {
 		moveObject();
 #ifdef SMS_NATIVE_PLATFORM
-		// SB_LOG=interp — does the snapshot actually capture MOTION? An inert prev/cur pair is
-		// indistinguishable from a working one at render time (both produce the current frame),
-		// so "interpolation changed nothing" could mean the snapshot is useless and never say so.
-		// Reports how many actors actually moved this tick and by how much. A `moved=0` reading
-		// means interpolation would be a no-op and the design needs re-examining, not shipping.
-		if (SB_LOG_ON("interp") && mSbPrevValid) { // fields now live on TActor, filled by the list dispatch
+		// SB_LOG=interp — does the snapshot actually capture MOTION? An inert
+		// prev/cur pair is indistinguishable from a working one at render time
+		// (both produce the current frame), so "interpolation changed nothing"
+		// could mean the snapshot is useless and never say so. Reports how many
+		// actors actually moved this tick and by how much. A `moved=0` reading
+		// means interpolation would be a no-op and the design needs
+		// re-examining, not shipping.
+		if (SB_LOG_ON("interp")
+		    && mSbPrevValid) { // fields now live on TActor, filled by the list
+			                   // dispatch
 			static long s_seen = 0, s_moved = 0;
 			static f32 s_maxDelta = 0.0f;
-			const f32 dx = mPosition.x - mSbPrevPosition.x;
-			const f32 dy = mPosition.y - mSbPrevPosition.y;
-			const f32 dz = mPosition.z - mSbPrevPosition.z;
-			const f32 d2 = dx * dx + dy * dy + dz * dz;
+			const f32 dx          = mPosition.x - mSbPrevPosition.x;
+			const f32 dy          = mPosition.y - mSbPrevPosition.y;
+			const f32 dz          = mPosition.z - mSbPrevPosition.z;
+			const f32 d2          = dx * dx + dy * dy + dz * dz;
 			++s_seen;
 			if (d2 > 0.0f) {
 				++s_moved;
-				if (d2 > s_maxDelta) s_maxDelta = d2;
+				if (d2 > s_maxDelta)
+					s_maxDelta = d2;
 			}
 			if ((s_seen % 20000) == 0) {
-				// DECLARE THE BLIND SPOT, and keep declaring it: this READOUT sits in
-				// TLiveActor::perform, which 231 classes override without chaining to (TMario
-				// among them). The SNAPSHOT now covers every performed object (it is taken in
-				// TViewObj::testPerform, the dispatch funnel), but this counter still only
-				// reports on actors that reach the base perform. So moved=0 here would mean
-				// "the base-perform actors did not move", never "the scene is static", and a
-				// non-zero reading here says nothing about TMario either way.
+				// DECLARE THE BLIND SPOT, and keep declaring it: this READOUT
+				// sits in TLiveActor::perform, which 231 classes override
+				// without chaining to (TMario among them). The SNAPSHOT now
+				// covers every performed object (it is taken in
+				// TViewObj::testPerform, the dispatch funnel), but this counter
+				// still only reports on actors that reach the base perform. So
+				// moved=0 here would mean "the base-perform actors did not
+				// move", never "the scene is static", and a non-zero reading
+				// here says nothing about TMario either way.
 				SB_LOGC("interp",
 				        "snapshots=%ld moved=%ld (%.1f%%) maxStep=%.3f units "
-				        "| READOUT population: actors reaching TLiveActor::perform only "
+				        "| READOUT population: actors reaching "
+				        "TLiveActor::perform only "
 				        "(231 overriders, incl. TMario, are NOT counted here); "
-				        "SNAPSHOT population: every object dispatched with CUE_MOVE",
-				        s_seen, s_moved, 100.0 * (double)s_moved / (double)s_seen,
-				        (double)(s_maxDelta > 0.0f ? __builtin_sqrtf(s_maxDelta) : 0.0f));
+				        "SNAPSHOT population: every object dispatched with "
+				        "CUE_MOVE",
+				        s_seen, s_moved,
+				        100.0 * (double)s_moved / (double)s_seen,
+				        (double)(s_maxDelta > 0.0f ? __builtin_sqrtf(s_maxDelta)
+				                                   : 0.0f));
 			}
 		}
 #endif
@@ -488,7 +500,7 @@ MtxPtr TLiveActor::getTakingMtx()
 	if (!mMActor)
 		return nullptr;
 
-	return mMActor->unk4->mBaseMtx;
+	return mMActor->getModel()->mBaseMtx;
 }
 
 void TLiveActor::initAnmSound()
@@ -525,13 +537,14 @@ void TLiveActor::setAnmSound(const char* path)
 	if (mAnmSoundPath != nullptr) {
 		void* res = JKRFileLoader::getGlbResource(mAnmSoundPath);
 #ifdef SMS_NATIVE_PLATFORM
-		// .bas is consumed by DIRECT CAST (JAIAnimeSound::initActorAnimSound does
-		// `mData = (JAIAnimeSoundData*)data`), so its big-endian sound ids and
-		// frame times must be converted before the audio system reads them. Left
-		// raw, an NPC asked for sound id 0xB89C000 (real ids are ~0x28c5), missed
-		// the info table, and crashed MSoundSE::checkMonoSound on the NULL.
-		// Returns a cached host-endian COPY — getGlbResource() hands back a shared
-		// buffer, so an in-place swap would double-swap on the next call.
+		// .bas is consumed by DIRECT CAST (JAIAnimeSound::initActorAnimSound
+		// does `mData = (JAIAnimeSoundData*)data`), so its big-endian sound ids
+		// and frame times must be converted before the audio system reads them.
+		// Left raw, an NPC asked for sound id 0xB89C000 (real ids are ~0x28c5),
+		// missed the info table, and crashed MSoundSE::checkMonoSound on the
+		// NULL. Returns a cached host-endian COPY — getGlbResource() hands back
+		// a shared buffer, so an in-place swap would double-swap on the next
+		// call.
 		res = const_cast<void*>(smsport::assets::bas_to_host(res));
 #endif
 		mAnmSound->initAnmSound(res, 1, 0.0f);

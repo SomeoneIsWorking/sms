@@ -80,12 +80,13 @@ TMirrorCamera::TMirrorCamera(const char* name)
 	mMirrorTexResource->mipmapCount     = 1;
 	mMirrorTexResource->imageDataOffset = 0x20;
 
-	GXInitTexObj(&mMirrorTexObj, (u8*)mMirrorTexResource + mMirrorTexResource->imageDataOffset,
+	GXInitTexObj(&mMirrorTexObj,
+	             (u8*)mMirrorTexResource + mMirrorTexResource->imageDataOffset,
 	             mMirrorTexResource->width, mMirrorTexResource->height,
 	             (GXTexFmt)mMirrorTexResource->format, GX_REPEAT, GX_REPEAT, 0);
 
-	GXInitTexObjLOD(&mMirrorTexObj, GX_LINEAR, GX_LINEAR, 0.0f, 0.0f, 0.0f, GX_FALSE,
-	                GX_FALSE, GX_ANISO_1);
+	GXInitTexObjLOD(&mMirrorTexObj, GX_LINEAR, GX_LINEAR, 0.0f, 0.0f, 0.0f,
+	                GX_FALSE, GX_FALSE, GX_ANISO_1);
 	Vec local_20 = (Vec) { 10000.0f, 10000.0f, 10000.0f };
 	Vec local_2C = (Vec) { 0.0f, 1.0f, 0.0f };
 	Vec local_38 = (Vec) { 20000.0f, 20000.0f, 20000.0f };
@@ -105,37 +106,40 @@ static u8 getVertexFormat(const J3DModelData* model_data, GXAttr attr)
 
 void TMirrorModel::setPlane()
 {
-	MtxPtr mtx = mMActor->unk4->mBaseMtx;
+	MtxPtr mtx = mMActor->getModel()->mBaseMtx;
 	MTXMultVec(mtx, &mPlanePoint, &mPlanePoint);
 	MTXMultVecSR(mtx, &mPlaneNormal, &mPlaneNormal);
 	VECNormalize(&mPlaneNormal, &mPlaneNormal);
 	mPlaneD = -VECDotProduct(&mPlaneNormal, &mPlanePoint);
-	mMirrorCamera->setMirrorPlane(mPlaneNormal.x, mPlaneNormal.y, mPlaneNormal.z, mPlaneD);
+	mMirrorCamera->setMirrorPlane(mPlaneNormal.x, mPlaneNormal.y,
+	                              mPlaneNormal.z, mPlaneD);
 }
 
 void TMirrorModel::initPlaneInfo()
 {
-	u8 posComp = getVertexFormat(mMActor->getModel()->getModelData(), GX_VA_POS);
+	u8 posComp
+	    = getVertexFormat(mMActor->getModel()->getModelData(), GX_VA_POS);
 
 	if (posComp == GX_S16) {
-		S16Vec* v = (S16Vec*)mMActor->getModel()
-		                ->getModelData()
-		                ->getVertexData()
-		                .getVtxPosArray();
+		S16Vec* v     = (S16Vec*)mMActor->getModel()
+		                    ->getModelData()
+		                    ->getVertexData()
+		                    .getVtxPosArray();
 		mPlanePoint.x = v->x;
 		mPlanePoint.y = v->y;
 		mPlanePoint.z = v->z;
 	} else {
-		Vec* v = (Vec*)mMActor->getModel()
-		             ->getModelData()
-		             ->getVertexData()
-		             .getVtxPosArray();
+		Vec* v        = (Vec*)mMActor->getModel()
+		                    ->getModelData()
+		                    ->getVertexData()
+		                    .getVtxPosArray();
 		mPlanePoint.x = v->x;
 		mPlanePoint.y = v->y;
 		mPlanePoint.z = v->z;
 	}
 
-	u8 normComp = getVertexFormat(mMActor->getModel()->getModelData(), GX_VA_NRM);
+	u8 normComp
+	    = getVertexFormat(mMActor->getModel()->getModelData(), GX_VA_NRM);
 
 	if (normComp == GX_S16) {
 		S16Vec* v = (S16Vec*)mMActor->getModel()
@@ -147,10 +151,10 @@ void TMirrorModel::initPlaneInfo()
 		mPlaneNormal.y = v->y / 16384;
 		mPlaneNormal.z = v->z / 16384;
 	} else if (normComp == GX_F32) {
-		Vec* v = (Vec*)mMActor->getModel()
-		             ->getModelData()
-		             ->getVertexData()
-		             .getVtxNormArray();
+		Vec* v         = (Vec*)mMActor->getModel()
+		                     ->getModelData()
+		                     ->getVertexData()
+		                     .getVtxNormArray();
 		mPlaneNormal.x = v->x;
 		mPlaneNormal.y = v->y;
 		mPlaneNormal.z = v->z;
@@ -185,12 +189,10 @@ inline static void identity34(MtxPtr mtx)
 
 void TMirrorModel::init(const char* name)
 {
-	mMActor = SMS_MakeMActorWithAnmData(name,
-	                                    gpMirrorModelManager->getMirrorAnmData(),
-	                                    2,
-	                                    J3DMLF_MaterialPEFull
-	                                        | J3DMLF_UseUniqueMaterials
-	                                        | (1 << J3DMLF_TevStageNumShift));
+	mMActor = SMS_MakeMActorWithAnmData(
+	    name, gpMirrorModelManager->getMirrorAnmData(), 2,
+	    J3DMLF_MaterialPEFull | J3DMLF_UseUniqueMaterials
+	        | (1 << J3DMLF_TevStageNumShift));
 
 	TPosition3f local_44;
 	local_44.identity();
@@ -218,9 +220,9 @@ void TMirrorModelObj::setPlane()
 {
 	MtxPtr mtx = mMActor->getModel()->getAnmMtx(0);
 	Vec* v     = (Vec*)mMActor->getModel()
-	             ->getModelData()
-	             ->getVertexData()
-	             .getVtxPosArray();
+	                 ->getModelData()
+	                 ->getVertexData()
+	                 .getVtxPosArray();
 
 	JGeometry::TVec3<f32> local_18;
 	local_18.x = v->x;
@@ -233,7 +235,8 @@ void TMirrorModelObj::setPlane()
 
 	MTXMultVec(mtx, &local_18, &local_18);
 	mPlaneD = -VECDotProduct(mPlaneNormal, local_18);
-	mMirrorCamera->setMirrorPlane(mPlaneNormal.x, mPlaneNormal.y, mPlaneNormal.z, mPlaneD);
+	mMirrorCamera->setMirrorPlane(mPlaneNormal.x, mPlaneNormal.y,
+	                              mPlaneNormal.z, mPlaneD);
 }
 
 void TMirrorModelObj::calc()
@@ -253,9 +256,13 @@ bool TMirrorModelManager::isUpperThanMirrorPlane(
     const JGeometry::TVec3<f32>& param_1) const
 {
 	const JGeometry::TVec3<f32>* normal
-	    = mCurrentMirrorIndex != -1 ? &mMirrorModels[mCurrentMirrorIndex]->getNormalVec() : nullptr;
+	    = mCurrentMirrorIndex != -1
+	          ? &mMirrorModels[mCurrentMirrorIndex]->getNormalVec()
+	          : nullptr;
 
-	f32 d   = mCurrentMirrorIndex != -1 ? mMirrorModels[mCurrentMirrorIndex]->getD() : 0.0f;
+	f32 d   = mCurrentMirrorIndex != -1
+	              ? mMirrorModels[mCurrentMirrorIndex]->getD()
+	              : 0.0f;
 	f32 dot = normal->dot(param_1);
 
 	return dot + d < -50.0f ? false : true;
@@ -271,7 +278,8 @@ bool TMirrorModelManager::isInMirror(JGeometry::TVec3<f32>& param_1) const
 void TMirrorModelManager::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 	JGeometry::TVec3<f32> local_44 = *gpMarioPos;
-	mCurrentMirrorIndex = gpCubeMirror->getDataNo(gpCubeMirror->getInCubeNo(local_44));
+	mCurrentMirrorIndex
+	    = gpCubeMirror->getDataNo(gpCubeMirror->getInCubeNo(local_44));
 	if (!(mCurrentMirrorIndex != -1 ? true : false)
 	    && !gpMarioGroundPlane[0]->checkFlag(BG_CHECK_FLAG_ILLEGAL)) {
 		mMirrorCamera->mPlaneNormal = gpMarioGroundPlane[1]->mNormal;
@@ -279,8 +287,10 @@ void TMirrorModelManager::perform(u32 param_1, JDrama::TGraphics* param_2)
 
 		JGeometry::TVec3<f32> local_7C;
 		local_7C.set(mMirrorCamera->mPlaneNormal);
-		f32 fVar4 = (local_7C.dot(gpCamera->unk124) - -mMirrorCamera->mPlaneD) * -2.0f;
-		mMirrorCamera->mReflectedPos.scaleAdd(fVar4, gpCamera->unk124, local_7C);
+		f32 fVar4 = (local_7C.dot(gpCamera->unk124) - -mMirrorCamera->mPlaneD)
+		            * -2.0f;
+		mMirrorCamera->mReflectedPos.scaleAdd(fVar4, gpCamera->unk124,
+		                                      local_7C);
 		// TODO: awful vector math, one of unused functions inlined
 	}
 
@@ -310,8 +320,11 @@ void TMirrorModelManager::loadAfter()
 		findMirrorCamera();
 
 	for (int i = 0; i < mMirrorModelCount; ++i) {
-		J3DTexture* texture
-		    = mMirrorModels[i]->getMActor()->getModel()->getModelData()->getTexture();
+		J3DTexture* texture = mMirrorModels[i]
+		                          ->getMActor()
+		                          ->getModel()
+		                          ->getModelData()
+		                          ->getTexture();
 
 		// This looks like setResTIMG but isn't???
 
@@ -320,7 +333,8 @@ void TMirrorModelManager::loadAfter()
 
 		target = source;
 		target.imageDataOffset
-		    = (u32)((uintptr_t)&source + source.imageDataOffset - (uintptr_t)&target);
+		    = (u32)((uintptr_t)&source + source.imageDataOffset
+		            - (uintptr_t)&target);
 	}
 }
 
@@ -340,9 +354,9 @@ void TMirrorModelManager::load(JSUMemoryInputStream& stream)
 	stream.read(&local_2C, 4);
 	stream.read(&local_30, 4);
 	// BE dword on disc; raw read(&x,4) does not swap (JSU raw-read class).
-	local_28 = (int)JSU_BE32((u32)local_28);
-	local_2C = (int)JSU_BE32((u32)local_2C);
-	local_30 = (int)JSU_BE32((u32)local_30);
+	local_28          = (int)JSU_BE32((u32)local_28);
+	local_2C          = (int)JSU_BE32((u32)local_2C);
+	local_30          = (int)JSU_BE32((u32)local_30);
 	mTotalMirrorSlots = local_28 + local_2C + local_30 * 2;
 
 	if (mTotalMirrorSlots != 0) {
@@ -380,19 +394,29 @@ TMirrorModelManager::TMirrorModelManager(const char* name)
 void TMirrorMapDrawBuf::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
 #ifdef SMS_NATIVE_PLATFORM
-	// SB_MIRRORBUF_DBG: which named draw-buffers are TMirrorMapDrawBuf, and the mirror gate state.
-	// If "DrawBuf MapXlu" appears here, the ph6 mask overdraw = broken mirror gate
-	// (mCurrentMirrorIndex should be -1 in file-select → the draw(0x8) should be SUPPRESSED;
-	// native evidently lets it through).
-	if (const char* e = std::getenv("SB_MIRRORBUF_DBG"); e && e[0] && e[0] != '0') {
-		static int n = 0; if (n < 60) { ++n;
-			std::fprintf(stderr, "[mirrorbuf] name='%s' flag=0x%x mCurrentMirrorIndex=%d draws=%d\n",
+	// SB_MIRRORBUF_DBG: which named draw-buffers are TMirrorMapDrawBuf, and the
+	// mirror gate state. If "DrawBuf MapXlu" appears here, the ph6 mask
+	// overdraw = broken mirror gate (mCurrentMirrorIndex should be -1 in
+	// file-select → the draw(0x8) should be SUPPRESSED; native evidently lets
+	// it through).
+	if (const char* e = std::getenv("SB_MIRRORBUF_DBG");
+	    e && e[0] && e[0] != '0') {
+		static int n = 0;
+		if (n < 60) {
+			++n;
+			std::fprintf(stderr,
+			             "[mirrorbuf] name='%s' flag=0x%x "
+			             "mCurrentMirrorIndex=%d draws=%d\n",
 			             getName() ? getName() : "?", param_1,
 			             gpMirrorModelManager->mCurrentMirrorIndex,
-			             (!(param_1 & 8) || gpMirrorModelManager->mCurrentMirrorIndex != -1) ? 1 : 0);
+			             (!(param_1 & 8)
+			              || gpMirrorModelManager->mCurrentMirrorIndex != -1)
+			                 ? 1
+			                 : 0);
 		}
 	}
 #endif
-	if (!(param_1 & 8) || (gpMirrorModelManager->mCurrentMirrorIndex != -1 ? true : false))
+	if (!(param_1 & 8)
+	    || (gpMirrorModelManager->mCurrentMirrorIndex != -1 ? true : false))
 		JDrama::TDrawBufObj::perform(param_1, param_2);
 }

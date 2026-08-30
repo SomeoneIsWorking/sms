@@ -1,8 +1,4 @@
 #include <Player/MarioCap.hpp>
-#ifdef SMS_NATIVE_PLATFORM
-#include <cstdio>
-#include <cstdlib>
-#endif
 #include <JSystem/JKernel/JKRFileLoader.hpp>
 #include <JSystem/J3D/J3DGraphLoader/J3DModelLoader.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DTexture.hpp>
@@ -108,9 +104,10 @@ TMarioCap::TMarioCap(TMario* mario)
 
 	for (int idx = 0; idx < 2; idx++) {
 		for (u16 matIdx = 0;
-		     matIdx < mCapModels[idx]->getModelData()->getMaterialNum(); matIdx++) {
-			SMS_InitPacket_OneTevKColorAndFog(mCapModels[idx], matIdx, GX_KCOLOR0,
-			                                  nullptr);
+		     matIdx < mCapModels[idx]->getModelData()->getMaterialNum();
+		     matIdx++) {
+			SMS_InitPacket_OneTevKColorAndFog(mCapModels[idx], matIdx,
+			                                  GX_KCOLOR0, nullptr);
 		}
 	}
 }
@@ -123,7 +120,10 @@ void TMarioCap::createMirrorCap()
 	}
 }
 
-void TMarioCap::perform(u32 param_1, JDrama::TGraphics* param_2)
+// UNUSED
+void TMarioCap::addDirty() { }
+
+void TMarioCap::perform(u32 cue, JDrama::TGraphics* graphics)
 {
 	// Unused stack space
 	// volatile u32 padding[42];
@@ -217,22 +217,7 @@ void TMarioCap::perform(u32 param_1, JDrama::TGraphics* param_2)
 		}
 	}
 
-	if ((param_1 & 0x200) != 0) {
-#ifdef SMS_NATIVE_PLATFORM
-		// SB_MARIO_DBG: which cap model is entered (active hat/helmet/glasses bitfield).
-		// Pairs with the [mario] base-mtx trace in MarioDraw / the [mario-perf] flag trace in
-		// MarioMain to localize whether a cap-render anomaly is selection (this) or pose.
-		if (::getenv("SB_MARIO_DBG")) {
-			static long s_n = 0;
-			if (s_n < 10) { ++s_n;
-				int act2 = isModelActive(2) ? 1 : 0, act4 = isModelActive(4) ? 1 : 0;
-				int which = -1;
-				for (int i = 0; i < 4; ++i) if (mCapModels[i] == unkC) { which = i; break; }
-				fprintf(stderr, "[mario] cap-entry unkC=mCapModels[%d] active(helmet=%d glasses=%d) unk4=0x%x\n",
-				        which, act2, act4, (unsigned)mCapModelFlag);
-			}
-		}
-#endif
+	if ((cue & CUE_ENTRY) != 0) {
 		unkC->entry();
 		if (isModelActive(2)) {
 			mCapModels[2]->entry();
@@ -242,7 +227,8 @@ void TMarioCap::perform(u32 param_1, JDrama::TGraphics* param_2)
 		}
 	}
 
-	if ((cue & CUE_UNK10000000) != 0 && isModelActive(E_CAP_MODEL_HAT)) {
+	if ((cue & CUE_UPDATE_MODEL_EFFECTS) != 0
+	    && isModelActive(E_CAP_MODEL_HAT)) {
 		unk30->movement();
 	}
 }

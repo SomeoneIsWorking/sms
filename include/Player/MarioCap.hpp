@@ -40,7 +40,7 @@ public:
 	/* 0x4 */ u16 mCapModelFlag; // E_CAP_MODEL flag
 	/* 0x6 */ u16 unk6;
 	/* 0x8 */ TMario* mMario;
-	/* 0xC */ J3DModel* unkC;      // current model?
+	/* 0xC */ J3DModel* unkC;           // current model?
 	/* 0x10 */ J3DModel* mCapModels[4]; // ma_cap1.bmd model
 	/* 0x20 */ TMultiMtxEffect* unk20;
 	/* 0x24 */ TMultiMtxEffect* unk24;

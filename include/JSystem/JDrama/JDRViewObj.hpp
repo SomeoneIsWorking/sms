@@ -6,10 +6,10 @@
 #include <JSystem/JDrama/JDRNameRef.hpp>
 #include <JSystem/JGadget/std-list.hpp>
 
-// Named perform() cues (upstream doldecomp/sms, 2026-07). These are the same bit
-// values the perform(u32) flag argument always used, just named — adopted during
-// the upstream rebase so new upstream TUs (GateKeeper etc.) compile and so our own
-// perform() implementations can drop the magic numbers over time.
+// Named perform() cues (upstream doldecomp/sms, 2026-07). These are the same
+// bit values the perform(u32) flag argument always used, just named — adopted
+// during the upstream rebase so new upstream TUs (GateKeeper etc.) compile and
+// so our own perform() implementations can drop the magic numbers over time.
 enum {
 	/// Gameplay logic
 	CUE_MOVE = 0x1,
@@ -35,6 +35,8 @@ enum {
 	CUE_MOVEMENT_GATE_A = 0x1000,
 	// TODO: uncertain
 	CUE_MOVEMENT_GATE_B = 0x2000,
+	/// Advance per-model visual effects such as Mario's cap tremble.
+	CUE_UPDATE_MODEL_EFFECTS = 0x10000000,
 
 	CUE_ALL = 0xffffffff,
 };
@@ -53,25 +55,31 @@ public:
 	virtual void perform(u32, TGraphics*) = 0;
 
 #ifdef SMS_NATIVE_PLATFORM
-	// Game-native 60fps interpolation: capture this object's transform as it stands BEFORE the
-	// movement phase runs, so a sub-frame can render lerp(prev, cur, alpha).
+	// Game-native 60fps interpolation: capture this object's transform as it
+	// stands BEFORE the movement phase runs, so a sub-frame can render
+	// lerp(prev, cur, alpha).
 	//
-	// It is a SEPARATE virtual rather than a hook inside perform() on purpose: 231 classes
-	// override perform() and most do not chain to their base, so anything placed there silently
-	// misses them (TMario included). Default no-op; TActor implements it.
+	// It is a SEPARATE virtual rather than a hook inside perform() on purpose:
+	// 231 classes override perform() and most do not chain to their base, so
+	// anything placed there silently misses them (TMario included). Default
+	// no-op; TActor implements it.
 	//
-	// It is driven from testPerform() -- non-virtual, and the single funnel EVERY container
-	// dispatches through (TPerformList::forEachPerform, TViewObjPtrListT::perform, TStrategy,
-	// TObjManager/enemymanager, TViewConnecter, TScreen, TDirector). Five attempts to reach actors
-	// by walking the object graph from the movement list each stopped at a container type that had
-	// not been anticipated, and TStrategy::perform is a sixth that none of them would have found.
-	// Hooking the funnel needs no knowledge of container types at all: an object that is performed
-	// passes through here by construction, and nothing can override its way around a non-virtual.
+	// It is driven from testPerform() -- non-virtual, and the single funnel
+	// EVERY container dispatches through (TPerformList::forEachPerform,
+	// TViewObjPtrListT::perform, TStrategy, TObjManager/enemymanager,
+	// TViewConnecter, TScreen, TDirector). Five attempts to reach actors by
+	// walking the object graph from the movement list each stopped at a
+	// container type that had not been anticipated, and TStrategy::perform is a
+	// sixth that none of them would have found. Hooking the funnel needs no
+	// knowledge of container types at all: an object that is performed passes
+	// through here by construction, and nothing can override its way around a
+	// non-virtual.
 	virtual void sbSnapshotInterp() { }
 
-	// Tick boundary for the snapshot above. Opened once per logic tick by TMarDirector::direct()
-	// before the movement dispatch; TActor snapshots only on the first dispatch of each tick, so an
-	// object performed twice cannot overwrite (prev) with (cur) and silently flatten interpolation.
+	// Tick boundary for the snapshot above. Opened once per logic tick by
+	// TMarDirector::direct() before the movement dispatch; TActor snapshots
+	// only on the first dispatch of each tick, so an object performed twice
+	// cannot overwrite (prev) with (cur) and silently flatten interpolation.
 	static unsigned long sSbInterpTick;
 	static void sbBeginInterpTick() { ++sSbInterpTick; }
 #endif

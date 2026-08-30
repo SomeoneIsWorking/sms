@@ -732,7 +732,7 @@ void THinokuri2::changeBck(int param_1)
 			    getActorKeeper()->getMActorAnmData()->getBckData()->getAnmPtr(
 			        param_1));
 		} else {
-			unk1A0->setTransform(
+			unk1A0->setAnmTransform(
 			    getActorKeeper()->getMActorAnmData()->getBckData()->getAnmPtr(
 			        param_1));
 		}
