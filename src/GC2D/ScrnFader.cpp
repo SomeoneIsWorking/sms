@@ -3,6 +3,10 @@
 #include <JSystem/JKernel/JKRFileLoader.hpp>
 #include <dolphin/gx.h>
 
+#ifdef SMS_NATIVE_PLATFORM
+#include <sb_native_solid_rectangle.h>
+#endif
+
 // rogue includes needed for matching sinit & bss
 #include <MSound/MSSetSound.hpp>
 #include <MSound/MSoundBGM.hpp>
@@ -14,6 +18,9 @@ namespace {
 
 void fill_rect(const JDrama::TRect& param_1, JUtility::TColor param_2)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	sb_native_solid_rectangle_submit(&param_1, static_cast<u32>(param_2));
+#endif
 	GXClearVtxDesc();
 	GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
 	GXSetVtxDesc(GX_VA_CLR0, GX_DIRECT);
