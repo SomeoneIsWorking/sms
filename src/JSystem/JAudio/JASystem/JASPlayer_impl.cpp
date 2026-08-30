@@ -100,7 +100,7 @@ namespace Player {
 	s16 sRelTable[6] = {
 		0x0, 0xa, 0x0, 0xf, 0x1, 0x0,
 	};
-	// GXColorS10-style narrowing: MWERKS accepted 0xC000 as s16=-16384 by narrowing;
+	// SUNBRIGHT-KEEP: MWERKS accepted 0xC000 as s16=-16384 by narrowing;
 	// same for 0x8001 (s16=-32767). Explicit casts preserve bit pattern.
 	s16 sVibTable[18] = {
 		0x0000, 0x0000, 0x0000, 0x0000, 0x000C, 0x7FFF, 0x0000, 0x000C, 0x0000,

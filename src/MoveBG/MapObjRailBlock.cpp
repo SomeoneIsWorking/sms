@@ -420,11 +420,12 @@ Mtx* TRollBlock::getRootJointMtx() const
 
 void TRollBlock::calcRootMatrix()
 {
-	// Faithful port of @0x801efdc4 (US GMSE01). Sets the J3DModel's base TR matrix
-	// from TMapObjBase's (mPosition − mYOffset) + mInitialRotation, latches the base
-	// scale from TActor::mScaling, then concats a Z-axis rotation-by-unk138° onto it.
-	// Slot layout confirmed against the 12 back-to-back stfs's at 0x2c..0x58 in the
-	// disasm; see native/render/sms_boot_rollblock.h for the pure spec + tests.
+	// SUNBRIGHT-KEEP: Faithful port of @0x801efdc4 (US GMSE01). Sets the
+	// J3DModel's base TR matrix from TMapObjBase's (mPosition − mYOffset) +
+	// mInitialRotation, latches the base scale from TActor::mScaling, then
+	// concats a Z-axis rotation-by-unk138° onto it. Slot layout confirmed
+	// against the 12 back-to-back stfs's at 0x2c..0x58 in the disasm; see
+	// native/render/sms_boot_rollblock.h for the pure spec + tests.
 	J3DModel* model = getModel();
 	MtxPtr base = model->getBaseTRMtx();
 

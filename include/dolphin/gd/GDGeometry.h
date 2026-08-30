@@ -2,12 +2,13 @@
 #define _DOLPHIN_GDGEOMETRY_H_
 
 #include <dolphin/gx/GXStruct.h>
+#include <dolphin/gd/GDBase.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// Command processor  IDs
+// Command processor register IDs
 #define CP_REG_MTXIDXA_ID     0x30 // Matrix index A
 #define CP_REG_MTXIDXB_ID     0x40 // Matrix index B
 #define CP_REG_VCD_LO_ID      0x50 // Vertex descriptor (lo)
@@ -90,7 +91,7 @@ extern "C" {
     )
 // clang-format on
 
-// Transform unit  IDs
+// Transform unit register IDs
 #define XF_REG_ERROR_ID        0x1000
 #define XF_REG_DIAGNOSTICS_ID  0x1001
 #define XF_REG_STATE0_ID       0x1002
@@ -183,6 +184,14 @@ void GDSetGenMode2(u8 nTexGens, u8 nChans, u8 nTevs, u8 nInds, GXCullMode cm);
 void GDSetLPSize(u8 lineWidth, u8 pointSize, GXTexOffset lineOffset,
                  GXTexOffset pointOffset, u8 lineHalfAspect);
 void GDSetCoPlanar(u8 enable);
+
+static inline void GDBegin(GXPrimitive type, GXVtxFmt vtx_fmt, u16 vtx_num)
+{
+	GDWrite_u8(vtx_fmt | type);
+	GDWrite_u16(vtx_num);
+}
+
+static inline void GDEnd(void) { }
 
 #ifdef __cplusplus
 }

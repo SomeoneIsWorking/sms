@@ -78,8 +78,8 @@ public:
 	BOOL checkBckPass(f32 pass_frame);
 	int getCurAnmIdx(int type) const;
 	void setFrameRate(f32 rate, int type);
-	void setBck(const char*);
-	void setBckFromIndex(int);
+	void setBck(const char* name);
+	void setBckFromIndex(int index);
 	void setSubBckFromIndex(int, int);
 	BOOL checkCurBckFromIndex(int);
 	void setSubBck(const char*, const char*);

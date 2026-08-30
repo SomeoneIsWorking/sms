@@ -9,6 +9,8 @@
 
 JDrama::TNameRef* TMarNameRefGen::getNameRef_BossEnemy(const char* name) const
 {
+	// SUNBRIGHT-KEEP: locally completed boss factory cases below remain absent
+	// upstream.
 
 	// TODO:
 	// if ( strcmp( name, "EMario" ) == 0 )

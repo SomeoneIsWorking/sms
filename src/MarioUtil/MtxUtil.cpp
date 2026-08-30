@@ -418,10 +418,11 @@ void SMS_MtxLookAt(MtxPtr, const JGeometry::TVec3<f32>&,
 
 void SMS_GetLightPerspectiveForEffectMtx(MtxPtr mtx)
 {
-	// The retail function passes this 3x4 destination to C_MTXPerspective,
-	// whose SDK signature writes a 4x4 matrix. That overflow is benign in the
-	// original PPC call layout but corrupts adjacent host memory. Build the 4x4
-	// projection separately and copy the observable 3x4 result.
+	// SUNBRIGHT-KEEP: The retail function passes this 3x4 destination to
+	// C_MTXPerspective, whose SDK signature writes a 4x4 matrix. That overflow
+	// is benign in the original PPC call layout but corrupts adjacent host
+	// memory. Build the 4x4 projection separately and copy the observable 3x4
+	// result.
 	Mtx44 projection;
 	C_MTXPerspective(projection, gpCamera->getFovy(), gpCamera->getAspect(),
 	                 gpCamera->getNear(), gpCamera->getFar());

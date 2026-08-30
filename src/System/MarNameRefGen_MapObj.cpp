@@ -41,6 +41,8 @@
 
 JDrama::TNameRef* TMarNameRefGen::getNameRef_MapObj(const char* name) const
 {
+	// SUNBRIGHT-KEEP: locally completed map-object factory cases below remain
+	// absent upstream.
 	if (strcmp(name, "MapObjBase") == 0)
 		return new TMapObjBase;
 

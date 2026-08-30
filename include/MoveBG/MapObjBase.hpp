@@ -143,7 +143,7 @@ public:
 	virtual ~TMapObjBase() { }
 	virtual void load(JSUMemoryInputStream&);
 	virtual void loadAfter();
-	virtual void perform(u32, JDrama::TGraphics*);
+	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
 	virtual BOOL receiveMessage(THitActor* sender, u32 message);
 	virtual MtxPtr getTakingMtx();
 	virtual void ensureTakeSituation();
@@ -342,6 +342,10 @@ public:
 
 	// Fabricated
 	const JGeometry::TVec3<f32>& getInitialScaling() { return mInitialScaling; }
+	const JGeometry::TVec3<f32>& getInitialPosition() const
+	{
+		return mInitialPosition;
+	}
 
 	const char* getUnkF4() { return unkF4; }
 

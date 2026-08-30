@@ -35,6 +35,8 @@ TStageEnemyInfo* TStageEnemyInfoTable::getMatchedInfo(s32 param_1)
 	if (weightSum == 0)
 		return nullptr;
 
+	// SUNBRIGHT-KEEP: the floating add prevents RAND_MAX + 1 from overflowing
+	// int.
 	s32 x = rand() * (1.f / (RAND_MAX + 1.0f)) * weightSum;
 	for (TStageEnemyInfo** it = begin(); it != end(); ++it) {
 		TStageEnemyInfo* info = *it;

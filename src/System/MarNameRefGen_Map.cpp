@@ -13,6 +13,8 @@
 
 JDrama::TNameRef* TMarNameRefGen::getNameRef_Map(const char* name) const
 {
+	// SUNBRIGHT-KEEP: locally completed map factory cases below remain absent
+	// upstream.
 	if (strcmp(name, "Map") == 0)
 		return new TMap;
 

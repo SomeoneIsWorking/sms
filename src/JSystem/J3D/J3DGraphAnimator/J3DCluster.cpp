@@ -399,8 +399,8 @@ void J3DSkinDeform::deform(J3DModel* model)
 {
 	Mtx* anmMtx = nullptr;
 	Mtx* mtxArr[2];
-	mtxArr[0] = model->mNodeMatrices;
-	mtxArr[1] = model->mWEvlpMtx;
+	mtxArr[0] = (Mtx*)model->getAnmMtx(0);
+	mtxArr[1] = (Mtx*)model->getWeightAnmMtx(0);
 
 	if (model->checkFlag(0x4)) {
 		model->getVertexBuffer()->swapTransformedVtxPos();

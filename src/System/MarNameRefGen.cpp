@@ -53,6 +53,9 @@ template class TViewObjPtrListT<THitActor, TViewObj>;
 
 JDrama::TNameRef* TMarNameRefGen::getNameRef(const char* name) const
 {
+	// SUNBRIGHT-KEEP: this factory contains locally completed object cases that
+	// upstream still leaves commented out; replacing the file makes stage
+	// construction fail at the first one.
 	if (strcmp(name, "BindShadow") == 0)
 		return new TMBindShadowManager;
 

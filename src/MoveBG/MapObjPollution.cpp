@@ -1,4 +1,3 @@
-#include <JSystem/JSupport/JSUInputStream.hpp> // JSU_BE32 / JSU_BE32_INPLACE
 #include <MoveBG/MapObjPollution.hpp>
 #include <MoveBG/MapObjManager.hpp>
 #include <Map/PollutionManager.hpp>
@@ -13,12 +12,12 @@
 #include <MSound/MSSetSound.hpp>
 #include <MSound/MSoundBGM.hpp>
 
-void TPolluterBase::perform(u32 param_1, JDrama::TGraphics* param_2)
+void TPolluterBase::perform(u32 cue, JDrama::TGraphics*)
 {
-	if (param_1 & 2)
+	if (cue & CUE_CALC_ANIM)
 		unk138->calcAnm();
 
-	if (param_1 & 0x200)
+	if (cue & CUE_ENTRY)
 		gpPollution->stampModel(unk138->getModel());
 }
 
@@ -82,9 +81,9 @@ TRevivalPolluter::TRevivalPolluter()
 {
 }
 
-void TMapObjRevivalPollution::perform(u32 param_1, JDrama::TGraphics* param_2)
+void TMapObjRevivalPollution::perform(u32 cue, JDrama::TGraphics*)
 {
-	if (!(param_1 & 2))
+	if (!(cue & CUE_CALC_ANIM))
 		return;
 
 	for (int i = 0; i < unk10; ++i)
@@ -102,9 +101,7 @@ void TMapObjRevivalPollution::loadAfter()
 void TMapObjRevivalPollution::load(JSUMemoryInputStream& stream)
 {
 	JDrama::TViewObj::load(stream);
-	stream.read(&unk10, 4);
-	// BE dword on disc; raw read(&x,4) does not swap (JSU raw-read class).
-	unk10 = (s32)JSU_BE32((u32)unk10);
+	stream >> unk10;
 	unk14 = new TRevivalPolluter[unk10];
 	for (int i = 0; i < unk10; ++i)
 		unk14[i].loadInfo(stream);

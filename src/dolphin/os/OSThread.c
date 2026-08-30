@@ -170,7 +170,7 @@ static int __OSIsThreadActive(OSThread* thread)
 
 s32 OSDisableScheduler(void)
 {
-	 int enabled;
+	register int enabled;
 	long count;
 
 	enabled    = OSDisableInterrupts();
@@ -182,7 +182,7 @@ s32 OSDisableScheduler(void)
 
 s32 OSEnableScheduler(void)
 {
-	 int enabled;
+	register int enabled;
 	long count;
 
 	enabled    = OSDisableInterrupts();

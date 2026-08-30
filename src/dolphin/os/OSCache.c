@@ -6,7 +6,7 @@
 
 #include "__os.h"
 
-// Can't use this due to weird condition  issues
+// Can't use this due to weird condition register issues
 // #include "asm_types.h"
 #define HID2 920
 
@@ -70,7 +70,7 @@ asm void DCUnfreeze(void)
 #endif // clang-format on
 }
 
-asm void DCTouchLoad( void* addr)
+asm void DCTouchLoad(register void* addr)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -79,7 +79,7 @@ asm void DCTouchLoad( void* addr)
 #endif // clang-format on
 }
 
-asm void DCBlockZero( void* addr)
+asm void DCBlockZero(register void* addr)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -88,7 +88,7 @@ asm void DCBlockZero( void* addr)
 #endif // clang-format on
 }
 
-asm void DCBlockStore( void* addr)
+asm void DCBlockStore(register void* addr)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -97,7 +97,7 @@ asm void DCBlockStore( void* addr)
 #endif // clang-format on
 }
 
-asm void DCBlockFlush( void* addr)
+asm void DCBlockFlush(register void* addr)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -106,7 +106,7 @@ asm void DCBlockFlush( void* addr)
 #endif // clang-format on
 }
 
-asm void DCBlockInvalidate( void* addr)
+asm void DCBlockInvalidate(register void* addr)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -115,7 +115,7 @@ asm void DCBlockInvalidate( void* addr)
 #endif // clang-format on
 }
 
-asm void DCInvalidateRange( void* addr,  u32 nBytes)
+asm void DCInvalidateRange(register void* addr, register u32 nBytes)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -137,7 +137,7 @@ asm void DCInvalidateRange( void* addr,  u32 nBytes)
 #endif // clang-format on
 }
 
-asm void DCFlushRange( void* addr,  u32 nBytes)
+asm void DCFlushRange(register void* addr, register u32 nBytes)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -160,7 +160,7 @@ asm void DCFlushRange( void* addr,  u32 nBytes)
 #endif // clang-format on
 }
 
-asm void DCStoreRange( void* addr,  u32 nBytes)
+asm void DCStoreRange(register void* addr, register u32 nBytes)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -184,7 +184,7 @@ asm void DCStoreRange( void* addr,  u32 nBytes)
 #endif // clang-format on
 }
 
-asm void DCFlushRangeNoSync( void* addr,  u32 nBytes)
+asm void DCFlushRangeNoSync(register void* addr, register u32 nBytes)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -206,7 +206,7 @@ asm void DCFlushRangeNoSync( void* addr,  u32 nBytes)
 #endif // clang-format on
 }
 
-asm void DCStoreRangeNoSync( void* addr,  u32 nBytes)
+asm void DCStoreRangeNoSync(register void* addr, register u32 nBytes)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -229,7 +229,7 @@ asm void DCStoreRangeNoSync( void* addr,  u32 nBytes)
 #endif // clang-format on
 }
 
-asm void DCZeroRange( void* addr,  u32 nBytes)
+asm void DCZeroRange(register void* addr, register u32 nBytes)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -252,7 +252,7 @@ asm void DCZeroRange( void* addr,  u32 nBytes)
 #endif // clang-format on
 }
 
-asm void DCTouchRange( void* addr,  u32 nBytes)
+asm void DCTouchRange(register void* addr, register u32 nBytes)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -275,7 +275,7 @@ asm void DCTouchRange( void* addr,  u32 nBytes)
 #endif // clang-format on
 }
 
-asm void ICInvalidateRange( void* addr,  u32 nBytes)
+asm void ICInvalidateRange(register void* addr, register u32 nBytes)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -358,7 +358,7 @@ asm void ICUnfreeze(void)
 #endif // clang-format on
 }
 
-asm void ICBlockInvalidate( void* addr)
+asm void ICBlockInvalidate(register void* addr)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -470,7 +470,7 @@ asm void LCDisable(void)
 #endif // clang-format on
 }
 
-asm void LCAllocOneTag( BOOL invalidate,  void* tag)
+asm void LCAllocOneTag(register BOOL invalidate, register void* tag)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -483,8 +483,8 @@ asm void LCAllocOneTag( BOOL invalidate,  void* tag)
 #endif // clang-format on
 }
 
-asm void LCAllocTags( BOOL invalidate,  void* startTag,
-                      u32 numBlocks)
+asm void LCAllocTags(register BOOL invalidate, register void* startTag,
+                     register u32 numBlocks)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -510,8 +510,8 @@ asm void LCAllocTags( BOOL invalidate,  void* startTag,
 #endif // clang-format on
 }
 
-asm void LCLoadBlocks( void* destTag,  void* srcAddr,
-                       u32 numBlocks)
+asm void LCLoadBlocks(register void* destTag, register void* srcAddr,
+                      register u32 numBlocks)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -527,8 +527,8 @@ asm void LCLoadBlocks( void* destTag,  void* srcAddr,
 #endif // clang-format on
 }
 
-asm void LCStoreBlocks( void* destAddr,  void* srcTag,
-                        u32 numBlocks)
+asm void LCStoreBlocks(register void* destAddr, register void* srcTag,
+                       register u32 numBlocks)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
@@ -636,7 +636,7 @@ asm u32 LCQueueLength(void)
 #endif // clang-format on
 }
 
-asm void LCQueueWait( u32 len)
+asm void LCQueueWait(register u32 len)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc

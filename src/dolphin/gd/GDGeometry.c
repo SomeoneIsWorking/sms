@@ -279,11 +279,6 @@ void GDSetArray(GXAttr attr, void* base_ptr, u8 stride)
 		cpAttr = attr - GX_VA_POS;
 	}
 
-	// Bake the raw CP writes as the original decomp does. On Aurora the
-	// CP_REG_ARRAYBASE_ID write is silently ignored (see the fifo command
-	// processor); the correct 64-bit base pointer is supplied at draw time
-	// by J3DShape::loadVtxArray -> J3DLoadArrayBasePtr's AURORA_LOAD_ARRAYBASE
-	// emission. Stride still comes from this bakery.
 	GDWriteCPCmd(cpAttr + CP_REG_ARRAYBASE_ID, OSCachedToPhysical(base_ptr));
 	GDWriteCPCmd(cpAttr + CP_REG_ARRAYSTRIDE_ID, stride);
 }

@@ -41,7 +41,7 @@ TLensFlare::TLensFlare(const char* name)
 	unk14 = new J3DModel(unk10, 0, 1);
 }
 
-void TLensFlare::perform(u32 param_1, JDrama::TGraphics*)
+void TLensFlare::perform(u32 cue, JDrama::TGraphics*)
 {
 	if (gpSunMgr->isThing())
 		return;
@@ -53,7 +53,7 @@ void TLensFlare::perform(u32 param_1, JDrama::TGraphics*)
 		sunInBounds = gpSunModel->isInBounds(unk40);
 	}
 
-	if (param_1 & 1) {
+	if (cue & CUE_MOVE) {
 		if (!gpSunModel->isInBounds(unk44)) {
 			unk28 = 0.0f;
 		} else {
@@ -81,7 +81,7 @@ void TLensFlare::perform(u32 param_1, JDrama::TGraphics*)
 	if (!sunInBounds)
 		return;
 
-	if (param_1 & 2) {
+	if (cue & CUE_CALC_ANIM) {
 		JGeometry::TVec3<f32> sunWorldPos = gpSunModel->unk198;
 
 		// TODO: a mystery is happening here with the args, but it's definitely
@@ -94,16 +94,6 @@ void TLensFlare::perform(u32 param_1, JDrama::TGraphics*)
 
 		f32 tx = unk3C * -gpSunModel->unkF8[0].x;
 		f32 ty = unk3C * -gpSunModel->unkF8[0].y;
-		// DIAGNOSTIC ONLY (not the fix): clamp the bilinear weights back into
-		// the [-1,1] near-plane-relative range the CLBCalcNearNinePos corner
-		// vectors are meant to be interpolated over, to test whether the
-		// unk3C=30000 multiplier blowing tx/ty out to +-1e4/1e5 is what turns
-		// the flare model's orientation into the observed screen-spanning
-		// stretch. See debug_journal for the causation finding.
-		if (getenv("SB_LF_CLAMP_DIAG")) {
-			tx = -gpSunModel->unkF8[0].x;
-			ty = -gpSunModel->unkF8[0].y;
-		}
 		f32 lx = near9grid[4].x + (near9grid[5].x - near9grid[4].x) * tx
 		         + (near9grid[1].x - near9grid[4].x) * ty;
 		f32 ly = near9grid[4].y + (near9grid[5].y - near9grid[4].y) * tx
@@ -125,29 +115,9 @@ void TLensFlare::perform(u32 param_1, JDrama::TGraphics*)
 		            unk18.x, unk18.y, unk18.z);
 		unk14->setBaseTRMtx(mtx);
 		unk14->calc();
-
-		if (getenv("SB_LF_DBG")) {
-			fprintf(stderr,
-			        "[lensflare] sunNDC=(%.4f,%.4f) sunWorld=(%.1f,%.1f,%.1f) "
-			        "tx=%.2f ty=%.2f grid4=(%.1f,%.1f,%.1f) grid5=(%.1f,%.1f,%.1f) "
-			        "grid1=(%.1f,%.1f,%.1f) target=(%.1f,%.1f,%.1f) "
-			        "dir=(%.1f,%.1f,%.1f) rotDeg=(%.2f,%.2f,%.2f) "
-			        "camEye=(%.1f,%.1f,%.1f) camTgt=(%.1f,%.1f,%.1f) "
-			        "near=%.2f fovy=%.2f aspect=%.2f unk18=(%.1f,%.1f,%.1f)\n",
-			        gpSunModel->unkF8[0].x, gpSunModel->unkF8[0].y,
-			        sunWorldPos.x, sunWorldPos.y, sunWorldPos.z, tx, ty,
-			        near9grid[4].x, near9grid[4].y, near9grid[4].z,
-			        near9grid[5].x, near9grid[5].y, near9grid[5].z,
-			        near9grid[1].x, near9grid[1].y, near9grid[1].z, lx, ly, lz,
-			        dir.x, dir.y, dir.z, rot.x, rot.y, rot.z, gpCamera->unk124.x,
-			        gpCamera->unk124.y, gpCamera->unk124.z, gpCamera->mTarget.x,
-			        gpCamera->mTarget.y, gpCamera->mTarget.z, gpCamera->getNear(),
-			        gpCamera->getFovy(), gpCamera->getAspect(), unk18.x, unk18.y,
-			        unk18.z);
-		}
 	}
 
-	if (param_1 & 0x200) {
+	if (cue & CUE_ENTRY) {
 		int matCount = unk10->getMaterialNum();
 		for (u16 i = 0; i < matCount; ++i) {
 			unk10->getMaterialNodePointer(i)->change();
@@ -159,6 +129,6 @@ void TLensFlare::perform(u32 param_1, JDrama::TGraphics*)
 		unk14->entry();
 	}
 
-	if (param_1 & 4)
+	if (cue & CUE_CALC_VIEW)
 		unk14->viewCalc();
 }

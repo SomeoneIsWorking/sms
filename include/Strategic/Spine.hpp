@@ -162,7 +162,7 @@ public:
 	// fabricated
 	bool isIdle() const { return mCurrent == nullptr && mVertebrae.empty(); }
 
-	// fabricated (from upstream/main) — needed by the adopted bossManta TU.
+	// fabricated
 	int getVertebraeCount() const { return mVertebrae.size(); }
 };
 
