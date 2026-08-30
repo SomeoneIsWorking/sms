@@ -823,7 +823,7 @@ TLightWithDBSetManager::TLightWithDBSetManager(const char* name)
 #ifdef SMS_NATIVE_PLATFORM
 	// Allocate the 4-entry light-set array the managers index by light kind
 	// (player/mapobj/object/indirect). The decomp's empty ctor left mLightSets
-	// wild, so the first getUnk14(i)->mEnabled = 1 (TLiveManager ctor)
+	// wild, so the first getLightSet(i)->enable() (TLiveManager ctor)
 	// dereferenced garbage.
 	mMarioLight = new TLightMario;
 	mLightSets = new TLightWithDBSet*[4];
@@ -1008,4 +1008,3 @@ void TLightWithDBSetManager::makeDrawBuffer()
 		if (mLightSets[i]->mEnabled)
 			mLightSets[i]->makeDrawBuffer();
 }
-

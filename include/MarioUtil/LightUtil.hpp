@@ -11,6 +11,16 @@ class J3DDrawBuffer;
 class TLightWithDBSet;
 class TLightMario;
 
+enum {
+	LIGHT_TYPE_PLAYER    = 0,
+	LIGHT_TYPE_OBJECT    = 1,
+	LIGHT_TYPE_MAPOBJECT = 2,
+	LIGHT_TYPE_INDIRECT  = 3,
+
+	LIGHT_TYPE_COUNT,
+	LIGHT_TYPE_FIRST = LIGHT_TYPE_PLAYER,
+};
+
 class TLightWithDBSetManager : public JDrama::TViewObj {
 public:
 	TLightWithDBSetManager(const char*);
@@ -32,7 +42,7 @@ public:
 	    JDrama::TViewObjPtrListT<JDrama::TViewObj, JDrama::TViewObj>*);
 
 	// fabricated (renamed for clarity — see mLightSets below)
-	TLightWithDBSet* getUnk14(int i) { return mLightSets[i]; }
+	TLightWithDBSet* getLightSet(int i) { return mLightSets[i]; }
 
 public:
 	/* 0x10 */ TLightMario* mMarioLight;                    // was unk10
@@ -129,6 +139,7 @@ public:
 	void changeLightDrawBuffer(int);
 	void addChildGroupObj(
 	    JDrama::TViewObjPtrListT<JDrama::TViewObj, JDrama::TViewObj>*);
+	void enable() { mEnabled = 1; }
 
 public:
 	/* 0x10 */ TLightDrawBuffer** mDrawBuffers;             // was unk10 — allocated by makeDrawBuffer, iterated in perform

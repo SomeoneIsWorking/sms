@@ -300,7 +300,7 @@ void MActor::updateInSubBck()
 		return;
 
 	for (int i = 0; i < mAnmData->getIncidentalAnmNum(); ++i)
-		if (unk10[i]->getUnk0() >= 0)
+		if (unk10[i]->getCurIdx() >= 0)
 			unk10[i]->updateIn();
 }
 
@@ -310,7 +310,7 @@ void MActor::updateOutSubBck()
 		return;
 
 	for (int i = 0; i < mAnmData->getIncidentalAnmNum(); ++i)
-		if (unk10[i]->getUnk0() >= 0)
+		if (unk10[i]->getCurIdx() >= 0)
 			unk10[i]->updateOut();
 }
 
@@ -369,8 +369,8 @@ void MActor::setLightData(const TBGCheckData* param_1,
 
 void MActor::setLightType(int light_type)
 {
-	unk44                                         = param_1;
-	gpLightManager->mLightSets[param_1]->mEnabled = 1;
+	unk44 = light_type;
+	gpLightManager->getLightSet(light_type)->enable();
 }
 
 void MActor::update() { }
@@ -406,7 +406,7 @@ void MActor::frameUpdate()
 
 	if (unk10)
 		for (int i = 0; i < mAnmData->getIncidentalAnmNum(); ++i)
-			if (unk10[i]->getUnk0() >= 0)
+			if (unk10[i]->getCurIdx() >= 0)
 				unk10[i]->getFrameCtrl()->update();
 }
 
