@@ -151,6 +151,9 @@ void J2DGrafContext::setLineWidth(u8 lineWidth)
 
 void J2DGrafContext::fillBox(const JUTRect& box)
 {
+#ifdef SMS_NATIVE_PLATFORM
+	sb_native_j2d_fill_box_submit(this, &box);
+#endif
 	GXSetBlendMode(mBoxPart.mType, mBoxPart.mSrcFactor, mBoxPart.mDstFactor,
 	               GX_LO_SET);
 	GXLoadPosMtxImm(mPosMtx, GX_PNMTX0);
