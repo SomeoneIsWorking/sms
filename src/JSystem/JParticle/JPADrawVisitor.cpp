@@ -12,6 +12,10 @@
 #include <dolphin/gx.h>
 #include <macros.h>
 
+#ifdef SMS_NATIVE_PLATFORM
+#include <sb_native_particle.h>
+#endif
+
 JPADrawClipBoard* JPADrawContext::pcb;
 
 // from tww, fabricated?
@@ -328,6 +332,13 @@ void JPADrawExecBillBoard::exec(const JPADrawContext* dc,
 {
 	if (particle->isInvisibleParticle())
 		return;
+
+#ifdef SMS_NATIVE_PLATFORM
+	// Publish the same high-level billboard inputs to the PC-native renderer. The original body
+	// remains below so Aurora continues to provide an independent content oracle while this lane is
+	// being brought up.
+	(void)sb_native_particle_submit_billboard(dc, particle);
+#endif
 
 	f32 scaleX = particle->getDrawParamPPtr()->mScaleX;
 	f32 scaleY = particle->getDrawParamPPtr()->mScaleY;
