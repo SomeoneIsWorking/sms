@@ -378,6 +378,7 @@ void TLightCommon::setLight(const JDrama::TGraphics* graphics, int idx)
 		lighting.primaryRgba[1]          = primaryColor.g;
 		lighting.primaryRgba[2]          = primaryColor.b;
 		lighting.primaryRgba[3]          = primaryColor.a;
+		lighting.shininess               = mShininess;
 		lighting.ambientRgba[0]          = sb_amb.r;
 		lighting.ambientRgba[1]          = sb_amb.g;
 		lighting.ambientRgba[2]          = sb_amb.b;
