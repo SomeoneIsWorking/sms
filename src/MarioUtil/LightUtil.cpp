@@ -1,6 +1,10 @@
 #include <MarioUtil/LightUtil.hpp>
 #ifdef SMS_NATIVE_PLATFORM
+#include <native_j3d_lighting_bridge.h>
 #include <sb_log.h>
+extern "C" void
+sb_native_j3d_publish_stage_lighting(const SbNativeJ3dStageLighting*)
+    __attribute__((weak));
 #endif
 #include <JSystem/J3D/J3DGraphBase/J3DSys.hpp>
 #include <JSystem/JDrama/JDRDrawBufObj.hpp>
@@ -273,18 +277,29 @@ void TLightCommon::setLight(const JDrama::TGraphics* graphics, int idx)
 
 	const int  gi   = idx * 2;              // getter idx (faithful to `slwi r31, r30, 1`)
 	MtxPtr     view = const_cast<JDrama::TGraphics*>(graphics)->getViewMtx();
+	const JGeometry::TVec3<f32>* primaryWorldPosition = getLightPosition(gi);
+	GXColor primaryColor                              = getLightColor(gi);
+	const bool effectEnabled = gpLightManager && gpLightManager->mEffectEnabled
+	                           && gpLightManager->mEffectValid;
+	GXColor effectColor { };
+	if (effectEnabled) {
+		effectColor   = gpLightManager->mEffectColor;
+		effectColor.a = static_cast<u8>(
+		    static_cast<int>(static_cast<f32>(effectColor.a)
+		                     * gpLightManager->mEffectAlphaScale));
+	}
 
 	GXLightObj obj{};
 
 	// --- GX_LIGHT0 — positional world light (Light-Group[idx+mLightBaseIdx]). ---
 	{
-		const JGeometry::TVec3<f32>* wpos = getLightPosition(gi);
 		JGeometry::TVec3<f32>        vpos;
-		PSMTXMultVec(view, const_cast<JGeometry::TVec3<f32>*>(wpos), &vpos);
+		PSMTXMultVec(view,
+		             const_cast<JGeometry::TVec3<f32>*>(primaryWorldPosition),
+		             &vpos);
 		GXInitLightPos(&obj, vpos.x, vpos.y, vpos.z);
 
-		GXColor col = getLightColor(gi);
-		GXInitLightColor(&obj, col);
+		GXInitLightColor(&obj, primaryColor);
 
 		// GXInitLightAttn(a0=1, a1=0, a2=0, k0=1, k1=0, k2=0) — GC default.
 		GXInitLightAttn(&obj, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f);
@@ -295,7 +310,7 @@ void TLightCommon::setLight(const JDrama::TGraphics* graphics, int idx)
 	// on mEffectEnabled && mEffectValid. Position is the manager's Vec3<f32>
 	// aliased over unk1C/unk20/unk24 (the header keeps those as u32 slots
 	// because the ctor writes them through `unk1C = unk20 = unk24 = 0`). ---
-	if (gpLightManager && gpLightManager->mEffectEnabled && gpLightManager->mEffectValid) {
+	if (effectEnabled) {
 		// Reinterpret the 3 consecutive u32 slots as a Vec3<f32> — the game's
 		// C++ source did this by pointer arithmetic on the manager instance.
 		const JGeometry::TVec3<f32>* mgrPos =
@@ -305,10 +320,7 @@ void TLightCommon::setLight(const JDrama::TGraphics* graphics, int idx)
 		GXInitLightPos(&obj, vpos.x, vpos.y, vpos.z);
 
 		// Color: manager's mEffectColor with alpha scaled by mEffectAlphaScale.
-		GXColor col = gpLightManager->mEffectColor;
-		col.a = static_cast<u8>(static_cast<int>(static_cast<f32>(col.a)
-		                                        * gpLightManager->mEffectAlphaScale));
-		GXInitLightColor(&obj, col);
+		GXInitLightColor(&obj, effectColor);
 
 		// Spot(1, 0=OFF) + DistAttn(-0x17a0, -0x179c, 3=EXP) — SDA2 constants.
 		GXInitLightAttnA(&obj, 1.0f, 0.0f, 0.0f);
@@ -319,15 +331,15 @@ void TLightCommon::setLight(const JDrama::TGraphics* graphics, int idx)
 
 	// --- GX_LIGHT2 — specular-directional (dir = -normalize(view-pos)). ---
 	{
-		const JGeometry::TVec3<f32>* wpos = getLightPosition(gi);
 		JGeometry::TVec3<f32>        vpos;
-		PSMTXMultVec(view, const_cast<JGeometry::TVec3<f32>*>(wpos), &vpos);
+		PSMTXMultVec(view,
+		             const_cast<JGeometry::TVec3<f32>*>(primaryWorldPosition),
+		             &vpos);
 		JGeometry::TVec3<f32> nrm = vpos;
 		PSVECNormalize(&nrm, &nrm);
 		GXInitSpecularDir(&obj, -nrm.x, -nrm.y, -nrm.z);
 
-		GXColor col = getLightColor(gi);
-		GXInitLightColor(&obj, col);
+		GXInitLightColor(&obj, primaryColor);
 		// GX_LIGHT2 SPECULAR attenuation (GMSE01 @0x80229c30-c54): the retail
 		// setLight feeds GXInitLightAttn(0,0,1, s/2,0,1-s/2) — GXInitLightShininess
 		// inlined — with s = this->mShininess (=50.0f after loadAfter, giving
@@ -353,6 +365,36 @@ void TLightCommon::setLight(const JDrama::TGraphics* graphics, int idx)
 	SB_LOGC("setlight", "idx=%d getAmbColor=(%02x,%02x,%02x,%02x) mUseLocalColor=%d mAmbBaseIdx=%d",
 	        idx, sb_amb.r, sb_amb.g, sb_amb.b, sb_amb.a, (int)mUseLocalColor, (int)mAmbBaseIdx);
 	GXSetChanAmbColor(GX_COLOR0A0, sb_amb);
+#ifdef SMS_NATIVE_PLATFORM
+	if (sb_native_j3d_publish_stage_lighting) {
+		SbNativeJ3dStageLighting lighting { };
+		for (int row = 0; row < 3; ++row)
+			for (int column = 0; column < 4; ++column)
+				lighting.view[row * 4 + column] = view[row][column];
+		lighting.primaryWorldPosition[0] = primaryWorldPosition->x;
+		lighting.primaryWorldPosition[1] = primaryWorldPosition->y;
+		lighting.primaryWorldPosition[2] = primaryWorldPosition->z;
+		lighting.primaryRgba[0]          = primaryColor.r;
+		lighting.primaryRgba[1]          = primaryColor.g;
+		lighting.primaryRgba[2]          = primaryColor.b;
+		lighting.primaryRgba[3]          = primaryColor.a;
+		lighting.ambientRgba[0]          = sb_amb.r;
+		lighting.ambientRgba[1]          = sb_amb.g;
+		lighting.ambientRgba[2]          = sb_amb.b;
+		lighting.ambientRgba[3]          = sb_amb.a;
+		lighting.effectEnabled           = effectEnabled;
+		if (effectEnabled) {
+			lighting.effectWorldPosition[0] = gpLightManager->mEffectPos.x;
+			lighting.effectWorldPosition[1] = gpLightManager->mEffectPos.y;
+			lighting.effectWorldPosition[2] = gpLightManager->mEffectPos.z;
+			lighting.effectRgba[0]          = effectColor.r;
+			lighting.effectRgba[1]          = effectColor.g;
+			lighting.effectRgba[2]          = effectColor.b;
+			lighting.effectRgba[3]          = effectColor.a;
+		}
+		sb_native_j3d_publish_stage_lighting(&lighting);
+	}
+#endif
 }
 
 // Native port of TLightCommon::perform (@0x802298fc). Two independent phase
