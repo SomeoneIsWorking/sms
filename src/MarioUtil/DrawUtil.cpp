@@ -1,12 +1,17 @@
 #include <MarioUtil/DrawUtil.hpp>
+#include <MarioUtil/DamageFog.hpp>
 #include <MarioUtil/MathUtil.hpp>
 #include <Player/MarioAccess.hpp>
 #include <Camera/SunMgr.hpp>
+#include <Camera/Camera.hpp>
 #include <Map/JointModel.hpp>
 #include <Map/PollutionManager.hpp>
 #include <Map/PollutionLayer.hpp>
+#include <System/MarDirector.hpp>
 #include <System/TexCache.hpp>
+#include <JSystem/JDrama/JDRGraphics.hpp>
 #include <JSystem/JUtility/JUTTexture.hpp>
+#include <JSystem/JMath.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DMaterial.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DSys.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DShape.hpp>
@@ -182,12 +187,41 @@ void TTrembleModelEffect::movement() { }
 
 void TTrembleModelEffect::reset() { }
 
-void SMS_AddDamageFogEffect(J3DModelData*, const JGeometry::TVec3<f32>&,
-                            JDrama::TGraphics*)
+void SMS_ResetDamageFogEffect(J3DModelData* modelData)
 {
+	const SMSDamageFog::Range range
+	    = SMSDamageFog::resetRange(gpCamera->getFar());
+	for (u16 index = 0; index < modelData->getMaterialNum(); ++index) {
+		J3DFog* fog
+		    = modelData->getMaterialNodePointer(index)->getPEBlock()->getFog();
+		fog->mStartZ = range.start;
+		fog->mEndZ   = range.end;
+		fog->mNearZ  = gpCamera->getNear();
+		fog->mFarZ   = gpCamera->getFar();
+	}
 }
 
-void SMS_ResetDamageFogEffect(J3DModelData*) { }
+void SMS_AddDamageFogEffect(J3DModelData* modelData,
+                            const JGeometry::TVec3<f32>& worldPosition,
+                            JDrama::TGraphics* graphics)
+{
+	JGeometry::TVec3<f32> viewPosition;
+	PSMTXMultVec(graphics->getViewMtx(),
+	             const_cast<JGeometry::TVec3<f32>*>(&worldPosition),
+	             &viewPosition);
+	const s16 angle
+	    = SMSDamageFog::waveAngle(static_cast<u32>(gpMarDirector->unk58));
+	const SMSDamageFog::Range range
+	    = SMSDamageFog::activeRange(viewPosition.z, JMASSin(angle));
+	for (u16 index = 0; index < modelData->getMaterialNum(); ++index) {
+		J3DFog* fog
+		    = modelData->getMaterialNodePointer(index)->getPEBlock()->getFog();
+		fog->mStartZ = range.start;
+		fog->mEndZ   = range.end;
+		fog->mNearZ  = gpCamera->getNear();
+		fog->mFarZ   = gpCamera->getFar();
+	}
+}
 
 // fabricated
 struct Plane {
