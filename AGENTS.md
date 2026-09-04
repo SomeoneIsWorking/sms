@@ -208,7 +208,7 @@ Every symbol present in the binary with address, size, type, scope and alignment
 mangled_name = .section:0xADDRESS; // type:function size:0xSIZE scope:global align:4
 ```
 
-Scope is `global`, `local` (static), or `weak` (inline/header-defined). Mangled names use MWCC's mangling scheme (similar to but not identical to Itanium ABI). The `bulk_demangle.sh` script or objdiff can demangle them.
+Scope is `global`, `local` (static), or `weak` (inline/header-defined). Mangled names use MWCC's mangling scheme (similar to but not identical to Itanium ABI). The `bulk_demangle.py` tool or objdiff can demangle them.
 
 ### `config/GMSJ01/splits.txt`
 
