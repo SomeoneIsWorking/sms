@@ -903,9 +903,14 @@ int TApplication::gameLoop()
 			// size 16, C_MTXOrtho <- TApplication::gameLoop). Same values written,
 			// host corruption removed.
 			Mtx44 afStack_1ac;
-			C_MTXOrtho(afStack_1ac, 0.0f, (f32)video->mNextRenderMode.fbWidth,
-			           0.0f, (f32)video->mNextRenderMode.efbHeight, -1.0f,
-			           1.0f);
+			// C_MTXOrtho takes (top, bottom, left, right) -- the vertical pair
+			// first. Retail loads `bottom` from efbHeight and `right` from
+			// fbWidth (0x802a623c..0x802a6278); passing the width as `bottom`
+			// and the height as `right` projects a 448-wide by 640-tall screen,
+			// so the full-frame fade box would cover neither the right of the
+			// frame nor its lower third.
+			C_MTXOrtho(afStack_1ac, 0.0f, (f32)video->mNextRenderMode.efbHeight,
+			           0.0f, (f32)video->mNextRenderMode.fbWidth, -1.0f, 1.0f);
 			GXSetProjection(afStack_1ac, GX_ORTHOGRAPHIC);
 			mFader->update();
 			mFader->draw(JDrama::TRect(0, 0, video->mNextRenderMode.fbWidth,
