@@ -617,7 +617,14 @@ config.libs = [
             Object(Matching, "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/string.c"),
             Object(Matching, "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/strtoul.c"),
             Object(Matching, "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/float.c"),
-            Object(Matching, "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common_Embedded/uart_consolle_io.c"),
+            # Upstream spells this one "uart_consolle_io.c", a source that does not
+            # exist; the same object is declared correctly in the PowerPC_EABI_H
+            # library above, and the file on disk is uart_console_io.c. The real
+            # build would fail to find it, which nothing here noticed because
+            # nothing read this list. See the parent repository's
+            # tools/decomp/hostcheck.py, which reconciles the declared objects
+            # against the tree and fails the gate on either direction of drift.
+            Object(Matching, "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common_Embedded/uart_console_io.c"),
             Object(Matching, "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/wchar_io.c"),
             Object(Matching, "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common_Embedded/Math/Double_precision/e_asin.c"),
             Object(Matching, "PowerPC_EABI_Support/Msl/MSL_C/MSL_Common_Embedded/Math/Double_precision/e_atan2.c"),
