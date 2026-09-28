@@ -82,23 +82,7 @@ void TTamaNokoFlower::perform(u32 cue, JDrama::TGraphics* graphics)
 						JGeometry::TVec3<f32> local_88(0.0f, 0.0f, 350.0f);
 						Mtx local_b8;
 
-						f32 s = JMASin((i + 1) * 72.0f);
-						f32 c = JMACos((i + 1) * 72.0f);
-
-						local_b8[0][0] = c;
-						local_b8[0][1] = 0.0f;
-						local_b8[0][2] = s;
-						local_b8[0][3] = 0.0f;
-
-						local_b8[1][0] = 0.0f;
-						local_b8[1][1] = 1.0f;
-						local_b8[1][2] = 0.0f;
-						local_b8[1][3] = 0.0f;
-
-						local_b8[2][0] = -s;
-						local_b8[2][1] = 0.0f;
-						local_b8[2][3] = 0.0f;
-						local_b8[2][2] = c;
+						MsMtxSetRotY(local_b8, (i + 1) * 72.0f);
 
 						MTXMultVec(local_b8, &local_88, &unk20);
 
@@ -155,8 +139,7 @@ void TTamaNokoFlower::perform(u32 cue, JDrama::TGraphics* graphics)
 void TTamaNokoFlower::setBckAnm(int idx)
 {
 	getMActor()->setBckFromIndex(0);
-	const char** basTable = unk10->getBasNameTable();
-	unk30                 = !basTable ? nullptr : basTable[idx];
+	unk30 = unk10->getBas(idx);
 	if (unk30 != nullptr) {
 		unk2C->initAnmSound(JKRGetResource(unk30), 1, 0.0f);
 	} else {
@@ -330,9 +313,9 @@ void TTamaNoko::walkBehavior(int param_1, f32 param_2)
 
 	f32 fVar3;
 	if (diff > 0.0f) {
-		fVar3 = diff > mTurnSpeed * param_2 ? mTurnSpeed * param_2 : diff;
+		fVar3 = MsMin(diff, mTurnSpeed * param_2);
 	} else {
-		fVar3 = diff > -mTurnSpeed * param_2 ? diff : -mTurnSpeed * param_2;
+		fVar3 = MsMax(diff, -mTurnSpeed * param_2);
 	}
 
 	mRotation.y = MsWrap(mRotation.y + fVar3, 0.0f, 360.0f);
@@ -522,20 +505,20 @@ void TTamaNoko::requestShadow()
 				local_38.y = mGroundHeight;
 				local_38.z = actor->getModel()->getAnmMtx(1)[2][3];
 				if (!isAirborne())
-					local_2c.unk1D = 0;
+					local_2c.mNeedsGroundCheck = 0;
 			} else {
 				local_38 = mPosition;
 				if (!isAirborne()) {
-					local_2c.unk1D = 0;
-					local_38.y     = mGroundHeight;
+					local_2c.mNeedsGroundCheck = 0;
+					local_38.y                 = mGroundHeight;
 				}
 			}
 
-			local_2c.unk0  = local_38;
-			local_2c.unkC  = mScaledBodyRadius;
-			local_2c.unk10 = local_2c.unkC;
-			local_2c.unk1C = getShadowType();
-			local_2c.unk14 = mRotation.y;
+			local_2c.mPosition   = local_38;
+			local_2c.mRadiusX    = mScaledBodyRadius;
+			local_2c.mRadiusZ    = local_2c.mRadiusX;
+			local_2c.mShadowType = getShadowType();
+			local_2c.mRotationY  = mRotation.y;
 			if (checkLiveFlag(LIVE_FLAG_UNK400)) {
 				gpBindShadowManager->forceRequest(local_2c, getActorType());
 			} else {
@@ -678,7 +661,7 @@ DEFINE_NERVE(TNerveTamaNokoAttack, TLiveActor)
 		if (!self->isBckAnm(9))
 			self->setBckAnm(10);
 
-		self->setGoalPathMario();
+		self->setGoalPath(TPathNode((THitActor*)gpMarioAddress));
 	}
 
 	JGeometry::TVec3<f32> local_48 = self->getVelocity();

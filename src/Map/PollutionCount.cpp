@@ -147,7 +147,7 @@ static void initCountObjDegree(f32 fVar1, f32 fVar2)
 
 static void drawShape(J3DShape* shape)
 {
-	GXCallDisplayList(shape->getDrawList(), 0xC0);
+	GXCallDisplayList(shape->getVcdVatCmd(), J3DShape::kVcdVatDLSize);
 	shape->loadVtxArray();
 	for (u16 k = 0; k < shape->getMtxGroupNum(); ++k)
 		shape->getShapeDraw(k)->draw();
@@ -401,8 +401,10 @@ static void doTask(u16 target_layer, int task_num,
 		if (iVar7 > 0xff)
 			iVar7 = 0xff;
 
-		GXSetTevColor(GX_TEVREG0, (GXColor) { iVar5, iVar5, iVar5, iVar5 });
-		GXSetTevColor(GX_TEVREG1, (GXColor) { iVar7, iVar7, iVar7, iVar7 });
+		GXSetTevColor(GX_TEVREG0,
+		              (GXColor) { (u8)iVar5, (u8)iVar5, (u8)iVar5, (u8)iVar5 });
+		GXSetTevColor(GX_TEVREG1,
+		              (GXColor) { (u8)iVar7, (u8)iVar7, (u8)iVar7, (u8)iVar7 });
 		s16 x1 = tasks->mX - (tasks->mSize / 2);
 		s16 y1 = tasks->mZ - (tasks->mSize / 2);
 		s16 x2 = tasks->mX + (tasks->mSize / 2);

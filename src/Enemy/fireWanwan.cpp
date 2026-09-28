@@ -28,6 +28,7 @@
 #include <MSound/MSSetSound.hpp>
 #include <MSound/MSoundBGM.hpp>
 #include <M3DUtil/InfectiousStrings.hpp>
+#include <macros.h>
 
 namespace {
 const GXColorS10 cBodyColorOnFire   = { 400, -50, -100, 0 };
@@ -515,7 +516,7 @@ void TFireWanwanTailHit::init()
 		actor->getModel()->calc();
 	}
 
-	JDrama::TNameRefGen::search<TIdxGroupObj>("敵グループ")
+	static_cast<TIdxGroupObj*>(JDrama::TNameRefGen::search("敵グループ"))
 	    ->getChildren()
 	    .push_back(this);
 	initHitActor(0x10000028, 0, 0, 0.0f, 0.0f, 30.0f, 200.0f);
@@ -1448,7 +1449,7 @@ bool TFireWanwan::isWalking() const
 bool TFireWanwan::isWandering() const
 {
 	const TNerveBase<TLiveActor>* nerve = mSpine->getLatestNerve();
-	return nerve == &TNerveFireWanwanRecover::theNerve()
+	return nerve == &TNerveFireWanwanRecoverGraph::theNerve()
 	       || nerve == &TNerveFireWanwanTurn::theNerve() || isWalking();
 }
 
@@ -1872,7 +1873,7 @@ DEFINE_NERVE(TNerveFireWanwanAttack, TLiveActor)
 
 	if (spine->getTime() == 0) {
 		self->setBckAnm(3);
-		self->setGoalPathMario();
+		self->setGoalPath(TPathNode((THitActor*)gpMarioAddress));
 	}
 
 	if (self->doAttack()) {

@@ -204,9 +204,9 @@ void TModelWaterManager::load(JSUMemoryInputStream& stream)
 
 void TModelWaterManager::loadAfter()
 {
-	unk5D34
-	    = JDrama::TNameRefGen::search<TScreenTexture>("スクリーンテクスチャ")
-	          ->getTexture();
+	unk5D34 = static_cast<TScreenTexture*>(
+	              JDrama::TNameRefGen::search("スクリーンテクスチャ"))
+	              ->getTexture();
 
 	int flag = TFlagManager::getInstance()->getFlag(0x40000);
 	if (flag > 60)
@@ -1042,7 +1042,7 @@ void TModelWaterManager::drawSilhouette(MtxPtr param_1)
 	GXSetChanMatColor(
 	    GX_COLOR0A0,
 	    (GXColor) { 0xff, 0xff, 0xff,
-	                unk5D5D * gpSilhouetteManager->unk48 * 0.00390625f });
+	                (u8)(unk5D5D * gpSilhouetteManager->unk48 * 0.00390625f) });
 	GXSetBlendMode(GX_BM_BLEND, GX_BL_DSTALPHA, GX_BL_ZERO, GX_LO_NOOP);
 	if (unk5D60 & 0x20)
 		SMS_DrawCube(unk5D70, unk5D7C);
@@ -1051,9 +1051,9 @@ void TModelWaterManager::drawSilhouette(MtxPtr param_1)
 	GXSetAlphaUpdate(GX_TRUE);
 	GXSetDstAlpha(GX_TRUE, 0);
 	GXColor local_60 = gpSilhouetteManager->unk12;
-	GXSetChanMatColor(
-	    GX_COLOR0A0,
-	    (GXColor) { local_60.r, local_60.g, local_60.b, unk5D5D * local_60.a });
+	GXSetChanMatColor(GX_COLOR0A0,
+	                  (GXColor) { local_60.r, local_60.g, local_60.b,
+	                              (u8)(unk5D5D * local_60.a) });
 	GXSetBlendMode(GX_BM_BLEND, GX_BL_DSTALPHA, GX_BL_INVDSTALPHA, GX_LO_NOOP);
 	SMS_DrawCube(unk5D70, unk5D7C);
 }
@@ -1651,18 +1651,18 @@ void TModelWaterManager::perform(u32 param_1, JDrama::TGraphics* param_2)
 
 	if (param_1 & 4) {
 		if (unk5D60 & 0x80)
-			TTimeRec::startTimer(0xFF, 0x00, 0x00, 0xFE);
+			TTimeRec::snapCPUTime(JUtility::TColor(0xFF, 0x00, 0x00, 0xFE));
 
 		calcDrawVtx(param_2->mViewMtx);
 		calcVMAll(param_2->mViewMtx);
 
 		if (unk5D60 & 0x80)
-			TTimeRec::endTimer();
+			TTimeRec::snapCPUTime(0);
 	}
 
 	if (param_1 & 8) {
 		if (unk5D60 & 0x80)
-			TTimeRec::snapGxTimeStart(0xFF, 0x00, 0x00, 0xFD);
+			TTimeRec::snapGXTimeSt(JUtility::TColor(0xFF, 0x00, 0x00, 0xFD));
 
 		drawSilhouette(r29);
 		drawWaterVolume(r29);
@@ -1675,12 +1675,12 @@ void TModelWaterManager::perform(u32 param_1, JDrama::TGraphics* param_2)
 			drawShineShadowVolume(param_2->mViewMtx);
 
 		if (unk5D60 & 0x80)
-			TTimeRec::snapGxTimeEnd();
+			TTimeRec::snapGXTimeSt(0);
 	}
 
 	if (param_1 & 0x80) {
 		if (unk5D60 & 0x80)
-			TTimeRec::snapGxTimeStart(0xFF, 0x00, 0x00, 0xFC);
+			TTimeRec::snapGXTimeSt(JUtility::TColor(0xFF, 0x00, 0x00, 0xFC));
 
 		drawRefracAndSpec();
 
@@ -1688,6 +1688,6 @@ void TModelWaterManager::perform(u32 param_1, JDrama::TGraphics* param_2)
 			drawShineShadowVolume(param_2->mViewMtx);
 
 		if (unk5D60 & 0x80)
-			TTimeRec::snapGxTimeEnd();
+			TTimeRec::snapGXTimeSt(0);
 	}
 }

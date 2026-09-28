@@ -26,8 +26,8 @@ TMarioCap::TMarioCap(TMario* mario)
 	    0,
 	    *mMario->mModel->getModel()->getModelData()->getTexture()->getResTIMG(
 	        0));
-	DCFlushRange(maCap1ModelData->getTexture()->mResources, 0x20);
-	mCapModels[0] = new J3DModel(maCap1ModelData, 0, 1);
+	DCFlushRange(maCap1ModelData->getTexture()->getResTIMG(0), sizeof(ResTIMG));
+	unk10[0] = new J3DModel(maCap1ModelData, 0, 1);
 
 	J3DModelData* maCap3ModelData = J3DModelLoaderDataBase::load(
 	    JKRFileLoader::getGlbResource("/mario/bmd/ma_cap3.bmd"),
@@ -37,8 +37,8 @@ TMarioCap::TMarioCap(TMario* mario)
 	    0,
 	    *mMario->mModel->getModel()->getModelData()->getTexture()->getResTIMG(
 	        0));
-	DCFlushRange(maCap3ModelData->getTexture()->mResources, 0x20);
-	mCapModels[1] = new J3DModel(maCap3ModelData, 0, 1);
+	DCFlushRange(maCap3ModelData->getTexture()->getResTIMG(0), sizeof(ResTIMG));
+	unk10[1] = new J3DModel(maCap3ModelData, 0, 1);
 
 	if (mMario->mBodyPollutionTex != 0) {
 		for (int i = 0; i < 2; ++i) {
@@ -149,9 +149,9 @@ void TMarioCap::perform(u32 cue, JDrama::TGraphics* graphics)
 
 			// Missing a copy of TVec3, i still suspect that operations should
 			// do a copy
-			f32 distance
-			    = JGeometry::TVec3<f32>(mMario->mPosition - mMario->unk29C)
-			          .length();
+			f32 distance = JGeometry::TVec3<f32>(mMario->mPosition
+			                                     - mMario->mPrevPosition)
+			                   .length();
 			if (mMario->mStatus == MARIO_STATUS_SURF && distance > 20.0f) {
 				doTremble = true;
 			}

@@ -20,7 +20,7 @@
 #include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
 #include <JSystem/JDrama/JDRNameRefGen.hpp>
 #include <JSystem/JKernel/JKRHeap.hpp>
-#include <PowerPC_EABI_Support/Msl/MSL_C/MSL_Common/string.h>
+#include <string.h>
 #include <stdio.h>
 
 // rogue includes needed for matching sinit & bss
@@ -588,8 +588,7 @@ void TRedCoinSwitch::loadAfter()
 	for (int i = 0; i < 8; ++i) {
 		char buf[0x40];
 		snprintf(buf, 0x40, "赤コイン %d", i);
-		JDrama::TNameRefGen::getInstance()
-		    ->search<TMapObjBase>(buf)
+		static_cast<TMapObjBase*>(JDrama::TNameRefGen::search(buf))
 		    ->makeObjDead();
 	}
 }

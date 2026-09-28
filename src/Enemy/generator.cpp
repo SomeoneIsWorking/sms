@@ -12,6 +12,47 @@
 void TOneShotGenerator::load(JSUMemoryInputStream& stream)
 {
 	JDrama::TActor::load(stream);
-	mSpawnKey1 = stream.readString();   // stored at +0x70
-	mSpawnKey2 = stream.readString();   // stored at +0x68
+	mGraphName   = stream.readString();
+	mManagerName = stream.readString();
+}
+
+void TOneShotGenerator::loadAfter()
+{
+	if (mCollisions == nullptr) {
+		mManager = (TEnemyManager*)gpConductor->getManagerByName(mManagerName);
+		if (mGraph == nullptr)
+			mGraph = gpConductor->getGraphByName(mGraphName);
+
+		initHitActor(0x2000001, 1, 0x80000000, 80.0f, 120.0f, 80.0f, 120.0f);
+		offHitFlag(HIT_FLAG_NO_COLLISION);
+
+		static_cast<TIdxGroupObj*>(JDrama::TNameRefGen::search("敵グループ"))
+		    ->getChildren()
+		    .push_back(this);
+		gpConductor->registerOtherObj(this);
+	}
+}
+
+BOOL TOneShotGenerator::receiveMessage(THitActor* sender, u32 message)
+{
+	if (sender->isActorType(0x1000001)) {
+		if (mCount != 0) {
+			TSpineEnemy* enemy = mManager->getFarOutEnemy();
+			if (enemy != nullptr) {
+				enemy->getTracer()->setGraph(mGraph);
+
+				JGeometry::TVec3<f32> rot(0.0f, 0.0f, 0.0f);
+				JGeometry::TVec3<f32> vel(0.0f, 4.0f, 0.0f);
+
+				Mtx m;
+				MsMtxSetRotRPH(m, mRotation.x, mRotation.y, mRotation.z);
+				MTXMultVec(m, &vel, &vel);
+
+				enemy->resetSRTV(mPosition, rot, enemy->mScaling, vel);
+			}
+			mCount = 0;
+		}
+		return TRUE;
+	}
+	return FALSE;
 }

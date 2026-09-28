@@ -288,22 +288,16 @@ void TMapEventSinkBianco::finishControl()
 		TMapObjBase::setJointTransY(unk64, 0.0f);
 		for (int i = 0; i < 6; ++i) {
 			snprintf(buffer, 0x40, "バナナツリー（スケール） %d", i);
-			TLiveActor* bananaTree
-			    = (TLiveActor*)JDrama::TNameRefGen::getInstance()
-			          ->getRootNameRef()
-			          ->search(buffer);
-			bananaTree->receiveMessage(gpModelWaterManager->unk2514[0],
-			                           HIT_MESSAGE_SPRAYED_BY_WATER);
+			static_cast<TLiveActor*>(JDrama::TNameRefGen::search(buffer))
+			    ->receiveMessage(gpModelWaterManager->unk2514[0],
+			                     HIT_MESSAGE_SPRAYED_BY_WATER);
 		}
 
 		for (int i = 0; i < 7; ++i) {
 			snprintf(buffer, 0x40, "落書き内%02d", i);
-			TLiveActor* graffiti
-			    = (TLiveActor*)JDrama::TNameRefGen::getInstance()
-			          ->getRootNameRef()
-			          ->search(buffer);
-			graffiti->receiveMessage(gpModelWaterManager->unk2514[0],
-			                         HIT_MESSAGE_SPRAYED_BY_WATER);
+			static_cast<TLiveActor*>(JDrama::TNameRefGen::search(buffer))
+			    ->receiveMessage(gpModelWaterManager->unk2514[0],
+			                     HIT_MESSAGE_SPRAYED_BY_WATER);
 		}
 	}
 
@@ -379,10 +373,13 @@ void TMapEventSinkBianco::loadAfter()
 	TMapStaticObj* ref = (TMapStaticObj*)JDrama::TNameRef::search(
 	    "鏡内地形シャイン（坂上げ用）");
 
+	TMapStaticObj* ref
+	    = static_cast<TMapStaticObj*>(JDrama::TNameRefGen::search("鏡内地形"));
 	unk64 = ref->getModelData()->getJointNodePointer(2);
 	TMapObjBase::moveJoint(unk64, 0.0f, -1700.0f, 0.0f);
 	SMS_ShowJoint(unk64->getMesh(), false);
-	mGateKeeper = JDrama::TNameRef::search("ゲートキーパー");
+	mGateKeeper = static_cast<TGateKeeperBase*>(
+	    JDrama::TNameRefGen::search("ゲートキーパー"));
 }
 
 void TMapEventSinkBianco::load(JSUMemoryInputStream& stream)
@@ -419,9 +416,11 @@ void TMapEventSinkShadowMario::loadAfter()
 {
 	TMapEventSink::loadAfter();
 	for (int i = 0; i < mBuildingNum; ++i) {
-		unk64[i] = JDrama::TNameRef::search(unk68[i]);
-		// TODO: what is unk64?
-		getBuilding(i);
+		unk64[i] = static_cast<JDrama::TPlacement*>(
+		    JDrama::TNameRefGen::search(unk68[i]));
+		TJointObj* obj = getBuilding(i);
+		unk64[i]->mPosition.y
+		    -= obj->getJoint()->getMax().y - obj->getJoint()->getMin().y;
 	}
 }
 

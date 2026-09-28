@@ -106,13 +106,12 @@ static u8 getVertexFormat(const J3DModelData* model_data, GXAttr attr)
 
 void TMirrorModel::setPlane()
 {
-	MtxPtr mtx = mMActor->getModel()->mBaseMtx;
-	MTXMultVec(mtx, &mPlanePoint, &mPlanePoint);
-	MTXMultVecSR(mtx, &mPlaneNormal, &mPlaneNormal);
-	VECNormalize(&mPlaneNormal, &mPlaneNormal);
-	mPlaneD = -VECDotProduct(&mPlaneNormal, &mPlanePoint);
-	mMirrorCamera->setMirrorPlane(mPlaneNormal.x, mPlaneNormal.y,
-	                              mPlaneNormal.z, mPlaneD);
+	MtxPtr mtx = unk4->getModel()->getBaseTRMtx();
+	MTXMultVec(mtx, &unkC, &unkC);
+	MTXMultVecSR(mtx, &unk18, &unk18);
+	VECNormalize(&unk18, &unk18);
+	unk24 = -VECDotProduct(&unk18, &unkC);
+	unk8->setUnk84AndUnk90(unk18.x, unk18.y, unk18.z, unk24);
 }
 
 void TMirrorModel::initPlaneInfo()
@@ -311,7 +310,8 @@ void TMirrorModelManager::perform(u32 param_1, JDrama::TGraphics* param_2)
 
 void TMirrorModelManager::findMirrorCamera()
 {
-	mMirrorCamera = JDrama::TNameRefGen::search<TMirrorCamera>("鏡カメラ");
+	unk24
+	    = static_cast<TMirrorCamera*>(JDrama::TNameRefGen::search("鏡カメラ"));
 }
 
 void TMirrorModelManager::loadAfter()
@@ -326,15 +326,12 @@ void TMirrorModelManager::loadAfter()
 		                          ->getModelData()
 		                          ->getTexture();
 
-		// This looks like setResTIMG but isn't???
-
-		const ResTIMG& source = *mMirrorCamera->getMirrorTexResource();
-		ResTIMG& target       = texture->mResources[0];
+		ResTIMG& target       = *texture->getResTIMG(0);
+		const ResTIMG& source = *unk24->getUnk94();
 
 		target = source;
 		target.imageDataOffset
-		    = (u32)((uintptr_t)&source + source.imageDataOffset
-		            - (uintptr_t)&target);
+		    = (uintptr_t)&source + source.imageDataOffset - (uintptr_t)&target;
 	}
 }
 

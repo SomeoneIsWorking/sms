@@ -224,8 +224,8 @@ void TMareEventWallRock::load(JSUMemoryInputStream& stream)
 	JDrama::TNameRef::load(stream);
 	unk14 = new TMareWallRock[unk10];
 	JDrama::TViewObjPtrListT<JDrama::TViewObj>* group
-	    = JDrama::TNameRefGen::search<
-	        JDrama::TViewObjPtrListT<JDrama::TViewObj> >("マップグループ");
+	    = static_cast<JDrama::TViewObjPtrListT<JDrama::TViewObj>*>(
+	        JDrama::TNameRefGen::search("マップグループ"));
 	for (int i = 0; i < unk10; ++i) {
 		unk14[i].unkF8 = i;
 		group->getChildren().push_back((JDrama::TViewObj*)&unk14[i]);
@@ -487,13 +487,13 @@ void TMareEventDepressWall::initCommon()
 		int idx          = (unk10 - 1) - i;
 		J3DJoint* jJoint = (J3DJoint*)joint;
 		unk30[idx]       = jJoint;
-		unk34[idx].set((jJoint->mMin.x + jJoint->mMax.x) / 2.0f,
-		               (jJoint->mMin.y + jJoint->mMax.y) / 2.0f,
-		               (jJoint->mMin.z + jJoint->mMax.z) / 2.0f);
+		unk34[idx].set((jJoint->getMin().x + jJoint->getMax().x) / 2.0f,
+		               (jJoint->getMin().y + jJoint->getMax().y) / 2.0f,
+		               (jJoint->getMin().z + jJoint->getMax().z) / 2.0f);
 
-		unk38[idx].x = (jJoint->mMax.x - jJoint->mMin.x) / 100.0f;
-		unk38[idx].y = (jJoint->mMax.y - jJoint->mMin.y) / 100.0f;
-		unk38[idx].z = (jJoint->mMax.z - jJoint->mMin.z) / 100.0f;
+		unk38[idx].x = (jJoint->getMax().x - jJoint->getMin().x) / 100.0f;
+		unk38[idx].y = (jJoint->getMax().y - jJoint->getMin().y) / 100.0f;
+		unk38[idx].z = (jJoint->getMax().z - jJoint->getMin().z) / 100.0f;
 
 		f32 volume = unk38[idx].x * unk38[idx].y * unk38[idx].z;
 		unk3C[idx] = 0.1f * MsSqrtf(volume);
@@ -511,7 +511,7 @@ void TMareEventDepressWall::init3rdEvent()
 	unk14 = 43;
 	initCommon();
 	TMapModelActor* actor
-	    = JDrama::TNameRefGen::search<TMapModelActor>("mareEP2");
+	    = static_cast<TMapModelActor*>(JDrama::TNameRefGen::search("mareEP2"));
 	if (actor) {
 		actor->setActor((MActor*)this);
 		unk18[0] = 2400;
@@ -536,7 +536,7 @@ void TMareEventDepressWall::init2ndEvent()
 	unk14 = 19;
 	initCommon();
 	TMapModelActor* actor
-	    = JDrama::TNameRefGen::search<TMapModelActor>("mareEP1");
+	    = static_cast<TMapModelActor*>(JDrama::TNameRefGen::search("mareEP1"));
 	if (actor) {
 		actor->setActor((MActor*)this);
 		unk18[0] = 3600;
@@ -551,7 +551,7 @@ void TMareEventDepressWall::init1stEvent()
 	unk14 = 8;
 	initCommon();
 	TMapModelActor* actor
-	    = JDrama::TNameRefGen::search<TMapModelActor>("mareEP0");
+	    = static_cast<TMapModelActor*>(JDrama::TNameRefGen::search("mareEP0"));
 	if (actor) {
 		actor->setActor((MActor*)this);
 		unk18[0] = 3600;

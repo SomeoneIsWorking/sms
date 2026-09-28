@@ -1,7 +1,6 @@
 #include <MarioUtil/MtxUtil.hpp>
 
-#include <cstdio>
-#include <printf.h>
+#include <stdio.h>
 #include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
 #include <JSystem/J3D/J3DGraphAnimator/J3DJoint.hpp>
 #include <Strategic/HitActor.hpp>
@@ -186,7 +185,7 @@ void TMtxTimeLag::calc(MtxPtr mtx)
 int TMtxTimeLagCallBack(J3DNode* node, int param)
 {
 	if (param == 0)
-		((TMtxTimeLag*)node->mCallBackUserData)->calc(J3DSys::mCurrentMtx);
+		((TMtxTimeLag*)node->getCallBackUserData())->calc(J3DSys::mCurrentMtx);
 	return 1;
 }
 
@@ -272,7 +271,7 @@ void TMtxSwingRZ::calc(MtxPtr mtx)
 int TMtxSwingRZCallBack(J3DNode* node, int param)
 {
 	if (param == 0)
-		((TMtxSwingRZ*)node->mCallBackUserData)->calc(J3DSys::mCurrentMtx);
+		((TMtxSwingRZ*)node->getCallBackUserData())->calc(J3DSys::mCurrentMtx);
 	return 1;
 }
 
@@ -294,7 +293,7 @@ void TMtxSwingRZReverseXZ::calc(MtxPtr mtx)
 int TMtxSwingRZReverseXZCallBack(J3DNode* node, int param)
 {
 	if (param == 0)
-		((TMtxSwingRZReverseXZ*)node->mCallBackUserData)
+		((TMtxSwingRZReverseXZ*)node->getCallBackUserData())
 		    ->calc(J3DSys::mCurrentMtx);
 	return 1;
 }

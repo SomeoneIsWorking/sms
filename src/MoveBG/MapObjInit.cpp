@@ -17,6 +17,7 @@
 #include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
 #include <JSystem/J3D/J3DGraphLoader/J3DModelLoader.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DTexture.hpp>
+#include <JSystem/J3D/J3DGraphAnimator/J3DJoint.hpp>
 #include <JSystem/JDrama/JDRNameRefGen.hpp>
 
 // rogue includes needed for matching sinit & bss
@@ -10823,8 +10824,9 @@ void TMapObjBase::initUnique()
 		break;
 	case 0x2000000E:
 		if (mMActor) {
-			u32 uVar4 = getModel()->getMatPacket(0)->unk3C;
-			getModel()->getMatPacket(0)->unk3C = uVar4 & 0x7fffffff;
+			getModel()->getMatPacket(0)->setMaterialID(
+			    getModel()->getMatPacket(0)->getMaterialID()
+			    & ~J3DMatPacket::DIFF_FLAG);
 		}
 		break;
 	case 0x40000048:
@@ -11003,7 +11005,6 @@ void TMapObjBase::initObjCollisionData()
 		onHitFlag(HIT_FLAG_CANNOT_GET_HIT);
 }
 
-#pragma dont_inline on
 void TMapObjBase::initBckMoveData()
 {
 	if (mMapObjData->mMove != nullptr) {
@@ -11013,29 +11014,25 @@ void TMapObjBase::initBckMoveData()
 		    JKRGetResource(move->unk0));
 
 		J3DModelData* data         = mMActor->getModel()->getModelData();
-		data->mJointNodePointer[0] = data->getJointNodePointer(1);
+		J3DJoint* joint            = data->getJointNodePointer(1);
+		data->mJointNodePointer[0] = joint;
 
-		// TODO: this requires the J3DJoint.hpp header, but that has the dreaded
-		// compound literal in .data problem that we share with TWW, so avoid it
-		// for now
-
-		// J3DTransformInfo& info
-		//     = data->getJointNodePointer(0)->getTransformInfo();
-		// info.mScale.x         = 1.0f;
-		// info.mScale.y         = 1.0f;
-		// info.mScale.z         = 1.0f;
-		// info.mRotation.x      = 0;
-		// info.mRotation.y      = 0;
-		// info.mRotation.z      = 0;
-		// info.mTranslate.x     = 0.0f;
-		// info.mTranslate.y     = 0.0f;
-		// info.mTranslate.z     = 0.0f;
-		move->unk8 = new J3DFrameCtrl(move->unk4->mMaxFrame);
+		J3DTransformInfo info;
+		info.mScale.x     = 1.0f;
+		info.mScale.y     = 1.0f;
+		info.mScale.z     = 1.0f;
+		info.mRotation.x  = 0;
+		info.mRotation.y  = 0;
+		info.mRotation.z  = 0;
+		info.mTranslate.x = 0.0f;
+		info.mTranslate.y = 0.0f;
+		info.mTranslate.z = 0.0f;
+		data->getJointNodePointer(0)->setTransformInfo(info);
+		move->unk8 = new J3DFrameCtrl(move->unk4->getFrameMax());
 		move->unk8->setAttribute(J3DFrameCtrl::ATTR_LOOP);
 		move->unk8->setRate(SMSGetAnmFrameRate());
 	}
 }
-#pragma dont_inline off
 
 bool isAlreadyRegistered(const TMapObjAnimDataInfo* anim, int i)
 {
@@ -11141,7 +11138,8 @@ void TMapObjBase::initActorData()
 	mMapObjData = sObjDataTable[i];
 	unkF8       = mMapObjData->unk34;
 
-	mManager = JDrama::TNameRefGen::search<TLiveManager>(mMapObjData->unk8);
+	mManager = static_cast<TLiveManager*>(
+	    JDrama::TNameRefGen::search(mMapObjData->unk8));
 	mManager->manageActor(this);
 	if (mMapObjData->mHit)
 		mYOffset = mScaling.y * mMapObjData->mHit->unk8;
@@ -11175,8 +11173,8 @@ void TMapObjBase::initMapObj()
 		mLiveFlag |= LIVE_FLAG_UNK8;
 
 	if (checkMapObjFlag(MAP_OBJ_FLAG_UNK8000) && !isActorType(0x40000084)) {
-		TScreenTexture* ref = JDrama::TNameRefGen::search<TScreenTexture>(
-		    "スクリーンテクスチャ");
+		TScreenTexture* ref = static_cast<TScreenTexture*>(
+		    JDrama::TNameRefGen::search("スクリーンテクスチャ"));
 		const ResTIMG* img = ref->getTexture()->getTexInfo();
 		getModel()->getModelData()->getTexture()->setResTIMG(2, *img);
 		mMActor->setLightType(LIGHT_TYPE_INDIRECT);

@@ -143,12 +143,22 @@ if not config.non_matching:
     config.asm_dir = None
 
 # Tool versions
-config.binutils_tag = "2.42-1"
-config.compilers_tag = "20250520"
-config.dtk_tag = "v1.3.0"
-config.objdiff_tag = "v3.7.1"
-config.sjiswrap_tag = "v1.2.0"
-config.wibo_tag = "0.6.11"
+config.binutils_tag = "2.42-2"
+config.compilers_tag = "20251118"
+config.dtk_tag = "v1.8.4"
+config.objdiff_tag = "v3.8.1"
+config.sjiswrap_tag = "v1.2.2"
+config.wibo_tag = "1.1.0"
+
+middleware_libs = [
+    "dolphin",
+    "JSystem",
+    "THPPlayer",
+    "PowerPC_EABI_Support",
+    "TRK_MINNOW_DOLPHIN",
+    "OdemuExi2",
+]
+msl_include = "libs/PowerPC_EABI_Support/include/PowerPC_EABI_Support/Msl"
 
 # Project
 config.config_path = Path("config") / config.version / "config.yml"
@@ -157,8 +167,9 @@ config.asflags = [
     "-mgekko",
     "--strip-local-absolute",
     "-I include",
-    "-I include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common",
-    "-I include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common",
+    *[f"-I libs/{lib}/include" for lib in middleware_libs],
+    f"-I {msl_include}/MSL_C/MSL_Common",
+    f"-I {msl_include}/MSL_C++/MSL_Common",
     f"-I build/{config.version}/include",
     f"--defsym BUILD_VERSION={version_num}",
 ]
@@ -196,10 +207,12 @@ cflags_base_base = [
     "-multibyte",  # For Wii compilers, replace with `-enc SJIS`
     "-cwd source",
     "-i include",
-    "-i include/PowerPC_EABI_Support/Msl/MSL_C/MSL_Common",
-    "-i include/PowerPC_EABI_Support/Msl/MSL_C++/MSL_Common",
+    *[f"-i libs/{lib}/include" for lib in middleware_libs],
+    f"-i {msl_include}/MSL_C/MSL_Common",
+    f"-i {msl_include}/MSL_C++/MSL_Common",
     f"-i build/{config.version}/include",
     f"-DBUILD_VERSION={version_num}",
+    "-Dnullptr=0",
     f"-DVERSION_{config.version}",
 ]
 
@@ -422,16 +435,16 @@ config.libs = [
             # JADebug
             Object(Matching, "JSystem/JAudio/JADebug/JADHioNode.cpp"),
             # JALibrary
-            Object(NonMatching, "JSystem/JAudio/JALibrary/JALCalc.cpp"),
+            Object(Matching, "JSystem/JAudio/JALibrary/JALCalc.cpp"),
             Object(NonMatching, "JSystem/JAudio/JALibrary/JALModSe.cpp"),
             # JAInterface
             Object(Matching, "JSystem/JAudio/JAInterface/JAIAsnData.cpp"),
-            Object(NonMatching, "JSystem/JAudio/JAInterface/JAIAnimation.cpp"),
+            Object(Matching, "JSystem/JAudio/JAInterface/JAIAnimation.cpp"),
             Object(NonMatching, "JSystem/JAudio/JAInterface/JAIBasic.cpp"),
             Object(Matching, "JSystem/JAudio/JAInterface/JAIConst.cpp"),
             Object(Matching, "JSystem/JAudio/JAInterface/JAIDebug.cpp"),
-            Object(NonMatching, "JSystem/JAudio/JAInterface/JAIData.cpp"),
-            Object(NonMatching, "JSystem/JAudio/JAInterface/JAIEntry.cpp"),
+            Object(Matching, "JSystem/JAudio/JAInterface/JAIData.cpp"),
+            Object(Matching, "JSystem/JAudio/JAInterface/JAIEntry.cpp"),
             Object(Matching, "JSystem/JAudio/JAInterface/JAIEntrySe.cpp"),
             Object(Matching, "JSystem/JAudio/JAInterface/JAIEntrySequence.cpp"),
             Object(Matching, "JSystem/JAudio/JAInterface/JAIEntryStream.cpp"),
@@ -439,24 +452,24 @@ config.libs = [
             Object(NonMatching, "JSystem/JAudio/JAInterface/JAIGFrameSequence.cpp"),
             Object(NonMatching, "JSystem/JAudio/JAInterface/JAIGFrameStream.cpp"),
             Object(NonMatching, "JSystem/JAudio/JAInterface/JAIGlobalParameter.cpp"),
-            Object(NonMatching, "JSystem/JAudio/JAInterface/JAISound.cpp"),
-            Object(NonMatching, "JSystem/JAudio/JAInterface/JAISystemInterface.cpp"),
+            Object(Matching, "JSystem/JAudio/JAInterface/JAISound.cpp"),
+            Object(Matching, "JSystem/JAudio/JAInterface/JAISystemInterface.cpp"),
             # JASystem
             Object(Matching, "JSystem/JAudio/JASystem/JASBank.cpp"),
-            Object(NonMatching, "JSystem/JAudio/JASystem/JASBankMgr.cpp"),
+            Object(Matching, "JSystem/JAudio/JASystem/JASBankMgr.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASBasicBank.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASBasicInst.cpp"),
-            Object(NonMatching, "JSystem/JAudio/JASystem/JASBasicWaveBank.cpp"),
-            Object(NonMatching, "JSystem/JAudio/JASystem/JASBNKParser.cpp"),
+            Object(Matching, "JSystem/JAudio/JASystem/JASBasicWaveBank.cpp"),
+            Object(Matching, "JSystem/JAudio/JASystem/JASBNKParser.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASDrumSet.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASInstEffect.cpp"),
-            Object(NonMatching, "JSystem/JAudio/JASystem/JASInstRand.cpp"),
+            Object(Matching, "JSystem/JAudio/JASystem/JASInstRand.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASInstSense.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASSimpleWaveBank.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASWaveArcLoader.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASWaveBank.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASWaveBankMgr.cpp"),
-            Object(NonMatching, "JSystem/JAudio/JASystem/JASWSParser.cpp"),
+            Object(Matching, "JSystem/JAudio/JASystem/JASWSParser.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASAudioThread.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASChAllocQueue.cpp"),
             Object(NonMatching, "JSystem/JAudio/JASystem/JASChannel.cpp"),
@@ -466,20 +479,20 @@ config.libs = [
             Object(Matching, "JSystem/JAudio/JASystem/JASDriverIF.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASDSPBuf.cpp"),
             Object(NonMatching, "JSystem/JAudio/JASystem/JASDSPChannel.cpp"),
-            Object(NonMatching, "JSystem/JAudio/JASystem/JASDSPInterface.cpp"),
+            Object(Matching, "JSystem/JAudio/JASystem/JASDSPInterface.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASOscillator.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASAiCtrl.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASCalc.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASCallback.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASCmdStack.cpp"),
-            Object(NonMatching, "JSystem/JAudio/JASystem/JASDvdThread.cpp"),
+            Object(Matching, "JSystem/JAudio/JASystem/JASDvdThread.cpp"),
             Object(NonMatching, "JSystem/JAudio/JASystem/JASHardStream.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASHeapCtrl.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASRate.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASKernelDebug.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASProbe.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASSystemHeap.cpp"),
-            Object(NonMatching, "JSystem/JAudio/JASystem/JASVload.cpp"),
+            Object(Matching, "JSystem/JAudio/JASystem/JASVload.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASNoteMgr.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASOuterParam.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASPlayer_impl.cpp"),
@@ -489,7 +502,7 @@ config.libs = [
             Object(Matching, "JSystem/JAudio/JASystem/JASTrackInterrupt.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASTrackMgr.cpp"),
             Object(Matching, "JSystem/JAudio/JASystem/JASTrackPort.cpp"),
-            Object(NonMatching, "JSystem/JAudio/JASystem/JASSeqParser.cpp"),
+            Object(Matching, "JSystem/JAudio/JASystem/JASSeqParser.cpp"),
 
             # J2D
             Object(Matching, "JSystem/J2D/J2DPane.cpp"),
@@ -639,7 +652,7 @@ config.libs = [
             Object(Matching, "TRK_MINNOW_DOLPHIN/debugger/embedded/MetroTRK/Processor/ppc/Generic/flush_cache.c"),
             Object(Matching, "TRK_MINNOW_DOLPHIN/debugger/embedded/MetroTRK/Portable/mem_TRK.c"),
             Object(Matching, "TRK_MINNOW_DOLPHIN/debugger/embedded/MetroTRK/Processor/ppc/Generic/targimpl.c"),
-            Object(Matching, "TRK_MINNOW_DOLPHIN/__exception.s"),
+            Object(MatchingFor("GMSJ01"), "TRK_MINNOW_DOLPHIN/__exception.s"),
             Object(Matching, "TRK_MINNOW_DOLPHIN/debugger/embedded/MetroTRK/Os/dolphin/dolphin_trk.c"),
             Object(Matching, "TRK_MINNOW_DOLPHIN/debugger/embedded/MetroTRK/Processor/ppc/Generic/mpc_7xx_603e.c"),
             Object(Matching, "TRK_MINNOW_DOLPHIN/debugger/embedded/MetroTRK/Portable/main_TRK.c"),
@@ -825,12 +838,12 @@ config.libs = [
             PCHObject(NonMatching, "M3DUtil/M3UJoint.cpp"),
             PCHObject(NonMatching, "M3DUtil/M3UModel.cpp"),
             PCHObject(NonMatching, "M3DUtil/MActor.cpp"),
-            PCHObject(NonMatching, "M3DUtil/MActorAnm.cpp"),
+            PCHObject(Matching, "M3DUtil/MActorAnm.cpp"),
             Object(NonMatching, "M3DUtil/MActorData.cpp"),
             PCHObject(NonMatching, "M3DUtil/SDLModel.cpp"),
             Object(Matching, "M3DUtil/MActorUtil.cpp"),
             PCHObject(NonMatching, "M3DUtil/SampleCtrlNode.cpp"),
-            PCHObject(NonMatching, "M3DUtil/SampleCtrlModel.cpp"),
+            PCHObject(Matching, "M3DUtil/SampleCtrlModel.cpp"),
             Object(Matching, "M3DUtil/MotionBlendCtrl.cpp"),
             Object(Matching, "M3DUtil/LodAnm.cpp"),
         ],
@@ -860,7 +873,7 @@ config.libs = [
             Object(Matching, "System/ParamInst.cpp"),
             PCHObject(NonMatching, "System/PerformList.cpp"),
             PCHObject(NonMatching, "System/RenderModeObj.cpp"),
-            PCHObject(NonMatching, "System/SnapTimeObj.cpp"),
+            PCHObject(Matching, "System/SnapTimeObj.cpp"),
             PCHObject(NonMatching, "System/TalkCursor.cpp"),
             Object(Matching, "System/TexCache.cpp"),
             PCHObject(Matching, "System/ZBufferCatch.cpp"),
@@ -872,14 +885,14 @@ config.libs = [
             Object(Matching, "System/Resolution.cpp"),
             PCHObject(Matching, "System/PositionHolder.cpp"),
             Object(Matching, "System/ProcessMeter.cpp"),
-            PCHObject(NonMatching, "System/TimeRec.cpp"),
+            PCHObject(Matching, "System/TimeRec.cpp"),
             Object(NonMatching, "System/DrawSyncManager.cpp"),
             PCHObject(Matching, "System/THPRender.cpp"),
             PCHObject(NonMatching, "System/MarNameRefGen_BossEnemy.cpp"),
             PCHObject(NonMatching, "System/MarNameRefGen_Enemy.cpp"),
             PCHObject(NonMatching, "System/MarNameRefGen_Map.cpp"),
             PCHObject(NonMatching, "System/MarNameRefGen_MapObj.cpp"),
-            PCHObject(NonMatching, "System/MarNameRefGen_NPC.cpp"),
+            PCHObject(Matching, "System/MarNameRefGen_NPC.cpp"),
             PCHObject(NonMatching, "System/CardManager.cpp"),
             PCHObject(NonMatching, "System/MarDirectorLoadResource.cpp"),
             PCHObject(NonMatching, "System/MovieDirector.cpp"),
@@ -897,12 +910,12 @@ config.libs = [
         "objects": [
             PCHObject(NonMatching, "Strategic/liveactor.cpp"),
             PCHObject(NonMatching, "Strategic/liveinterp.cpp"),
-            PCHObject(NonMatching, "Strategic/livemanager.cpp"),
+            PCHObject(Matching, "Strategic/livemanager.cpp"),
             Object(NonMatching, "Strategic/ObjHitCheck.cpp"),
             PCHObject(NonMatching, "Strategic/objmanager.cpp"),
             PCHObject(NonMatching, "Strategic/ObjModel.cpp"),
             Object(NonMatching, "Strategic/spcinterp.cpp"),
-            PCHObject(NonMatching, "Strategic/Strategy.cpp"),
+            PCHObject(Matching, "Strategic/Strategy.cpp"),
             PCHObject(NonMatching, "Strategic/question.cpp"),
             PCHObject(Matching, "Strategic/smplcharacter.cpp"),
             PCHObject(NonMatching, "Strategic/HitActor.cpp"),
@@ -1027,7 +1040,7 @@ config.libs = [
             PCHObject(NonMatching, "MoveBG/MapObjPlane.cpp"),
             PCHObject(NonMatching, "MoveBG/MapObjCloud.cpp"),
             PCHObject(NonMatching, "MoveBG/MapObjBall.cpp"),
-            PCHObject(Matching, "MoveBG/MapObjAirport.cpp"),
+            PCHObject(MatchingFor("GMSJ01"), "MoveBG/MapObjAirport.cpp"),
             PCHObject(NonMatching, "MoveBG/MapObjDolpic.cpp"),
             PCHObject(NonMatching, "MoveBG/MapObjPollution.cpp"),
             PCHObject(NonMatching, "MoveBG/MapObjGrass.cpp"),
@@ -1110,8 +1123,8 @@ config.libs = [
             Object(NonMatching, "GC2D/BoundPane.cpp"),
             PCHObject(NonMatching, "GC2D/PauseMenu2.cpp"),
             Object(NonMatching, "GC2D/MessageLoader.cpp"),
-            Object(Matching, "GC2D/HelpActor.cpp"),
-            Object(Matching, "GC2D/MessageUtil.cpp"),
+            PCHObject(NonMatching, "GC2D/HelpActor.cpp"),
+            Object(MatchingFor("GMSJ01"), "GC2D/MessageUtil.cpp"),
             PCHObject(NonMatching, "GC2D/CardSave.cpp"),
             PCHObject(NonMatching, "GC2D/CardLoad.cpp"),
             PCHObject(NonMatching, "GC2D/ConsoleStr.cpp"),
@@ -1123,7 +1136,7 @@ config.libs = [
             PCHObject(NonMatching, "GC2D/SunGlass.cpp"),
             PCHObject(Matching, "GC2D/ShineFader.cpp"),
             PCHObject(NonMatching, "GC2D/ProgSelect.cpp"),
-            Object(NonMatching, "GC2D/hx_wiper.c"),
+            Object(NonMatching, "GC2D/hx_wiper.c", cflags=[*cflags_game, "-inline noauto"]),
             PCHObject(NonMatching, "GC2D/MovieSubtitle.cpp"),
             PCHObject(NonMatching, "GC2D/Option.cpp"),
             PCHObject(NonMatching, "GC2D/MovieRumble.cpp"),
@@ -1140,6 +1153,7 @@ config.libs = [
             PCHObject(NonMatching, "Enemy/emario.cpp"),
             PCHObject(NonMatching, "Enemy/enemy.cpp"),
             PCHObject(NonMatching, "Enemy/enemyAttachment.cpp"),
+            PCHObject(Matching, "Enemy/enemyinterp.cpp"),
             PCHObject(NonMatching, "Enemy/enemymanager.cpp"),
             PCHObject(NonMatching, "Enemy/enemyMario.cpp"),
             PCHObject(NonMatching, "Enemy/feetinv.cpp"),
@@ -1277,6 +1291,13 @@ config.libs = [
         ],
     },
 ]
+
+for lib in config.libs:
+    for obj in lib["objects"]:
+        top, _, rest = obj.name.partition("/")
+        if top in middleware_libs:
+            obj.options["src_dir"] = f"libs/{top}/src"
+            obj.options["source"] = rest
 
 # Optional extra categories for progress tracking
 # Adjust as desired for your project

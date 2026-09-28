@@ -41,6 +41,9 @@ hatch should a genuinely reversed unit ever turn up.
 Usage:
   python tools/validate-symbol-order.py -u mario/MarioUtil/MathUtil
   python tools/validate-symbol-order.py -u mario/Enemy/areacylinder --map orig/GMSE01/files/marioUS.MAP
+
+The map defaults to the one named by `map:` in config/<version>/config.yml,
+for the version objdiff.json is currently configured for (configure.py -v).
 """
 
 import argparse
@@ -54,7 +57,31 @@ from typing import Dict, List, Optional, Tuple
 script_dir = os.path.dirname(os.path.realpath(__file__))
 root_dir = os.path.abspath(os.path.join(script_dir, ".."))
 
-DEFAULT_MAP = os.path.join(root_dir, "orig", "GMSJ01", "files", "mario.MAP")
+_RE_BUILD_VERSION = re.compile(r"^build[\\/]([^\\/]+)[\\/]")
+_RE_CONFIG_MAP = re.compile(r"^\s*#?\s*map:\s*(\S+)")
+
+
+def default_map_for_unit(unit: Dict) -> str:
+    """The linker map of the version the unit was built for.
+
+    objdiff.json follows the last `configure.py --version`, so the unit's
+    base_path names the version (build/<VERSION>/...). The map path is read
+    from config/<VERSION>/config.yml, where dtk keeps it as a `# map:` line.
+    Guessing a fixed map would validate PAL objects against the JP map."""
+    m = _RE_BUILD_VERSION.match(unit.get("base_path", ""))
+    if not m:
+        die(f"Cannot tell the game version from base_path "
+            f"'{unit.get('base_path')}'; pass --map explicitly.")
+    version = m.group(1)
+    config = os.path.join(root_dir, "config", version, "config.yml")
+    if not os.path.exists(config):
+        die(f"No {config} for version {version}; pass --map explicitly.")
+    with open(config, encoding="utf-8") as f:
+        for line in f:
+            m = _RE_CONFIG_MAP.match(line)
+            if m:
+                return os.path.join(root_dir, m.group(1))
+    die(f"No 'map:' line in {config}; pass --map explicitly.")
 NM = os.environ.get("NM", os.path.join(root_dir, "build", "binutils", "powerpc-eabi-nm.exe"))
 OBJDIFF_JSON = os.path.join(root_dir, "objdiff.json")
 
@@ -218,8 +245,8 @@ def obj_functions(obj_path: str) -> List[Tuple[str, int, str]]:
 
 # ---------------------------------------------------------------------------
 # Linker-map symbol closure -- the authority on weak/global/local binding.
-# Only *linked* symbols appear here; deadstripped (UNUSED) ones never do, which
-# is exactly why UNUSED symbols are non-weak by construction.
+# Only *linked* symbols appear here; deadstripped (UNUSED) ones never do, so
+# the map cannot establish their binding.
 # ---------------------------------------------------------------------------
 
 #   "  3] __dt__26__partial_array_destructorFv (func,weak) found in Runtime..."
@@ -276,19 +303,53 @@ def order_diff(expected: List[str], actual: List[str]) -> List[str]:
     return out
 
 
+def validation_errors(map_syms, obj_syms, map_binding):
+    """Stable identities for strict errors, including each inverted symbol pair.
+
+    Comparing error counts alone would allow a new error to replace an old one.
+    Order pairs also catch a new inversion inside an already-disordered TU.
+    """
+    names = [s.name for s in map_syms]
+    rank = {name: i for i, name in enumerate(names)}
+    bindings = {name: binding for name, _, binding in obj_syms}
+    errors = set()
+    for sym in map_syms:
+        if sym.name not in bindings:
+            errors.add(("missing", sym.name))
+        elif not sym.unused:
+            expected = map_binding(sym.name)
+            actual = bindings[sym.name]
+            if expected is not None and expected != actual:
+                errors.add(("binding", sym.name, expected, actual))
+
+    ordered = [name for name, _, binding in obj_syms
+               if name in rank and binding != "weak"]
+    for i, left in enumerate(ordered):
+        for right in ordered[i + 1:]:
+            if rank[left] > rank[right]:
+                errors.add(("order", right, left))
+    return errors
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(
         description="Validate TU function symbol order against the linker map."
     )
     ap.add_argument("-u", "--unit", required=True,
                     help="objdiff unit name, e.g. mario/MarioUtil/MathUtil")
-    ap.add_argument("--map", default=DEFAULT_MAP,
-                    help=f"path to the linker map (default: {DEFAULT_MAP})")
+    ap.add_argument("--map",
+                    help="path to the linker map (default: the map named in "
+                         "config/<version>/config.yml for the version the unit "
+                         "was built for)")
     ap.add_argument("--map-tu",
                     help="override the map .text-layout TU identifier")
     ap.add_argument("--reverse", action="store_true",
                     help="compare against the reversed object order (escape hatch; "
                          "no known unit needs this)")
+    ap.add_argument("--baseline-object",
+                    help="freshly built base-revision object; fail only on new "
+                         "strict errors while reporting inherited errors; "
+                         "objects without function symbols grant no exemptions")
     ap.add_argument("-v", "--verbose", action="store_true",
                     help="list the object-only symbols not in the map "
                          "(by default only their count is shown)")
@@ -299,6 +360,8 @@ def main() -> None:
     source_path = meta.get("source_path", "")
     base_path = os.path.join(root_dir, unit["base_path"])
     reverse_fn = bool(meta.get("reverse_fn_order"))
+    if not args.map:
+        args.map = default_map_for_unit(unit)
 
     tus = parse_text_layout(args.map)
     tu_id = find_map_tu(tus, source_path, args.map_tu)
@@ -309,8 +372,12 @@ def main() -> None:
         return bind_by_tu.get((tu_id, name)) or bind_by_name.get(name)
 
     obj_syms = obj_functions(base_path)
+    baseline_syms = (obj_functions(args.baseline_object)
+                     if args.baseline_object else None)
     if args.reverse:
         obj_syms = list(reversed(obj_syms))
+        if baseline_syms is not None:
+            baseline_syms = list(reversed(baseline_syms))
 
     map_names = [s.name for s in map_syms]
     map_set = set(map_names)
@@ -325,6 +392,7 @@ def main() -> None:
     print(f"Unit        : {unit['name']}")
     print(f"Source      : {source_path}")
     print(f"Object      : {os.path.relpath(base_path, root_dir)}")
+    print(f"Map         : {os.path.relpath(args.map, root_dir)}")
     print(f"Map TU      : {tu_id}")
     print(f"Map symbols : {len(map_names)} ({len(unused_names)} UNUSED)   "
           f"Object .text symbols: {len(obj_names)}")
@@ -433,6 +501,31 @@ def main() -> None:
         warns.append(f"{len(size_bad)} UNUSED size mismatch(es)")
 
     print("-" * 78)
+    if baseline_syms is not None:
+        current_errors = validation_errors(map_syms, obj_syms, map_binding)
+        # An unimplemented TU must pass strict validation when work starts on it.
+        # Its empty object must not exempt every missing function in the map.
+        baseline_errors = (validation_errors(map_syms, baseline_syms, map_binding)
+                           if baseline_syms else set())
+        introduced = current_errors - baseline_errors
+        inherited = current_errors & baseline_errors
+        resolved = baseline_errors - current_errors
+        print(f"Baseline object: {args.baseline_object}")
+        if not baseline_syms:
+            print("Baseline has no function symbols; no inherited errors exempted.")
+        print(f"Symbol regressions: {len(introduced)} new, "
+              f"{len(inherited)} inherited, {len(resolved)} resolved.")
+        for error in sorted(introduced):
+            print("[NEW] " + " | ".join(error))
+        if introduced:
+            print("RESULT: FAIL (new symbol-validation errors)")
+            sys.exit(1)
+        if inherited:
+            print("RESULT: PASS with warnings (existing base-revision errors; "
+                  "strict diagnostics shown above)")
+        else:
+            print("RESULT: PASS (no symbol-validation regressions)")
+        return
     if failures:
         tail = f", {'; '.join(warns)} warning(s)" if warns else ""
         print(f"RESULT: FAIL ({failures} error category/categories{tail})")

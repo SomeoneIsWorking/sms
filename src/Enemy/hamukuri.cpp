@@ -379,6 +379,7 @@ void THaneHamuKuriManager::createAnmData() { TObjManager::createAnmData(); }
 
 TDoroHaneKuriManager::TDoroHaneKuriManager(const char* name)
     : THaneHamuKuriManager(name)
+    , unk74(nullptr)
 {
 }
 
@@ -475,27 +476,22 @@ TSpineEnemy* TBossDangoHamuKuriManager::createEnemyInstance()
 	return new TBossDangoHamuKuri;
 }
 
-static const GXColorS10 mFireHamNoseColorStart = { 0x1F4, 0xC8, 0x78, 0xFF };
-// GXColorS10 fields are s16 (signed 10-bit-range channel value). MWERKS treated
-// large hex constants as s16 by narrowing; GCC diagnoses. Explicit s16 casts
-// preserve the exact wire values (0xFFEC = -20, 0xFFA6 = -90, 0xFF74 = -140,
-// 0xFFD8 = -40, 0xFFBA = -70, 0xFFCE = -50).
-static const GXColorS10 mFireHamNoseColorEnd = { (s16)0xFFEC, (s16)0xFFA6, (s16)0xFF74, 0xFF };
-static const GXColorS10 mFireHamOtherColorStart
-    = { 0x1F4, (s16)0xFFD8, (s16)0xFFBA, 0xFF };
-static const GXColorS10 mFireHamOtherColorEnd = { 0x50, 0x5, (s16)0xFFCE, 0xFF };
+static const GXColorS10 mFireHamNoseColorStart  = { 0x1F4, 0xC8, 0x78, 0xFF };
+static const GXColorS10 mFireHamNoseColorEnd    = { -20, -90, -140, 0xFF };
+static const GXColorS10 mFireHamOtherColorStart = { 0x1F4, -40, -70, 0xFF };
+static const GXColorS10 mFireHamOtherColorEnd   = { 0x50, 0x5, -50, 0xFF };
 
 static GXColorS10 mFireHamNoseColorDiff = {
-	mFireHamNoseColorEnd.r - mFireHamNoseColorStart.r,
-	mFireHamNoseColorEnd.g - mFireHamNoseColorStart.g,
-	mFireHamNoseColorEnd.b - mFireHamNoseColorStart.b,
-	mFireHamNoseColorEnd.a - mFireHamNoseColorStart.a,
+	(s16)(mFireHamNoseColorEnd.r - mFireHamNoseColorStart.r),
+	(s16)(mFireHamNoseColorEnd.g - mFireHamNoseColorStart.g),
+	(s16)(mFireHamNoseColorEnd.b - mFireHamNoseColorStart.b),
+	(s16)(mFireHamNoseColorEnd.a - mFireHamNoseColorStart.a),
 };
 static GXColorS10 mFireHamOtherColorDiff = {
-	mFireHamOtherColorEnd.r - mFireHamOtherColorStart.r,
-	mFireHamOtherColorEnd.g - mFireHamOtherColorStart.g,
-	mFireHamOtherColorEnd.b - mFireHamOtherColorStart.b,
-	mFireHamOtherColorEnd.a - mFireHamOtherColorStart.a,
+	(s16)(mFireHamOtherColorEnd.r - mFireHamOtherColorStart.r),
+	(s16)(mFireHamOtherColorEnd.g - mFireHamOtherColorStart.g),
+	(s16)(mFireHamOtherColorEnd.b - mFireHamOtherColorStart.b),
+	(s16)(mFireHamOtherColorEnd.a - mFireHamOtherColorStart.a),
 };
 
 TFireHamuKuriManager::TFireHamuKuriManager(const char* name)
@@ -1553,7 +1549,7 @@ void THaneHamuKuri2::walkBehavior(int param_1, f32 param_2)
 	if (unk234 > flyBaseHeight)
 		unk234 -= 1.0f;
 
-	unk210      = JMASin(unk20C * 360.0f / flyBaseFrequency) * flyBaseAmplitude;
+	unk210      = MsSin(unk20C * 360.0f / flyBaseFrequency) * flyBaseAmplitude;
 	mPosition.y = unk210 + unk230 + unk234;
 	mTurnSpeed
 	    = ((THaneHamuKuriSaveLoadParams*)getSaveParam())->mSLTurnSpeedLow.get();
@@ -1866,7 +1862,7 @@ void TDangoHamuKuri::swingBody()
 		if (mAttackSw) {
 			if (mPrev != nullptr) {
 				if (mPrev == mBoss) {
-					mPosition = mBoss->mPosition;
+					mRotation = mBoss->mRotation;
 					unk210 += 10.0f;
 				}
 
@@ -1881,12 +1877,13 @@ void TDangoHamuKuri::swingBody()
 		fVar1 = 16.0f;
 	}
 
-	unk21C = fVar1 * JMACos(unk20C * 360.0f);
-	unk224 = fVar1 * JMASin(unk20C * 360.0f);
+	unk21C = fVar1 * MsCos(unk20C * 360.0f);
+	unk224 = fVar1 * MsSin(unk20C * 360.0f);
 }
 
 TBossDangoHamuKuri::TBossDangoHamuKuri(const char* name)
     : TDangoHamuKuri(name)
+    , unk238(0)
 {
 }
 
@@ -2362,7 +2359,7 @@ DEFINE_NERVE(TNerveHamuKuriBoundFreeze, TLiveActor)
 		self->unk1E4.x              = thing.x;
 		self->unk1E4.y              = thing.y;
 		self->unk1E4.z              = thing.z;
-		self->setGoalPathMario();
+		self->setGoalPath(TPathNode((THitActor*)gpMarioAddress));
 		self->unk1E0 = 1;
 	}
 
@@ -2517,7 +2514,7 @@ DEFINE_NERVE(TNerveHaneHamuKuriUpWait, TLiveActor)
 	THaneHamuKuri* self = (THaneHamuKuri*)spine->getBody();
 	if (spine->getTime() < 1) {
 		self->setWaitAnm();
-		self->setGoalPathMario();
+		self->setGoalPath(TPathNode((THitActor*)gpMarioAddress));
 	}
 
 	self->mScaling.x = self->mScaling.z
@@ -2543,7 +2540,7 @@ DEFINE_NERVE(TNerveHaneHamuKuriMoveOnGraph, TLiveActor)
 		self->setWalkAnm();
 		self->initialGraphNode();
 		if (self->getTracer()->getGraph()->getNodeNum() == 1)
-			self->setGoalPathMario();
+			self->setGoalPath(TPathNode((THitActor*)gpMarioAddress));
 	}
 
 	if (self->getTracer()->getGraph()->getNodeNum() == 1) {

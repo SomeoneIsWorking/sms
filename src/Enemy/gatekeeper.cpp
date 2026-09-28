@@ -73,7 +73,7 @@ TGKHitObj::TGKHitObj(TGateKeeperBase* owner, int joint_idx, const char* name)
 {
 	initHitActor(0x10000022, 1, 0x80000000, 0.0f, 0.0f, 150.0f, 200.0f);
 	offHitFlag(HIT_FLAG_NO_COLLISION);
-	JDrama::TNameRefGen::search<TIdxGroupObj>("敵グループ")
+	static_cast<TIdxGroupObj*>(JDrama::TNameRefGen::search("敵グループ"))
 	    ->getChildren()
 	    .push_back(this);
 }
@@ -211,27 +211,16 @@ TBGKMtxCalc::TBGKMtxCalc(TBiancoGateKeeper* owner)
 
 void TBGKMtxCalc::joinAnm(int param_1)
 {
-	J3DAnmTransformKey* anm
-	    = mOwner->getActorKeeper()->getMActorAnmData()->getBckData()->getAnmPtr(
-	        param_1);
-
-	if (mAnmTransformNew == anm)
-		return;
-
-	mAnmTransformOld = mAnmTransformNew;
-	mAnmTransformNew = anm;
-	unk50            = 1.0f;
+	M3UMtxCalcSIAnmBlendQuat::joinAnm(
+	    mOwner->getActorKeeper()->getMActorAnmData()->mBckAnms->getAnmPtr(
+	        param_1));
 }
 
 void TBGKMtxCalc::setAnm(int param_1)
 {
-	J3DAnmTransformKey* anm
-	    = mOwner->getActorKeeper()->getMActorAnmData()->getBckData()->getAnmPtr(
-	        param_1);
-
-	mAnmTransformNew = anm;
-	mAnmTransformOld = 0;
-	unk50            = 0.0f;
+	M3UMtxCalcSIAnmBlendQuat::setAnm(
+	    mOwner->getActorKeeper()->getMActorAnmData()->mBckAnms->getAnmPtr(
+	        param_1));
 }
 
 void TBGKMtxCalc::calc(u16 param_1)
@@ -265,30 +254,17 @@ void TBGKMtxCalc::calc(u16 param_1)
 				f32 delta = MsAngleDiff(yaw, cur);
 				f32 turn;
 				if (0.0f < delta)
-					turn = 3.0f > delta ? delta : 3.0f;
+					turn = MsMin(3.0f, delta);
 				else
-					turn = -3.0f > delta ? -3.0f : delta;
+					turn = MsMax(-3.0f, delta);
 
 				f32 newYaw     = (turn + cur) - mOwner->mRotation.y;
 				mOwner->unk180 = MsWrap(newYaw, 0.0f, 360.0f);
 			}
 		}
 
-		f32 s = JMASin(mOwner->unk180);
-		f32 c = JMACos(mOwner->unk180);
 		Mtx rot;
-		rot[0][0] = c;
-		rot[0][1] = 0.0f;
-		rot[0][2] = s;
-		rot[0][3] = 0.0f;
-		rot[1][0] = 0.0f;
-		rot[1][1] = 1.0f;
-		rot[1][2] = 0.0f;
-		rot[1][3] = 0.0f;
-		rot[2][0] = -s;
-		rot[2][1] = 0.0f;
-		rot[2][2] = c;
-		rot[2][3] = 0.0f;
+		MsMtxSetRotY(rot, mOwner->unk180);
 		MTXConcat(mtx, rot, mtx);
 		MTXCopy(mtx, J3DSys::mCurrentMtx);
 	}
@@ -301,7 +277,7 @@ TBGKObstacle::TBGKObstacle(TBiancoGateKeeper* owner, const char* name)
 	mPosition.y -= 1000.0f;
 	initHitActor(0x10000022, 1, 0x80000000, 800.0f, 800.0f, 800.0f, 800.0f);
 	offHitFlag(HIT_FLAG_NO_COLLISION);
-	JDrama::TNameRefGen::search<TIdxGroupObj>("敵グループ")
+	static_cast<TIdxGroupObj*>(JDrama::TNameRefGen::search("敵グループ"))
 	    ->getChildren()
 	    .push_back(this);
 }
@@ -365,7 +341,7 @@ void TBiancoGateKeeper::init(TLiveManager* manager)
 	}
 
 	initHitActor(0x10000022, 5, 0x81000000, 400.0f, 150.0f, 400.0f, 150.0f);
-	JDrama::TNameRefGen::search<TIdxGroupObj>("敵グループ")
+	static_cast<TIdxGroupObj*>(JDrama::TNameRefGen::search("敵グループ"))
 	    ->getChildren()
 	    .push_back(this);
 	offHitFlag(HIT_FLAG_NO_COLLISION);
@@ -457,11 +433,11 @@ void TBiancoGateKeeper::launchGorogoro()
 
 void TBiancoGateKeeper::launchNamekuri()
 {
-	TNameKuriManager* mgr = JDrama::TNameRefGen::search<TNameKuriManager>(
-	    "拡散ナメクリマネージャー");
+	TNameKuriManager* mgr = static_cast<TNameKuriManager*>(
+	    JDrama::TNameRefGen::search("拡散ナメクリマネージャー"));
 	if (mgr == NULL)
-		mgr = JDrama::TNameRefGen::search<TNameKuriManager>(
-		    "ナメクリマネージャー");
+		mgr = static_cast<TNameKuriManager*>(
+		    JDrama::TNameRefGen::search("ナメクリマネージャー"));
 
 	if (mgr != NULL) {
 		for (int i = 0; i < 10; i++) {
@@ -724,13 +700,7 @@ void TBiancoGateKeeper::perform(u32 cue, JDrama::TGraphics* graphics)
 	}
 
 	if (cue & CUE_MOVE) {
-		TBGKMtxCalc* mc = unk178;
-		f32 delta       = -unk158;
-		mc->unk50 += delta;
-		if (mc->unk50 < 0.0f)
-			mc->unk50 = 0.0f;
-		else if (mc->unk50 > 1.0f)
-			mc->unk50 = 1.0f;
+		unk178->advanceMotionBlend(-unk158);
 	}
 
 	if (cue & CUE_MOVE)

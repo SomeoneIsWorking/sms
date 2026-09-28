@@ -180,7 +180,8 @@ void TLiveActor::load(JSUMemoryInputStream& stream)
 
 	char buffer[256];
 	stream.readString(buffer, 256);
-	TLiveManager* mgr = JDrama::TNameRefGen::search<TLiveManager>(buffer);
+	TLiveManager* mgr
+	    = static_cast<TLiveManager*>(JDrama::TNameRefGen::search(buffer));
 
 	mGroundPlane = TMap::getIllegalCheckData();
 
@@ -281,7 +282,7 @@ void TLiveActor::kill()
 
 BOOL TLiveActor::receiveMessage(THitActor*, u32) { return FALSE; }
 
-u32 TLiveActor::getShadowType() { return 0; }
+u32 TLiveActor::getShadowType() { return SHADOW_TYPE_CIRCLE; }
 
 void TLiveActor::setGroundCollision()
 {
@@ -320,17 +321,17 @@ void TLiveActor::requestShadow()
 	    || (mLiveFlag & LIVE_FLAG_UNK400)) {
 		TCircleShadowRequest local_2c;
 
-		local_2c.unk0 = mPosition;
+		local_2c.mPosition = mPosition;
 
 		if (!isAirborne()) {
-			local_2c.unk0.y = mGroundHeight;
-			local_2c.unk1D  = 0;
+			local_2c.mPosition.y       = mGroundHeight;
+			local_2c.mNeedsGroundCheck = 0;
 		}
 
-		local_2c.unkC = local_2c.unk10 = mScaledBodyRadius;
+		local_2c.mRadiusX = local_2c.mRadiusZ = mScaledBodyRadius;
 
-		local_2c.unk1C = getShadowType();
-		local_2c.unk14 = mRotation.y;
+		local_2c.mShadowType = getShadowType();
+		local_2c.mRotationY  = mRotation.y;
 
 		if (mLiveFlag & LIVE_FLAG_UNK400) {
 			gpBindShadowManager->forceRequest(local_2c, getActorType());
@@ -414,8 +415,19 @@ void TLiveActor::perform(u32 param_1, JDrama::TGraphics* param_2)
 		updateAnmSound();
 
 	if (mMActor) {
-		if (param_1 & 2)
+#ifdef VERSION_GMSP01
+		f32 frame;
+#endif
+		if (cue & CUE_CALC_ANIM) {
 			mMActor->frameUpdate();
+#ifdef VERSION_GMSP01
+			if (mLiveFlag & LIVE_FLAG_CALC_INT_FRAME) {
+				J3DFrameCtrl* ctrl = mMActor->getFrameCtrl(0);
+				frame              = ctrl->getFrame();
+				ctrl->setFrame((int)frame);
+			}
+#endif
+		}
 
 		if (param_1 & 4)
 			requestShadow();
@@ -424,6 +436,10 @@ void TLiveActor::perform(u32 param_1, JDrama::TGraphics* param_2)
 			if (param_1 & 2) {
 				calcRootMatrix();
 				mMActor->calc();
+#ifdef VERSION_GMSP01
+				if (mLiveFlag & LIVE_FLAG_CALC_INT_FRAME)
+					mMActor->getFrameCtrl(0)->setFrame(frame);
+#endif
 			}
 
 			if (param_1 & 4)
@@ -500,7 +516,7 @@ MtxPtr TLiveActor::getTakingMtx()
 	if (!mMActor)
 		return nullptr;
 
-	return mMActor->getModel()->mBaseMtx;
+	return mMActor->getModel()->getBaseTRMtx();
 }
 
 void TLiveActor::initAnmSound()
@@ -559,11 +575,8 @@ void TLiveActor::setCurAnmSound()
 
 	if (mMActor) {
 		int idx = mMActor->getCurAnmIdx(ANM_TYPE_BCK);
-		if (idx >= 0) {
-			const char** table = getBasNameTable();
-
-			name = !table ? nullptr : table[idx];
-		}
+		if (idx >= 0)
+			name = getBas(idx);
 	}
 
 	setAnmSound(name);

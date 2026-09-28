@@ -58,18 +58,18 @@ TRoulette::TRoulette(const char* name)
     , unk144(0.2f)
     , unk150(nullptr)
 {
-	unk148 = 0;
-	unk14A = 0;
-	unk14C = 0;
-	unk14E = 255;
-	if (gpApplication.mCurrArea.getStage() == 14
+	unk148.r = 0;
+	unk148.g = 0;
+	unk148.b = 0;
+	unk148.a = 255;
+	if (SMSGetApplication()->mCurrArea.getStage() == 14
 	    && gpMarDirector->getCurrentStage() == 1) {
-		unk141 = 1;
-		unk14C = 255;
+		unk141   = 1;
+		unk148.b = 255;
 	}
-	if (gpApplication.mCurrArea.getStage() == 56) {
-		unk14C = 255;
-		unk142 = 1;
+	if (SMSGetApplication()->mCurrArea.getStage() == 56) {
+		unk148.b = 255;
+		unk142   = 1;
 	}
 }
 
@@ -81,19 +81,19 @@ void TRoulette::initMapObj()
 		if (strstr(getModel()->getModelData()->getMaterialName()->getName(i),
 		           "_switch")
 		    != nullptr) {
-			SMS_InitPacket_OneTevColor(mMActor->getModel(), i, GX_TEVREG0,
-			                           (GXColorS10*)&unk148);
+			SMS_InitPacket_OneTevColor(getMActor()->getModel(), i, GX_TEVREG0,
+			                           &unk148);
 		}
 	}
 
 	unk150 = new TRouletteSw(this, "ルーレットスイッチ");
 
-	JDrama::TNameRefGen::search<TIdxGroupObj>("オブジェクトグループ")
-	    ->getChildren()
-	    .push_back(unk150);
+	TIdxGroupObj* objGroup = static_cast<TIdxGroupObj*>(
+	    JDrama::TNameRefGen::search("オブジェクトグループ"));
+	objGroup->getChildren().push_back(unk150);
 	f32 attackR = 500.0f;
 	f32 attackH = 100.0f;
-	if (gpApplication.mCurrArea.unk0 == 14) {
+	if (SMSGetApplication()->mCurrArea.getStage() == 14) {
 		attackR = 40.0f;
 		attackH = 80.0f;
 	}
@@ -137,9 +137,9 @@ void TRoulette::calcRootMatrix()
 void TRoulette::setRollSp(f32 sp)
 {
 	unk13C        = sp;
-	unk148        = 0;
-	unk14A        = 0;
-	unk14C        = 255;
+	unk148.r      = 0;
+	unk148.g      = 0;
+	unk148.b      = 255;
 	unk150->unk6C = 0;
 }
 
@@ -150,17 +150,17 @@ void TRoulette::switchStop()
 		    && unk13C != 0.0f) {
 			unk150->unk6C = 0;
 			unk13C        = 0.0f;
-			unk148        = 0;
-			unk14A        = 0;
-			unk14C        = 0;
+			unk148.r      = 0;
+			unk148.g      = 0;
+			unk148.b      = 0;
 			SMSGetMSound()->startSoundActor(MSD_SE_BS_TELESA_RLT_STOP,
 			                                &mPosition, 0, nullptr, 0, 4);
 		}
 		if (unk150->unk6C != 0 && unk141 != 0) {
 			unk150->unk6C = 0;
-			unk148        = 0;
-			unk14A        = 0;
-			unk14C        = 0;
+			unk148.r      = 0;
+			unk148.g      = 0;
+			unk148.b      = 0;
 			SMSGetMSound()->startSoundActor(MSD_SE_BS_TELESA_RLT_STOP,
 			                                &mPosition, 0, nullptr, 0, 4);
 			unk140 = 1;
@@ -524,22 +524,8 @@ void TItemSlotDrum::generateItem()
 		TTelesa* item = (TTelesa*)gpConductor->makeOneEnemyAppear(
 		    mPosition, "テレサマネージャー", 1);
 		if (item != nullptr) {
-			s16 ang = (s16)DEG2SHORTANGLE(mRotation.x);
-			f32 s   = JMASSin(ang);
-			f32 c   = JMASCos(ang);
 			Mtx m;
-			m[0][0] = c;
-			m[0][1] = 0.0f;
-			m[0][2] = s;
-			m[0][3] = 0.0f;
-			m[1][0] = 0.0f;
-			m[1][1] = 1.0f;
-			m[1][2] = 0.0f;
-			m[1][3] = 0.0f;
-			m[2][0] = -s;
-			m[2][1] = 0.0f;
-			m[2][2] = c;
-			m[2][3] = 0.0f;
+			MsMtxSetRotY(m, mRotation.x);
 			JGeometry::TVec3<f32> off(0.0f, -350.0f, 300.0f);
 			MTXMultVec(m, &off, &off);
 			item->mPosition += off;
@@ -555,23 +541,8 @@ void TItemSlotDrum::generateItem()
 			spread = 20.0f;
 		}
 		for (int i = 0; i < count; ++i) {
-			s16 ang = (s16)DEG2SHORTANGLE(spread * ((f32)i - 1.0f)
-			                              + (mRotation.x - spread));
-			f32 s   = JMASSin(ang);
-			f32 c   = JMASCos(ang);
 			Mtx m;
-			m[0][0] = c;
-			m[0][1] = 0.0f;
-			m[0][2] = s;
-			m[0][3] = 0.0f;
-			m[1][0] = 0.0f;
-			m[1][1] = 1.0f;
-			m[1][2] = 0.0f;
-			m[1][3] = 0.0f;
-			m[2][0] = -s;
-			m[2][1] = 0.0f;
-			m[2][2] = c;
-			m[2][3] = 0.0f;
+			MsMtxSetRotY(m, spread * ((f32)i - 1.0f) + (mRotation.x - spread));
 			JGeometry::TVec3<f32> off(0.0f, -350.0f, 200.0f);
 			MTXMultVec(m, &off, &off);
 			TMapObjBase* item = gpItemManager->makeObjAppear(
@@ -851,10 +822,12 @@ void TDonchou::initMapObj()
 void TDonchou::loadAfter()
 {
 	TMapObjBase::loadAfter();
-	if (gpApplication.mCurrArea.getStage() == 14
+	if (SMSGetApplication()->mCurrArea.getStage() == 14
 	    && gpMarDirector->getCurrentStage() == 0) {
-		unk144 = JDrama::TNameRefGen::search<TSlotDrum>("srotdram");
-		unk148 = JDrama::TNameRefGen::search<TItemSlotDrum>("itemsrotdram");
+		unk144
+		    = static_cast<TSlotDrum*>(JDrama::TNameRefGen::search("srotdram"));
+		unk148 = static_cast<TItemSlotDrum*>(
+		    JDrama::TNameRefGen::search("itemsrotdram"));
 	}
 }
 
@@ -1080,7 +1053,8 @@ void TSakuCasino::initMapObj()
 void TSakuCasino::loadAfter()
 {
 	TMapObjBase::loadAfter();
-	unk144 = JDrama::TNameRefGen::search<TCasinoPanelGate>("pazul");
+	unk144
+	    = static_cast<TCasinoPanelGate*>(JDrama::TNameRefGen::search("pazul"));
 }
 
 void TSakuCasino::calcRootMatrix()

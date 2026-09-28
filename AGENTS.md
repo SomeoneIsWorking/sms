@@ -23,8 +23,10 @@ config/GMSJ01/
   splits.txt          — per-TU section address ranges
   build.sha1          — SHA1 hash of the target DOL
 
-src/                  — decompiled C/C++ source files
-include/              — headers (class declarations, inline functions)
+src/                  — decompiled game source files
+include/              — game headers (class declarations, inline functions)
+libs/<name>/src/      — middleware source files (dolphin, JSystem, THPPlayer, PowerPC_EABI_Support, TRK_MINNOW_DOLPHIN, OdemuExi2)
+libs/<name>/include/  — middleware headers
 orig/GMSJ01/          — original game disc image (not committed)
 build/GMSJ01/         — build artifacts, compiled objects
   obj/                — target (original) object files extracted by dtk
@@ -126,8 +128,50 @@ Options:
 If a local clone of [`m2c`](https://github.com/matt-kempster/m2c) is available, it can be used to produce a **rough first-pass C draft** from an extracted assembly file.
 For this repository, the relevant input files are the dtk-generated assembly files under `build/GMSJ01/asm/<path>.s`.
 
-`m2c` works here as an asm-to-draft tool, not as a source-of-truth decompiler.
-Treat its output as scaffolding for understanding control flow and rough data flow, then verify everything against objdiff and the binary.
+```
+python tools/validate-symbol-order.py -u mario/MarioUtil/MathUtil
+```
+
+Unit names are the same `mario/<path>` names as `decomp-diff.py`. Both
+versions use the `mario/` prefix; the tool compares the object of the version
+`objdiff.json` is configured for (the last `configure.py -v`) with the map that
+`config/<version>/config.yml` names, and prints which map it used. Give
+`--map` only to compare with a different map on purpose.
+
+What it reports:
+- **MISSING** (error) — a map symbol (used or UNUSED) that our object doesn't
+  define. Just define the function.
+- **ORDER** (error) — non-weak symbols present but in the wrong relative order;
+  reorder the definitions to match the map. (Emission order is the reverse of
+  source order for `-inline deferred` TUs.) A disorder involving **only weak**
+  symbols is downgraded to a *warning*, since weak ordering is compiler-driven
+  and painful to steer.
+- **BINDING** (error) — a *linked* symbol whose weak/local/global linkage
+  disagrees with the map's closure section (e.g. an out-of-line global that
+  should be a weak header inline, or a dropped `static`).
+- **SIZE** (warning) — an UNUSED symbol whose byte size differs from the map.
+  Matching an inlined body's exact size is hard, so this never fails.
+
+Exit codes: `0` pass, `1` a real failure, `2` couldn't run (unit / object /
+map not found).
+
+**Caveat — UNUSED binding is not checked.** Dead-stripping removes weak, local
+and global symbols alike and records no binding in the map, so an UNUSED
+symbol's linkage is *unknowable from the map*: an UNUSED symbol **can** be weak.
+The map's `UNUSED` marker says nothing about linkage, so the tool only validates
+binding for linked symbols.
+
+This runs in CI: `tools/check-changed-symbol-order.py` maps every changed
+`.cpp` in a PR/push to its unit and runs the check, gating the "symbol map"
+items in the Pre-PR checklist below.
+
+### Always prefer using `m2c` for from-scratch decompilation
+
+Always insist for the user to provide a path to [`m2c`](https://github.com/matt-kempster/m2c) when working on decompiling new functions (as opposed to matching ones that are already very close), it produces rough C-style draft decompilation of a function or an entire translation unit.
+Cleaning up that draft to use proper fields and inline helpers available on relevant types usually already gets the function very close to matching.
+The tool accepts plaintext assembly, which for this repository are the dtk-generated assembly files under `build/GMSJ01/asm/<path>.s`.
+
+Usually, m2c is available at `../m2c/m2c.py` relative to the project's root.
 
 Tested example:
 
@@ -156,7 +200,9 @@ Important limitations:
 
 ## Source Organization
 
-Each `.o` file maps 1:1 to a `.cpp` file. The path is listed in `configure.py` under `config.libs`. Each object has a status:
+Each `.o` file maps 1:1 to a `.cpp` file. The path is listed in `configure.py` under `config.libs`.
+For a middleware object, the first path component is the library: the object `JSystem/JKernel/JKRHeap.cpp` has its source in `libs/JSystem/src/JKernel/JKRHeap.cpp`.
+Each object has a status:
 
 - `Matching` — our code compiles to byte-identical output. Linked into the final DOL.
 - `NonMatching` — work in progress. Not linked.
@@ -166,9 +212,12 @@ Each `.o` file maps 1:1 to a `.cpp` file. The path is listed in `configure.py` u
 
 | Directory | Description |
 |-----------|-------------|
-| `src/JSystem/` | Nintendo's JSystem middleware (J3D, JParticle, JDrama, JAudio, etc.) |
-| `src/dolphin/` | Dolphin SDK (OS, GX, DVD, PAD, etc.) |
-| `src/PowerPC_EABI_Support/` | Metrowerks runtime & MSL |
+| `libs/JSystem/` | Nintendo's JSystem middleware (J3D, JParticle, JDrama, JAudio, etc.) |
+| `libs/dolphin/` | Dolphin SDK (OS, GX, DVD, PAD, etc.) |
+| `libs/PowerPC_EABI_Support/` | Metrowerks runtime & MSL |
+| `libs/THPPlayer/` | THP movie player |
+| `libs/TRK_MINNOW_DOLPHIN/` | MetroTRK debugger |
+| `libs/OdemuExi2/` | Debugger EXI driver |
 | `src/System/` | Game system framework (directors, params, events) |
 | `src/Strategic/` | Core game object hierarchy (actors, hit detection, spine/nerve AI) |
 | `src/Player/` | Mario player code |

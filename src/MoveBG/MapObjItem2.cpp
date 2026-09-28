@@ -93,9 +93,9 @@ void TMushroom1up::control()
 		}
 
 		JGeometry::TVec3<f32> pos = SMS_GetMarioPos();
-		pos.x += 1.5f * (50.0f * JMACos(5.0f * t));
+		pos.x += 1.5f * (50.0f * MsCos(5.0f * t));
 		pos.y += 200.0f;
-		pos.z += 1.5f * (50.0f * JMASin(5.0f * t));
+		pos.z += 1.5f * (50.0f * MsSin(5.0f * t));
 		mPosition.set(pos);
 
 		mScaling.set(1.5f, 1.5f, 1.5f);
@@ -131,9 +131,9 @@ void TMushroom1up::control()
 	f32 delta = MsAngleDiff(angle, mRotation.y);
 	f32 step;
 	if (delta > 0.0f)
-		step = MsClamp(delta, -1.0f, 1.0f);
+		step = MsMin(delta, 1.0f);
 	else
-		step = MsClamp(delta, -1.0f, 1.0f);
+		step = MsMax(delta, -1.0f);
 
 	mRotation.y = MsWrap(mRotation.y + step, 0.0f, 360.0f);
 
@@ -144,9 +144,9 @@ void TMushroom1up::control()
 
 void TMushroom1up::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (unk139 != 2 && mStateTimer < 240 && (param_1 & 0x200)
-	    && gpMarDirector->unk58 % 6 > 2)
-		param_1 &= ~0x200;
+	if (unk139 != 2 && mStateTimer < 240 && (cue & CUE_ENTRY)
+	    && gpMarDirector->mMoveTickCount % 6 > 2)
+		cue &= ~CUE_ENTRY;
 
 	if ((param_1 & 1) && unk13A == 0 && unk139 != 2 && mStateTimer <= 0)
 		kill();
@@ -224,7 +224,7 @@ BOOL TJumpBase::receiveMessage(THitActor* sender, u32 message)
 
 Mtx* TJumpBase::getRootJointMtx() const
 {
-	return mMActor->getModel()->mNodeMatrices;
+	return (Mtx*)mMActor->getModel()->getAnmMtx(0);
 }
 
 void TJumpBase::calcRootMatrix()
@@ -232,8 +232,8 @@ void TJumpBase::calcRootMatrix()
 	if (getHolder() != nullptr) {
 		J3DModel* model = getModel();
 		MtxPtr mtx      = getHolder()->getTakingMtx();
-		MTXCopy(mtx, model->mBaseMtx);
-		model->mBaseScale = mScaling;
+		model->setBaseTRMtx(mtx);
+		model->setBaseScale(mScaling);
 		mPosition.set(mtx[0][3], mtx[1][3], mtx[2][3]);
 		return;
 	}

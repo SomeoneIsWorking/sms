@@ -80,7 +80,7 @@ public:
 	virtual void initLayerInfo(const TPollutionLayerInfo*);
 	virtual ResTIMG* getTexResource(const char*)
 	{
-		return getModelData()->getTexture()->mResources;
+		return getModelData()->getTexture()->getResTIMG(0);
 	}
 	virtual void stamp(u16, f32 x, f32 y, f32 z, f32 range);
 	virtual void stampModel(J3DModel*);
@@ -267,7 +267,7 @@ class TPollutionLayerWave : public TPollutionLayer {
 public:
 	virtual void initJointModel(TJointModelManager*, const char*,
 	                            MActorAnmData*);
-	virtual void perform(u32, JDrama::TGraphics*);
+	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
 	virtual int getPlaneType() const { return 6; }
 	virtual ResTIMG* getTexResource(const char*);
 

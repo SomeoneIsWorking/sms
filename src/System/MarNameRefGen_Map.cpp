@@ -11,6 +11,9 @@
 #include "Map/StickyStainManager.hpp"
 #include <System/MarNameRefGen.hpp>
 
+// rogue includes needed for matching sinit & bss
+#include <M3DUtil/InfectiousStrings.hpp>
+
 JDrama::TNameRef* TMarNameRefGen::getNameRef_Map(const char* name) const
 {
 	// SUNBRIGHT-KEEP: locally completed map factory cases below remain absent

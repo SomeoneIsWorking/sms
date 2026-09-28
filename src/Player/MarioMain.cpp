@@ -108,7 +108,7 @@ void TMario::perform(u32 param_1, JDrama::TGraphics* graphics)
 #endif
 
 	if (unk114 & UNK114_FLAG_PROFILE)
-		TTimeRec::startTimer(0xff, 0x00, 0x00, 0x80);
+		TTimeRec::snapCPUTime(JUtility::TColor(0xff, 0x00, 0x00, 0x80));
 
 	if (checkFlag(MARIO_FLAG_IS_PERFORMING))
 		return;
@@ -139,8 +139,8 @@ void TMario::perform(u32 param_1, JDrama::TGraphics* graphics)
 
 		if (mWaterGun != nullptr) {
 			mWaterGun->setBaseTRMtx(
-			    mModel->unk8->mNodeMatrices[mJointIdChnChest]);
-			mWaterGun->perform(2, graphics);
+			    mModel->getModel()->getAnmMtx(mJointIdChnChest));
+			mWaterGun->perform(CUE_CALC_ANIM, graphics);
 		}
 
 		if (mYoshi != nullptr)
@@ -289,7 +289,7 @@ void TMario::perform(u32 param_1, JDrama::TGraphics* graphics)
 	}
 
 	if (unk114 & UNK114_FLAG_PROFILE)
-		TTimeRec::endTimer();
+		TTimeRec::snapCPUTime(0);
 }
 
 void TMario::drawSyncCallback(u16)

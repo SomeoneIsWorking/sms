@@ -82,8 +82,8 @@ void TEMario::load(JSUMemoryInputStream& stream)
 
 	// "Mario Character"
 	const char marioCharName[] = "マリオ キャラ";
-	mEnemyMario->setCharacter(
-	    JDrama::TNameRefGen::search<JDrama::TCharacter>(marioCharName));
+	mEnemyMario->setCharacter(static_cast<JDrama::TCharacter*>(
+	    JDrama::TNameRefGen::search(marioCharName)));
 
 	mEnemyMario->initValues();
 
@@ -113,9 +113,10 @@ void TEMario::init(TLiveManager* manager)
 			mMActorKeeper->mModelLoaderFlags = 0x11300000;
 			mMActor = mMActorKeeper->createMActorFromDefaultBmd(
 			    chara->getFolder(), 0);
-			for (int i = 0; i < mMActor->mModel->mModelData->mMaterialNum;
+			for (int i = 0;
+			     i < mMActor->getModel()->getModelData()->getMaterialNum();
 			     i++) {
-				SMS_InitPacket_Fog(mMActor->mModel, i);
+				SMS_InitPacket_Fog(mMActor->getModel(), i);
 			}
 			mMActor->setBtk("kagemario_scroll");
 		}

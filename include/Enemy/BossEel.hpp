@@ -117,7 +117,7 @@ public:
 
 class TOilBall : public TBEelTears {
 public:
-	TOilBall(const char*);
+	TOilBall(const char* name = "油ダマ");
 
 	virtual void load(JSUMemoryInputStream&);
 	virtual void calcRootMatrix();
@@ -197,7 +197,7 @@ public:
 	/* 0x06C */ TBossEel* mOwner;
 	/* 0x070 */ s32 mHitPoints;
 	/* 0x074 */ u8 mToothType;
-	/* 0x078 */ JGeometry::TVec3<f32> unk78;
+	/* 0x078 */ JGeometry::TVec3<f32> mTrembleRotation;
 	/* 0x084 */ s32 mDamageCooldown;
 	/* 0x088 */ Mtx mDetachedMtx;
 	/* 0x0B8 */ GXColor mColor;
@@ -339,7 +339,7 @@ public:
 	static bool mToothDamageAnm;
 	static f32 mTestAngY;
 
-	TBossEel(const char*);
+	TBossEel(const char* name = "㼀");
 
 	virtual void perform(u32 cue, JDrama::TGraphics* graphics);
 	virtual BOOL receiveMessage(THitActor* sender, u32 message)
@@ -354,7 +354,7 @@ public:
 	void startMoguCamera();
 	bool isInBossEelMoguDemo();
 	void quickBack();
-	BOOL isValidToothDamage();
+	bool isValidToothDamage();
 	void deadCheck();
 	void setBckAnm(int);
 	void collideToMario();
@@ -372,7 +372,7 @@ public:
 	TBossEelSaveParams& getBossEelParams() const { return *mSaveParams; }
 
 	enum {
-		LIVE_FLAG_UNK10000 = 0x10000,
+		LIVE_FLAG_UNK10000 = VERSION_SELECT(GMSJ01(0x10000), GMSP01(0x20000)),
 	};
 
 public:

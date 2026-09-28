@@ -133,7 +133,8 @@ void TEnemyManager::createEnemies(int count)
 		if (!enemy)
 			continue;
 
-		JDrama::TNameRefGen::search<TIdxGroupObj>("敵グループ")->add(enemy);
+		static_cast<TIdxGroupObj*>(JDrama::TNameRefGen::search("敵グループ"))
+		    ->add(enemy);
 
 		enemy->init(this);
 	}
@@ -259,7 +260,8 @@ void TEnemyManager::copyFromShared()
 
 void TEnemyManager::performShared(u32 param_1, JDrama::TGraphics* param_2)
 {
-	TTimeRec::startTimer();
+	if (unk30 & 1)
+		TTimeRec::snapCPUTime(JUtility::TColor(0xff, 0xff, 0xff, 0xff));
 
 	int num2     = getActiveObjNum();
 	int aliveNum = 0;
@@ -269,7 +271,7 @@ void TEnemyManager::performShared(u32 param_1, JDrama::TGraphics* param_2)
 
 	if (aliveNum <= 0) {
 		if ((unk30 & 1))
-			TTimeRec::endTimer();
+			TTimeRec::snapCPUTime(0);
 		return;
 	}
 
@@ -286,8 +288,8 @@ void TEnemyManager::performShared(u32 param_1, JDrama::TGraphics* param_2)
 		copyFromShared();
 
 	if (unk30 & 1) {
-		TTimeRec::endTimer();
-		TTimeRec::startTimer(0xff, 0x00, 0x00);
+		TTimeRec::snapCPUTime(0);
+		TTimeRec::snapCPUTime(JUtility::TColor(0xff, 0x00, 0x00, 0xff));
 	}
 
 	int num = getActiveObjNum();
@@ -336,7 +338,7 @@ void TEnemyManager::performShared(u32 param_1, JDrama::TGraphics* param_2)
 	}
 
 	if (unk30 & 1)
-		TTimeRec::endTimer();
+		TTimeRec::snapCPUTime(0);
 }
 
 void TEnemyManager::perform(u32 cue, JDrama::TGraphics* graphics)
@@ -349,7 +351,7 @@ void TEnemyManager::perform(u32 cue, JDrama::TGraphics* graphics)
 	}
 
 	if (unk30 & 1)
-		TTimeRec::startTimer();
+		TTimeRec::snapCPUTime(JUtility::TColor(0xff, 0xff, 0xff, 0xff));
 
 	if (cue & CUE_CALC_ANIM) {
 		clipEnemies(graphics);
@@ -357,8 +359,8 @@ void TEnemyManager::perform(u32 cue, JDrama::TGraphics* graphics)
 	}
 
 	if (unk30 & 1) {
-		TTimeRec::endTimer();
-		TTimeRec::startTimer(0xff, 0x0, 0x0);
+		TTimeRec::snapCPUTime(0);
+		TTimeRec::snapCPUTime(JUtility::TColor(0xff, 0x00, 0x00, 0xff));
 	}
 
 	int num = getActiveObjNum();
@@ -375,7 +377,7 @@ void TEnemyManager::perform(u32 cue, JDrama::TGraphics* graphics)
 
 	restoreDrawBuffer(cue);
 	if (unk30 & 1)
-		TTimeRec::endTimer();
+		TTimeRec::snapCPUTime(0);
 }
 
 TSpineEnemy* TEnemyManager::getNearestEnemy(const JGeometry::TVec3<f32>& p)

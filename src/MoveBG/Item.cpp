@@ -198,7 +198,7 @@ TItem::TItem(const char* name)
 
 void TCoin::taken(THitActor* param_1)
 {
-	u8 thing = gpApplication.mCurrArea.unk0;
+	u8 thing = SMSGetApplication()->mCurrArea.getStage();
 	TFlagManager::getInstance()->incGoldCoinFlag(SMS_getShineStage(thing), 1);
 
 	SMSGetMSound()->startSoundActor(MSD_SE_SY_COIN, &mPosition, 0, nullptr, 0,
@@ -208,8 +208,8 @@ void TCoin::taken(THitActor* param_1)
 		mContainer->receiveMessage(this, HIT_MESSAGE_UNK8);
 
 	if (TFlagManager::smInstance->getFlag(0x40002) == 100) {
-		TShine* shine = JDrama::TNameRefGen::search<TShine>(
-		    "シャイン（１００枚コイン用）");
+		TShine* shine = static_cast<TShine*>(
+		    JDrama::TNameRefGen::search("シャイン（１００枚コイン用）"));
 
 		gpItemManager->makeShineAppearWithDemo(
 		    "シャイン（１００枚コイン用）",
@@ -363,6 +363,7 @@ void TCoinRed::taken(THitActor* param_1)
 TCoinRed::TCoinRed(const char* name)
     : TCoin(name)
 {
+	unk158.zero();
 }
 
 void TCoinBlue::makeObjAppeared()
@@ -492,7 +493,7 @@ void TShine::movingCircle()
 
 	mPosition.x += unk17C.x;
 
-	mPosition.y = unk160 * JMASin(unk158)
+	mPosition.y = unk160 * MsSin(unk158)
 	              + (tmp * (mInitialPosition.y - unk164) + unk164);
 	unk188 = mPosition.y - prevY;
 
@@ -731,14 +732,16 @@ void TShine::appearWithTime(int param_1, int param_2, int param_3, int param_4)
 	onHitFlag(HIT_FLAG_NO_COLLISION);
 }
 
-s32 TShine::appearWithTimeCallback(TDemoCameraArg param_1, u32 param_2)
+s32 TShine::appearWithTimeCallback(uintptr_t param_1, u32 param_2)
 {
 	TShine* shine = (TShine*)param_1;
 	if (param_2 == 0) {
 		shine->appearWithTime(shine->unk18C, -1, -1, -1);
-		gpMarDirector->unk4E |= 1;
+		gpMarDirector->onDemoFlag(
+		    TMarDirector::DEMO_FLAG_SHINE_GET_STOP_THE_WORLD);
 	} else if (param_2 == 1) {
-		gpMarDirector->unk4E &= ~1;
+		gpMarDirector->offDemoFlag(
+		    TMarDirector::DEMO_FLAG_SHINE_GET_STOP_THE_WORLD);
 	}
 	return 0;
 }
@@ -773,11 +776,11 @@ void TShine::appearSimple(int param_1)
 
 void TShine::appearWithDemo(const char* param_1)
 {
-	unk18C = JDrama::TNameRefGen::instance->search<TCameraMapTool>(param_1)
+	unk18C = static_cast<TCameraMapTool*>(JDrama::TNameRefGen::search(param_1))
 	             ->mDemoLengthFrames;
 	SMSGetMarDirector()->fireStartDemoCamera(
-	    param_1, &mPosition, -1, 0.0f, true, appearWithTimeCallback, reinterpret_cast<TDemoCameraArg>(this),
-	    nullptr, JDrama::TFlagT<u16>());
+	    param_1, &mPosition, -1, 0.0f, true, appearWithTimeCallback,
+	    (uintptr_t)this, nullptr, JDrama::TFlagT<u16>());
 }
 
 void TShine::kill()
@@ -794,7 +797,7 @@ void TShine::makeMActors()
 	                                   | (2 << J3DMLF_TevStageNumShift);
 	MActor* result;
 	if (TFlagManager::smInstance->getShineFlag(mEventId)
-	    && strcmp("シャイン（１００枚コイン用）", getName()) != 0) {
+	    && strcmp("シャイン（マニ屋用）", getName()) != 0) {
 		result = initMActor("shine_empty.bmd", nullptr, getSDLModelFlag());
 		unk1B4 = 1;
 	} else {

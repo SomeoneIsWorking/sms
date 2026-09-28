@@ -23,6 +23,8 @@
 // rogue include
 #include <M3DUtil/InfectiousStrings.hpp>
 
+TConductor* gpConductor;
+
 TConductor::TCondParams::TCondParams()
     : TParams("/conductor.prm")
     , PARAM_INIT(mEnemyFarClip, 5000.0f)
@@ -259,7 +261,7 @@ void TConductor::genEnemyFromPollution()
 	if (!unkF0)
 		return;
 
-	if (gpMarDirector->unk58 % unk84.mGenerateTime.get() != 1)
+	if (gpMarDirector->mMoveTickCount % unk84.mGenerateTime.get() != 1)
 		return;
 
 	TStageEnemyInfo* info = unkF0->getMatchedInfo(0x1);

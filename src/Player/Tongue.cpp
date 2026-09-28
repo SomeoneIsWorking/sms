@@ -1,5 +1,5 @@
 #include "JSystem/JGeometry/JGVec3.hpp"
-#include "types.h"
+#include <dolphin/types.h>
 #include <Player/Tongue.hpp>
 #include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
 #include <JSystem/J3D/J3DGraphLoader/J3DModelLoader.hpp>
@@ -74,8 +74,8 @@ void TYoshiTongue::init(TYoshi* yoshi)
 void TYoshiTongue::initInLoadAfter()
 {
 	JDrama::TViewObjPtrListT<JDrama::TViewObj>* grp
-	    = JDrama::TNameRefGen::search<
-	        JDrama::TViewObjPtrListT<JDrama::TViewObj> >("敵グループ");
+	    = static_cast<JDrama::TViewObjPtrListT<JDrama::TViewObj>*>(
+	        JDrama::TNameRefGen::search("敵グループ"));
 	grp->getChildren().push_back(this);
 
 	TMirrorActor* ma = new TMirrorActor("ヨッシー舌in鏡");

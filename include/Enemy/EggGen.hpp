@@ -11,7 +11,7 @@ class TLiveManager;
 // init + control + dtor only; no new fields, no nerves — behaviour is in control()).
 class TEggGenerator : public TSpineEnemy {
 public:
-	TEggGenerator(const char* name = "?");
+	TEggGenerator(const char* name = "タマゴジェネレータ");
 
 	virtual ~TEggGenerator();
 	virtual void init(TLiveManager*);
@@ -21,7 +21,7 @@ public:
 // TEggGenManager : TEnemyManager — no new fields (params in inherited unk38).
 class TEggGenManager : public TEnemyManager {
 public:
-	TEggGenManager(const char* name = "?");
+	TEggGenManager(const char* name = "タマゴジェネレータマネージャ");
 
 	virtual ~TEggGenManager();
 	virtual void load(JSUMemoryInputStream&);

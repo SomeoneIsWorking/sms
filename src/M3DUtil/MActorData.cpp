@@ -35,69 +35,66 @@ static int strcmp_ignore_case(const char* fst, const char* snd)
 
 void MActorAnmDataBase::checkLower(const char* param_1)
 {
-	for (int i = 0; i < unk0; ++i) {
-		if (strcmp_ignore_case(param_1, unk8[i])) {
+	for (int i = 0; i < mAnmNum; ++i) {
+		if (strcmp_ignore_case(param_1, mAnmNames[i])) {
 			// assert?
 		}
 	}
 }
 
-void MActorAnmDataBase::sortByFileNameRaw(void** param_1)
+MActorAnmDataBase::MActorAnmDataBase(int anm_num)
 {
-	if (unk0 > 1) {
-		for (int i = 1; i < unk0; ++i) {
+	mAnmNum      = anm_num;
+	mAnmNames    = new const char*[mAnmNum];
+	mAnmKeyCodes = new u16[mAnmNum];
+	mAnimations  = nullptr;
+}
+
+void MActorAnmDataBase::sortByFileNameRaw(void** anms)
+{
+	if (mAnmNum > 1) {
+		for (int i = 1; i < mAnmNum; ++i) {
 			int j;
 
-			const char* str = unk8[i];
-			u16 key         = unk4[i];
-			void* prm       = param_1[i];
+			const char* str = mAnmNames[i];
+			u16 key         = mAnmKeyCodes[i];
+			void* prm       = anms[i];
 
 			for (j = i - 1; j >= 0; --j) {
 
-				if (strcmp_ignore_case(str, unk8[j]) < 0)
+				if (strcmp_ignore_case(str, mAnmNames[j]) < 0)
 					break;
 
-				unk8[j + 1]    = unk8[j];
-				unk4[j + 1]    = unk4[j];
-				param_1[j + 1] = param_1[j];
+				mAnmNames[j + 1]    = mAnmNames[j];
+				mAnmKeyCodes[j + 1] = mAnmKeyCodes[j];
+				anms[j + 1]         = anms[j];
 			}
 
-			unk8[j + 1]    = str;
-			unk4[j + 1]    = key;
-			param_1[j + 1] = prm;
+			mAnmNames[j + 1]    = str;
+			mAnmKeyCodes[j + 1] = key;
+			anms[j + 1]         = prm;
 		}
 	}
 }
 
 MActorAnmData::MActorAnmData()
 {
-	mBckData = nullptr;
-	mBpkData = nullptr;
-	mBtpData = nullptr;
-	mBtkData = nullptr;
-	mBrkData = nullptr;
-	mBlkData = nullptr;
+	mBckAnms = nullptr;
+	mBpkAnms = nullptr;
+	mBtpAnms = nullptr;
+	mBtkAnms = nullptr;
+	mBrkAnms = nullptr;
+	mBlkAnms = nullptr;
 
 	unk44            = 0;
 	mSampleModelData = nullptr;
 
-	// mIncidentalAnmNum is the count of INCIDENTAL sub-BCK anims (the
-	// mIncidentalAnmList length); MActor's ctor sizes `unk10 = new
-	// MActorAnmBck*[getIncidentalAnmNum()]` by it and fills it by iterating
-	// mIncidentalAnmList. The list is only populated by addIncidentalAnm (an
-	// unimplemented decomp stub here), so with no incidental anims it must read
-	// 0. The decomp ctor omitted this initializer, so on a non-zeroed heap
-	// allocation it held garbage -> a huge/garbage unk10[] whose unaligned tail
-	// entries were never assigned -> MActor::updateInSubBck dereferenced an
-	// uninitialized MActorAnmBck* and crashed (intermittently, per heap
-	// contents). An empty incidental-anm list is exactly 0.
-	mIncidentalAnmNum = 0;
-	mBckNum           = 0;
-	mBlkNum           = 0;
-	mBpkNum           = 0;
-	mBtpNum           = 0;
-	mBtkNum           = 0;
-	mBrkNum           = 0;
+	mBckNum = 0;
+	mBlkNum = 0;
+	mBpkNum = 0;
+	mBtpNum = 0;
+	mBtkNum = 0;
+	mBrkNum = 0;
 }
 
 u16 MActorCalcKeyCode(const char* name)
@@ -113,14 +110,22 @@ u32 MActorAnmData::partsNameToIdx(const char* name)
 {
 	typedef JGadget::TList<MActorSubAnmInfo>::iterator I;
 	u32 idx = 0;
-	for (I it = mIncidentalAnmList.begin(), e = mIncidentalAnmList.end();
-	     it != e; ++idx, ++it)
-		if (strcmp(it->unk4, name) == 0)
+	for (I it = unk1C.begin(), e = unk1C.end(); it != e; ++idx, ++it)
+		if (strcmp((*it).unk4, name) == 0)
 			return idx;
 	return -1;
 }
 
-void MActorAnmData::init(const char* param_1, const char** param_2)
+void MActorAnmData::addIncidentalAnm(const char* parts_name, int joint_index)
+{
+	MActorSubAnmInfo info;
+	info.unk0 = joint_index;
+	info.unk4 = parts_name;
+	++unk0;
+	unk1C.push_back(info);
+}
+
+void MActorAnmData::init(const char* anm_folder, const char** additional_files)
 {
 	char thing[256];
 	int uMVar1;
@@ -158,17 +163,17 @@ void MActorAnmData::init(const char* param_1, const char** param_2)
 	delete fileFinder;
 
 	if (mBckNum > 0)
-		mBckData = new MActorAnmDataEach<J3DAnmTransformKey>(mBckNum);
+		mBckAnms = new MActorAnmDataEach<J3DAnmTransformKey>(mBckNum);
 	if (mBpkNum > 0)
-		mBpkData = new MActorAnmDataEach<J3DAnmColorKey>(mBpkNum);
+		mBpkAnms = new MActorAnmDataEach<J3DAnmColorKey>(mBpkNum);
 	if (mBtpNum > 0)
-		mBtpData = new MActorAnmDataEach<J3DAnmTexPattern>(mBtpNum);
+		mBtpAnms = new MActorAnmDataEach<J3DAnmTexPattern>(mBtpNum);
 	if (mBtkNum > 0)
-		mBtkData = new MActorAnmDataEach<J3DAnmTextureSRTKey>(mBtkNum);
+		mBtkAnms = new MActorAnmDataEach<J3DAnmTextureSRTKey>(mBtkNum);
 	if (mBrkNum > 0)
-		mBrkData = new MActorAnmDataEach<J3DAnmTevRegKey>(mBrkNum);
+		mBrkAnms = new MActorAnmDataEach<J3DAnmTevRegKey>(mBrkNum);
 	if (mBlkNum > 0)
-		mBlkData = new MActorAnmDataEach<J3DAnmClusterKey>(mBlkNum);
+		mBlkAnms = new MActorAnmDataEach<J3DAnmClusterKey>(mBlkNum);
 
 	mBckNum = 0;
 	mBlkNum = 0;
@@ -194,26 +199,18 @@ void MActorAnmData::init(const char* param_1, const char** param_2)
 
 	delete fileFinder;
 
-	// loadAnmPtrArray concatenates param_1 + storedName (+ ext) with NO
-	// separator, so param_1 must be the slash-TERMINATED directory (thing2 =
-	// "<dir>/"), not the bare directory (thing = "<dir>"). Passing `thing`
-	// built e.g.
-	// "/yoshiyoshi_born_tx.btp" -> findVolume looks up a volume literally named
-	// "yoshiyoshi_born_tx.btp" -> null -> every anim slot left unloaded -> null
-	// deref in MActorAnmBtp::setTexNoAnmFullPtr. (Decomp transcription bug;
-	// wrong on GC too, hence unguarded.)
-	if (mBckData)
-		mBckData->loadAnmPtrArray2(thing2, ".bck");
-	if (mBpkData)
-		mBpkData->loadAnmPtrArray2(thing2, ".bpk");
-	if (mBtpData)
-		mBtpData->loadAnmPtrArray2(thing2, ".btp");
-	if (mBtkData)
-		mBtkData->loadAnmPtrArray2(thing2, ".btk");
-	if (mBrkData)
-		mBrkData->loadAnmPtrArray2(thing2, ".brk");
-	if (mBlkData)
-		mBlkData->loadAnmPtrArray2(thing2, ".blk");
+	if (mBckAnms)
+		mBckAnms->loadAnmPtrArray2(anmFolder, ".bck");
+	if (mBpkAnms)
+		mBpkAnms->loadAnmPtrArray2(anmFolder, ".bpk");
+	if (mBtpAnms)
+		mBtpAnms->loadAnmPtrArray2(anmFolder, ".btp");
+	if (mBtkAnms)
+		mBtkAnms->loadAnmPtrArray2(anmFolder, ".btk");
+	if (mBrkAnms)
+		mBrkAnms->loadAnmPtrArray2(anmFolder, ".brk");
+	if (mBlkAnms)
+		mBlkAnms->loadAnmPtrArray2(anmFolder, ".blk");
 }
 
 void MActorAnmData::addFileNum(const char* name)
@@ -232,113 +229,55 @@ void MActorAnmData::addFileNum(const char* name)
 		++mBlkNum;
 }
 
+char* MActorAnmData::getSimpleName(const char* file_name)
+{
+	u32 length = strlen(file_name) - (strlen(strrchr(file_name, '.')) - 1);
+	char* simple_name = new char[length];
+	snprintf(simple_name, length, "%s", file_name);
+	return simple_name;
+}
+
 void MActorAnmData::addFileTable(const char* param_1)
 {
-	char* pcVar1;
-	size_t sVar2;
-	size_t sVar3;
-	u16 uVar4;
-	u32 uVar5;
-
-	pcVar1 = (char*)strstr(param_1, ".bck");
-	if (pcVar1 != (char*)0x0) {
-		sVar2  = strlen(param_1);
-		pcVar1 = (char*)strrchr(param_1, 0x2e);
-		sVar3  = strlen(pcVar1);
-		uVar5  = sVar2 - (sVar3 - 1);
-		pcVar1 = new char[uVar5];
-		snprintf(pcVar1, uVar5, "%s", param_1);
-		uVar4                   = 0;
-		mBckData->unk8[mBckNum] = pcVar1;
-		while (*pcVar1 != '\0') {
-			uVar4 = *pcVar1++ + uVar4 * 5;
-		}
-		mBckData->unk4[mBckNum] = uVar4;
+	if (strstr(param_1, ".bck") != nullptr) {
+		char* simple_name               = getSimpleName(param_1);
+		mBckAnms->mAnmNames[mBckNum]    = simple_name;
+		mBckAnms->mAnmKeyCodes[mBckNum] = MActorCalcKeyCode(simple_name);
 		++mBckNum;
 	}
 
-	pcVar1 = (char*)strstr(param_1, ".bpk");
-	if (pcVar1 != (char*)0x0) {
-		sVar2  = strlen(param_1);
-		pcVar1 = (char*)strrchr(param_1, 0x2e);
-		sVar3  = strlen(pcVar1);
-		uVar5  = sVar2 - (sVar3 - 1);
-		pcVar1 = new char[uVar5];
-		snprintf(pcVar1, uVar5, "%s", param_1);
-		uVar4                   = 0;
-		mBpkData->unk8[mBpkNum] = pcVar1;
-		while (*pcVar1 != '\0') {
-			uVar4 = *pcVar1++ + uVar4 * 5;
-		}
-		mBpkData->unk4[mBpkNum] = uVar4;
+	if (strstr(param_1, ".bpk") != nullptr) {
+		char* simple_name               = getSimpleName(param_1);
+		mBpkAnms->mAnmNames[mBpkNum]    = simple_name;
+		mBpkAnms->mAnmKeyCodes[mBpkNum] = MActorCalcKeyCode(simple_name);
 		++mBpkNum;
 	}
 
-	pcVar1 = (char*)strstr(param_1, ".btp");
-	if (pcVar1 != (char*)0x0) {
-		sVar2  = strlen(param_1);
-		pcVar1 = (char*)strrchr(param_1, 0x2e);
-		sVar3  = strlen(pcVar1);
-		uVar5  = sVar2 - (sVar3 - 1);
-		pcVar1 = new char[uVar5];
-		snprintf(pcVar1, uVar5, "%s", param_1);
-		uVar4                   = 0;
-		mBtpData->unk8[mBtpNum] = pcVar1;
-		while (*pcVar1 != '\0') {
-			uVar4 = *pcVar1++ + uVar4 * 5;
-		}
-		mBtpData->unk4[mBtpNum] = uVar4;
+	if (strstr(param_1, ".btp") != nullptr) {
+		char* simple_name               = getSimpleName(param_1);
+		mBtpAnms->mAnmNames[mBtpNum]    = simple_name;
+		mBtpAnms->mAnmKeyCodes[mBtpNum] = MActorCalcKeyCode(simple_name);
 		++mBtpNum;
 	}
 
-	pcVar1 = (char*)strstr(param_1, ".btk");
-	if (pcVar1 != (char*)0x0) {
-		sVar2  = strlen(param_1);
-		pcVar1 = (char*)strrchr(param_1, 0x2e);
-		sVar3  = strlen(pcVar1);
-		uVar5  = sVar2 - (sVar3 - 1);
-		pcVar1 = new char[uVar5];
-		snprintf(pcVar1, uVar5, "%s", param_1);
-		uVar4                   = 0;
-		mBtkData->unk8[mBtkNum] = pcVar1;
-		while (*pcVar1 != '\0') {
-			uVar4 = *pcVar1++ + uVar4 * 5;
-		}
-		mBtkData->unk4[mBtkNum] = uVar4;
+	if (strstr(param_1, ".btk") != nullptr) {
+		char* simple_name               = getSimpleName(param_1);
+		mBtkAnms->mAnmNames[mBtkNum]    = simple_name;
+		mBtkAnms->mAnmKeyCodes[mBtkNum] = MActorCalcKeyCode(simple_name);
 		++mBtkNum;
 	}
 
-	pcVar1 = (char*)strstr(param_1, ".brk");
-	if (pcVar1 != (char*)0x0) {
-		sVar2  = strlen(param_1);
-		pcVar1 = (char*)strrchr(param_1, 0x2e);
-		sVar3  = strlen(pcVar1);
-		uVar5  = sVar2 - (sVar3 - 1);
-		pcVar1 = new char[uVar5];
-		snprintf(pcVar1, uVar5, "%s", param_1);
-		uVar4                   = 0;
-		mBrkData->unk8[mBrkNum] = pcVar1;
-		while (*pcVar1 != '\0') {
-			uVar4 = *pcVar1++ + uVar4 * 5;
-		}
-		mBrkData->unk4[mBrkNum] = uVar4;
+	if (strstr(param_1, ".brk") != nullptr) {
+		char* simple_name               = getSimpleName(param_1);
+		mBrkAnms->mAnmNames[mBrkNum]    = simple_name;
+		mBrkAnms->mAnmKeyCodes[mBrkNum] = MActorCalcKeyCode(simple_name);
 		++mBrkNum;
 	}
 
-	pcVar1 = (char*)strstr(param_1, ".blk");
-	if (pcVar1 != (char*)0x0) {
-		sVar2  = strlen(param_1);
-		pcVar1 = (char*)strrchr(param_1, 0x2e);
-		sVar3  = strlen(pcVar1);
-		uVar5  = sVar2 - (sVar3 - 1);
-		pcVar1 = new char[uVar5];
-		snprintf(pcVar1, uVar5, "%s", param_1);
-		uVar4                   = 0;
-		mBlkData->unk8[mBlkNum] = pcVar1;
-		while (*pcVar1 != '\0') {
-			uVar4 = *pcVar1++ + uVar4 * 5;
-		}
-		mBlkData->unk4[mBlkNum] = uVar4;
+	if (strstr(param_1, ".blk") != nullptr) {
+		char* simple_name               = getSimpleName(param_1);
+		mBlkAnms->mAnmNames[mBlkNum]    = simple_name;
+		mBlkAnms->mAnmKeyCodes[mBlkNum] = MActorCalcKeyCode(simple_name);
 		++mBlkNum;
 	}
 }

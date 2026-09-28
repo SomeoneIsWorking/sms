@@ -780,7 +780,7 @@ void TMario::getJumpIntoWaterModelData() { }
 
 void TMario::getHeadRot() { }
 
-Mtx* TMario::getRootAnmMtx() { return mModel->getModel()->mNodeMatrices; }
+Mtx* TMario::getRootAnmMtx() { return (Mtx*)mModel->getModel()->getAnmMtx(0); }
 
 MtxPtr TMario::getCenterAnmMtx()
 {
@@ -1051,17 +1051,18 @@ f32 TMario::setAnimation(int anm_id, f32 rate)
 
 		if (onYoshi()) {
 			mModel->changeMtxCalcSIAnmBQAnmTransform(0, 0, anm_id);
-			mModel->unk20->unk18->unk50 = 0.0f;
+			mModel->unk20->unk18->mMotionBlendRatio = 0.0f;
 			getMotionFrameCtrl().setAttribute(
-			    mModel->unk4->unk4[anm_id]->mAttribute);
+			    mModel->unk4->unk4[anm_id]->getAttribute());
 			changeHand(0);
 			mAnmSound->stop();
 		} else {
 			mModel->changeMtxCalcSIAnmBQAnmTransform(
 			    0, 0, gMarioAnimeData[anm_id].unk0);
-			mModel->unk20->unk18->unk50 = 0.0f;
+			mModel->unk20->unk18->mMotionBlendRatio = 0.0f;
 			getMotionFrameCtrl().setAttribute(
-			    mModel->unk4->unk4[gMarioAnimeData[anm_id].unk0]->mAttribute);
+			    mModel->unk4->unk4[gMarioAnimeData[anm_id].unk0]
+			        ->getAttribute());
 
 			int unk1 = gMarioAnimeData[anm_id].unk4;
 			if (mTrembleModelEffect != nullptr
@@ -1250,7 +1251,7 @@ void TMario::initModel()
 	}
 
 	M3UMtxCalcSIAnmBlendQuat* anmBlendQuat = new M3UMtxCalcSIAnmBlendQuat[2];
-	anmBlendQuat[0].unk50                  = 0.0f;
+	anmBlendQuat[0].mMotionBlendRatio      = 0.0f;
 	J3DFrameCtrl* frameCtrl                = new J3DFrameCtrl[3];
 
 	M3UModelCommonMario* marioCommon = new M3UModelCommonMario();
@@ -1295,8 +1296,8 @@ void TMario::initModel()
 	modelMario->changeMtxCalcSIAnmBQAnmTransform(1, 0, 0x41);
 
 	modelMario->unkC[1].setRate(0.0f);
-	marioCommon->unk18[1].unk50 = 0.0f;
-	mModel                      = modelMario;
+	marioCommon->unk18[1].mMotionBlendRatio = 0.0f;
+	mModel                                  = modelMario;
 
 	setAnimation(ANIM_WAIT, 1.0f);
 
@@ -1460,13 +1461,12 @@ void TMario::initMirrorModel()
 
 void TMario::finalDrawInitialize()
 {
-	// volatile u32 padding[10];
 	changeHand(0);
 	SMS_MakeDLAndLock(mModel->getModel());
 
 	for (int i = 0; i < mBodyModelData->getMaterialNum(); ++i)
 		if (i == mMaterialIdEyeL || i == mMaterialIdEyeR)
-			mModel->getModel()->mMatPackets[i].offFlag(0x1);
+			mModel->getModel()->getMatPacketArray()[i].offFlag(0x1);
 
 	for (int i = 0; i < mBodyModelData->getMaterialNum(); ++i)
 		SMS_InitPacket_OneTevKColorAndFog(mModel->getModel(), i, GX_KCOLOR0,
@@ -1808,7 +1808,7 @@ void TMario::addCallBack(JDrama::TGraphics* graphics)
 
 	modelData->getJointNodePointer(mJointIdChest)->setCallBack(MarioWaistCtrl);
 
-	if (0x4B0 > gpMarDirector->unk58 || isUpperPumpingStyle()) {
+	if (0x4B0 > gpMarDirector->mMoveTickCount || isUpperPumpingStyle()) {
 		if (mMultiMtxEffect != nullptr) {
 			mMultiMtxEffect->flagOff(0x1);
 		}
@@ -2259,14 +2259,14 @@ void TMario::addDamageFog(JDrama::TGraphics* graphics)
 
 	if (check == true) {
 		// Very likely an inline since it is duplicated
-		J3DModelData* modelData = mModel->unk8->mModelData;
+		J3DModelData* modelData = mModel->getModel()->getModelData();
 		for (u16 i = 0; i < modelData->getMaterialNum(); ++i) {
 			J3DFog* fog
 			    = modelData->getMaterialNodePointer(i)->getPEBlock()->getFog();
 			fog->mColor = fogColor;
 		}
 
-		SMS_AddDamageFogEffect(mModel->unk8->getModelData(), mPosition,
+		SMS_AddDamageFogEffect(mModel->getModel()->getModelData(), mPosition,
 		                       graphics);
 
 		if (mCap != nullptr) {
@@ -2313,7 +2313,7 @@ void TMario::addDamageFog(JDrama::TGraphics* graphics)
 					    mHandModels[handIdx][modelIdx]->getModelData());
 				}
 			}
-			SMS_ResetDamageFogEffect(mRHand4ndModel->mModelData);
+			SMS_ResetDamageFogEffect(mRHand4ndModel->getModelData());
 		}
 	}
 }

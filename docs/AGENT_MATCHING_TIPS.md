@@ -105,6 +105,28 @@ Reconstructing correct inline calls is crucial in matching code correctly. When 
 
 UNUSED functions from the MAP must often be reconstructed even when they do not exist as standalone code in the final binary: their inlined bodies still determine caller codegen (register allocation, load offsets, branch layout). Treat their MAP signature and size as constraints, recover a plausible body from repeated callsite patterns, and validate by diffing the caller(s) after each inline-shape change rather than expecting a direct symbol-level match for the UNUSED function itself.
 
+### A getter that repeats before every operation is a wrapper inline
+
+m2c writes an inlined wrapper as one pointer local that is assigned again and again:
+
+```cpp
+pBuf = DSPInterface::getDSPHandle(channel->unk0);
+pBuf->setPauseFlag(1);
+pBuf = DSPInterface::getDSPHandle(channel->unk0);
+pBuf->flushChannel();
+```
+
+When the same lookup comes back before every single operation, the original source almost always called a wrapper that hides the lookup:
+
+```cpp
+DSPInterface::setPauseFlag(channel->unk0, 1);
+DSPInterface::flushChannel(channel->unk0);
+```
+
+Both forms give the same instructions, but the wrapper form reads correctly and it colours the registers correctly in long functions.
+`JAInter::StreamLib::callBack` went from 98.7% to 99.8% on this rewrite alone.
+Keep the pointer local only where the code **reads a field** through it.
+
 ## Reference Locals Affect Register Allocation
 
 Introducing a reference local before accessing struct members can change how the compiler allocates registers:
@@ -255,6 +277,112 @@ stb   r0, init$NNN@sda21       ; mark constructed
 So when the target shows an `init$NNN` byte that is loaded with `lbz` + `extsb.` and tested, **don't** model it as a plain `static bool foo;` in your source — model it as the *guard* for some other static local with a real constructor. Pick the source statement that produces the matching initializer body (commonly a `JGeometry::TVec3<f32>(x, y, z)` if the init code writes three floats).
 
 Aggregate-initialized PODs (`static Vec pos = { 1.0f, 2.0f, 3.0f };`) and zero-initialized statics (`static Vec pos;`) do NOT produce a guard — they sit in `.data` / `.bss` with no first-call check. The `init$NNN` pattern only appears when MWCC needs to run constructor code at first entry.
+
+## A zero-argument call of a constructor with default arguments costs one inline pass
+
+MWCC expands inline calls in passes, and each pass permits a smaller callee
+(pass 0: no limit, pass 1: 10 statements, pass 2: 7, pass 3: 3, pass 4: none).
+A constructor written with default arguments adds one pass to that count when
+it is called with **no** arguments:
+
+```cpp
+class TGameSequence {
+	TGameSequence(u8 stage = 0, u8 scenario = 0, JDrama::TFlagT<u16> flag = 0)
+	{
+		set(stage, scenario, flag);
+	}
+};
+
+TGameSequence local;          // synthesized __ct__13TGameSequenceFv, 1 statement,
+                              // then the real ctor one pass deeper
+TGameSequence local(a, b);    // the real ctor directly, no wrapper
+```
+
+The same rule applies to a member of such a type that the enclosing
+constructor default-initialises, for example `TFlagT<u16> unkC;` in
+`JDrama::TViewObj`. The wrapper has no symbol of its own; it is always
+expanded.
+
+How to recognise it: the calls inside a constructor body stay `bl` although
+the ladder says they fit, while the same callees are expanded at that depth
+elsewhere. `TApplication::TApplication()` keeps `bl TFlagT::TFlagT(const
+TFlagT&)` and `bl TFlagT::set(u16)` for each `TGameSequence` member; with a
+plain `TGameSequence() { set(0, 0, 0); }` both are expanded and the function
+is at 36%. The default-argument form gives 100%. `inline_trace.py` shows the
+wrapper as `__ct__XFv [1 stmt]` one pass above the real constructor.
+
+## A member function called on a bare global substitutes `this`; called through an accessor it binds it
+
+When an inline member function is called on a global object written by name,
+`gpApplication.setNextArea(x)`, MWCC substitutes `this` with the constant
+address, folds the member offsets, and then CSEs `gpApplication + 0x12` into a
+callee-saved register:
+
+```
+addi r30, r5, 0x12       ; &gpApplication.mNextArea
+stb  r0, 0x12(r5)
+...
+addi r3, r30, 2          ; &mNextArea.unk2
+```
+
+When the receiver is an expression that MWCC will not repeat (an inline
+accessor call, a local pointer, or a local reference), `this` is bound to a
+temporary that holds `&gpApplication` itself, and every offset folds from it:
+
+```
+addi r31, r4, gpApplication@l
+stb  r0, 0x12(r31)
+stb  r0, 0x13(r31)
+addi r3, r31, 0x14
+```
+
+The second shape, with the global's own address kept across the call, is the
+sign that the original went through an accessor such as `SMSGetMSound()` or
+`SMSGetMarDirector()`. Nine functions of `System/` show it for
+`gpApplication`, and every other `gpApplication` site in the tree compiles to
+the same bytes through `SMSGetApplication()`, so the accessor is used
+everywhere. Expect the same of the other `SMSGet*` accessors: the bare global
+and the accessor differ only where the result feeds another inline call.
+
+The same test tells a getter from a raw field read. A getter such as
+`u8 getStage() const { return unk0; }` reads through `this`, so its return
+value is force-loaded into a compiler temporary. Two visible effects: the
+temporary keeps a 4-byte slot (a frame 4 bytes short per call is the
+symptom), and when two such calls are the arguments of one `bl`, MWCC
+evaluates them in the reverse order. `TMarDirector::currentStateFinalize`
+loads `mCurrArea.unk1` before `unk0` for `endStageEntranceDemo`, which only
+the getters reproduce. An accessor that returns a reference leaves no trace
+at all, so it can neither be proved nor disproved this way.
+
+## Default arguments vs. spelling them out changes inlining
+
+When a base/member constructor is invoked with a value that happens to be that
+constructor's own default argument, prefer the default-arg call form over
+repeating the literal. It is not just cosmetic: it can change MWCC's inline
+depth decisions.
+
+Concrete case (`BathWaterManager.cpp`): `JDrama::TViewObj`'s ctor defaults its
+name to `"<TViewObj>"`. Writing a member's base as `JDrama::TViewObj("<TViewObj>")`
+inlined the nested `TNameRef`/`TFlagT` ctors one level too deep; writing it as
+`JDrama::TViewObj()` (letting the default supply the identical string) kept those
+nested ctors as real `bl` calls, exactly like the target. This took the
+enclosing constructor from 90.6% to 100%. If a nested ctor inlines when the
+target keeps it as a call (or vice-versa), check whether the original used a
+default argument.
+
+## Unsized arrays go to `.data`, sized ones may go to `.sdata`
+
+An array declared with an explicit size that is small enough (≤ the `-sdata`
+threshold, default 8 bytes) can be placed in `.sdata` and addressed GP-relative
+(`@sda21`, giving an indexed `lwzx` load). An array declared **unsized** — e.g.
+`static const char* fileNames[]` with the size deduced from the initializer —
+is always placed in `.data` instead, and addressed absolutely (`lis/addi @ha/@l`
++ `add`/`lwz`).
+
+So if a small global array should live in `.data` (target uses `lis/addi`) but
+yours lands in `.sdata` (`@sda21`), drop the explicit array bound and let the
+initializer size it. Concrete case (`BathWaterManager.cpp`): `fileNames[2]` →
+`.sdata` (nonmatching); `fileNames[]` → `.data` (match).
 
 ## Local Symbol Mangling: `@unnamed@` vs `static`
 

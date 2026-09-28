@@ -44,7 +44,7 @@ void TBathtub::hipdrop(const JGeometry::TVec3<f32>&) { }
 
 void TBathtub::quake(const JGeometry::TVec3<f32>&) { }
 
-u8 TBathtub::getNumGripsDead() const { return 0; }
+int TBathtub::getNumGripsDead() const { return 0; }
 
 void TBathtub::tumble(f32 angle, f32 strength)
 {

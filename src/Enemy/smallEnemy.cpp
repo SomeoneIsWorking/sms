@@ -205,7 +205,7 @@ void TSmallEnemy::init(TLiveManager* param_1)
 	if (!unk124->getGraph() || unk124->getGraph()->isDummy())
 		unk124->init(gpConductor->getGraphByName("main"));
 
-	setGoalPathMario();
+	setGoalPath(TPathNode((THitActor*)gpMarioAddress));
 	initAnmSound();
 }
 
@@ -371,23 +371,7 @@ void TSmallEnemy::genEventCoin()
 			Mtx44 local_c0;
 
 			f32 angle = 360.0f / unk18C * i + mRotation.y;
-			f32 s     = JMASin(angle);
-			f32 c     = JMACos(angle);
-
-			local_c0[0][0] = c;
-			local_c0[0][1] = 0.0f;
-			local_c0[0][2] = s;
-			local_c0[0][3] = 0.0f;
-
-			local_c0[1][0] = 0.0f;
-			local_c0[1][1] = 1.0f;
-			local_c0[1][2] = 0.0f;
-			local_c0[1][3] = 0.0f;
-
-			local_c0[2][0] = -s;
-			local_c0[2][1] = 0.0f;
-			local_c0[2][2] = c;
-			local_c0[2][3] = 0.0f;
+			MsMtxSetRotY(local_c0, angle);
 
 			Vec local_d0;
 			local_d0.x = 0.0f;
@@ -645,7 +629,7 @@ bool TSmallEnemy::changeMove()
 		f32 time = TSmallEnemyManager::mBlockWaitTime * 0.2f;
 
 		mJuiceBlock->mPosition.y += unk188 * 2.0f
-		                            * JMASin(mSpine->getTime() * 130.0f / time)
+		                            * MsSin(mSpine->getTime() * 130.0f / time)
 		                            * TSmallEnemyManager::mBlockWaitMoveY;
 
 		mJuiceBlock->mRotation.y += mSpine->getTime() * 1080.0f / time;
@@ -773,7 +757,7 @@ void TSmallEnemy::decHpByWater(THitActor* param_1)
 
 void TSmallEnemy::kill()
 {
-	if (!checkLiveFlag(LIVE_FLAG_DEAD))
+	if (checkLiveFlag(LIVE_FLAG_DEAD))
 		return;
 
 	mHitPoints = 1;
@@ -781,9 +765,9 @@ void TSmallEnemy::kill()
 		mSpine->reset();
 		mSpine->setNext(&TNerveSmallEnemyDie::theNerve());
 		mSpine->pushAfterCurrent(&TNerveSmallEnemyDie::theNerve());
-
-		onLiveFlag(LIVE_FLAG_UNK40);
 	}
+
+	onLiveFlag(LIVE_FLAG_UNK40);
 }
 
 bool TSmallEnemy::isFindMario(float param_1)
@@ -860,9 +844,8 @@ void TSmallEnemy::generateEffectColumWater()
 void TSmallEnemy::setBckAnm(int index)
 {
 	mCurrentBckAnm = index;
-	getMActor()->setBckFromIndex(index);
-	const char** table = getBasNameTable();
-	setAnmSound(!table ? nullptr : table[index]);
+	mMActor->setBckFromIndex(index);
+	setAnmSound(getBas(index));
 }
 
 void TSmallEnemy::expandCollision()
@@ -1070,7 +1053,7 @@ DEFINE_NERVE(TNerveSmallEnemyHitWaterJump, TLiveActor)
 	TSmallEnemy* self = (TSmallEnemy*)spine->getBody();
 
 	if (spine->getTime() == 0) {
-		if (self->checkLiveFlag2(0x8000)
+		if (self->checkLiveFlag2(LIVE_FLAG_UNK8000)
 		    || self->checkLiveFlag(LIVE_FLAG_UNK40000))
 			return true;
 

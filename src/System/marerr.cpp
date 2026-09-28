@@ -29,8 +29,12 @@ void MarErrInit()
 	JUTConsoleManager::createManager(nullptr);
 	JUTException::create(print);
 	JUTException::createConsole(new u8[0x1400], 0x1400);
+#ifdef VERSION_GMSP01
+	JUTException::appendMapFile("/marioEU.MAP");
+#else
 	JUTException::appendMapFile("/mario.MAP");
-	JUTException::setPreUserCallback((OSErrorHandler)&MarErrException);
+#endif
+	JUTException::setPreUserCallback(&MarErrException);
 	// fullptr :D
 	JUTException::getManager()->setGamePad((JUTGamePad*)0xffffffff);
 	JUTException::getManager()->setPrintFlags(8);

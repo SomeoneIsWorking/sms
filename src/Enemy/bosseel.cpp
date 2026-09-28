@@ -95,13 +95,13 @@ TBEelTearsDrop::TBEelTearsDrop(TBEelTears* owner, int jointIndex,
 	             mOwner->mTearsParams->mSLTearsDropAttackHeight.get(),
 	             mOwner->mTearsParams->mSLTearsDropDamageRadius.get(),
 	             mOwner->mTearsParams->mSLTearsDropDamageHeight.get());
-	JDrama::TNameRefGen::search<TIdxGroupObj>("敵グループ")
+	static_cast<TIdxGroupObj*>(JDrama::TNameRefGen::search("敵グループ"))
 	    ->getChildren()
 	    .push_back(this);
 	mActive = false;
 
-	TScreenTexture* screenTexture
-	    = JDrama::TNameRefGen::search<TScreenTexture>("スクリーンテクスチャ");
+	TScreenTexture* screenTexture = static_cast<TScreenTexture*>(
+	    JDrama::TNameRefGen::search("スクリーンテクスチャ"));
 	const ResTIMG* textureInfo = screenTexture->getTexture()->getTexInfo();
 	new J3DSkinDeform;
 	MActor* actor = mSharedParts->getMActor();
@@ -278,8 +278,8 @@ void TBEelTears::init(TLiveManager* manager)
 	mTearsParams = static_cast<TBEelTearsSaveLoadParams*>(getSaveParam());
 	mSpine->initWith(&TNerveBEelTearsGenerate::theNerve());
 
-	TScreenTexture* screenTexture
-	    = JDrama::TNameRefGen::search<TScreenTexture>("スクリーンテクスチャ");
+	TScreenTexture* screenTexture = static_cast<TScreenTexture*>(
+	    JDrama::TNameRefGen::search("スクリーンテクスチャ"));
 	const ResTIMG& screenTexInfo = *screenTexture->getTexture()->getTexInfo();
 
 	J3DSkinDeform* deform = new J3DSkinDeform;
@@ -299,7 +299,7 @@ void TBEelTears::init(TLiveManager* manager)
 	mBodyScale = mTearsParams->mBodyScaleRange.rand();
 
 	TIdxGroupObj* enemyGroup
-	    = JDrama::TNameRefGen::search<TIdxGroupObj>("敵グループ");
+	    = static_cast<TIdxGroupObj*>(JDrama::TNameRefGen::search("敵グループ"));
 	mRecoverCollision = new TBossEelTearsRecoverCollision(
 	    mMActor->getModel()->getAnmMtx(0), "回復コリジョン");
 	mRecoverCollision->initCollision();
@@ -747,8 +747,8 @@ void TBossEelManager::createModelData()
 
 void TBossEelManager::clipEnemies(JDrama::TGraphics* graphics)
 {
-	clipActorsAux(graphics, mSaveParams.mSLViewClipRadius.get(),
-	              mSaveParams.mSLViewClipFar.get());
+	clipActorsAux(graphics, mSaveParams.mSLViewClipFar.get(),
+	              mSaveParams.mSLViewClipRadius.get());
 }
 
 TBossEelTooth::TBossEelTooth(u8 toothType, TBossEel* owner,
@@ -759,7 +759,7 @@ TBossEelTooth::TBossEelTooth(u8 toothType, TBossEel* owner,
     , mOwner(owner)
     , mHitPoints(0)
     , mToothType(toothType)
-    , unk78(0.0f, 0.0f, 0.0f)
+    , mTrembleRotation(0.0f, 0.0f, 0.0f)
     , mDamageCooldown(0)
     , mCanShedTears(true)
 {
@@ -789,7 +789,8 @@ TBossEelTooth::TBossEelTooth(u8 toothType, TBossEel* owner,
 	             mOwner->getBossEelParams().mSLToothDamageRadius.get(),
 	             mOwner->getBossEelParams().mSLToothDamageHeight.get());
 
-	JDrama::TNameRefGen::search<TIdxGroupObj>("オブジェクトグループ")
+	static_cast<TIdxGroupObj*>(
+	    JDrama::TNameRefGen::search("オブジェクトグループ"))
 	    ->getChildren()
 	    .push_back(this);
 	offHitFlag(HIT_FLAG_NO_COLLISION);
@@ -897,7 +898,8 @@ void TBossEelTooth::perform(u32 cue, JDrama::TGraphics* graphics)
 					if (mSharedParts->getMActor()->checkCurBckFromIndex(22)) {
 						mSharedParts->getMActor()->setBckFromIndex(20);
 						JGeometry::TVec3<f32> tearsPosition(
-						    mDetachedMtx[0][3], unk78.y + mDetachedMtx[1][3],
+						    mDetachedMtx[0][3],
+						    mTrembleRotation.y + mDetachedMtx[1][3],
 						    mDetachedMtx[2][3]);
 						mOwner->generateBubble(tearsPosition);
 						mSharedParts->getMActor()->setFrameRate(
@@ -911,9 +913,9 @@ void TBossEelTooth::perform(u32 cue, JDrama::TGraphics* graphics)
 
 				f32 speed = mOwner->getBossEelParams().mSLToothUpSpeed.get();
 				if (mToothType == 1) {
-					unk78.y += speed;
-					if (unk78.y > mOwner->getBossEelParams()
-					                  .mSLToothLiveHeight.get()
+					mTrembleRotation.y += speed;
+					if (mTrembleRotation.y > mOwner->getBossEelParams()
+					                             .mSLToothLiveHeight.get()
 					    || mPosition.y > gpMarioPos->y + 2000.0f) {
 						mHitPoints = 0;
 						onHitFlag(HIT_FLAG_NO_COLLISION);
@@ -954,11 +956,11 @@ void TBossEelTooth::perform(u32 cue, JDrama::TGraphics* graphics)
 				emitter->setGlobalScale(mOwner->mScaling);
 		}
 
-		TPosition3f transform(0, 0, unk78.x);
+		TPosition3f transform(0, 0, mTrembleRotation.x);
 		MTXConcat(toothMtx, transform, toothMtx);
-		MsMtxSetRotRPH(transform, unk78.z, unk78.z, 0.0f);
+		MsMtxSetRotRPH(transform, mTrembleRotation.z, mTrembleRotation.z, 0.0f);
 		MTXConcat(toothMtx, transform, toothMtx);
-		toothMtx[1][3] += unk78.y;
+		toothMtx[1][3] += mTrembleRotation.y;
 		mPosition.x = toothMtx[0][3];
 		mPosition.y = toothMtx[1][3];
 		mPosition.z = toothMtx[2][3];
@@ -979,7 +981,7 @@ TBossEelVortex::TBossEelVortex(TBossEel* owner, const char* name)
 	             mOwner->getBossEelParams().mSLVortexAttackHeight.get(),
 	             mOwner->getBossEelParams().mSLVortexDamageRadius.get(),
 	             mOwner->getBossEelParams().mSLVortexDamageHeight.get());
-	JDrama::TNameRefGen::search<TIdxGroupObj>("敵グループ")
+	static_cast<TIdxGroupObj*>(JDrama::TNameRefGen::search("敵グループ"))
 	    ->getChildren()
 	    .push_back(this);
 	offHitFlag(HIT_FLAG_NO_COLLISION);
@@ -1104,8 +1106,7 @@ void TBossEelEye::perform(u32 cue, JDrama::TGraphics* graphics)
 		if (mCopyConnectedMtx == 0)
 			MTXCopy(eyeMtx, mBlendMtx);
 
-		mBlendRatio
-		    = JGeometry::TUtil<f32>::clamp(mBlendRatio - 0.01f, 0.0f, 1.0f);
+		mBlendRatio = MsClamp(mBlendRatio - 0.01f, 0.0f, 1.0f);
 		getMActor()->setMotionBlendRatioForBck(mBlendRatio);
 		if (mAnimationMode == 1
 		    && getMActor()->curAnmEndsNext(ANM_TYPE_BCK, nullptr)) {
@@ -1417,7 +1418,7 @@ void TBossEel::init(TLiveManager* manager)
 	                             mSaveParams->mSLHeadDamageRadius.get(),
 	                             mSaveParams->mSLHeadDamageHeight.get());
 	TIdxGroupObj* enemyGroup
-	    = JDrama::TNameRefGen::search<TIdxGroupObj>("敵グループ");
+	    = static_cast<TIdxGroupObj*>(JDrama::TNameRefGen::search("敵グループ"));
 	enemyGroup->getChildren().push_back(mHeadCollision);
 	mHeadCollision->offHitFlag(HIT_FLAG_NO_COLLISION);
 
@@ -1948,7 +1949,7 @@ void TBossEel::deadCheck()
 	}
 }
 
-BOOL TBossEel::isValidToothDamage()
+bool TBossEel::isValidToothDamage()
 {
 	if (mSpine->getCurrentNerve() == &TNerveBossEelEat::theNerve())
 		return false;
@@ -1979,7 +1980,7 @@ bool TBossEel::isInBossEelMoguDemo()
 	return false;
 }
 
-static s32 hoseiDiveCameraCallback(TDemoCameraArg actorAddress, u32 state)
+static s32 hoseiDiveCameraCallback(uintptr_t actorAddress, u32 state)
 {
 	if (state == 1) {
 		const TLiveActor* actor
@@ -1997,8 +1998,8 @@ void TBossEel::startMoguCamera()
 		gpMarDirector->getConsole()->startAppearBalloon(0xE0015, true);
 		SMSGetMarDirector()->fireStartDemoCamera(
 		    "meoto_mogu_camera", &mPosition, -1, 0.0f, false,
-		    &hoseiDiveCameraCallback, reinterpret_cast<TDemoCameraArg>(this), nullptr,
-		    JDrama::TFlagT<u16>(0));
+		    &hoseiDiveCameraCallback, reinterpret_cast<uintptr_t>(this),
+		    nullptr, JDrama::TFlagT<u16>(0));
 		mMoguCameraActive = true;
 	}
 }

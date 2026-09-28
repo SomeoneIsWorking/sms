@@ -189,9 +189,248 @@ void TTrembleModelEffect::reset() { }
 
 void SMS_ResetDamageFogEffect(J3DModelData* modelData)
 {
-	const SMSDamageFog::Range range
-	    = SMSDamageFog::resetRange(gpCamera->getFar());
-	for (u16 index = 0; index < modelData->getMaterialNum(); ++index) {
+	int found = 0;
+	unk0      = model;
+	unk10     = 0;
+
+	GXVtxAttrFmtList* fmt
+	    = model->getModelData()->getVertexData().getVtxAttrFmtList();
+	while (fmt->attr != GX_VA_NULL) {
+		if (fmt->attr == GX_VA_POS) {
+			if (fmt->type == GX_S16) {
+				unk8  = 0;
+				found = 1;
+				unkA  = fmt->frac;
+				unkC  = 1 << fmt->frac;
+			} else if (fmt->type == GX_F32) {
+				unk8  = 0;
+				found = 1;
+				unk8 |= 2;
+				unkA = 0;
+				unkC = 1;
+			}
+			break;
+		}
+	}
+
+	if (found == 1) {
+		unk4  = unk0->getModelData()->getVertexData().getVtxPosArray();
+		u32 n = unk0->getModelData()->getVertexData().getVtxNum();
+		unk9  = 0;
+		switch (unk8 & 2) {
+		case 0: {
+			unk14     = new JGeometry::TVec3<s16>[n];
+			unk18[0]  = new JGeometry::TVec3<s16>[n];
+			unk18[1]  = new JGeometry::TVec3<s16>[n];
+			unk20     = new JGeometry::TVec3<s16>[n];
+			unk24     = 0;
+			unk26     = 0;
+			void* src = model->getModelData()->getVertexData().getVtxPosArray();
+			for (u32 i = 0; i < n; ++i) {
+				unk14[i]    = ((JGeometry::TVec3<s16>*)src)[i];
+				unk18[0][i] = ((JGeometry::TVec3<s16>*)src)[i];
+				unk18[1][i] = ((JGeometry::TVec3<s16>*)src)[i];
+				unk20[i].set(0, 0, 0);
+			}
+			break;
+		}
+		case 2: {
+			unk28     = new JGeometry::TVec3<f32>[n];
+			unk2C[0]  = new JGeometry::TVec3<f32>[n];
+			unk2C[1]  = new JGeometry::TVec3<f32>[n];
+			unk34     = new JGeometry::TVec3<f32>[n];
+			unk38     = 0.0f;
+			unk3C     = 0.0f;
+			void* src = model->getModelData()->getVertexData().getVtxPosArray();
+			for (u32 i = 0; i < n; ++i) {
+				unk28[i]    = ((JGeometry::TVec3<f32>*)src)[i];
+				unk2C[0][i] = ((JGeometry::TVec3<f32>*)src)[i];
+				unk2C[1][i] = ((JGeometry::TVec3<f32>*)src)[i];
+				unk34[i].set(0.0f, 0.0f, 0.0f);
+			}
+			break;
+		}
+		}
+	}
+}
+
+void TTrembleModelEffect::tremble(f32 magnitude, f32 spring, f32 damping,
+                                  int duration)
+{
+	unk8 |= 1;
+	switch (unk8 & 2) {
+	case 0: {
+		unk26                      = (s16)(spring * unkC);
+		unk24                      = (s16)(damping * unkC);
+		JGeometry::TVec3<s16>* src = (JGeometry::TVec3<s16>*)unk4;
+		for (u32 i = 0; i < unk0->getModelData()->getVertexData().getVtxNum();
+		     ++i) {
+			unk20[i].x  = (s16)(unkC * (magnitude * (2.0f * MsRandF() - 1.0f)));
+			unk20[i].y  = (s16)(unkC * (magnitude * (2.0f * MsRandF() - 1.0f)));
+			unk20[i].z  = (s16)(unkC * (magnitude * (2.0f * MsRandF() - 1.0f)));
+			unk14[i]    = src[i];
+			unk18[0][i] = src[i];
+			unk18[1][i] = src[i];
+		}
+		break;
+	}
+	case 2: {
+		unk3C                      = spring;
+		unk38                      = damping;
+		JGeometry::TVec3<f32>* src = (JGeometry::TVec3<f32>*)unk4;
+		for (u32 i = 0; i < unk0->getModelData()->getVertexData().getVtxNum();
+		     ++i) {
+			unk34[i].x  = magnitude * (2.0f * MsRandF() - 1.0f);
+			unk34[i].y  = magnitude * (2.0f * MsRandF() - 1.0f);
+			unk34[i].z  = magnitude * (2.0f * MsRandF() - 1.0f);
+			unk28[i]    = src[i];
+			unk2C[0][i] = src[i];
+			unk2C[1][i] = src[i];
+		}
+		break;
+	}
+	}
+	unk10 = duration;
+	unk8 &= ~4;
+}
+
+void TTrembleModelEffect::clash(f32 magnitude)
+{
+	tremble(magnitude, 0.0f, 0.0f, 0);
+	switch (unk8 & 2) {
+	case 0:
+		for (u32 i = 0; i < unk0->getModelData()->getVertexData().getVtxNum();
+		     ++i) {
+			JGeometry::TVec3<s16> t = unk14[i] + unk20[i];
+			unk14[i]                = t;
+			unk18[0][i]             = t;
+			unk18[1][i]             = t;
+		}
+		break;
+
+	case 2:
+		for (u32 i = 0; i < unk0->getModelData()->getVertexData().getVtxNum();
+		     ++i) {
+			JGeometry::TVec3<f32> t = unk28[i] + unk34[i];
+			unk28[i]                = t;
+			unk2C[0][i]             = t;
+			unk2C[1][i]             = t;
+		}
+		break;
+	}
+	unk8 |= 4;
+}
+
+void TTrembleModelEffect::movement()
+{
+	if (!(unk8 & 1))
+		return;
+
+	if ((unk8 & 4) != 4) {
+		unk10--;
+		if (unk10 <= 0) {
+			reset();
+			return;
+		}
+	}
+
+	switch (unk8 & 2) {
+	case 0: {
+		JGeometry::TVec3<s16>* src = (JGeometry::TVec3<s16>*)unk4;
+		for (u32 i = 0; i < unk0->getModelData()->getVertexData().getVtxNum();
+		     ++i) {
+			JGeometry::TVec3<s16> diff = src[i] - unk14[i];
+			unk20[i].x += (s16)((diff.x * unk26) >> unkA);
+			unk20[i].y += (s16)((diff.y * unk26) >> unkA);
+			unk20[i].z += (s16)((diff.z * unk26) >> unkA);
+			unk20[i].x = (s16)((unk24 * unk20[i].x) >> unkA);
+			unk20[i].y = (s16)((unk24 * unk20[i].y) >> unkA);
+			unk20[i].z = (s16)((unk24 * unk20[i].z) >> unkA);
+			unk14[i] += unk20[i];
+			unk18[unk9][i] = unk14[i];
+		}
+		DCFlushRange(unk18[unk9],
+		             unk0->getModelData()->getVertexData().getVtxNum() * 6);
+		unk0->getVertexBuffer()->setVtxPosArrayPointer(0, unk18[unk9]);
+		for (int j = 0; j < unk0->getModelData()->getShapeNum(); ++j)
+			unk0->getShapePacket(0)->setVtxPos(unk18[unk9]);
+		break;
+	}
+	case 2: {
+		JGeometry::TVec3<f32>* src = (JGeometry::TVec3<f32>*)unk4;
+		for (u32 i = 0; i < unk0->getModelData()->getVertexData().getVtxNum();
+		     ++i) {
+			JGeometry::TVec3<f32> diff = src[i] - unk28[i];
+			unk34[i].x += diff.x * unk3C;
+			unk34[i].y += diff.y * unk3C;
+			unk34[i].z += diff.z * unk3C;
+			unk34[i].x = unk38 * unk34[i].x;
+			unk34[i].y = unk38 * unk34[i].y;
+			unk34[i].z = unk38 * unk34[i].z;
+			unk28[i] += unk34[i];
+			unk2C[unk9][i] = unk28[i];
+		}
+		DCFlushRange(unk2C[unk9],
+		             unk0->getModelData()->getVertexData().getVtxNum() * 12);
+		unk0->getVertexBuffer()->setVtxPosArrayPointer(0, unk2C[unk9]);
+		for (int j = 0; j < unk0->getModelData()->getShapeNum(); ++j)
+			unk0->getShapePacket(0)->setVtxPos(unk2C[unk9]);
+		break;
+	}
+	}
+
+	unk9 = 1 - unk9;
+}
+
+void TTrembleModelEffect::reset()
+{
+	switch (unk8 & 2) {
+	case 0: {
+		JGeometry::TVec3<s16>* src = (JGeometry::TVec3<s16>*)unk4;
+		for (u32 i = 0; i < unk0->getModelData()->getVertexData().getVtxNum();
+		     i++) {
+			unk20[i].set(0, 0, 0);
+			unk14[i]    = src[i];
+			unk18[0][i] = src[i];
+			unk18[1][i] = src[i];
+		}
+		break;
+	}
+	case 2: {
+		JGeometry::TVec3<f32>* src = (JGeometry::TVec3<f32>*)unk4;
+		for (u32 i = 0; i < unk0->getModelData()->getVertexData().getVtxNum();
+		     i++) {
+			unk34[i].set(0.0f, 0.0f, 0.0f);
+			unk28[i]    = src[i];
+			unk2C[0][i] = src[i];
+			unk2C[1][i] = src[i];
+		}
+		break;
+	}
+	}
+
+	unk8 &= ~1;
+	GXInvalidateVtxCache();
+	unk0->getModelData()->getVertexData().setVtxPosArray(unk4);
+	unk0->getVertexBuffer()->setVtxPosArrayPointer(0, unk4);
+	unk0->getVertexBuffer()->setVtxPosArrayPointer(1, unk4);
+	unk0->getVertexBuffer()->setCurrentVtxPos(unk4);
+}
+
+void SMS_AddDamageFogEffect(J3DModelData* param_1,
+                            const JGeometry::TVec3<f32>& param_2,
+                            JDrama::TGraphics* param_3)
+{
+	Vec local_80;
+	MTXMultVec(param_3->getViewMtx(), param_2, &local_80);
+
+	f32 startBase = -700.0f;
+	f32 endBase   = 500.0f;
+	f32 s         = JMASSin((s16)(gpMarDirector->mMoveTickCount * 0x888));
+	f32 startOsc  = (-400.0f - startBase) * s;
+	f32 endOsc    = (800.0f - endBase) * s;
+
+	for (u16 i = 0; i < param_1->getMaterialNum(); i++) {
 		J3DFog* fog
 		    = modelData->getMaterialNodePointer(index)->getPEBlock()->getFog();
 		fog->mStartZ = range.start;
@@ -466,13 +705,9 @@ void SMS_DrawCube(const JGeometry::TVec3<f32>& min,
 void SMS_SettingDrawShape(J3DModelData* param_1, u16 param_2)
 {
 	J3DShape* shape = param_1->getShapeNodePointer(param_2);
-	// Retail replays the fixed 0xC0 VcdVat window; on this port the window is
-	// J3DShape::kVcdVatDLSize (Aurora bakes 64-bit array bases — see
-	// J3DShape.hpp).
-	GXCallDisplayList(shape->getDrawList(), J3DShape::kVcdVatDLSize);
-	J3DVertexData& data = param_1->getVertexData();
-	j3dSys.setVtxPos(data.getVtxPosArray());
-	j3dSys.setVtxNrm(data.getVtxNormArray());
+	GXCallDisplayList(shape->getVcdVatCmd(), J3DShape::kVcdVatDLSize);
+	j3dSys.setVtxPos(param_1->getVtxPosArray());
+	j3dSys.setVtxNrm(param_1->getVtxNormArray());
 	shape->loadVtxArray();
 }
 
@@ -564,14 +799,12 @@ void SMS_CopyMaterialToSort(J3DMaterial*, J3DModel*, u16) { }
 void SMS_UnifyMaterial(J3DModel* param_1)
 {
 	J3DModelData* modelData = param_1->getModelData();
-	J3DMaterial* unifier    = modelData->getMaterialNodePointer(0);
-	for (u16 i = 0; i < modelData->getMaterialNum(); i = i + 1) {
+	J3DMaterial* unifier = param_1->getModelData()->getMaterialNodePointer(0);
+	for (u16 i = 0; i < modelData->getMaterialNum(); ++i) {
 		J3DMaterial* mat = param_1->getModelData()->getMaterialNodePointer(i);
-		u32 thing        = unifier->unk18 & 0x7fffffff;
-		mat->unk18       = thing;
-		param_1->getMatPacket(i)->unk3C = thing;
-
-		u16 texNo = unifier->getTevBlock()->getTexNo(0);
-		mat->getTevBlock()->setTexNo(0, texNo);
+		u32 materialID   = unifier->getMaterialID();
+		mat->setMaterialID(materialID);
+		param_1->getMatPacket(i)->setMaterialID(materialID);
+		mat->setTexNo(0, unifier->getTevBlock()->getTexNo(0));
 	}
 }

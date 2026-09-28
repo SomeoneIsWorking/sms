@@ -69,13 +69,8 @@ void TMirrorActor::perform(u32 param_1, JDrama::TGraphics* param_2)
 		for (u16 i = 0; i < mSourceModel->getModelData()->getJointNum(); ++i)
 			mMirrorModel->setAnmMtx(i, mSourceModel->getAnmMtx(i));
 
-		// Retail (0x80224910) bounds this copy by wEvlpMtxNum (modelData+0x84),
-		// NOT jointNum: Mario has 29 joints but 43 weight-envelope matrices, so
-		// a jointNum bound leaves envelopes [29,43) zero in the mirror clone —
-		// zero draw matrices -> garbage normals -> black patches on every
-		// envelope-skinned surface (nose/gloves/legs) at file-select.
-		for (u16 i = 0; i < mSourceModel->getModelData()->getWEvlpMtxNum(); ++i)
-			mMirrorModel->setWeightAnmMtx(i, mSourceModel->getWeightAnmMtx(i));
+		for (u16 i = 0; i < unk10->getModelData()->getWEvlpMtxNum(); ++i)
+			unk14->setWeightAnmMtx(i, unk10->getWeightAnmMtx(i));
 	}
 
 	if ((param_1 & 4) && mInMirror != 0)
@@ -96,13 +91,11 @@ void TMirrorActor::perform(u32 param_1, JDrama::TGraphics* param_2)
 
 void TMirrorActor::entryMirrorDrawBufferAlways(J3DModel* model)
 {
-	JDrama::TDrawBufObj* dbOpa
-	    = JDrama::TNameRefGen::search<JDrama::TDrawBufObj>(
-	        "DrawBuf MirrorAlways Opa");
+	JDrama::TDrawBufObj* dbOpa = static_cast<JDrama::TDrawBufObj*>(
+	    JDrama::TNameRefGen::search("DrawBuf MirrorAlways Opa"));
 	j3dSys.setDrawBuffer(dbOpa->getDrawBuffer(), 0);
-	JDrama::TDrawBufObj* dbXlu
-	    = JDrama::TNameRefGen::search<JDrama::TDrawBufObj>(
-	        "DrawBuf MirrorAlways Xlu");
+	JDrama::TDrawBufObj* dbXlu = static_cast<JDrama::TDrawBufObj*>(
+	    JDrama::TNameRefGen::search("DrawBuf MirrorAlways Xlu"));
 	j3dSys.setDrawBuffer(dbXlu->getDrawBuffer(), 1);
 	model->calc();
 	model->viewCalc();
@@ -122,8 +115,8 @@ void TMirrorActor::init(J3DModel* param_1, u16 param_2)
 	}
 
 	JDrama::TViewObjPtrListT<JDrama::TViewObj>* mirrorScene
-	    = JDrama::TNameRefGen::search<
-	        JDrama::TViewObjPtrListT<JDrama::TViewObj> >("鏡シーン");
+	    = static_cast<JDrama::TViewObjPtrListT<JDrama::TViewObj>*>(
+	        JDrama::TNameRefGen::search("鏡シーン"));
 	mirrorScene->getChildren().push_back(this);
 
 	if (mFlags & 2)

@@ -115,25 +115,12 @@ static JDrama::TAmbAry* sb_amb_ary_or_search()
 // getters (defined earlier in this file) read from them.
 void TLightCommon::loadAfter()
 {
-	// r13-0x5db8 is a top-level director object; in the RE it exposes its
-	// TNameRefGen at offset +0x4. In the native build the same lookup is
-	// available through JDrama::TNameRefGen::searchF on any live gen. Fall
-	// back to the game's global gen if the specific director isn't wired.
-	auto* lightAry = JDrama::TNameRefGen::search<JDrama::TLightAry>("Light Group");
-	auto* ambAry   = JDrama::TNameRefGen::search<JDrama::TAmbAry>  ("Ambient Group");
-
-	gpTLightCommonAmbAry   = ambAry;
-	gpTLightCommonLightAry = lightAry;
-
-	mShininess = 50.0f;  // SDA2 -0x1770
-
-	if (!lightAry || !lightAry->mLights) {
-		// Match the RE: even on a partial load, keep going; the getters guard.
-		return;
-	}
-
-	// Populate local light-color + local position arrays from
-	// Light-Group[mLightBaseIdx .. mLightBaseIdx+4] — 4 entries.
+	mAmbAry = static_cast<JDrama::TAmbAry*>(
+	    JDrama::TNameRefGen::search("Ambient Group"));
+	mLightAry = static_cast<JDrama::TLightAry*>(
+	    JDrama::TNameRefGen::search("Light Group"));
+	mLightPos  = &mLightAry->getLight(0)->mPosition;
+	mShininess = 50.0f;
 	for (int i = 0; i < 4; ++i) {
 		JDrama::TIdxLight& L = lightAry->mLights[i + mLightBaseIdx];
 		// mLocalLightColor slot 0/1/2/3 lives at offset 0x31 + i*4 (4 bytes).
@@ -956,20 +943,10 @@ void TLightWithDBSetManager::calcLightBorder()
 // these when unk54 && unk55 are set (the calcLightBorder gate).
 void TLightWithDBSetManager::loadAfter()
 {
-	JDrama::TLightAry* la = JDrama::TNameRefGen::search<JDrama::TLightAry>("Light Group");
-	if (!la || !la->mLights) return;
-
-	// Effect light data = Light-Group[0]. GXGetLightColor reads the packed
-	// GXColor out of the group's GXLightObj (unk24).
-	GXGetLightColor(&la->mLights[0].unk24, &mEffectColor);
-
-	// Vec3 mPosition aliased over unk1C/unk20/unk24 (3 u32 slots).
-	f32 x = la->mLights[0].mPosition.x;
-	f32 y = la->mLights[0].mPosition.y;
-	f32 z = la->mLights[0].mPosition.z;
-	mEffectPos.x = x;
-	mEffectPos.y = y;
-	mEffectPos.z = z;
+	JDrama::TLightAry* group = static_cast<JDrama::TLightAry*>(
+	    JDrama::TNameRefGen::search("Light Group"));
+	mEffectLightColor = group->getLight(0)->getColor();
+	mEffectLightPos   = group->getLight(0)->mPosition;
 }
 
 // Native port of TLightWithDBSetManager::perform (@0x80228394, 63 insns).
