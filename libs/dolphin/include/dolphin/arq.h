@@ -11,28 +11,12 @@
 #define ARQ_PRIORITY_LOW  0
 #define ARQ_PRIORITY_HIGH 1
 
-// The ARQ completion callback receives the ARQRequest pointer as its argument. On
-// GC that is a 32-bit value; on a 64-bit host a real main-memory pointer (e.g.
-// JKRAMCommand's leading ARQRequest, which JKRAramPiece::doneDMA casts straight
-// back to JKRAMCommand*) cannot round-trip through a u32 -> it truncates to a wild
-// pointer. Widen the userdata to pointer width natively so the round-trip is
-// lossless (the SDK-signature widening the inert-ARAM seam note prescribed).
-#ifdef SMS_NATIVE_PLATFORM
-#include <stdint.h>
-typedef uintptr_t ARQRequestRef;
-// A main-memory address handed to the ARAM DMA. On GC it is a 32-bit pointer; on a
-// 64-bit host a real JKRHeap allocation cannot round-trip through a u32 -> it would
-// truncate to a wild pointer and the ARAM<->mainRAM copy would read/write garbage
-// (the inert-ARAM-seam note's "widen the SDK signatures" fix, made real now that the
-// 2D/ARAM archive path genuinely DMAs through ARAM). The ARAM-side address stays a
-// small offset (fits u32) but is carried in the same widened slot for symmetry.
-typedef uintptr_t ARMemAddr;
-#else
-typedef u32 ARQRequestRef;
-typedef u32 ARMemAddr;
-#endif
-typedef void (*ARQCallback)(ARQRequestRef pointerToARQRequest);
-
+// The ARQ* widening this fork needs for LP64 host builds (ARQRequestRef,
+// ARMemAddr, and the ARQCallback that carries one) is declared once, in
+// <dolphin/ar.h>, which this header includes: redefining the same typedef in
+// both is legal C and a redefinition in C++, which is how this port builds the
+// decomp. <dolphin/ar.h> also forward-declares struct ARQRequest, so the only
+// thing left to define here is the struct itself.
 struct ARQRequest {
 	/* 0x00 */ struct ARQRequest* next;
 	/* 0x04 */ u32 owner;

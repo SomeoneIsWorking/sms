@@ -13,6 +13,7 @@ extern u8 GXTexImage3Ids[8];
 extern u8 GXTexTlutIds[8];
 #endif
 #include <dolphin/os.h>
+#include <stdint.h>  // uintptr_t
 
 void J3DGDLoadTexMtxImm(MtxPtr mtx, u32 i, GXTexMtxType type)
 {

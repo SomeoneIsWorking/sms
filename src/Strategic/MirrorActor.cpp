@@ -69,8 +69,8 @@ void TMirrorActor::perform(u32 param_1, JDrama::TGraphics* param_2)
 		for (u16 i = 0; i < mSourceModel->getModelData()->getJointNum(); ++i)
 			mMirrorModel->setAnmMtx(i, mSourceModel->getAnmMtx(i));
 
-		for (u16 i = 0; i < unk10->getModelData()->getWEvlpMtxNum(); ++i)
-			unk14->setWeightAnmMtx(i, unk10->getWeightAnmMtx(i));
+		for (u16 i = 0; i < mSourceModel->getModelData()->getWEvlpMtxNum(); ++i)
+			mMirrorModel->setWeightAnmMtx(i, mSourceModel->getWeightAnmMtx(i));
 	}
 
 	if ((param_1 & 4) && mInMirror != 0)

@@ -526,10 +526,10 @@ void TCardLoad::setupScoreScreen()
 void TCardLoad::loadAfter()
 {
 	JDrama::TNameRef::loadAfter();
-	mFileBlocks[0] = JDrama::TNameRefGen::search<TFileLoadBlock>("ロードブロックＡ");
-	mFileBlocks[1] = JDrama::TNameRefGen::search<TFileLoadBlock>("ロードブロックＢ");
-	mFileBlocks[2] = JDrama::TNameRefGen::search<TFileLoadBlock>("ロードブロックＣ");
-	mOptionWall = JDrama::TNameRefGen::search<TMapObjOptionWall>("オプション用壁");
+	mFileBlocks[0] = ((TFileLoadBlock*)JDrama::TNameRefGen::search("ロードブロックＡ"));
+	mFileBlocks[1] = ((TFileLoadBlock*)JDrama::TNameRefGen::search("ロードブロックＢ"));
+	mFileBlocks[2] = ((TFileLoadBlock*)JDrama::TNameRefGen::search("ロードブロックＣ"));
+	mOptionWall = ((TMapObjOptionWall*)JDrama::TNameRefGen::search("オプション用壁"));
 }
 
 void TCardLoad::perform(u32 param_1, JDrama::TGraphics* param_2)

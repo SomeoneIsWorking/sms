@@ -326,8 +326,8 @@ void TMapObjWave::draw()
 			const u8 aN = (u8)(mAlpha * sb::wave::fade_ratio(xc, zc, mInvHalfExtent));
 			const u8 aF = (u8)(mAlpha * sb::wave::fade_ratio(xc, zc + mGridStep, mInvHalfExtent));
 #else
-			f32 fadeN = 1.0f - mInvHalfExtent * std::fmax(std::fabs(xc), std::fabs(zc));
-			f32 fadeF = 1.0f - mInvHalfExtent * std::fmax(std::fabs(xc), std::fabs(zc + mGridStep));
+			f32 fadeN = 1.0f - mInvHalfExtent * fmax(std::fabs(xc), std::fabs(zc));
+			f32 fadeF = 1.0f - mInvHalfExtent * fmax(std::fabs(xc), std::fabs(zc + mGridStep));
 			if (fadeN < 0.0f) fadeN = 0.0f; if (fadeN > 1.0f) fadeN = 1.0f;
 			if (fadeF < 0.0f) fadeF = 0.0f; if (fadeF > 1.0f) fadeF = 1.0f;
 			const u8 aN = (u8)(mAlpha * fadeN);

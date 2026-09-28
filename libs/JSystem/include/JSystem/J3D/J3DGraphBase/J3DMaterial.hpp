@@ -4,7 +4,7 @@
 #include <limits.h>
 #include <stdint.h>
 #include <dolphin/types.h>
-#include <JSystem/J3d/J3DGraphBase/Blocks/J3DTevBlocks.hpp>
+#include <JSystem/J3D/J3DGraphBase/Blocks/J3DTevBlocks.hpp>
 #include <JSystem/J3D/J3DGraphBase/Blocks/J3DTexGenBlocks.hpp>
 #include <JSystem/J3D/J3DGraphBase/Blocks/J3DPEBlocks.hpp>
 #include <JSystem/J3D/J3DGraphBase/Blocks/J3DColorBlocks.hpp>
@@ -135,10 +135,25 @@ public:
 	void setSomeFlag() { unk1C |= 1; }
 
 private:
-	enum {
-		DIFF_FLAG   = 1 << (sizeof(uintptr_t) * CHAR_BIT - 1),
-		UNIQUE_FLAG = 1 << (sizeof(uintptr_t) * CHAR_BIT - 2),
-	};
+	// The same width rule J3DPacket applies to its copy of this word: `unk18` is
+	// a material pointer shifted down by four (J3DPacket stores `&material >> 4`
+	// in its own field), so the top bits of the word are free and carry the
+	// "changed"/"unique" flags. This fork widened the word from u32 to uintptr_t
+	// for LP64 host builds, so a flag has to come from the top of the field's own
+	// width -- bit 31 on the 32-bit GameCube target, bit 63 on a 64-bit host --
+	// or it overlaps a real host pointer's bits.
+	//
+	// The width has to be a compile-time constant, but C++98 allows neither
+	// `sizeof` in an enumerator initialiser nor an enumerator whose value is not
+	// representable as `int`, and `1 << 63` is not. So the bit count is a named
+	// static const and each flag is a static const of the field's own unsigned
+	// type, which also keeps the shift well defined at 32 bits.
+	static const int DIFF_BITS = sizeof(uintptr_t) * CHAR_BIT;
+
+	enum { DIFF_BIT = DIFF_BITS - 1 };
+
+	static const uintptr_t DIFF_FLAG = (uintptr_t)1 << DIFF_BIT;
+	static const uintptr_t UNIQUE_FLAG = (uintptr_t)1 << (DIFF_BITS - 2);
 
 	/* 0x0 */ J3DMaterial* mNext;
 	/* 0x4 */ J3DShape* mShape;

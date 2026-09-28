@@ -359,7 +359,7 @@ TBossGessoMtxCalc::TBossGessoMtxCalc(TBossGesso* owner)
 void TBossGessoMtxCalc::joinAnm(int param_1)
 {
 	M3UMtxCalcSIAnmBlendQuat::joinAnm(
-	    mOwner->getActorKeeper()->getMActorAnmData()->getUnk2C()->getAnmPtr(
+	    mOwner->getActorKeeper()->getMActorAnmData()->getBckData()->getAnmPtr(
 	        param_1));
 }
 

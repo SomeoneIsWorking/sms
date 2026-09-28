@@ -262,12 +262,12 @@ void TMapObjBase::startAnim(u16 param_1)
 		// mtx-calc to reset. Proper fix lives in wiring setModel earlier.
 		MActor* actor = mMActor;
 #ifdef SMS_NATIVE_PLATFORM
-		J3DModelData* md = actor->getModel() ? actor->getModel()->mModelData : nullptr;
+		J3DModelData* md = actor->getModel() ? actor->getModel()->getModelData() : nullptr;
 		if (md && md->mJointNodePointer && md->mJointNodePointer[0])
-			md->mJointNodePointer[0]->mMtxCalc = actor->unk8;
+			md->mJointNodePointer[0]->setMtxCalc(actor->unk8);
 #else
-		actor->getModel()->mModelData->mJointNodePointer[0]->mMtxCalc
-		    = actor->unk8;
+		actor->getModel()->getModelData()->getJointNodePointer(0)->setMtxCalc(
+		    actor->unk8);
 #endif
 	}
 }
@@ -531,10 +531,10 @@ void TMapObjBase::perform(u32 param_1, JDrama::TGraphics* graphics)
 
 		if ((param_1 & 2) && mMActor) {
 			if (checkLiveFlag(LIVE_FLAG_CLIPPED_OUT | LIVE_FLAG_UNK200)) {
-				if (getModel()->mShapePackets->isVisible())
+				if (getModel()->getShapePacket(0)->isVisible())
 					SMS_HideAllShapePacket(getModel());
 			} else {
-				if (!getModel()->mShapePackets->isVisible())
+				if (!getModel()->getShapePacket(0)->isVisible())
 					SMS_ShowAllShapePacket(getModel());
 			}
 		}
@@ -586,10 +586,10 @@ void TMapObjBase::perform(u32 param_1, JDrama::TGraphics* graphics)
 		calc();
 		if (mMActor) {
 			if (checkLiveFlag(LIVE_FLAG_CLIPPED_OUT | LIVE_FLAG_UNK200)) {
-				if (getModel()->mShapePackets->isVisible())
+				if (getModel()->getShapePacket(0)->isVisible())
 					SMS_HideAllShapePacket(getModel());
 			} else {
-				if (!getModel()->mShapePackets->isVisible())
+				if (!getModel()->getShapePacket(0)->isVisible())
 					SMS_ShowAllShapePacket(getModel());
 			}
 		}
@@ -670,7 +670,7 @@ void TMapObjBase::initAndRegister(const char* param_1)
 	unkF4 = param_1;
 	initMapObj();
 	if (mMapObjData->unkC) {
-		JDrama::TNameRefGen::search<TIdxGroupObj>(mMapObjData->unkC)
+		((TIdxGroupObj*)JDrama::TNameRefGen::search(mMapObjData->unkC))
 		    ->push_back(this);
 	}
 }

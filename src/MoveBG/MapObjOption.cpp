@@ -88,19 +88,19 @@ void TFileLoadBlock::loadAfter()
 
 	if (mBlockIndex == 0) {
 		mSiblingBlock0
-		    = JDrama::TNameRefGen::search<TFileLoadBlock>("ロードブロックＢ");
+		    = ((TFileLoadBlock*)JDrama::TNameRefGen::search("ロードブロックＢ"));
 		mSiblingBlock1
-		    = JDrama::TNameRefGen::search<TFileLoadBlock>("ロードブロックＣ");
+		    = ((TFileLoadBlock*)JDrama::TNameRefGen::search("ロードブロックＣ"));
 	} else if (mBlockIndex == 1) {
 		mSiblingBlock0
-		    = JDrama::TNameRefGen::search<TFileLoadBlock>("ロードブロックＡ");
+		    = ((TFileLoadBlock*)JDrama::TNameRefGen::search("ロードブロックＡ"));
 		mSiblingBlock1
-		    = JDrama::TNameRefGen::search<TFileLoadBlock>("ロードブロックＣ");
+		    = ((TFileLoadBlock*)JDrama::TNameRefGen::search("ロードブロックＣ"));
 	} else {
 		mSiblingBlock0
-		    = JDrama::TNameRefGen::search<TFileLoadBlock>("ロードブロックＡ");
+		    = ((TFileLoadBlock*)JDrama::TNameRefGen::search("ロードブロックＡ"));
 		mSiblingBlock1
-		    = JDrama::TNameRefGen::search<TFileLoadBlock>("ロードブロックＢ");
+		    = ((TFileLoadBlock*)JDrama::TNameRefGen::search("ロードブロックＢ"));
 	}
 }
 

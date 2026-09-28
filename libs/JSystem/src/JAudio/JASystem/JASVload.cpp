@@ -2,7 +2,7 @@
 #include <JSystem/JAudio/JASystem/JASDvdThread.hpp>
 #include <JSystem/JAudio/JASystem/JASSystemHeap.hpp>
 #include <JSystem/JKernel/JKRHeap.hpp>
-#include <types.h>
+#include <dolphin/types.h>
 #ifdef SMS_NATIVE_PLATFORM
 #include <dolphin/os.h>
 #endif

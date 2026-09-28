@@ -40,6 +40,34 @@ class TMarDirector;
 extern TMarDirector* gpMarDirector;
 inline TMarDirector* SMSGetMarDirector() { return gpMarDirector; }
 
+// The perform-cue bits the JDrama view-object header does not own: the light
+// related ones, the pollution layer offset, and the semitransparent
+// priority bits. This enum was dropped from the header by the 2026-09-28 merge
+// while call sites kept the names, so it is restored here from upstream
+// (6ae2aa86), where it sits in the same place -- between the manager forward
+// declarations and the class.
+enum {
+	// Some kind of light-related cues?
+	CUE_UNK10000 = 0x10000,
+	CUE_UNK20000 = 0x20000,
+	CUE_UNK40000 = 0x40000,
+	CUE_UNK80000 = 0x80000,
+
+	// Bits 16-17 can store the pollution layer sometimes.
+	// If more than 4 layers -- everything breaks horribly.
+	CUE_OFFSET_POLLUTION_LAYER = 16,
+
+	CUE_UNK800000              = 0x800000,
+	CUE_UNK1000000             = 0x1000000,
+	CUE_SEMITRANSPARENT_PRIO_2 = 0x2000000,
+	CUE_SEMITRANSPARENT_PRIO_1 = 0x4000000,
+	CUE_UNK8000000             = 0x8000000,
+	CUE_UNK10000000            = 0x10000000,
+	CUE_UNK20000000            = 0x20000000,
+	CUE_UNK40000000            = 0x40000000,
+	CUE_UNK80000000            = 0x80000000,
+};
+
 // The demo-camera user cookie is a POINTER ROUND-TRIP, not an integer: the caller hands over an
 // actor address and the callback casts it straight back (bosseel.cpp's hoseiDiveCameraCallback
 // does exactly that). A u32 truncates it on LP64 and the callback then dereferences garbage, so
@@ -125,7 +153,7 @@ public:
 
 	// fabricated
 	u8 getCurrentMap() { return mMap; }
-	u8 getCurrentStage() { return unk7D; }
+	u8 getCurrentStage() { return mScenario; }
 	BOOL checkFlag(u16 flag) const { return mFlags & flag; }
 	void onFlag(u16 flag) { mFlags |= flag; }
 	void offFlag(u16 flag) { mFlags &= ~flag; }

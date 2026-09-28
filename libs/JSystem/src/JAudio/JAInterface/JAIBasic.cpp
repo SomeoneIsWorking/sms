@@ -295,19 +295,20 @@ void JAIBasic::checkInitDataOnMemory()
 	//   u32 cid; cid==0 ends. cid in {1,4,5,6,7}: ONE (offset,size,flag) triplet.
 	//   cid in {2,3}: a LIST of (offset,size,flag) triplets until offset==0.
 	// All scalars big-endian; offsets are byte offsets from the AAF base. For
-	// SMS the layout is: cid1 single = the SE info table (-> unk88 -> seCategory
-	// count), cid2 = IBNK instrument banks, cid3 = WSYS wave banks, cid4-7 small
-	// singles. unk4C (the in-memory aaf) is NOT freed for unk13==4, so we point
-	// directly into it (no transInitDataFile copy needed).
+	// SMS the layout is: cid1 single = the SE info table (-> mSeTable ->
+	// seCategory count), cid2 = IBNK instrument banks, cid3 = WSYS wave banks,
+	// cid4-7 small singles. mInitDataPointer (the in-memory aaf) is NOT freed for
+	// mInitFileLoadSwitch==4, so we point directly into it (no transInitDataFile
+	// copy needed).
 	//
-	// NOTE (audio frontier): cid-3 (WSYS wave banks) are wired into unk54 here so
-	// initBankWave can registWaveBankWS them (each blob is BE-swapped to host in
-	// registWaveBankWS). cid-2 (IBNK instrument banks) -> unk50 is still left null:
-	// registBankBNK needs its own IBNK BE swap before it can be wired (game
-	// null-guards unk50 -> silent instruments, no crash). unk88 (seCategoryMax /
-	// boot) comes from cid-1.
+	// NOTE (audio frontier): cid-3 (WSYS wave banks) are wired into mWaveBankList
+	// here so initBankWave can registWaveBankWS them (each blob is BE-swapped to
+	// host in registWaveBankWS). cid-2 (IBNK instrument banks) -> mBankList is
+	// still left null: registBankBNK needs its own IBNK BE swap before it can be
+	// wired (game null-guards mBankList -> silent instruments, no crash).
+	// mSeTable (seCategoryMax / boot) comes from cid-1.
 	{
-		u32* w = (u32*)unk4C;
+		u32* w = (u32*)mInitDataPointer;
 		u32 o  = 0;
 		for (;;) {
 			u32 cid = __builtin_bswap32(w[o++]);
@@ -318,13 +319,13 @@ void JAIBasic::checkInitDataOnMemory()
 				u32 size   = __builtin_bswap32(w[o + 1]);
 				o += 3; // offset, size, flag
 				if (cid == 1) {
-					data->unk88.unk78 = (u8*)unk4C + offset;
-					data->unk88.unk28 = size;
-					data->unk1B0      = 0;
+					data->mSeTable.mData = (u8*)mInitDataPointer + offset;
+					data->mSeTable.mDataSize = size;
+					data->mSeparateSoundTables = 0;
 				}
 			} else if (cid == 3) {
 				// WSYS wave banks: list of (offset,size,flag) until offset==0.
-				// Build the null-terminated unk54 table the game expects.
+				// Build the null-terminated mWaveBankList table the game expects.
 				u32 start = o;
 				u32 n     = 0;
 				while (__builtin_bswap32(w[o]) != 0) {
@@ -332,24 +333,26 @@ void JAIBasic::checkInitDataOnMemory()
 					o += 3;
 				}
 				o += 1; // terminator word
-				unk54 = (FabricatedUnk54Struct*)allocHeap(
-				    (n + 1) * sizeof(FabricatedUnk54Struct));
+				mWaveBankList = (FabricatedWaveBankEntry*)allocHeap(
+				    (n + 1) * sizeof(FabricatedWaveBankEntry));
 				for (u32 i = 0; i < n; ++i) {
 					u32 off = __builtin_bswap32(w[start + i * 3 + 0]);
 					u32 sz  = __builtin_bswap32(w[start + i * 3 + 1]);
 					u32 fl  = __builtin_bswap32(w[start + i * 3 + 2]);
-					unk54[i].unk0 = (u8*)unk4C + off;
-					unk54[i].unk4 = sz;
-					unk54[i].unk8 = fl;
+					mWaveBankList[i].mWaveBankData
+					    = (void*)((u8*)mInitDataPointer + off);
+					mWaveBankList[i].unk4 = sz;
+					mWaveBankList[i].mLoadTiming = fl;
 				}
-				unk54[n].unk0 = nullptr; // terminator
+				mWaveBankList[n].mWaveBankData = nullptr; // terminator
 			} else if (cid == 2) {
 				// IBNK instrument banks: list of (offset,size,waveBankIdx) until
-				// offset==0. Build the null-terminated unk50 table the bank-load
+				// offset==0. Build the null-terminated mBankList table the bank-load
 				// loop (initBankWave: registBankBNK + assignWaveBank) consumes.
-				// Previously skipped (unk50 left null -> silent instruments) pending
-				// the IBNK BE swap, now implemented in registBankBNK
-				// (BNKParser::sb_ibnk_swap_to_host). unk50[i].unk8 = wave-bank index.
+				// Previously skipped (mBankList left null -> silent instruments)
+				// pending the IBNK BE swap, now implemented in registBankBNK
+				// (BNKParser::sb_ibnk_swap_to_host).
+				// mBankList[i].mWaveBankNumber = wave-bank index.
 				u32 start = o;
 				u32 n     = 0;
 				while (__builtin_bswap32(w[o]) != 0) {
@@ -357,23 +360,21 @@ void JAIBasic::checkInitDataOnMemory()
 					o += 3;
 				}
 				o += 1; // terminator word
-				unk50 = (FabricatedUnk50Struct*)allocHeap(
-				    (n + 1) * sizeof(FabricatedUnk50Struct));
+				mBankList = (FabricatedBankEntry*)allocHeap(
+				    (n + 1) * sizeof(FabricatedBankEntry));
 				for (u32 i = 0; i < n; ++i) {
 					u32 off = __builtin_bswap32(w[start + i * 3 + 0]);
 					u32 fl  = __builtin_bswap32(w[start + i * 3 + 2]);
-					unk50[i].unk0 = (u8*)unk4C + off;
-					unk50[i].unk8 = fl;
+					mBankList[i].mBankData = (void*)((u8*)mInitDataPointer + off);
+					mBankList[i].mWaveBankNumber = fl;
 				}
-				unk50[n].unk0 = nullptr; // terminator
+				mBankList[n].mBankData = nullptr; // terminator
 			} else {
 				break; // unknown chunk -> stop (alignment unknown)
 			}
 		}
 	}
 #else
-	bool shouldContinue = true;
-	u32 i               = 0;
 	while (shouldContinue) {
 		switch (((u32*)mInitDataPointer)[i++]) {
 		case JAIINITDATA_End:
@@ -539,24 +540,25 @@ void JAIBasic::initBankWave()
 	JASystem::WaveBankMgr::init(0x100);
 	JASystem::WaveArcLoader::init();
 
-	if (unk54) {
+	if (mWaveBankList) {
 #ifdef SMS_NATIVE_PLATFORM
-		// The decomp writes unk60[i]/unk64[i] in the loop below but never
-		// allocates the arrays (its reconstruction is incomplete here). Allocate
-		// them sized to the wave-bank count (per-bank scene-wave load state:
-		// unk60 = loaded wave index, unk64 = load phase 0/1/2).
+		// The decomp writes mWaveGroupNumber[i]/mWaveLoadStatus[i] in the loop
+		// below but never allocates the arrays (its reconstruction is incomplete
+		// here). Allocate them sized to the wave-bank count (per-bank scene-wave
+		// load state: mWaveGroupNumber = loaded wave index, mWaveLoadStatus =
+		// load phase 0/1/2).
 		int bankCount = 0;
-		while (unk54[bankCount].unk0)
+		while (mWaveBankList[bankCount].mWaveBankData)
 			++bankCount;
-		unk60 = (s32*)allocHeap(bankCount * sizeof(s32));
-		unk64 = (s32*)allocHeap(bankCount * sizeof(s32));
+		mWaveGroupNumber = (s32*)allocHeap(bankCount * sizeof(s32));
+		mWaveLoadStatus  = (s32*)allocHeap(bankCount * sizeof(s32));
 		for (int i = 0; i < bankCount; ++i) {
-			unk60[i] = -1;
-			unk64[i] = 0;
+			mWaveGroupNumber[i] = -1;
+			mWaveLoadStatus[i]  = 0;
 		}
 #endif
-		for (int i = 0; unk54[i].unk0; ++i) {
-			void* data = unk54[i].unk0;
+		for (int i = 0; mWaveBankList[i].mWaveBankData; ++i) {
+			void* data = mWaveBankList[i].mWaveBankData;
 			if (data) {
 				JASystem::WaveBankMgr::registWaveBankWS(i, data);
 				mWaveGroupNumber[i] = -1;
@@ -1010,31 +1012,31 @@ JAISoundHandle JAIBasic::getControllerHandle(JAILinkBuffer* buffer)
 void JAIBasic::releaseControllerHandle(JAILinkBuffer* buffer,
                                        JAISoundHandle handle)
 {
-	JAISound** ptr = &buffer->unk4;
+	JAISoundHandle& head = buffer->mUsedHead;
 
-	sound->unk38 = 0;
-	sound->unk34 = nullptr;
-	if (buffer->unk4 != sound) {
+	handle->setCustomParameterPointer(nullptr);
+	handle->mMainSoundPPointer = nullptr;
+	if (buffer->mUsedHead != handle) {
 #ifdef SMS_NATIVE_PLATFORM
 		// STOPGAP (unported JAS audio arc): a double-released handle can
 		// still reach here through the STREAM path (stopSoundHandle's
 		// 0xC0000000/param==0 branch releases unconditionally; a stale
-		// game-side stream cache stopping twice re-splices, unk2C stale or
-		// null). Retail US 0x803024dc has no membership check -- on GC the
-		// stale-unk2C splice writes into another pool handle silently. The
-		// seq-handle double-release no longer routes here (stopSeq's
+		// game-side stream cache stopping twice re-splices, mPrevSound stale
+		// or null). Retail US 0x803024dc has no membership check -- on GC the
+		// stale-mPrevSound splice writes into another pool handle silently.
+		// The seq-handle double-release no longer routes here (stopSeq's
 		// already-released early-out is now a list no-op, 2026-07-10); guard
 		// the null deref for the stream case. Delete when the audio arc
 		// lands and every handle here is genuinely list-linked again.
-		if (sound->unk2C != nullptr) {
-			sound->unk2C->unk30 = sound->unk30;
-			if (sound->unk30)
-				sound->unk30->unk2C = sound->unk2C;
+		if (handle->mPrevSound != nullptr) {
+			handle->mPrevSound->mNextSound = handle->mNextSound;
+			if (handle->mNextSound)
+				handle->mNextSound->mPrevSound = handle->mPrevSound;
 		}
 #else
-		sound->unk2C->unk30 = sound->unk30;
-		if (sound->unk30)
-			sound->unk30->unk2C = sound->unk2C;
+		handle->mPrevSound->mNextSound = handle->mNextSound;
+		if (handle->mNextSound)
+			handle->mNextSound->mPrevSound = handle->mPrevSound;
 #endif
 	} else {
 		head = handle->mNextSound;
@@ -1377,16 +1379,16 @@ u32 JAIBasic::getSoundSwBit(void* info)
 	// 0x12000000 instead of 0x12, so checkSwBit(0x10) returns 0, checkEntriedSeq
 	// takes the wrong (auto-heap) alloc branch, its size (58880) exceeds the
 	// autoHeapRoomSize slot (0xa2ff = 41727), calls (*sound)->stop(0), which
-	// nulls JAIBasic::unk38 via clearMainSoundPPointer -- and processFrameWork
-	// then null-derefs unk38 on the next tick.
-	return __builtin_bswap32(((JAISoundInfo*)param)->unk0);
+	// nulls the sound's mMainSoundPPointer via clearMainSoundPPointer -- and
+	// processFrameWork then null-derefs it on the next tick.
+	return __builtin_bswap32(((JAISoundInfo*)info)->mSwBit);
 #else
-	return ((JAISoundInfo*)param)->unk0;
+	return ((JAISoundInfo*)info)->mSwBit;
 #endif
 }
 
 #ifdef SMS_NATIVE_PLATFORM
-// JAISoundInfo lives inline in the big-endian AAF blob (see getSoundSwBit). unk8 is the
+// JAISoundInfo lives inline in the big-endian AAF blob (see getSoundSwBit). mPitch is the
 // per-sound default PITCH, an f32 stored BE and never copied to a native struct, so it must
 // be byte-swapped on read. Volume/fxmix (unkC/unkD) are single bytes and need no swap -- which
 // is why they worked while pitch did not: a BE 1.0f (0x3F800000) read raw on LE is 0x0000803F,
@@ -1395,7 +1397,7 @@ u32 JAIBasic::getSoundSwBit(void* info)
 static f32 sb_soundinfo_pitch_be(const JAISoundInfo* info)
 {
 	u32 raw;
-	__builtin_memcpy(&raw, &info->unk8, 4);
+	__builtin_memcpy(&raw, &info->mPitch, 4);
 	raw = __builtin_bswap32(raw);
 	f32 out;
 	__builtin_memcpy(&out, &raw, 4);
@@ -1416,9 +1418,9 @@ void JAIBasic::setSeExtParameter(JAISound* sound)
 		sound->setFxmix(((JAISoundInfo*)sound->mInfo)->mFxmix / 127.0f, 0, 1);
 	if (format & 2)
 #ifdef SMS_NATIVE_PLATFORM
-		sound->setPitch(sb_soundinfo_pitch_be((JAISoundInfo*)sound->unk3C), 0, 1);
+		sound->setPitch(sb_soundinfo_pitch_be((JAISoundInfo*)sound->mInfo), 0, 1);
 #else
-		sound->setPitch(((JAISoundInfo*)sound->unk3C)->unk8, 0, 1);
+		sound->setPitch(((JAISoundInfo*)sound->mInfo)->mPitch, 0, 1);
 #endif
 }
 

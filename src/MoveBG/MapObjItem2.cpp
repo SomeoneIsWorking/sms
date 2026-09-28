@@ -144,9 +144,9 @@ void TMushroom1up::control()
 
 void TMushroom1up::perform(u32 param_1, JDrama::TGraphics* param_2)
 {
-	if (unk139 != 2 && mStateTimer < 240 && (cue & CUE_ENTRY)
+	if (unk139 != 2 && mStateTimer < 240 && (param_1 & CUE_ENTRY)
 	    && gpMarDirector->mMoveTickCount % 6 > 2)
-		cue &= ~CUE_ENTRY;
+		param_1 &= ~CUE_ENTRY;
 
 	if ((param_1 & 1) && unk13A == 0 && unk139 != 2 && mStateTimer <= 0)
 		kill();

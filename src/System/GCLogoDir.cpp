@@ -22,7 +22,7 @@
 
 void TNintendo2D::perform(u32 param_1, JDrama::TGraphics*)
 {
-	if (cue & CUE_DRAW) {
+	if (param_1 & CUE_DRAW) {
 		GXSetCullMode(GX_CULL_BACK);
 		Mtx afStack_3c;
 		MTXTrans(afStack_3c, 0.0, 0.0, 0.0);

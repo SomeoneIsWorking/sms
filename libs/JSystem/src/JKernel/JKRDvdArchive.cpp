@@ -53,7 +53,7 @@ bool JKRDvdArchive::open(s32 entryNum)
 	SDIFileEntry* fileEntry;
 
 	mArcInfoBlock = nullptr;
-	mDataOffset   = nullptr;
+	mDataOffset   = 0; // s32, not a pointer: the target's `nullptr` macro is 0
 	mDirectories  = nullptr;
 	mFileEntries  = nullptr;
 	mStrTable     = nullptr;

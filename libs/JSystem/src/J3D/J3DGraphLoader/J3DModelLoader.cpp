@@ -384,7 +384,7 @@ void J3DModelLoader::readJoint(const J3DJointBlock* i_block)
 {
 	J3DJointFactory factory(*i_block);
 	mpModelData->mJointNum = i_block->mJointNum;
-	if (i_block->mpNameTable != nullptr) {
+	if (i_block->mpNameTable != 0) {
 		mpModelData->unkB0 = new JUTNameTab(
 		    JSUConvertOffsetToPtr<ResNTAB>(i_block, i_block->mpNameTable));
 	} else {
@@ -402,7 +402,7 @@ void J3DModelLoader_v26::readMaterial(const J3DMaterialBlock* i_block,
 	J3DMaterialFactory factory(*i_block);
 	mpModelData->mMaterialNum = i_block->mMaterialNum;
 	mpModelData->unk34        = factory.countUniqueMaterials();
-	if (i_block->mpNameTable != nullptr) {
+	if (i_block->mpNameTable != 0) {
 		mpModelData->mMaterialName = new JUTNameTab(
 		    JSUConvertOffsetToPtr<ResNTAB>(i_block, i_block->mpNameTable));
 	} else {
@@ -445,7 +445,7 @@ void J3DModelLoader_v21::readMaterial_v21(const J3DMaterialBlock_v21* i_block,
 	J3DMaterialFactory_v21 factory(*i_block);
 	mpModelData->mMaterialNum = i_block->mMaterialNum;
 	mpModelData->unk34        = factory.countUniqueMaterials();
-	if (i_block->mpNameTable != nullptr) {
+	if (i_block->mpNameTable != 0) {
 		mpModelData->mMaterialName = new JUTNameTab(
 		    JSUConvertOffsetToPtr<ResNTAB>(i_block, i_block->mpNameTable));
 	} else {
@@ -487,7 +487,7 @@ void J3DModelLoader::readShape(const J3DShapeBlock* i_block, u32 i_flags)
 	mpShapeBlock = i_block;
 	J3DShapeFactory factory(*i_block);
 	mpModelData->mShapeNum = i_block->mShapeNum;
-	if (i_block->mpNameTable != nullptr) {
+	if (i_block->mpNameTable != 0) {
 		mpModelData->unkB8 = new JUTNameTab(
 		    JSUConvertOffsetToPtr<ResNTAB>(i_block, i_block->mpNameTable));
 	} else {
@@ -512,7 +512,7 @@ void J3DModelLoader::readTexture(const J3DTextureBlock* i_block)
 	u16 texture_num = i_block->mTextureNum;
 	ResTIMG* texture_res
 	    = JSUConvertOffsetToPtr<ResTIMG>(i_block, i_block->mpTextureRes);
-	if (i_block->mpNameTable != nullptr) {
+	if (i_block->mpNameTable != 0) {
 		mpModelData->unkA8 = new JUTNameTab(
 		    JSUConvertOffsetToPtr<ResNTAB>(i_block, i_block->mpNameTable));
 	} else {
@@ -526,7 +526,7 @@ void J3DModelLoader_v26::readMaterialTable(const J3DMaterialBlock* i_block,
 {
 	J3DMaterialFactory factory(*i_block);
 	mpMaterialTable->mMaterialNum = i_block->mMaterialNum;
-	if (i_block->mpNameTable != nullptr) {
+	if (i_block->mpNameTable != 0) {
 		mpMaterialTable->mMaterialName = new JUTNameTab(
 		    JSUConvertOffsetToPtr<ResNTAB>(i_block, i_block->mpNameTable));
 	} else {
@@ -548,7 +548,7 @@ void J3DModelLoader_v21::readMaterialTable_v21(
 {
 	J3DMaterialFactory_v21 factory(*i_block);
 	mpMaterialTable->mMaterialNum = i_block->mMaterialNum;
-	if (i_block->mpNameTable != nullptr) {
+	if (i_block->mpNameTable != 0) {
 		mpMaterialTable->mMaterialName = new JUTNameTab(
 		    JSUConvertOffsetToPtr<ResNTAB>(i_block, i_block->mpNameTable));
 	} else {
@@ -571,7 +571,7 @@ void J3DModelLoader::readTextureTable(const J3DTextureBlock* i_block)
 	u16 texture_num = i_block->mTextureNum;
 	ResTIMG* texture_res
 	    = JSUConvertOffsetToPtr<ResTIMG>(i_block, i_block->mpTextureRes);
-	if (i_block->mpNameTable != nullptr) {
+	if (i_block->mpNameTable != 0) {
 		mpMaterialTable->mTextureName = new JUTNameTab(
 		    JSUConvertOffsetToPtr<ResNTAB>(i_block, i_block->mpNameTable));
 	} else {

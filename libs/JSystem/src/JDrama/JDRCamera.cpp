@@ -2,6 +2,8 @@
 #include <JSystem/JDrama/JDRCamera.hpp>
 #include <dolphin/mtx.h>
 #include <dolphin/gx.h>
+#include <math.h>
+#include <macros.h>  // DEG_TO_RAD
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
 #include <cstdlib>

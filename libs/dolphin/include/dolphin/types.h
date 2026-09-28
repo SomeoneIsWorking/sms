@@ -29,6 +29,25 @@ typedef int BOOL;
 #error unknown compiler
 #endif
 
+/* MWCC places the PowerPC EABI runtime's linker symbols and entry points with
+ * a section attribute, and binds the parameters of its `asm` functions to the
+ * argument registers. Neither is C, and no compiler other than MWCC parses
+ * them, so a translation unit that spells them literally cannot be parsed by
+ * anything else.
+ *
+ * GEKKO is not a macro invented here: the decomp's own build defines it for
+ * every middleware object (configure.py, cflags_base), and it is the key
+ * dolphin/os.h already uses to select its MWCC-only inline assembly. Under
+ * GEKKO these expand to exactly the tokens that were written before, so the
+ * Gekko build sees byte-identical declarations. */
+#ifdef GEKKO
+#define MWCC_SECTION(s) __declspec(section s)
+#define MWCC_REGISTER register
+#else
+#define MWCC_SECTION(s)
+#define MWCC_REGISTER
+#endif
+
 #define ATTRIBUTE_ALIGN(num) __attribute__((aligned(num)))
 
 #ifndef NULL

@@ -4,6 +4,7 @@
 #include <JSystem/J3D/J3DAssert.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DVertex.hpp>
 #include <dolphin/mtx.h>
+#include <JSystem/J3D/J3DGraphBase/J3DTransform.hpp>
 #include <dolphin/gx.h>
 
 class J3DShapeMtx {
@@ -166,6 +167,10 @@ public:
 
 	// fabricated
 	void* getDrawList() { return mGDCommands; }
+
+	// 0x28 is the shape's VCD/VAT display list; upstream calls it mVcdVatCmd and
+	// game code in src/ reads it through this accessor.
+	void* getVcdVatCmd() const { return mGDCommands; }
 
 public:
 	/* 0x0 */ u32 unk0;

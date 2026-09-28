@@ -117,7 +117,7 @@ void TConsoleStr::loadAfter()
 	// the console here. Faithful reconstruction of the missing cache, not a
 	// guard around the symptom.
 	if (TGCConsole2* console
-	    = JDrama::TNameRefGen::search<TGCConsole2>("GCコンソール"))
+	    = ((TGCConsole2*)JDrama::TNameRefGen::search("GCコンソール")))
 		console->unk94 = this;
 #endif
 }

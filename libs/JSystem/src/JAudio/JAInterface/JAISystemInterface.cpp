@@ -9,7 +9,7 @@
 #include <JSystem/JAudio/JASystem/JASDvdThread.hpp>
 #include <JSystem/JAudio/JASystem/JASTrackMgr.hpp>
 #include <JSystem/JAudio/JASystem/JASCmdStack.hpp>
-#include <types.h>
+#include <dolphin/types.h>
 
 JASystem::Kernel::TPortCmd JAISystemInterface::systemPortCmd;
 
@@ -151,7 +151,7 @@ void JAISystemInterface::outerInit(JAISeqUpdateData* sud, void* track,
 	// reused pool slot) for a sequence slot that no longer exists; queuing an SE port command
 	// for it makes portCmdMain later deref freed memory -> SIGSEGV (2026-07-17). Reject any
 	// track that is not a live slot of the static track pool before it is used.
-	if (!JASystem::TrackMgr::isPoolTrack(static_cast<const JASystem::TTrack*>(param_2)))
+	if (!JASystem::TrackMgr::isPoolTrack(static_cast<const JASystem::TTrack*>(track)))
 		return;
 #endif
 

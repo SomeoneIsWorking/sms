@@ -4,6 +4,7 @@
 #include <Camera/CameraShake.hpp>
 #include <System/MarDirector.hpp>
 #include <JSystem/JDrama/JDRNameRefGen.hpp>
+#include <Enemy/GateKeeper.hpp>
 
 // rogue includes needed for matching sinit & bss
 #include <MSound/MSSetSound.hpp>

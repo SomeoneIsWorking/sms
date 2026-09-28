@@ -92,7 +92,7 @@ void TStrategy::perform(u32 param_1, JDrama::TGraphics* param_2)
 			unk10[4]->testPerform(param_1, param_2);
 
 		if (unk10[11] != (TIdxGroupObj*)0x0)
-			unk10[11]->testPerform(cue, graphics);
+			unk10[11]->testPerform(param_1, param_2);
 
 		if (unk10[6] != (TIdxGroupObj*)0x0)
 			unk10[6]->testPerform(param_1, param_2);
@@ -146,7 +146,7 @@ void TStrategy::perform(u32 param_1, JDrama::TGraphics* param_2)
 			unk10[5]->testPerform(param_1, param_2);
 
 		if (unk10[11] != (TIdxGroupObj*)0x0)
-			unk10[11]->testPerform(cue, graphics);
+			unk10[11]->testPerform(param_1, param_2);
 
 		if (unk10[6] != (TIdxGroupObj*)0x0)
 			unk10[6]->testPerform(param_1, param_2);

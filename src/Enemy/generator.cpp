@@ -1,5 +1,14 @@
 #include <Enemy/Generator.hpp>
+#include <Enemy/Conductor.hpp>
+#include <Enemy/Enemy.hpp>
+#include <Enemy/EnemyManager.hpp>
+#include <Enemy/Graph.hpp>
+#include <JSystem/JDrama/JDRNameRefGen.hpp>
 #include <JSystem/JSupport/JSUInputStream.hpp>
+#include <MarioUtil/MathUtil.hpp>
+#include <MarioUtil/RandomUtil.hpp>
+#include <Strategic/Strategy.hpp>
+#include <dolphin/mtx.h>
 
 // Native port of TOneShotGenerator::load (@0x8008f710). RE: scratch/decomp_next3/8008f710.c.
 // Reads two null-terminated names from the scene-load stream. Storage is at +0x70 (first

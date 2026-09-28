@@ -17,6 +17,7 @@
 #include <MSound/MSSetSound.hpp>
 #include <MSound/MSoundBGM.hpp>
 #include <M3DUtil/InfectiousStrings.hpp>
+#include <math.h>
 
 static const char cDirtyFileName[] = "/scene/map/pollution/H_ma_rak.bti";
 static const char cDirtyTexName[]  = "H_ma_rak_dummy";
@@ -438,7 +439,7 @@ BOOL TMario::doSliding(f32 stopThreshold)
 
 void TMario::slopeProcess()
 {
-	f32 mag = std::sqrtf(
+	f32 mag = sqrtf(
 	    mGroundPlane->getNormal().x * mGroundPlane->getNormal().x
 	    + mGroundPlane->getNormal().z * mGroundPlane->getNormal().z);
 

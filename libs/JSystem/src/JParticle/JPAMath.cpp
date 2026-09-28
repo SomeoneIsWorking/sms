@@ -193,15 +193,15 @@ void JPAGetRMtxSTVecElement(MtxPtr param_1, MtxPtr param_2,
                             JGeometry::TVec3<f32>& param_3,
                             JGeometry::TVec3<f32>& param_4)
 {
-	param_3.x = std::sqrtf(param_1[0][0] * param_1[0][0]
-	                       + param_1[1][0] * param_1[1][0]
-	                       + param_1[2][0] * param_1[2][0]);
-	param_3.y = std::sqrtf(param_1[0][1] * param_1[0][1]
-	                       + param_1[1][1] * param_1[1][1]
-	                       + param_1[2][1] * param_1[2][1]);
-	param_3.z = std::sqrtf(param_1[0][2] * param_1[0][2]
-	                       + param_1[1][2] * param_1[1][2]
-	                       + param_1[2][2] * param_1[2][2]);
+	param_3.x = sqrtf(param_1[0][0] * param_1[0][0]
+	                   + param_1[1][0] * param_1[1][0]
+	                   + param_1[2][0] * param_1[2][0]);
+	param_3.y = sqrtf(param_1[0][1] * param_1[0][1]
+	                   + param_1[1][1] * param_1[1][1]
+	                   + param_1[2][1] * param_1[2][1]);
+	param_3.z = sqrtf(param_1[0][2] * param_1[0][2]
+	                   + param_1[1][2] * param_1[1][2]
+	                   + param_1[2][2] * param_1[2][2]);
 
 	MTXIdentity(param_2);
 	if (param_3.x != 0.0f) {
@@ -228,15 +228,15 @@ void JPAGetRMtxTVecElement(MtxPtr param_1, MtxPtr param_2,
 {
 	JGeometry::TVec3<f32> scale;
 
-	scale.x = std::sqrtf(param_1[0][0] * param_1[0][0]
-	                     + param_1[1][0] * param_1[1][0]
-	                     + param_1[2][0] * param_1[2][0]);
-	scale.y = std::sqrtf(param_1[0][1] * param_1[0][1]
-	                     + param_1[1][1] * param_1[1][1]
-	                     + param_1[2][1] * param_1[2][1]);
-	scale.z = std::sqrtf(param_1[0][2] * param_1[0][2]
-	                     + param_1[1][2] * param_1[1][2]
-	                     + param_1[2][2] * param_1[2][2]);
+	scale.x = sqrtf(param_1[0][0] * param_1[0][0]
+	                 + param_1[1][0] * param_1[1][0]
+	                 + param_1[2][0] * param_1[2][0]);
+	scale.y = sqrtf(param_1[0][1] * param_1[0][1]
+	                 + param_1[1][1] * param_1[1][1]
+	                 + param_1[2][1] * param_1[2][1]);
+	scale.z = sqrtf(param_1[0][2] * param_1[0][2]
+	                 + param_1[1][2] * param_1[1][2]
+	                 + param_1[2][2] * param_1[2][2]);
 
 	MTXIdentity(param_2);
 	if (scale.x != 0.0f) {

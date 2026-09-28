@@ -44,7 +44,7 @@ void TMario::keepDistance(const JGeometry::TVec3<f32>& target, f32 param_2,
 		if (mForwardVel > mDeParams.mClashSpeed.get())
 			burst = true;
 
-		f32 velSq = std::sqrtf(mVel.x * mVel.x + mVel.z * mVel.z);
+		f32 velSq = sqrtf(mVel.x * mVel.x + mVel.z * mVel.z);
 
 		if (velSq > mDeParams.mClashSpeed.get())
 			burst = true;
@@ -486,7 +486,7 @@ void TMario::fallProcess()
 int TMario::jumpProcess(int param_1)
 {
 	int result = 0;
-	f32 speed  = std::sqrtf(mVel.x * mVel.x + mVel.z * mVel.z);
+	f32 speed  = sqrtf(mVel.x * mVel.x + mVel.z * mVel.z);
 
 	if (speed > mJumpParams.mJumpingMax.get()) {
 		mVel.x = mVel.x * (mJumpParams.mJumpingMax.get() / speed);

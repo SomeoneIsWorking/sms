@@ -170,12 +170,17 @@ void TMario::perform(u32 param_1, JDrama::TGraphics* graphics)
 			doEntry = FALSE;
 		if (checkFlag(MARIO_FLAG_UNK4))
 			doEntry = FALSE;
+#ifdef SMS_NATIVE_PLATFORM
+		// The logger is this port's own shim (sb_log.h), so the diagnostic that
+		// uses it belongs to the native build only; the target build has no
+		// such header and never took this branch.
 		SB_LOG_ONCE("mario",
 		            "perform(0x200): unk114=0x%x VISIBLE=%d UNK4=%d -> doEntry=%d "
 		            "mStatus=0x%x pos=(%.0f,%.0f,%.0f)",
 		            (unsigned)unk114, (int)!!(unk114 & UNK114_FLAG_VISIBLE),
 		            (int)!!checkFlag(MARIO_FLAG_UNK4), (int)doEntry, (unsigned)mStatus,
 		            (double)mPosition.x, (double)mPosition.y, (double)mPosition.z);
+#endif
 
 		if (doEntry == TRUE) {
 			addDirty();

@@ -128,7 +128,7 @@ void M3UModel::entryOut() { entryOutTexPatternAnm(); }
 
 void M3UModel::perform(u32 cue, JDrama::TGraphics* graphics)
 {
-	if (param_1 & 2) {
+	if (cue & 2) {
 		updateIn();
 		unk8->calc();
 		updateOut();
@@ -144,8 +144,8 @@ void M3UModel::perform(u32 cue, JDrama::TGraphics* graphics)
 			static int allow = -1;
 			if (allow < 0) { const char* e = ::getenv("SB_ALLOW_NAN_JOINTS");
 				allow = (e && e[0] && e[0] != '0') ? 1 : 0; }
-			if (!allow && unk8 && unk8->mModelData) {
-				const u16 nj = unk8->mModelData->getJointNum();
+			if (!allow && unk8 && unk8->getModelData()) {
+				const u16 nj = unk8->getModelData()->getJointNum();
 				for (u16 j = 0; j < nj; ++j) {
 					MtxPtr m = unk8->getAnmMtx(j);
 					// Translation column carries the propagated NaN first; check the
@@ -161,10 +161,10 @@ void M3UModel::perform(u32 cue, JDrama::TGraphics* graphics)
 						const char* jname = "?";
 						const J3DTransformInfo* ti = nullptr;
 						J3DMtxCalc* mc = nullptr;
-						if (unk8->mModelData) {
-							if (JUTNameTab* nt = unk8->mModelData->getJointName())
+						if (unk8->getModelData()) {
+							if (JUTNameTab* nt = unk8->getModelData()->getJointName())
 								if (const char* nm = nt->getName(j)) jname = nm;
-							if (J3DJoint* jp = unk8->mModelData->getJointNodePointer(j)) {
+							if (J3DJoint* jp = unk8->getModelData()->getJointNodePointer(j)) {
 								ti = &jp->getTransformInfo();
 								mc = jp->getMtxCalc();
 							}
@@ -173,7 +173,7 @@ void M3UModel::perform(u32 cue, JDrama::TGraphics* graphics)
 						// is NaN — that's the source (later joints' NaN is propagated via
 						// MTXConcat from a NaN parent). Skip 0 to keep noise low.
 						fprintf(stderr, "  --- joint-mtx walk ---\n");
-						JUTNameTab* nt2 = unk8->mModelData ? unk8->mModelData->getJointName() : nullptr;
+						JUTNameTab* nt2 = unk8->getModelData() ? unk8->getModelData()->getJointName() : nullptr;
 						for (u16 k = 0; k < nj; ++k) {
 							MtxPtr mk = unk8->getAnmMtx(k);
 							bool nt_k = !std::isfinite(mk[0][3]) || !std::isfinite(mk[1][3]) || !std::isfinite(mk[2][3]);
@@ -185,7 +185,7 @@ void M3UModel::perform(u32 cue, JDrama::TGraphics* graphics)
 							if (nt2) if (const char* x = nt2->getName(k)) nm = x;
 							const J3DTransformInfo* ti2 = nullptr;
 							J3DMtxCalc* mc2 = nullptr;
-							if (J3DJoint* jp2 = unk8->mModelData->getJointNodePointer(k)) {
+							if (J3DJoint* jp2 = unk8->getModelData()->getJointNodePointer(k)) {
 								ti2 = &jp2->getTransformInfo();
 								mc2 = jp2->getMtxCalc();
 							}
@@ -216,7 +216,7 @@ void M3UModel::perform(u32 cue, JDrama::TGraphics* graphics)
 						        ti ? (int)ti->mRotation.x : 0, ti ? (int)ti->mRotation.y : 0, ti ? (int)ti->mRotation.z : 0,
 						        ti ? ti->mTranslate.x : 0, ti ? ti->mTranslate.y : 0, ti ? ti->mTranslate.z : 0,
 						        (void*)mc,
-						        (void*)this, (void*)unk8, (void*)unk8->mModelData);
+						        (void*)this, (void*)unk8, (void*)unk8->getModelData());
 					}
 				}
 			}
@@ -224,11 +224,11 @@ void M3UModel::perform(u32 cue, JDrama::TGraphics* graphics)
 #endif
 	}
 
-	if (param_1 & 4) {
+	if (cue & 4) {
 		unk8->viewCalc();
 	}
 
-	if (param_1 & 0x200) {
+	if (cue & 0x200) {
 		entryIn();
 		unk8->entry();
 		entryOut();

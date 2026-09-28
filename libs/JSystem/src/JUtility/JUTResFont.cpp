@@ -1,7 +1,7 @@
 #include <JSystem/JUtility/JUTResFont.hpp>
 #include <JSystem/JUtility/JUTConsole.hpp>
 #include <dolphin/gx.h>
-#include <types.h>
+#include <dolphin/types.h>
 
 IsLeadByte_func const JUTResFont::saoAboutEncoding_[3] = {
 	isLeadByte_1Byte,
@@ -416,30 +416,36 @@ f32 JUTResFont::drawChar_scale(f32 posX, f32 posY, f32 scaleX, f32 scaleY,
 
 #ifdef SMS_NATIVE_PLATFORM
 	ResFONT::GLY1* glyph           = mpGlyphBlocks[field_0x62];
+	// SbNativeFontGlyph's fields are 32-bit. `u32` is the decomp's target type
+	// (32-bit on Gekko) but is `unsigned long` -- 64-bit -- on an LP64 host, so a
+	// bare `(u32)` does not convert to `unsigned int` in a braced initializer.
+	// static_cast<unsigned int> is the same value on Gekko and the same
+	// (modularly truncated) 32-bit value on the host.
 	SbNativeFontGlyph native_glyph = {
 		this,
-		(u32)chr,
+		static_cast<unsigned int>(chr),
 		flag,
 		posX,
 		posY,
 		scaleX,
 		scaleY,
-		(u32)getWidth(),
-		(u32)getHeight(),
-		(u32)getAscent(),
-		(u32)getDescent(),
+		static_cast<unsigned int>(getWidth()),
+		static_cast<unsigned int>(getHeight()),
+		static_cast<unsigned int>(getAscent()),
+		static_cast<unsigned int>(getDescent()),
 		width.field_0x0,
 		width.field_0x1,
-		(u32)mFixedWidth,
+		static_cast<unsigned int>(mFixedWidth),
 		mFixed,
-		(u32)mWidth,
-		(u32)mHeight,
+		static_cast<unsigned int>(mWidth),
+		static_cast<unsigned int>(mHeight),
 		&glyph->data[mTexPageIdx * glyph->textureSize],
 		glyph->textureWidth,
 		glyph->textureHeight,
 		glyph->textureFormat,
-		glyph->textureSize,
-		{ (u32)mColor1, (u32)mColor2, (u32)mColor3, (u32)mColor4 },
+		static_cast<unsigned int>(glyph->textureSize),
+		{ (unsigned int)mColor1, (unsigned int)mColor2, (unsigned int)mColor3,
+		  (unsigned int)mColor4 },
 	};
 	sb_native_font_glyph_submit(&native_glyph);
 #endif

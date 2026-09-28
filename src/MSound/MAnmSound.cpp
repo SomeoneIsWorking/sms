@@ -77,9 +77,9 @@ f32 MSMarioPosVolume::getDistFromMario(const Vec& pos)
 {
 	if (MSGMSound->cameraLooksAtMario()) {
 		const Vec* mario = MSGMSound->unkAC[0].mPosition;
-		return std::sqrtf(std::powf(pos.x - mario->x, 2.0f)
-		                  + std::powf(pos.y - mario->y, 2.0f)
-		                  + std::powf(pos.z - mario->z, 2.0f));
+		return sqrtf(powf(pos.x - mario->x, 2.0f)
+		                  + powf(pos.y - mario->y, 2.0f)
+		                  + powf(pos.z - mario->z, 2.0f));
 	}
 
 	return 0.0f;

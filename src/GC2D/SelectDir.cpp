@@ -132,7 +132,8 @@ int TSelectDir::rsetup()
 	// Screen Grad: ortho projection (0,16,600,464) over the gradient group. rsetup overrides
 	// the default ±1 near/far to -100/100 (the TSelectGrad quad sits at z=-100, on the near
 	// plane); with the ±1 default the quad is z-clipped and the screen stays black.
-	JDrama::TOrthoProj* gradCam = new JDrama::TOrthoProj(0.0f, 16.0f, 600.0f, 464.0f);
+	JDrama::TOrthoProj* gradCam
+	    = new JDrama::TOrthoProj(0.0f, 16.0f, 600.0f, 464.0f, 0.0f, 600.0f);
 	gradCam->mNear = -100.0f;
 	gradCam->mFar  = 100.0f;
 	groupGrad->getChildren().push_back(gradCam);
@@ -148,7 +149,9 @@ int TSelectDir::rsetup()
 	// establishes), so this camera only fixes the screen's viewport rect; ±100 near/far
 	// keeps any pane z in range. Added AFTER Screen Grad so the gradient draws behind it.
 	JDrama::TOrthoProj* menuCam = new JDrama::TOrthoProj(
-	    0.0f, 0.0f, (float)SMSGetTitleRenderWidth(), (float)SMSGetTitleRenderHeight());
+	    0.0f, 0.0f, (float)SMSGetTitleRenderWidth(),
+	    (float)SMSGetTitleRenderHeight(), 0.0f,
+	    (float)SMSGetTitleRenderWidth());
 	menuCam->mNear = -100.0f;
 	menuCam->mFar  = 100.0f;
 	group2D->getChildren().push_back(menuCam);

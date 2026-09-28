@@ -3,6 +3,7 @@
 #include <JSystem/JAudio/JASystem/JASSystemHeap.hpp>
 #include <JSystem/JAudio/JASystem/JASDvdThread.hpp>
 #include <dolphin/types.h>
+#include <stdint.h>
 #include <string.h>
 
 namespace JASystem {

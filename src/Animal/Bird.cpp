@@ -160,11 +160,11 @@ void TAnimalBird::loadAfter()
 void TAnimalBird::calcRootMatrix()
 {
 	if (mHolder != nullptr) {
-		PSMTXCopy(mHolder->getTakingMtx(), getModel()->mBaseMtx);
+		PSMTXCopy(mHolder->getTakingMtx(), getModel()->getBaseTRMtx());
 	} else {
 		TSpineEnemy::calcRootMatrix();
 	}
-	getModel()->mBaseMtx[1][3] += 35.0f;
+	getModel()->getBaseTRMtx()[1][3] += 35.0f;
 }
 
 // TAnimalBird::load — US GMSE01 0x8000dea8, 0x154 bytes. Fully RE'd 2026-08-12; this replaces

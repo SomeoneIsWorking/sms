@@ -245,8 +245,8 @@ bool J3DDrawBuffer::entryMatSort(J3DMatPacket* packet)
 
 bool J3DDrawBuffer::entryMatAnmSort(J3DMatPacket* packet)
 {
-	J3DMaterialAnm* pMaterialAnm = packet->unk44;
-	u32 slot                     = (u32)((uintptr_t)pMaterialAnm & (mSize - 1));
+	J3DMaterialAnm* pMaterialAnm = packet->getMaterialAnmID();
+	u32 slot = (u32)((uintptr_t)pMaterialAnm & (mSize - 1));
 
 	if (pMaterialAnm == NULL) {
 		return entryMatSort(packet);
@@ -262,7 +262,7 @@ bool J3DDrawBuffer::entryMatAnmSort(J3DMatPacket* packet)
 		} else {
 			for (J3DMatPacket* pkt = (J3DMatPacket*)mBuffer[slot]; pkt != NULL;
 			     pkt               = (J3DMatPacket*)pkt->getNextPacket()) {
-				if (pkt->unk44 == pMaterialAnm) {
+				if (pkt->getMaterialAnmID() == pMaterialAnm) {
 					pkt->addShapePacket(packet->getShapePacket());
 					return false;
 				}

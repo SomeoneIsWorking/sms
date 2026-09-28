@@ -133,38 +133,39 @@ void JAIBasic::checkWaitStream()
 		return;
 
 #ifdef SMS_NATIVE_PLATFORM
-	// Unported-stream seam: unk0->unk1F8 (per-slot stream-filename table, declared
-	// JAIData.hpp:167-174, zeroed in JAIData::init, read ONLY here) is never
+	// Unported-stream seam: unk0->mStreamList (per-slot stream-filename table,
+	// declared JAIData.hpp, zeroed in JAIData::init, read ONLY here) is never
 	// populated anywhere in this decomp tree -- a genuine RE gap. On GC it is
 	// almost certainly built from JaiStInf.bst (the streamed-BGM archive info) at
 	// audio init, but that loader has not been reverse-engineered/ported. Left
-	// unguarded, the strcat below dereferences unk1F8==nullptr the instant any
+	// unguarded, the strcat below dereferences mStreamList==nullptr the instant any
 	// streamed-BGM sound (id top bits 0xC0000000, e.g. the post-START title flow)
 	// reaches this state -- a guaranteed crash, not a maybe. Delete this guard
-	// once the JaiStInf.bst loader lands and unk1F8 is actually built.
-	if (unk0->unk1F8 == nullptr) {
+	// once the JaiStInf.bst loader lands and mStreamList is actually built.
+	if (unk0->mStreamList == nullptr) {
 		static bool s_warned = false;
 		if (!s_warned && getenv("SB_DBG_AUDIO")) {
 			s_warned = true;
-			OSReport("[stream-seam] checkWaitStream: unk1F8 stream-name table is "
+			OSReport("[stream-seam] checkWaitStream: mStreamList stream-name table is "
 			         "unpopulated (JaiStInf.bst loader unported) -- dropping "
 			         "streamed-BGM request id=0x%x instead of crashing\n",
-			         sound->unk8);
+			         sound->mSoundID);
 		}
 		// Mirror checkPlayingStream's normal-completion cleanup path (this file,
-		// ~line 170-177) rather than merely `return`-ing: if sound->unk1 is left
-		// sitting at 2, unk0->unk184->unk14 never clears, and checkEntriedStream
-		// only ever promotes a NEW stream request when unk184->unk14 is null --
-		// so leaving this in place would permanently wedge the ONE stream slot
-		// and silently drop every later streamed-BGM request forever, not just
-		// this one. Release the handle now so the slot is free again (later
-		// requests get the same one-time-logged drop, not a deadlock).
-		sound->unk1 = 0;
-		if (sound->getStreamParameter()->unk3D4 != nullptr)
-			sound->getStreamParameter()->unk3D4->unk14 = nullptr;
+		// ~line 170-177) rather than merely `return`-ing: if sound->mState is left
+		// sitting at 2, unk0->mStreamUpdate->mSound never clears, and
+		// checkEntriedStream only ever promotes a NEW stream request when
+		// mStreamUpdate->mSound is null -- so leaving this in place would
+		// permanently wedge the ONE stream slot and silently drop every later
+		// streamed-BGM request forever, not just this one. Release the handle now
+		// so the slot is free again (later requests get the same one-time-logged
+		// drop, not a deadlock).
+		sound->mState = 0;
+		if (sound->getStreamParameter()->mUpdateData != nullptr)
+			sound->getStreamParameter()->mUpdateData->mSound = nullptr;
 		releaseStreamParameterPointer(sound->getStreamParameter());
 		sound->clearMainSoundPPointer();
-		releaseControllerHandle(&unk0->unk21C, sound);
+		releaseControllerHandle(&unk0->mStreamControlBuffer, sound);
 		return;
 	}
 #endif

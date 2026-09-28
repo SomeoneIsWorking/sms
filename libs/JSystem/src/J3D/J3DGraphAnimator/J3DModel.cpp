@@ -810,7 +810,7 @@ void J3DModel::update()
 		unk94->calc(this);
 
 	j3dSys.setCurrentMtxCalc(mModelData->getMtxCalc());
-	mModelData->getMtxCalc()->init(unk14, unk20);
+	mModelData->getMtxCalc()->init(mBaseScale, mBaseMtx);
 	j3dSys.setTexture(mModelData->getTexture());
 	mModelData->getMtxCalc()->recursiveUpdate(mModelData->getRootNode());
 	calcWeightEnvelopeMtx();
@@ -1176,13 +1176,13 @@ void J3DModel::calcBBoard()
 		    == J3DJntMtxType_BBoard) {
 			MtxPtr drawMtx = getDrawMtx(i);
 
-			f32 sx = std::sqrtf(drawMtx[0][0] * drawMtx[0][0]
+			f32 sx = sqrtf(drawMtx[0][0] * drawMtx[0][0]
 			                    + drawMtx[1][0] * drawMtx[1][0]
 			                    + drawMtx[2][0] * drawMtx[2][0]);
-			f32 sy = std::sqrtf(drawMtx[0][1] * drawMtx[0][1]
+			f32 sy = sqrtf(drawMtx[0][1] * drawMtx[0][1]
 			                    + drawMtx[1][1] * drawMtx[1][1]
 			                    + drawMtx[2][1] * drawMtx[2][1]);
-			f32 sz = std::sqrtf(drawMtx[0][2] * drawMtx[0][2]
+			f32 sz = sqrtf(drawMtx[0][2] * drawMtx[0][2]
 			                    + drawMtx[1][2] * drawMtx[1][2]
 			                    + drawMtx[2][2] * drawMtx[2][2]);
 
@@ -1215,13 +1215,13 @@ void J3DModel::calcBBoard()
 		           == J3DJntMtxType_YBBoard) {
 			MtxPtr drawMtx = getDrawMtx(i);
 
-			f32 sx = std::sqrtf(drawMtx[0][0] * drawMtx[0][0]
+			f32 sx = sqrtf(drawMtx[0][0] * drawMtx[0][0]
 			                    + drawMtx[1][0] * drawMtx[1][0]
 			                    + drawMtx[2][0] * drawMtx[2][0]);
-			f32 sy = std::sqrtf(drawMtx[0][1] * drawMtx[0][1]
+			f32 sy = sqrtf(drawMtx[0][1] * drawMtx[0][1]
 			                    + drawMtx[1][1] * drawMtx[1][1]
 			                    + drawMtx[2][1] * drawMtx[2][1]);
-			f32 sz = std::sqrtf(drawMtx[0][2] * drawMtx[0][2]
+			f32 sz = sqrtf(drawMtx[0][2] * drawMtx[0][2]
 			                    + drawMtx[1][2] * drawMtx[1][2]
 			                    + drawMtx[2][2] * drawMtx[2][2]);
 

@@ -72,7 +72,7 @@ f32 pow2(f32) { return 0.0f; }
 
 f32 getRint(f32) { return 0.0f; }
 
-f32 getDist(Vec* vec1, Vec* vec2) { return std::sqrtf(getDistPow(vec1, vec2)); }
+f32 getDist(Vec* vec1, Vec* vec2) { return sqrtf(getDistPow(vec1, vec2)); }
 
 f32 getDistPow(Vec* vec1, Vec* vec2)
 {
@@ -82,9 +82,9 @@ f32 getDistPow(Vec* vec1, Vec* vec2)
 		float dz = powf(vec1->z - vec2->z, 2.0f);
 		return dx + dy + dz;
 	} else {
-		float dy = std::powf(vec1->y, 2.0f);
-		float dx = std::powf(vec1->x, 2.0f);
-		float dz = std::powf(vec1->z, 2.0f);
+		float dy = powf(vec1->y, 2.0f);
+		float dx = powf(vec1->x, 2.0f);
+		float dz = powf(vec1->z, 2.0f);
 		return dx + dy + dz;
 	}
 }

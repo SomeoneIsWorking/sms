@@ -171,7 +171,7 @@ MActor* TMActorKeeper::createMActor(const char* model_data_name, u32 flags)
 	return a;
 }
 
-void TMActorKeeper::createMActorFromAllBmd(u32 flags)
+MActor* TMActorKeeper::createMActorFromAllBmd(u32 flags)
 {
 	int num = mModelDataKeeper->getModelDataNum();
 #ifdef SMS_NATIVE_PLATFORM

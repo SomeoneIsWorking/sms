@@ -20,7 +20,9 @@ J3DMaterialFactory::J3DMaterialFactory(const J3DMaterialBlock& block)
 	    &block, block.mpMaterialInitData);
 	mpMaterialID = JSUConvertOffsetToPtr<u16>(&block, block.mpMaterialID);
 
-	if (block.mpIndInitData != nullptr
+	// mpIndInitData is a 32-bit file-overlay offset, not a pointer: an absent
+	// block is the offset 0, which is what `== 0` tests.
+	if (block.mpIndInitData != 0
 	    && ((u32)(uintptr_t)block.mpIndInitData - (u32)(uintptr_t)block.mpNameTable) > 4)
 		mpIndInitData = JSUConvertOffsetToPtr<J3DIndInitData>(
 		    &block, block.mpIndInitData);

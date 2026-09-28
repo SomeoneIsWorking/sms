@@ -10,6 +10,7 @@
 #include <dolphin/os.h>
 #include <dolphin/dvd.h>
 #include <dolphin/ar.h>
+#include <dolphin/arq.h>
 #include <macros.h>
 
 namespace JASystem {
@@ -83,8 +84,11 @@ void Dvd::extendPath(char* path1, char* path2)
 		strcpy(path1, path2);
 	}
 }
-void Dvd::addTaskHigh(s32 (*func)(void*), void* param, u32 param3) { }
-void Dvd::addTask(s32 (*func)(void*), void* param, u32 param3) { }
+// JASDvdThread.hpp declares s32; the body is this port's no-op (the PC build
+// loads synchronously, see loadToDramDvdT) and nothing in the tree reads the
+// result, so the retype is the declaration's own signature.
+s32 Dvd::addTaskHigh(s32 (*func)(void*), void* param, u32 param3) { return 0; }
+s32 Dvd::addTask(s32 (*func)(void*), void* param, u32 param3) { return 0; }
 void Dvd::dvdProcInit()
 {
 	OSInitMessageQueue(&mq, msgBuf, 0x20);
@@ -122,7 +126,7 @@ void* Dvd::dvdProc(void* param)
 	}
 }
 
-int Dvd::loadToDramDvdTMain(void* param)
+s32 Dvd::loadToDramDvdTMain(void* param)
 {
 	s32 ret;
 	TDvdCall* call = (TDvdCall*)param;
@@ -167,7 +171,7 @@ int Dvd::loadToDramDvdTMain(void* param)
 	return 0;
 }
 
-int Dvd::loadToDramDvdT(u32 param1, char* path, void* buffer, u32 size,
+s32 Dvd::loadToDramDvdT(u32 param1, char* path, void* buffer, u32 size,
                         u32 param5, u32* param6, DvdCallback callback)
 {
 	TDvdCall callData;
@@ -208,7 +212,7 @@ void Dvd::setBufferDvdT(u8* buffer, u32 size, u32 param3) { }
 void Dvd::closeBufferDvdT(u8* buffer) { }
 void Dvd::getCurrentBufferDvdT(u8** buffer) { }
 
-int Dvd::loadToAramDvdTMain(void* param)
+s32 Dvd::loadToAramDvdTMain(void* param)
 {
 	TDvdCall* call = (TDvdCall*)param;
 	s32 ret;
@@ -272,7 +276,7 @@ int Dvd::loadToAramDvdTMain(void* param)
 
 	return 0;
 }
-int Dvd::loadToAramDvdT(u32 param1, char* path, void* buffer, u32 size,
+s32 Dvd::loadToAramDvdT(u32 param1, char* path, void* buffer, u32 size,
                         u32 param5, u32* param6, DvdCallback callback)
 {
 	TDvdCall callData;
@@ -315,26 +319,28 @@ int Dvd::loadToAramDvdT(u32 param1, char* path, void* buffer, u32 size,
 	return 0;
 }
 
-void* Dvd::aramToDramDvdTMain(void* param)
+s32 Dvd::aramToDramDvdTMain(void* param)
 {
 
 	static DVDFileInfo finfo;
 	static ARQRequest req;
 	return 0;
 }
-void* Dvd::dramToAramDvdTMain(void* param)
+s32 Dvd::dramToAramDvdTMain(void* param)
 {
 	static DVDFileInfo finfo;
 	static ARQRequest req;
 	return 0;
 }
-void Dvd::aramToDramDvdT(u32 param1, void* src, void* dest, u32 size,
-                         u32* param5, void (*callback)(u32))
+s32 Dvd::aramToDramDvdT(u32 param1, void* src, void* dest, u32 size,
+                        u32* param5, void (*callback)(u32))
 {
+	return 0;
 }
-void Dvd::dramToAramDvdT(u32 param1, void* src, void* dest, u32 size,
-                         u32* param5, void (*callback)(u32))
+s32 Dvd::dramToAramDvdT(u32 param1, void* src, void* dest, u32 size,
+                        u32* param5, void (*callback)(u32))
 {
+	return 0;
 }
 
 u32 Dvd::checkFileExtend(char* path)
@@ -368,7 +374,7 @@ u32 Dvd::loadFileDvdT(char* path, void* buffer)
 	else
 		return done;
 }
-int Dvd::checkPassDvdT(u32 param1, u32* param2, void (*callback)(u32))
+s32 Dvd::checkPassDvdT(u32 param1, u32* param2, void (*callback)(u32))
 {
 	TDvdCall callData;
 	void* cs;
@@ -395,7 +401,7 @@ int Dvd::checkPassDvdT(u32 param1, u32* param2, void (*callback)(u32))
 #endif
 	return 0;
 }
-int Dvd::checkFile(char* path)
+s32 Dvd::checkFile(char* path)
 {
 	static DVDFileInfo finfo;
 	if (!openDvd(path, &finfo))
@@ -405,7 +411,7 @@ int Dvd::checkFile(char* path)
 	DVDClose(&finfo);
 	return result;
 }
-int Dvd::loadFile(char* path, void* buffer)
+s32 Dvd::loadFile(char* path, void* buffer)
 {
 	static DVDFileInfo finfo;
 
@@ -437,7 +443,7 @@ void Dvd::unpauseDvdT()
 void Dvd::registerDvdErrorCallback(void (*callback)(char*, u8*)) { }
 void Dvd::setFastOpenMaxDic(s32 max) { }
 void Dvd::registerExtFastOpen(char* path) { }
-int Dvd::registerFastOpen(char* path)
+s32 Dvd::registerFastOpen(char* path)
 {
 	if (strlen(path) > 63)
 		return -1;

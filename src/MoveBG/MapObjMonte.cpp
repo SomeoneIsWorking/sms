@@ -20,7 +20,7 @@
 void TJumpMushroom::load(JSUMemoryInputStream& stream)
 {
 	TMapObjBase::load(stream);
-	const std::uint32_t raw = stream.readU32();
+	const uint32_t raw = stream.readU32();
 	if (mMapCollisionManager != nullptr) {
 		mMapCollisionManager->getUnk8()->setAllData(
 		    sb::jump_mushroom_collision_id_from_serialized(raw));

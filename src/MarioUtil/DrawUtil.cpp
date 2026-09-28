@@ -1,6 +1,7 @@
 #include <MarioUtil/DrawUtil.hpp>
 #include <MarioUtil/DamageFog.hpp>
 #include <MarioUtil/MathUtil.hpp>
+#include <MarioUtil/RandomUtil.hpp>
 #include <Player/MarioAccess.hpp>
 #include <Camera/SunMgr.hpp>
 #include <Camera/Camera.hpp>
@@ -13,6 +14,7 @@
 #include <JSystem/JUtility/JUTTexture.hpp>
 #include <JSystem/JMath.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DMaterial.hpp>
+#include <JSystem/J3D/J3DGraphBase/Components/J3DFog.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DSys.hpp>
 #include <JSystem/J3D/J3DGraphBase/J3DShape.hpp>
 #include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
@@ -177,17 +179,7 @@ void TSilhouette::perform(u32 param_1, JDrama::TGraphics* param_2)
 
 void TSilhouette::calcSilhouetteBorder() { }
 
-void TTrembleModelEffect::init(J3DModel*) { }
-
-void TTrembleModelEffect::tremble(f32, f32, f32, int) { }
-
-void TTrembleModelEffect::clash(f32) { }
-
-void TTrembleModelEffect::movement() { }
-
-void TTrembleModelEffect::reset() { }
-
-void SMS_ResetDamageFogEffect(J3DModelData* modelData)
+void TTrembleModelEffect::init(J3DModel* model)
 {
 	int found = 0;
 	unk0      = model;
@@ -251,6 +243,22 @@ void SMS_ResetDamageFogEffect(J3DModelData* modelData)
 			break;
 		}
 		}
+	}
+}
+
+void SMS_ResetDamageFogEffect(J3DModelData* modelData)
+{
+	// SMSDamageFog::resetRange is the same pair the DOL writes here
+	// (GMSE01 0x802264d8): {far - 1, far}.
+	const SMSDamageFog::Range range
+	    = SMSDamageFog::resetRange(gpCamera->getFar());
+	for (u16 i = 0; i < modelData->getMaterialNum(); i++) {
+		J3DFog* fog
+		    = modelData->getMaterialNodePointer(i)->getPEBlock()->getFog();
+		fog->mStartZ = range.start;
+		fog->mEndZ   = range.end;
+		fog->mNearZ  = gpCamera->getNear();
+		fog->mFarZ   = gpCamera->getFar();
 	}
 }
 
@@ -417,29 +425,6 @@ void TTrembleModelEffect::reset()
 	unk0->getVertexBuffer()->setCurrentVtxPos(unk4);
 }
 
-void SMS_AddDamageFogEffect(J3DModelData* param_1,
-                            const JGeometry::TVec3<f32>& param_2,
-                            JDrama::TGraphics* param_3)
-{
-	Vec local_80;
-	MTXMultVec(param_3->getViewMtx(), param_2, &local_80);
-
-	f32 startBase = -700.0f;
-	f32 endBase   = 500.0f;
-	f32 s         = JMASSin((s16)(gpMarDirector->mMoveTickCount * 0x888));
-	f32 startOsc  = (-400.0f - startBase) * s;
-	f32 endOsc    = (800.0f - endBase) * s;
-
-	for (u16 i = 0; i < param_1->getMaterialNum(); i++) {
-		J3DFog* fog
-		    = modelData->getMaterialNodePointer(index)->getPEBlock()->getFog();
-		fog->mStartZ = range.start;
-		fog->mEndZ   = range.end;
-		fog->mNearZ  = gpCamera->getNear();
-		fog->mFarZ   = gpCamera->getFar();
-	}
-}
-
 void SMS_AddDamageFogEffect(J3DModelData* modelData,
                             const JGeometry::TVec3<f32>& worldPosition,
                             JDrama::TGraphics* graphics)
@@ -449,7 +434,7 @@ void SMS_AddDamageFogEffect(J3DModelData* modelData,
 	             const_cast<JGeometry::TVec3<f32>*>(&worldPosition),
 	             &viewPosition);
 	const s16 angle
-	    = SMSDamageFog::waveAngle(static_cast<u32>(gpMarDirector->unk58));
+	    = SMSDamageFog::waveAngle(static_cast<u32>(gpMarDirector->mMoveTickCount));
 	const SMSDamageFog::Range range
 	    = SMSDamageFog::activeRange(viewPosition.z, JMASSin(angle));
 	for (u16 index = 0; index < modelData->getMaterialNum(); ++index) {
@@ -805,6 +790,11 @@ void SMS_UnifyMaterial(J3DModel* param_1)
 		u32 materialID   = unifier->getMaterialID();
 		mat->setMaterialID(materialID);
 		param_1->getMatPacket(i)->setMaterialID(materialID);
-		mat->setTexNo(0, unifier->getTevBlock()->getTexNo(0));
+		// The material carries its texture number in its TEV block, not in a
+		// member of J3DMaterial itself: J3DMaterial::getTexNo() forwards to
+		// mTevBlock->getTexNo(), so this stores the same value through the same
+		// virtual the shader uses. (J3DMaterialAnm.cpp does the same store for
+		// the same reason.)
+		mat->getTevBlock()->setTexNo(0, unifier->getTevBlock()->getTexNo(0));
 	}
 }

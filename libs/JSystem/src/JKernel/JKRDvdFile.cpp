@@ -2,6 +2,7 @@
 #include <JSystem/JUtility/JUTAssert.hpp>
 #include <JSystem/JSupport/JSUInputStream.hpp>
 #include <macros.h>
+#include <stdint.h>  // intptr_t
 
 JSUList<JKRDvdFile> JKRDvdFile::sDvdList;
 

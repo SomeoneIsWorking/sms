@@ -25,17 +25,25 @@
 // (<cmath>, <cstdint> only), portable.
 #include "sms_boot_shadow_gate.h"
 
-#ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
+#ifdef SMS_NATIVE_PLATFORM
+static int s_shadow_dbg = -1;
+#endif
+
 static bool sShadowDbg()
 {
-	static int v = -1;
-	if (v < 0) {
+#ifdef SMS_NATIVE_PLATFORM
+	if (s_shadow_dbg < 0) {
 		const char* e = getenv("SB_SHADOW_DBG");
-		v             = (e && *e && *e != '0') ? 1 : 0;
+		s_shadow_dbg  = (e && *e && *e != '0') ? 1 : 0;
 	}
-	return v;
+	return s_shadow_dbg != 0;
+#else
+	return false;
+#endif
 }
+
+#ifdef SMS_NATIVE_PLATFORM
 #define SHADOW_LOG(...)                                                        \
 	do {                                                                       \
 		if (sShadowDbg())                                                      \
@@ -95,6 +103,47 @@ static bool sShadowDbg()
 // do NOT redefine here (would be a duplicate-symbol link error). The ctor below
 // overwrites it.
 
+// TEMP DIAGNOSTICS (port only): SB_SHADOW_BISECT / SB_SHADOW_PASSES /
+// SB_SHADOW_SETUPN, each read once and cached at file scope. Off the native
+// platform the defaults are the behaviour the game always had: no bisect early
+// return, every pass enabled, no setup gate.
+#ifdef SMS_NATIVE_PLATFORM
+static int s_shadow_bisect  = -1;
+static int s_shadow_passes  = -1;
+static int s_shadow_setup_n = -1;
+
+static int sb_shadow_env_int(const char* name, int fallback)
+{
+	const char* e = getenv(name);
+	return e ? atoi(e) : fallback;
+}
+
+static int sb_shadow_bisect()
+{
+	if (s_shadow_bisect < 0)
+		s_shadow_bisect = sb_shadow_env_int("SB_SHADOW_BISECT", 0);
+	return s_shadow_bisect;
+}
+
+static int sb_shadow_passes()
+{
+	if (s_shadow_passes < 0)
+		s_shadow_passes = sb_shadow_env_int("SB_SHADOW_PASSES", 0x1f);
+	return s_shadow_passes;
+}
+
+static int sb_shadow_setup_n()
+{
+	if (s_shadow_setup_n < 0)
+		s_shadow_setup_n = sb_shadow_env_int("SB_SHADOW_SETUPN", 99);
+	return s_shadow_setup_n;
+}
+#else
+static int sb_shadow_bisect() { return 0; }
+static int sb_shadow_passes() { return 0x1f; }
+static int sb_shadow_setup_n() { return 99; }
+#endif
+
 // -----------------------------------------------------------------------------
 // TMBindShadowManager
 // -----------------------------------------------------------------------------
@@ -115,7 +164,10 @@ TMBindShadowManager::TMBindShadowManager(const char* name)
 	mQuads              = new TAlphaShadowQuad[kMaxRequests];
 	mBoxes              = new TAlphaShadowBlendQuad[kMaxRequests];
 	mShadowDir.set(0.0f, 1.0f, 0.0f);
-	mShadowColor = { 0x1e, 0x32, 0x73, 0xb4 };
+	mShadowColor.r = 0x1e;
+	mShadowColor.g = 0x32;
+	mShadowColor.b = 0x73;
+	mShadowColor.a = 0xb4;
 }
 
 // Retail load @0x80231288 (scratch/decomp_shadow/80231288.c): base load, then
@@ -196,9 +248,9 @@ void TMBindShadowManager::initEntry(TMBindShadowBody*)
 static f32 sbShadowDistSqToMario(const TCircleShadowRequest& req)
 {
 	JGeometry::TVec3<f32> mp = SMS_GetMarioPos();
-	const f32 dx             = req.unk0.x - mp.x;
-	const f32 dy             = req.unk0.y - mp.y;
-	const f32 dz             = req.unk0.z - mp.z;
+	const f32 dx             = req.mPosition.x - mp.x;
+	const f32 dy             = req.mPosition.y - mp.y;
+	const f32 dz             = req.mPosition.z - mp.z;
 	return dz * dz + dx * dx + dy * dy;
 }
 
@@ -211,8 +263,8 @@ void TMBindShadowManager::forceRequest(const TCircleShadowRequest& req,
 	if (mRequestCount < kMaxRequests) {
 		TCircleShadowRequest& dst = mRequests[mRequestCount];
 		dst                       = req;
-		dst.unk20                 = flags;
-		dst.unk18                 = sbShadowDistSqToMario(req);
+		dst.mActorType                 = flags;
+		dst.mCameraDistSq                 = sbShadowDistSqToMario(req);
 		++mRequestCount;
 	}
 }
@@ -223,18 +275,25 @@ void TMBindShadowManager::request(const TCircleShadowRequest& req, u32 flags)
 	// helper (unit-tested against hand-derived expected values in
 	// native/platform/tests/shadow_gate_test.cpp — the port SHIPS through this
 	// call so the test validates the real function, not a fork).
-	sb::ShadowReq pr { req.unk0.x, req.unk0.y, req.unk0.z,
-		               req.unkC,   req.unk10,  req.unk1D };
-	const bool in_area = !gpMap || gpMap->isInArea(req.unk0.x, req.unk0.z);
+	// The shim's ShadowReq carries a default constructor, so its six fields are
+	// assigned rather than brace-initialised (the decomp target is C++98).
+	sb::ShadowReq pr;
+	pr.x     = req.mPosition.x;
+	pr.y     = req.mPosition.y;
+	pr.z     = req.mPosition.z;
+	pr.radX  = req.mRadiusX;
+	pr.radZ  = req.mRadiusZ;
+	pr.unk1D = req.mNeedsGroundCheck;
+	const bool in_area = !gpMap || gpMap->isInArea(req.mPosition.x, req.mPosition.z);
 	if (!sb::shadow_gate_accept(pr, in_area))
 		return;
 	if (mRequestCount < kMaxRequests) {
 		const f32 distSq = sbShadowDistSqToMario(req);
-		if (req.unk1C == 2) {
+		if (req.mShadowType == 2) {
 			// Retail: type-2 requests go to the side channel (+0x70, cap 1) and
 			// do NOT enter the footprint pipeline. mFar keys off dist^2 > 2e8.
 			if (mType2Count == 0) {
-				mType2[0].mPos = req.unk0;
+				mType2[0].mPos = req.mPosition;
 				mType2[0].mFar = (distSq > 2.0e8f) ? 1 : 0;
 				mType2[0].mOn  = 1;
 				++mType2Count;
@@ -243,8 +302,8 @@ void TMBindShadowManager::request(const TCircleShadowRequest& req, u32 flags)
 		}
 		TCircleShadowRequest& dst = mRequests[mRequestCount];
 		dst                       = req;
-		dst.unk20                 = flags;
-		dst.unk18                 = distSq;
+		dst.mActorType                 = flags;
+		dst.mCameraDistSq                 = distSq;
 		++mRequestCount;
 	}
 }
@@ -252,8 +311,8 @@ void TMBindShadowManager::request(const TCircleShadowRequest& req, u32 flags)
 // conectCubeDiffer @0x80230fac: merge `add` into cumulative box `dst` when both
 // carry the SAME nonzero key (bit 0x40000000 clear on both), their Y levels are
 // within 50 and their XZ AABBs overlap. On merge, `dst` expands to cover `add`.
-static bool sbConectCubeDiffer(TMBindShadowManager::TAlphaShadowBlendQuad* dst,
-                               TMBindShadowManager::TAlphaShadowBlendQuad* add)
+static bool sbConectCubeDiffer(TAlphaShadowBlendQuad* dst,
+                               TAlphaShadowBlendQuad* add)
 {
 	if (dst == nullptr || add == nullptr)
 		return false;
@@ -288,8 +347,8 @@ static bool sbConectCubeDiffer(TMBindShadowManager::TAlphaShadowBlendQuad* dst,
 // never writes it on the boot path; kept as a named constant so a future writer
 // is visible).
 static const f32 kConectSameMargin = 0.0f;
-static bool sbConectCubeSame(TMBindShadowManager::TAlphaShadowBlendQuad* dst,
-                             TMBindShadowManager::TAlphaShadowBlendQuad* add)
+static bool sbConectCubeSame(TAlphaShadowBlendQuad* dst,
+                             TAlphaShadowBlendQuad* add)
 {
 	if (dst == nullptr || add == nullptr)
 		return false;
@@ -340,30 +399,30 @@ void TMBindShadowManager::calcVtx()
 		TCircleShadowRequest& req = mRequests[i];
 		TAlphaShadowQuad& fp      = mQuads[i];
 
-		const f32 origX = req.unk0.x, origY = req.unk0.y, origZ = req.unk0.z;
+		const f32 origX = req.mPosition.x, origY = req.mPosition.y, origZ = req.mPosition.z;
 
-		if (req.unk1C == 1) {
+		if (req.mShadowType == 1) {
 			// Body (type-1): slide the centre along the projected light
 			// direction by half the 200-unit body height (r13-0x7708 = 200.0).
 			// Transcribed literally.
 			const f32 topY = origY + 200.0f;
 			const f32 sx   = mShadowDir.x;
 			const f32 sz   = mShadowDir.z;
-			req.unk0.x     = 0.5f
+			req.mPosition.x     = 0.5f
 			                 * (-(sx * (topY - origY) - origX)
 			                    + -(sx * (origY - origY) - origX));
-			req.unk0.y     = 0.5f * (origY + origY);
-			req.unk0.z     = 0.5f
+			req.mPosition.y     = 0.5f * (origY + origY);
+			req.mPosition.z     = 0.5f
 			                 * (-(sz * (topY - origY) - origZ)
 			                    + -(sz * (origY - origY) - origZ));
 		}
 
-		const f32 projX = req.unk0.x;
-		const f32 projY = req.unk0.y;
-		const f32 projZ = req.unk0.z;
+		const f32 projX = req.mPosition.x;
+		const f32 projY = req.mPosition.y;
+		const f32 projZ = req.mPosition.z;
 
 		f32 groundY = projY;
-		if (req.unk1D != 0) {
+		if (req.mNeedsGroundCheck != 0) {
 			const TBGCheckData* hit = nullptr;
 			groundY
 			    = gpMap->checkGround(projX, projY + mProbeOffset, projZ, &hit);
@@ -376,36 +435,36 @@ void TMBindShadowManager::calcVtx()
 					    projX, projY + mProbeOffset, projZ, &hit);
 			}
 		}
-		if (req.unk1C != 1)
-			req.unk0.y = groundY;
+		if (req.mShadowType != 1)
+			req.mPosition.y = groundY;
 
 		// Effective TRS scales (constants: 0.08 grow factor, r13-0x7704 = 0.02
 		// for type-3, 0.2 fixed type-3 sy, rot 90deg for the pitched cylinder).
-		f32 sxScale = (0.08f * req.unkC) * 1.0f;
-		f32 syScale = (0.08f * req.unk10) * 1.0f;
+		f32 sxScale = (0.08f * req.mRadiusX) * 1.0f;
+		f32 syScale = (0.08f * req.mRadiusZ) * 1.0f;
 		f32 rotXDeg = 90.0f;
-		if (req.unk1C == 3) {
+		if (req.mShadowType == 3) {
 			syScale   = 0.2f;
-			sxScale   = (0.08f * req.unk10) * 0.02f;
-			req.unk10 = 1.0f;
-			req.unkC  = 1.0f;
+			sxScale   = (0.08f * req.mRadiusZ) * 0.02f;
+			req.mRadiusZ = 1.0f;
+			req.mRadiusX  = 1.0f;
 			rotXDeg   = 0.0f;
 		}
 		// 9th TRS arg (sz): syScale, additionally x1.5 (SDA2[-0x1640]) for
 		// requests flagged exactly 0x80000001 (from the calcvtx dossier disasm
 		// @0x8022e79c).
 		f32 szScale = syScale;
-		if (req.unk20 == 0x80000001)
+		if (req.mActorType == 0x80000001)
 			szScale *= 1.5f;
 
-		req.unkC *= 0.8f;
-		req.unk10 *= 0.8f;
+		req.mRadiusX *= 0.8f;
+		req.mRadiusZ *= 0.8f;
 
 		// Volume half-height: max radius, clamped to 200, x1.1.
 		{
-			f32 s = req.unkC;
-			if (s < req.unk10)
-				s = req.unk10;
+			f32 s = req.mRadiusX;
+			if (s < req.mRadiusZ)
+				s = req.mRadiusZ;
 			if (200.0f < s)
 				s = 200.0f;
 			fp.mSize = s * 1.1f;
@@ -418,8 +477,8 @@ void TMBindShadowManager::calcVtx()
 		f32 mtxSx = sxScale, mtxSy = syScale, mtxSz = szScale;
 		f32 mtxRotX = rotXDeg;
 
-		if (req.unk1C == 1 && mVtxCount < (kMaxVtx - 1)
-		    && std::fabs(groundY - req.unk0.y) < 1.0f) {
+		if (req.mShadowType == 1 && mVtxCount < (kMaxVtx - 1)
+		    && std::fabs(groundY - req.mPosition.y) < 1.0f) {
 			// Close-to-ground body shadow: emit the 5-corner prism footprint in
 			// coords local to the ORIGINAL position, and build the matrix there
 			// with unit scale (the prism is already world-sized).
@@ -431,11 +490,11 @@ void TMBindShadowManager::calcVtx()
 			const f32 dx       = projX - origX;
 			const f32 dz       = projZ - origZ;
 			if (projX <= origX && projZ <= origZ) {
-				q.p[0].set(req.unkC, 0.0f, -req.unk10);
-				q.p[1].set(dx + req.unkC, 0.0f, dz - req.unk10);
-				q.p[2].set(dx - req.unkC, 0.0f, dz - req.unk10);
-				q.p[3].set(dx - req.unkC, 0.0f, dz + req.unk10);
-				q.p[4].set(-req.unkC, 0.0f, req.unk10);
+				q.p[0].set(req.mRadiusX, 0.0f, -req.mRadiusZ);
+				q.p[1].set(dx + req.mRadiusX, 0.0f, dz - req.mRadiusZ);
+				q.p[2].set(dx - req.mRadiusX, 0.0f, dz - req.mRadiusZ);
+				q.p[3].set(dx - req.mRadiusX, 0.0f, dz + req.mRadiusZ);
+				q.p[4].set(-req.mRadiusX, 0.0f, req.mRadiusZ);
 			} else {
 				q.p[0].set(1.0f, 0.0f, 1.0f);
 				q.p[1].set(1.0f + dx, 0.0f, dz - 1.0f);
@@ -462,13 +521,13 @@ void TMBindShadowManager::calcVtx()
 		// HOST ADAPTATION with identical output: store the TRS only; drawShadow
 		// concats the graphics view (same source as its own retail view load)
 		// at draw time.
-		MsMtxSetTRS(fp.mMtx, mtxX, mtxY, mtxZ, mtxRotX, req.unk14, 0.0f, mtxSx,
+		MsMtxSetTRS(fp.mMtx, mtxX, mtxY, mtxZ, mtxRotX, req.mRotationY, 0.0f, mtxSx,
 		            mtxSy, mtxSz);
 
 		for (int k = 0; k < 4; ++k) {
-			fp.mCorner[k].x = req.unkC * kCornerDirX[k] + req.unk0.x;
+			fp.mCorner[k].x = req.mRadiusX * kCornerDirX[k] + req.mPosition.x;
 			fp.mCorner[k].y = groundY;
-			fp.mCorner[k].z = req.unk10 * kCornerDirZ[k] + req.unk0.z;
+			fp.mCorner[k].z = req.mRadiusZ * kCornerDirZ[k] + req.mPosition.z;
 		}
 
 		if (mRequestCount >= kMaxRequests)
@@ -521,7 +580,7 @@ void TMBindShadowManager::calcVtx()
 				grp.mFpHead = grp.mFpTail = &fp;
 				grp.mBoxHead = grp.mBoxTail = &box;
 				grp.mMask                   = 0x20000000;
-				if ((fp.mReq->unk20 & 0x40000000) != 0)
+				if ((fp.mReq->mActorType & 0x40000000) != 0)
 					grp.mMask = 0x40000000;
 				++mGroupCount;
 			} else {
@@ -545,8 +604,8 @@ void TMBindShadowManager::calcVtx()
 			ga.mFpTail         = gb.mFpTail;
 			ga.mBoxTail->mNext = gb.mBoxHead;
 			ga.mBoxTail        = gb.mBoxTail;
-			if ((ga.mFpHead->mReq->unk20 & 0x40000000) != 0
-			    || (gb.mFpHead->mReq->unk20 & 0x40000000) != 0)
+			if ((ga.mFpHead->mReq->mActorType & 0x40000000) != 0
+			    || (gb.mFpHead->mReq->mActorType & 0x40000000) != 0)
 				ga.mMask = 0x40000000;
 			gb.mFpHead  = nullptr;
 			gb.mBoxHead = nullptr;
@@ -584,34 +643,20 @@ void TMBindShadowManager::drawShadow(u32 flags, JDrama::TGraphics* g)
 	// TEMP DIAGNOSTIC (remove after the staging-overflow bisect):
 	// SB_SHADOW_BISECT=1 returns before the GX setup, =2 returns after setup /
 	// before the group loop.
-	static int sBisect = -1;
-	if (sBisect < 0) {
-		const char* e = getenv("SB_SHADOW_BISECT");
-		sBisect       = e ? atoi(e) : 0;
-	}
-	if (sBisect == 1)
-		return;
 	// SB_SHADOW_PASSES bitmask (TEMP diagnostic): 1=stamp 2=mark 4=darken
 	// 8=type3 16=restamp; default all on.
-	static int sPasses = -1;
-	if (sPasses < 0) {
-		const char* e = getenv("SB_SHADOW_PASSES");
-		sPasses       = e ? atoi(e) : 0x1f;
-	}
 	SHADOW_LOG("[shadow] drawShadow flags=%08x groups=%d requests=%d\n",
 	           (unsigned)flags, mGroupCount, mRequestCount);
 #endif
 
+	if (sb_shadow_bisect() == 1)
+		return;
+
 	// TEMP diagnostic: SB_SHADOW_SETUPN=N executes only the first N setup
 	// calls.
-	static int sSetupN = -1;
-	if (sSetupN < 0) {
-		const char* e = getenv("SB_SHADOW_SETUPN");
-		sSetupN       = e ? atoi(e) : 99;
-	}
 	int sc = 0;
 #define SETUP_GATE                                                             \
-	if (++sc > sSetupN)                                                        \
+	if (++sc > sb_shadow_setup_n())                                                        \
 	return
 	SETUP_GATE;
 	ReInitializeGX();
@@ -664,7 +709,7 @@ void TMBindShadowManager::drawShadow(u32 flags, JDrama::TGraphics* g)
 	GXLoadNrmMtxImm(view, GX_PNMTX0);
 
 #ifdef SMS_NATIVE_PLATFORM
-	if (sBisect == 2)
+	if (sb_shadow_bisect() == 2)
 		return; // TEMP DIAGNOSTIC
 #endif
 	for (int gi = 0; gi < mGroupCount; ++gi) {
@@ -697,18 +742,18 @@ void TMBindShadowManager::drawShadow(u32 flags, JDrama::TGraphics* g)
 				    "pos=(%.0f,%.0f,%.0f) r=(%.1f,%.1f) t=%d sz=%.1f "
 				    "mtxT=(%.0f,%.0f,%.0f)\n",
 				    gi, cubeMin.x, cubeMin.y, cubeMin.z, cubeMax.x, cubeMax.y,
-				    cubeMax.z, rq->unk0.x, rq->unk0.y, rq->unk0.z, rq->unkC,
-				    rq->unk10, rq->unk1C, grp.mFpHead->mSize,
+				    cubeMax.z, rq->mPosition.x, rq->mPosition.y, rq->mPosition.z, rq->mRadiusX,
+				    rq->mRadiusZ, rq->mShadowType, grp.mFpHead->mSize,
 				    grp.mFpHead->mMtx[0][3], grp.mFpHead->mMtx[1][3],
 				    grp.mFpHead->mMtx[2][3]);
 			}
 		}
 #endif
-		if (sPasses & 1)
+		if (sb_shadow_passes() & 1)
 			SMS_DrawCube(cubeMin, cubeMax);
 
 		// LOD by the head footprint's distance-to-Mario (2e7 = SDA2[-0x1668]).
-		const bool far_ = (2.0e7f <= grp.mFpHead->mReq->unk18);
+		const bool far_ = (2.0e7f <= grp.mFpHead->mReq->mCameraDistSq);
 		SMS_SettingDrawShape(far_ ? mModels[1] : mModels[0], 0);
 		const bool useNear = !far_;
 
@@ -718,7 +763,7 @@ void TMBindShadowManager::drawShadow(u32 flags, JDrama::TGraphics* g)
 		GXSetCullMode(GX_CULL_BACK);
 		GXSetBlendMode(GX_BM_BLEND, GX_BL_ONE, GX_BL_ZERO, GX_LO_NOOP);
 		Mtx fpMv;
-		if (sPasses & 2)
+		if (sb_shadow_passes() & 2)
 			for (TAlphaShadowQuad* fp = grp.mFpHead; fp != nullptr;
 			     fp                   = fp->mNext) {
 				PSMTXConcat(view, fp->mMtx, fpMv);
@@ -733,7 +778,7 @@ void TMBindShadowManager::drawShadow(u32 flags, JDrama::TGraphics* g)
 		GXSetCullMode(GX_CULL_FRONT);
 		GXSetDstAlpha(GX_TRUE, 0);
 		GXSetColorUpdate(GX_TRUE);
-		if (sPasses & 4)
+		if (sb_shadow_passes() & 4)
 			for (TAlphaShadowQuad* fp = grp.mFpHead; fp != nullptr;
 			     fp                   = fp->mNext) {
 				PSMTXConcat(view, fp->mMtx, fpMv);
@@ -748,7 +793,7 @@ void TMBindShadowManager::drawShadow(u32 flags, JDrama::TGraphics* g)
 		GXSetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
 		for (TAlphaShadowQuad* fp = grp.mFpHead; fp != nullptr;
 		     fp                   = fp->mNext) {
-			if (fp->mReq->unk1C == 3) {
+			if (fp->mReq->mShadowType == 3) {
 				PSMTXConcat(view, fp->mMtx, fpMv);
 				GXLoadPosMtxImm(fpMv, GX_PNMTX0);
 				SMS_SettingDrawShape(mModels[3], 0);
@@ -761,7 +806,7 @@ void TMBindShadowManager::drawShadow(u32 flags, JDrama::TGraphics* g)
 		GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
 		GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
 		GXLoadPosMtxImm(view, GX_PNMTX0);
-		if (sPasses & 16)
+		if (sb_shadow_passes() & 16)
 			SMS_DrawCube(cubeMin, cubeMax);
 
 		if (mDebugCubeFlag != 0) {
@@ -802,7 +847,7 @@ void TMBindShadowManager::drawShadowGD(u32 flags, JDrama::TGraphics* g)
 void TMBindShadowManager::drawShadowVolume(bool useNear, TAlphaShadowQuad* fp)
 {
 	const f32 kEps = 50.0f;
-	const u8 type  = fp->mReq->unk1C;
+	const u8 type  = fp->mReq->mShadowType;
 	if (type == 1) {
 		if (fp->mVtx == nullptr) {
 			SMS_SettingDrawShape(mModels[2], 0);
@@ -883,7 +928,7 @@ void TMBindShadowManager::perform(u32 flags, JDrama::TGraphics* g)
 			const JGeometry::TVec3<f32>* lp = gpLightManager->getLightPos();
 			if (lp != nullptr
 			    && (lp->x != 0.0f || lp->y != 0.0f || lp->z != 0.0f)) {
-				VECNormalize((const Vec*)lp, (Vec*)&mShadowDir);
+				mShadowDir.normalize(*lp);
 				static int sN = 0;
 				if (sN < 3 && sShadowDbg()) {
 					++sN;
@@ -962,11 +1007,11 @@ void TMBindShadowBody::entryDrawShadow()
 	const auto& p       = mActor->getPosition();
 	sb::ShadowReq built = sb::shadow_body_make_request(p.x, p.y, p.z, mScale);
 	TCircleShadowRequest req;
-	req.unk0.x = built.x;
-	req.unk0.y = built.y;
-	req.unk0.z = built.z;
-	req.unkC   = built.radX;
-	req.unk10  = built.radZ;
-	req.unk1D  = built.unk1D;
+	req.mPosition.x = built.x;
+	req.mPosition.y = built.y;
+	req.mPosition.z = built.z;
+	req.mRadiusX   = built.radX;
+	req.mRadiusZ  = built.radZ;
+	req.mNeedsGroundCheck  = built.unk1D;
 	gpBindShadowManager->request(req, 0);
 }

@@ -74,7 +74,7 @@ void TSeal::init(TLiveManager* manager)
 
 	// register into the 敵グループ enemy-group hit-check list (same idiom as
 	// the animals)
-	JDrama::TNameRefGen::search<TIdxGroupObj>("敵グループ")->add(this);
+	((TIdxGroupObj*)JDrama::TNameRefGen::search("敵グループ"))->add(this);
 
 	// face-pitch offset +270deg, normalized to [0,360)
 	mRotation.x += 270.0f;
@@ -205,7 +205,7 @@ DEFINE_NERVE(TNerveSealDie, TLiveActor)
 
 	if (spine->getTime() == 0) {
 		seal->getMActor()->setBckFromIndex(0); // death anim
-		MtxPtr mtx = seal->getMActor()->getModel()->mBaseMtx;
+		MtxPtr mtx = seal->getMActor()->getModel()->getBaseTRMtx();
 		if (JPABaseEmitter* e
 		    = gpMarioParticleManager->emitAndBindToMtxPtr(0xD1, mtx, 0, seal)) {
 			e->setGlobalScale(seal->mScaling);

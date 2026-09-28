@@ -90,37 +90,42 @@ public:
 
 	void createSampleModelData(J3DModelData*);
 	void addFileTable(const char*);
-	void getSimpleName(const char*);
+	char* getSimpleName(const char*);
 	void addFileNum(const char*);
 	void init(const char*, const char**);
 	void addIncidentalAnm(const char*, int);
 	u32 partsNameToIdx(const char*);
 
-	// fabricated
-	s32 getUnk0() { return unk0; }
-	SampleCtrlModelData* getUnk48() { return unk48; }
-	MActorAnmDataEach<J3DAnmTransformKey>* getUnk2C() { return mBckAnms; }
-	MActorAnmDataEach<J3DAnmColorKey>* getUnk30() { return mBpkAnms; }
-	MActorAnmDataEach<J3DAnmTexPattern>* getUnk34() { return mBtpAnms; }
-	MActorAnmDataEach<J3DAnmTextureSRTKey>* getUnk38() { return mBtkAnms; }
-	MActorAnmDataEach<J3DAnmTevRegKey>* getUnk3C() { return mBrkAnms; }
-	MActorAnmDataEach<J3DAnmClusterKey>* getUnk40() { return mBlkAnms; }
+	// Fabricated accessors named for the animation resource each typed table
+	// owns, added by 791df919 ("Name MActor animation data accessors") and
+	// kept by the 2026-09-28 upstream merge's call sites, which were held at
+	// our side while this header was taken from upstream. The per-anm-kind
+	// counts double as write indices during addFileTable's second pass.
+	s32 getIncidentalAnmNum() { return mIncidentalAnmNum; }
+	SampleCtrlModelData* getSampleModelData() { return mSampleModelData; }
+	MActorAnmDataEach<J3DAnmTransformKey>* getBckData() { return mBckData; }
+	MActorAnmDataEach<J3DAnmColorKey>* getBpkData() { return mBpkData; }
+	MActorAnmDataEach<J3DAnmTexPattern>* getBtpData() { return mBtpData; }
+	MActorAnmDataEach<J3DAnmTextureSRTKey>* getBtkData() { return mBtkData; }
+	MActorAnmDataEach<J3DAnmTevRegKey>* getBrkData() { return mBrkData; }
+	MActorAnmDataEach<J3DAnmClusterKey>* getBlkData() { return mBlkData; }
 
 public:
-	/* 0x0 */ int unk0;
-	/* 0x4 */ int mBckNum;
+	/* 0x0 */ int mIncidentalAnmNum; // incidental sub-BCK count (==
+	                                 // mIncidentalAnmList len)
+	/* 0x4 */ int mBckNum; // per-kind file counts (also reused as indices)
 	/* 0x8 */ int mBlkNum;
 	/* 0xC */ int mBpkNum;
 	/* 0x10 */ int mBtpNum;
 	/* 0x14 */ int mBtkNum;
 	/* 0x18 */ int mBrkNum;
-	/* 0x1C */ JGadget::TList<MActorSubAnmInfo> unk1C;
-	/* 0x2C */ MActorAnmDataEach<J3DAnmTransformKey>* mBckAnms;
-	/* 0x30 */ MActorAnmDataEach<J3DAnmColorKey>* mBpkAnms;
-	/* 0x34 */ MActorAnmDataEach<J3DAnmTexPattern>* mBtpAnms;
-	/* 0x38 */ MActorAnmDataEach<J3DAnmTextureSRTKey>* mBtkAnms;
-	/* 0x3C */ MActorAnmDataEach<J3DAnmTevRegKey>* mBrkAnms;
-	/* 0x40 */ MActorAnmDataEach<J3DAnmClusterKey>* mBlkAnms;
+	/* 0x1C */ JGadget::TList<MActorSubAnmInfo> mIncidentalAnmList;
+	/* 0x2C */ MActorAnmDataEach<J3DAnmTransformKey>* mBckData;
+	/* 0x30 */ MActorAnmDataEach<J3DAnmColorKey>* mBpkData;
+	/* 0x34 */ MActorAnmDataEach<J3DAnmTexPattern>* mBtpData;
+	/* 0x38 */ MActorAnmDataEach<J3DAnmTextureSRTKey>* mBtkData;
+	/* 0x3C */ MActorAnmDataEach<J3DAnmTevRegKey>* mBrkData;
+	/* 0x40 */ MActorAnmDataEach<J3DAnmClusterKey>* mBlkData;
 	/* 0x44 */ u32 unk44;
 	/* 0x48 */ SampleCtrlModelData* mSampleModelData;
 };

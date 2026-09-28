@@ -621,12 +621,12 @@ void TMapObjBase::makeVecToLocalX(f32 param_1,
 
 f32 TMapObjBase::getRotYFromAxisX(const JGeometry::TVec3<f32>& param_1) const
 {
-	return std::atan2f(param_1.z - mPosition.z, param_1.x - mPosition.x);
+	return atan2f(param_1.z - mPosition.z, param_1.x - mPosition.x);
 }
 
 f32 TMapObjBase::getRotYFromAxisZ(const JGeometry::TVec3<f32>& param_1) const
 {
-	return std::atan2f(param_1.z - mPosition.z, param_1.x - mPosition.x);
+	return atan2f(param_1.z - mPosition.z, param_1.x - mPosition.x);
 }
 
 f32 TMapObjBase::getDistanceXZ(const JGeometry::TVec3<f32>& param_1) const

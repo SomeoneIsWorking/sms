@@ -1,6 +1,7 @@
 #include <NPC/NpcEvent.hpp>
 #include <stdio.h>
 #include <JSystem/JDrama/JDRNameRefGen.hpp>
+#include <stdint.h>
 #include <System/MarDirector.hpp>
 #include <System/FlagManager.hpp>
 #include <Strategic/Spine.hpp>
@@ -55,7 +56,7 @@ static void evGetAddressFromViewObjName(TSpcTypedInterp<TEventWatcher>* interp,
 	const char* name = interp->pop().getDataString();
 	JDrama::TViewObj* viewObj
 	    = static_cast<JDrama::TViewObj*>(JDrama::TNameRefGen::search(name));
-	interp->push((int)viewObj);
+	interp->push((int)(uintptr_t)viewObj);
 }
 
 static void evCheckCurNerve4Npc(TSpcTypedInterp<TEventWatcher>* interp,

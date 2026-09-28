@@ -3,6 +3,13 @@
 
 #include <dolphin/types.h>
 #include <string.h>
+
+// mNativeCallPtrs and getNativeCall() name std::map. MSL's <map> was reachable
+// through the headers MWCC's precompiled include path pulled in; a host standard
+// library makes no such promise, so the header has to ask for it. Only <map> is
+// needed: nothing else in this file touches the standard library.
+#include <map>
+
 #include <dolphin/types.h>
 
 // Tracing is compiled out of the release build, so the body is empty. The map

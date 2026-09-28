@@ -5,8 +5,9 @@
 #include <JSystem/JUtility/JUTResource.hpp>
 #include <dolphin/gx/GXCull.h>
 #include <dolphin/gx/GXGeometry.h>
-#include <dolphin/mtx.h>  // DEG_TO_RAD (MSL macro re-exported by Aurora's mtx.h)
+#include <dolphin/mtx.h>
 #include <math.h>
+#include <macros.h>  // DEG_TO_RAD
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
 #include <cstdlib>

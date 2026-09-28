@@ -127,8 +127,8 @@ void TMarDirector::setup2()
 
 	JDrama::TGraphics graphics;
 	graphics.unk0 = 0;
-	unk40->perform(CUE_ALL, &graphics);
-	unk38->perform(CUE_ALL, &graphics);
+	mPerformListDrawBufGroup->perform(CUE_ALL, &graphics);
+	mPerformListGraffito->perform(CUE_ALL, &graphics);
 	GXSetDrawDone();
 	GXWaitDrawDone();
 
@@ -173,7 +173,7 @@ TMarDirector::~TMarDirector()
 		arch->unmountFixed();
 
 	unk18[0]->offFlag(TMarioGamePad::PAD_FLAG_NO_B);
-	if (mMap == 1 || (mMap == 0 && unk7D == 0)) {
+	if (mMap == 1 || (mMap == 0 && mScenario == 0)) {
 		THPPlayerStop();
 		THPPlayerClose();
 		THPPlayerQuit();

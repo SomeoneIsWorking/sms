@@ -204,8 +204,8 @@ void TEMario::perform(u32 cue, JDrama::TGraphics* graphics)
 	}
 
 	for (s32 i = 0; i < mColCount; ++i) {
-		switch (mCollisions[i]->mActorType) {
-		case 0x80000001: {
+		switch (mCollisions[i]->getActorType()) {
+		case 0x80000001u: {
 			if (mPosition.distance(mCollisions[i]->getPosition())
 			    < mEnemyMario->mAttackRange) {
 				mCollisions[i]->receiveMessage(this, HIT_MESSAGE_ATTACK);

@@ -106,7 +106,6 @@ TDrawSyncManager::TDrawSyncManager(u32 param_1, u32 param_2, s32 param_3)
 	OSMessage* msgs = new OSMessage[0x14];
 	OSInitMessageQueue(&mMessageQueue, msgs, 0x14);
 	mFifo = new TFifo(param_2);
-#ifndef SMS_NATIVE_PLATFORM
 	OSResumeThread(&mProcessingThread);
 #endif
 }

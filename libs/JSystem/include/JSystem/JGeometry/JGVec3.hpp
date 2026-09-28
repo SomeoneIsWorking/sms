@@ -15,8 +15,67 @@ public:
 
 	TVec3(const S16Vec& b) { set(b.x, b.y, b.z); }
 
-	void sub(const JGeometry::TVec3<s16>&);
-	void add(const JGeometry::TVec3<s16>&);
+	// The component-wise operations the f32 specialization below defines inline
+	// and that DrawUtil's vertex maths uses. They were declarations with no
+	// definition anywhere in the tree, so the s16 vector could not be added or
+	// subtracted at all; the bodies are the same per-axis ones the f32 case uses
+	// (upstream 6ae2aa86 spells them the same way).
+	void sub(const JGeometry::TVec3<s16>& operand)
+	{
+		x -= operand.x;
+		y -= operand.y;
+		z -= operand.z;
+	}
+
+	void add(const JGeometry::TVec3<s16>& operand)
+	{
+		x += operand.x;
+		y += operand.y;
+		z += operand.z;
+	}
+
+	TVec3& operator+=(const JGeometry::TVec3<s16>& other)
+	{
+		add(other);
+		return *this;
+	}
+
+	TVec3& operator-=(const JGeometry::TVec3<s16>& other)
+	{
+		sub(other);
+		return *this;
+	}
+
+	// Same dangling-reference split as the f32 specialization below: the by-value
+	// result is identical, only the reference-to-destroyed-temporary UB is not
+	// reproduced natively.
+#ifdef SMS_NATIVE_PLATFORM
+	friend TVec3 operator-(TVec3 fst, const JGeometry::TVec3<s16>& snd)
+	{
+		fst -= snd;
+		return fst;
+	}
+
+	friend TVec3 operator+(TVec3 fst, const JGeometry::TVec3<s16>& snd)
+	{
+		fst += snd;
+		return fst;
+	}
+#else
+	friend const JGeometry::TVec3<s16>& operator-(TVec3 fst,
+	                                             const JGeometry::TVec3<s16>& snd)
+	{
+		fst -= snd;
+		return fst;
+	}
+
+	friend const JGeometry::TVec3<s16>& operator+(TVec3 fst,
+	                                             const JGeometry::TVec3<s16>& snd)
+	{
+		fst += snd;
+		return fst;
+	}
+#endif
 
 	// fabricated
 	TVec3(s16 x_, s16 y_, s16 z_) { set(x_, y_, z_); }

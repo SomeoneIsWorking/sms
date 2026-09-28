@@ -33,11 +33,11 @@ static void einSetGraph(TSpcTypedInterp<TLiveActor>* interp, u32 arg_num)
 void TEinBinary::initUserBuiltin()
 {
 	TSpcTypedBinary<TLiveActor>::initUserBuiltin();
-	bindSystemDataToSymbol("setGraph", (u32)&einSetGraph);
-	bindSystemDataToSymbol("walkToCurPathNode", (u32)&einWalkToCurPathNode);
+	bindSystemDataToSymbol("setGraph", (void*)&einSetGraph);
+	bindSystemDataToSymbol("walkToCurPathNode", (void*)&einWalkToCurPathNode);
 	bindSystemDataToSymbol("goToRandomNextGraphNode",
-	                       (u32)&einGoToRandomNextGraphNode);
+	                       (void*)&einGoToRandomNextGraphNode);
 	bindSystemDataToSymbol("getLengthToCurPathNode",
-	                       (u32)&einGetLengthToCurPathNode);
-	bindSystemDataToSymbol("getLengthToMario", (u32)&einGetLengthToMario);
+	                       (void*)&einGetLengthToCurPathNode);
+	bindSystemDataToSymbol("getLengthToMario", (void*)&einGetLengthToMario);
 }

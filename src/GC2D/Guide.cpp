@@ -62,7 +62,7 @@ static u8 sGuideMountCountdown;
 // twice — and at the mountStageArchive sites the object is filled by
 // JKRDvdAramRipper::loadToAram into +0x0 with a u8 flag written at +0x4, which is TARAMBlock's
 // layout. It is also the same global the already-ported TGuide::load mounts as gArBkGuide.
-void TGuide::setup(JKRMemArchive* archive)
+JKRMemArchive* TGuide::setup(JKRMemArchive* archive)
 {
 	if (archive != nullptr) {
 		SMSMountAramArchive(archive, gArBkGuide);
@@ -70,6 +70,7 @@ void TGuide::setup(JKRMemArchive* archive)
 		sGuideMountCountdown = 0x10;
 	}
 	unkC4 = 0;
+	return archive;
 }
 
 // Prologue made FAITHFUL to US 0x8017c180 (2026-08-12), from the disassembly:
@@ -125,12 +126,12 @@ void TGuide::load(JSUMemoryInputStream& stream)
 	}
 	unk168[13] = unkBC->search('20');
 	unk1F4 = new TExPane(unkBC, 'lwin');
-	unk2E8 = unk1F4->getInitialBounds();
+	unk218[13] = unk1F4->getInitialBounds();
 	unk3AC = new TExPane(unkBC, 'llin');
 	for (u32 i = 0; i < 10; ++i)
-		unk44c[i] = unkBC->search(0x706E3030 + i);
+		unk44C[i] = unkBC->search(0x706E3030 + i);
 
-	unk124 = unkBC->search('s_mn');
+	unk124 = (J2DTextBox*)unkBC->search('s_mn');
 	unk128[0] = new TExPane(unkBC, 'cu_a');
 	unk128[1] = new TExPane(unkBC, 'cu_b');
 	unk430 = unkBC->search('01mi');
@@ -196,10 +197,10 @@ void TGuide::perform(u32 cue, JDrama::TGraphics* graphics)
 			}
 		}
 		const bool closeRequested = unk10 == 0
-		    && ((unkC0->mEnabledFrameMeaning & TMarioGamePad::MEANING_0x40) != 0
+		    && ((unkC0->mEnabledFrameMeaning & TMarioGamePad::MEANING_MENU_B) != 0
 		        || (unkC0->mButton.mTrigger & PAD_TRIGGER_Z) != 0);
 		if (unk10 == 0)
-			unkC0->onFlag(TMarioGamePad::PAD_FLAG_0x80);
+			unkC0->onFlag(TMarioGamePad::PAD_FLAG_GUIDE_INPUT);
 
 		const sb::guide::Transition transition = sb::guide::step_transition(
 		    unk10, unkC5 != 0, gpApplication.mFader->isFullyFadedOut(),
@@ -211,7 +212,7 @@ void TGuide::perform(u32 cue, JDrama::TGraphics* graphics)
 			gpApplication.mFader->startWipe(5, 1.0f, 0.0f);
 		else if (transition.wipe == sb::guide::kWipeOut6) {
 			gpApplication.mFader->startWipe(6, 1.0f, 0.0f);
-			unkC0->offFlag(TMarioGamePad::PAD_FLAG_0x80);
+			unkC0->offFlag(TMarioGamePad::PAD_FLAG_GUIDE_INPUT);
 		}
 		if (transition.clear_selection) {
 			unk424 = nullptr;
@@ -256,7 +257,7 @@ int TGuide::checkPoint(int x, int y)
 
 	if (hit == -1) {
 		for (int i = 0; i < sb::guide::kPassTwoPanes; ++i) {
-			const JUTRect& r = unk44c[i]->mBounds;
+			const JUTRect& r = unk44C[i]->mBounds;
 			if (sb::guide::point_in_rect(x, y, r.x1, r.y1, r.x2, r.y2)) {
 				hit = i;
 				break;
@@ -267,6 +268,6 @@ int TGuide::checkPoint(int x, int y)
 	// NOTE the index, not the pass, decides whether the gate applies — a pass-one hit below 10
 	// is validated against the pass-TWO pane at the same index. That is what 0x8017a7ac does.
 	const bool visible
-	    = (hit >= 0 && hit < sb::guide::kPassTwoPanes) ? unk44c[hit]->mVisible : false;
+	    = (hit >= 0 && hit < sb::guide::kPassTwoPanes) ? unk44C[hit]->mVisible : false;
 	return sb::guide::gate_hit(hit, visible);
 }

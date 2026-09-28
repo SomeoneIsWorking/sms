@@ -7,16 +7,25 @@
 //
 // TSelectGrad anchors (DOL): ctor 0x80175a4c, setStageColor 0x8017591c, perform 0x80175560.
 
+#include <GC2D/ExPane.hpp>
+#include <GC2D/BoundPane.hpp>
+#include <System/SelectDir.hpp>
+#include <GC2D/SelectShine2.hpp>
 #include <GC2D/SelectGrad.hpp>
 #include <GC2D/SelectMenu.hpp>
 #include <JSystem/J2D/J2DScreen.hpp>
+#include <JSystem/J2D/J2DTextBox.hpp>
 #include <JSystem/J2D/J2DOrthoGraph.hpp>
 #include <JSystem/J2D/J2DPicture.hpp>
 #include <JSystem/JKernel/JKRFileLoader.hpp>
 #include <JSystem/ResTIMG.hpp>
 #include <MarioUtil/DrawUtil.hpp>
+#include <MSound/MSound.hpp>
+#include <MSound/SoundEffects.hpp>
 #include <MarioUtil/ReinitGX.hpp>
 #include <System/Application.hpp>
+#include <System/MarioGamePad.hpp>
+#include <GC2D/MessageUtil.hpp>
 #include <System/StageUtil.hpp>
 #include <System/FlagManager.hpp>
 #include "timg_swap.h"  // big-endian ResTIMG header -> host (standalone .bti via getGlbResource)
@@ -350,7 +359,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 	        flags, mState, (void*)mScreen, mDisabled); } }
 
 	if (flags & 0x1) {
-		switch (mMenuState) {
+		switch (mState) {
 		case LETTERBOX_ANIMATION: {
 			bool updated = true;
 
@@ -358,14 +367,14 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 			updated &= mLetterBoxTop->update();
 			updated &= mLetterBoxBottom->update();
 
-			if (updated || mLetterboxAnimFrame > (s32)(20 * mRcpAnmFrameRate)) {
+			if (updated || mLetterboxAnimFrame > (s32)(20 * mFrameScale)) {
 				// Slide the stage banner from the right side of the screen to
 				// the left.
 				mStageBannerPane->getPane()->show();
 				mStageBannerPane->setPaneOffset(
-				    20 * mRcpAnmFrameRate, 0, 0,
+				    20 * mFrameScale, 0, 0,
 				    601 - mStageBannerPane->mInitialBounds.x1, 0.0f);
-				mMenuState = STAGE_BANNER_SLIDE;
+				mState = STAGE_BANNER_SLIDE;
 			}
 
 			mLetterboxAnimFrame++;
@@ -383,7 +392,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 			if (updated) {
 				// Squash the stage banner on the left side of the screen.
 				JUTRect bounds = mStageBannerText->getPane()->getBounds();
-				s32 time       = 15.0f * mRcpAnmFrameRate;
+				s32 time       = 15.0f * mFrameScale;
 				mStageBannerText->setPanePosition(
 				    time, JUTPoint(0, 0), JUTPoint(0, -6), JUTPoint(0, -10));
 				mStageBannerText->setPaneSize(time, JUTPoint(0, 0),
@@ -394,7 +403,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 				mStageBannerShadow->setPaneSize(time, JUTPoint(0, 0),
 				                                JUTPoint(-110, 12),
 				                                JUTPoint(-160, 20));
-				mMenuState = STAGE_BANNER_SQUASH;
+				mState = STAGE_BANNER_SQUASH;
 			}
 		} break;
 		case STAGE_BANNER_SQUASH: {
@@ -407,7 +416,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 			if (updated) {
 				// Stretch the stage banner after squash.
 				JUTRect bounds = mStageBannerText->getPane()->getBounds();
-				s32 time       = 20.0f * mRcpAnmFrameRate;
+				s32 time       = 20.0f * mFrameScale;
 				mStageBannerText->setPanePosition(
 				    time, JUTPoint(0, -10), JUTPoint(0, -6), JUTPoint(0, 4));
 				mStageBannerText->setPaneSize(time, JUTPoint(-160, 20),
@@ -418,7 +427,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 				mStageBannerShadow->setPaneSize(time, JUTPoint(-160, 20),
 				                                JUTPoint(-110, 12),
 				                                JUTPoint(40, -8));
-				mMenuState = STAGE_BANNER_STRETCH;
+				mState = STAGE_BANNER_STRETCH;
 			}
 		} break;
 		case STAGE_BANNER_STRETCH: {
@@ -431,7 +440,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 			if (updated) {
 				// "Bounce" banner size back to normal.
 				JUTRect bounds = mStageBannerText->getPane()->getBounds();
-				s32 time       = 15.0f * mRcpAnmFrameRate;
+				s32 time       = 15.0f * mFrameScale;
 				mStageBannerText->setPanePosition(
 				    time, JUTPoint(0, 4), JUTPoint(0, 3), JUTPoint(0, 0));
 				mStageBannerText->setPaneSize(time, JUTPoint(40, -8),
@@ -453,7 +462,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 				mScorePane->show();
 				mScorePane->setAlpha(0);
 
-				mMenuState = APPEAR_MENU;
+				mState = APPEAR_MENU;
 			}
 		} break;
 		case APPEAR_MENU: {
@@ -485,12 +494,12 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 			}
 
 			if (updated && (menuAlpha == 255)) {
-				mMenuState = MENU_INPUT_LOOP;
+				mState = MENU_INPUT_LOOP;
 			}
 		} break;
 		case WAIT_BEFORE_CLOSE: {
 			if (mSelectShineAnimFrame > mWaitBeforeCloseTimer) {
-				mMenuState = CLOSE_MENU;
+				mState = CLOSE_MENU;
 			}
 			mSelectShineAnimFrame++;
 		} break;
@@ -500,7 +509,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 				                                   nullptr, 0);
 
 				JUTRect bounds = mLetterBoxTop->getPane()->getBounds();
-				s32 time       = 30.0f * mRcpAnmFrameRate;
+				s32 time       = 30.0f * mFrameScale;
 
 				s32 h = 224;
 				mLetterBoxTop->setPaneSize(time, bounds.getWidth(), h,
@@ -522,12 +531,12 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 				mLetterBoxBottom->setPaneAlpha(
 				    time, 255, mLetterBoxBottom->getPane()->getAlpha());
 
-				mSelectDir->changeOrder();
-				mSelectShineMgr->startClose();
+				mDir->changeOrder();
+				mShineMgr->startClose();
 
 				JGeometry::TVec3<f32> emitterPos(300.0f, 244.0f, 0.0f);
-				JPAEmitterManager* emitter = mSelectDir->unk34;
-				if (mShineUnlockStates[mSelectedShine] == 3) {
+				JPAEmitterManager* emitter = mDir->mEmitterMgr1;
+				if (mEpisodeState[mCursor] == 3) {
 					emitter->createEmitter(emitterPos, 5, nullptr, nullptr);
 				} else {
 					emitter->createEmitter(emitterPos, 4, nullptr, nullptr);
@@ -536,7 +545,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 				emitter->createEmitter(emitterPos, 7, nullptr, nullptr);
 				emitter->createEmitter(emitterPos, 8, nullptr, nullptr);
 
-				mMenuState = DISAPPEAR_MENU;
+				mState = DISAPPEAR_MENU;
 			} else if (mGamePad->checkFrameMeaning(
 			               TMarioGamePad::MEANING_MENU_LEFT)) {
 				if (getPrevIndex() != -1) {
@@ -544,7 +553,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 					                                   0, nullptr, 0);
 
 					u8 prevIndex = getPrevIndex();
-					mSelectShineMgr->startDecrease(mSelectedShine - prevIndex);
+					mShineMgr->startDecrease(mCursor - prevIndex);
 
 					mSelectNext = false;
 
@@ -564,54 +573,54 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 					mScenarioShadow2->insert(mScenarioTex[prevIndex], 0, 1.0f);
 					mScenarioShadow2->remove(1);
 
-					mScenarioImg1->insert(mScenarioTex[mSelectedShine], 0,
+					mScenarioImg1->insert(mScenarioTex[mCursor], 0,
 					                      1.0f);
 					mScenarioImg1->remove(1);
 
-					mScenarioShadow1->insert(mScenarioTex[mSelectedShine], 0,
+					mScenarioShadow1->insert(mScenarioTex[mCursor], 0,
 					                         1.0f);
 					mScenarioShadow1->remove(1);
 
 					s16 shineID = SMS_getShineID(SMS_getShineStage(mStage),
-					                             mSelectedShine, false);
+					                             mCursor, false);
 					const char* scenarioName = SMSGetMessageData(
 					    mScenarioBmg2, SMS_getNormalStage(shineID));
 
 					strncpy(mScenarioText1->getStringPtr(), scenarioName, 127);
 
-					mShineMarks[mSelectedShine]->mWhite = mMarkCol;
-					mShineMarks[mSelectedShine]->setAlpha(mMarkAlpha);
+					mShineMarks[mCursor]->mWhite = mMarkCol;
+					mShineMarks[mCursor]->setAlpha(mMarkAlpha);
 
-					mSelectShineMgr->mRumbleOption[mSelectedShine]
+					mShineMgr->mRumbleOption[mCursor]
 					    ->mShouldRumble
 					    = false;
 
-					mSelectedShine = prevIndex;
+					mCursor = prevIndex;
 
 					s16 shineID2 = SMS_getShineID(SMS_getShineStage(mStage),
-					                              mSelectedShine, false);
+					                              mCursor, false);
 					const char* scenarioName2 = SMSGetMessageData(
 					    mScenarioBmg2, SMS_getNormalStage(shineID));
 					strncpy(mScenarioText2->getStringPtr(), scenarioName2, 127);
 
-					mShineMarks[mSelectedShine]->mWhite = mSelectedMarkCol;
-					mShineMarks[mSelectedShine]->setAlpha(mSelectedMarkAlpha);
+					mShineMarks[mCursor]->mWhite = mSelectedMarkCol;
+					mShineMarks[mCursor]->setAlpha(mSelectedMarkAlpha);
 
-					mSelectShineMgr->mRumbleOption[mSelectedShine]
+					mShineMgr->mRumbleOption[mCursor]
 					    ->mShouldRumble
 					    = true;
 
-					if (mNumUnlockedShines > 1) {
-						if ((mSelectedShine != 0) && !mArrowL->isVisible()) {
+					if (mNumSlots > 1) {
+						if ((mCursor != 0) && !mArrowL->isVisible()) {
 							mArrowL->show();
 						}
-						if (mSelectedShine != (mNumUnlockedShines - 1)
+						if (mCursor != (mNumSlots - 1)
 						    && !mArrowR->isVisible()) {
 							mArrowR->show();
 						}
 					}
 
-					mMenuState = MENU_ANIM_LOOP;
+					mState = MENU_ANIM_LOOP;
 				}
 			} else if (mGamePad->checkFrameMeaning(
 			               TMarioGamePad::MEANING_MENU_RIGHT)) {
@@ -620,7 +629,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 					                                   0, nullptr, 0);
 
 					u8 nextIndex = getNextIndex();
-					mSelectShineMgr->startIncrease(nextIndex - mSelectedShine);
+					mShineMgr->startIncrease(nextIndex - mCursor);
 
 					mSelectNext = true;
 
@@ -640,59 +649,59 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 					mScenarioShadow2->insert(mScenarioTex[nextIndex], 0, 1.0f);
 					mScenarioShadow2->remove(1);
 
-					mScenarioImg1->insert(mScenarioTex[mSelectedShine], 0,
+					mScenarioImg1->insert(mScenarioTex[mCursor], 0,
 					                      1.0f);
 					mScenarioImg1->remove(1);
 
-					mScenarioShadow1->insert(mScenarioTex[mSelectedShine], 0,
+					mScenarioShadow1->insert(mScenarioTex[mCursor], 0,
 					                         1.0f);
 					mScenarioShadow1->remove(1);
 
 					s16 shineID = SMS_getShineID(SMS_getShineStage(mStage),
-					                             mSelectedShine, false);
+					                             mCursor, false);
 					const char* scenarioName = SMSGetMessageData(
 					    mScenarioBmg2, SMS_getNormalStage(shineID));
 
 					strncpy(mScenarioText1->getStringPtr(), scenarioName, 127);
 
-					mSelectShineMgr->mRumbleOption[mSelectedShine]
+					mShineMgr->mRumbleOption[mCursor]
 					    ->mShouldRumble
 					    = false;
-					mShineMarks[mSelectedShine]->mWhite = mMarkCol;
-					mShineMarks[mSelectedShine]->setAlpha(mMarkAlpha);
+					mShineMarks[mCursor]->mWhite = mMarkCol;
+					mShineMarks[mCursor]->setAlpha(mMarkAlpha);
 
-					mSelectedShine = nextIndex;
+					mCursor = nextIndex;
 
 					s16 shineID2 = SMS_getShineID(SMS_getShineStage(mStage),
-					                              mSelectedShine, false);
+					                              mCursor, false);
 					const char* scenarioName2 = SMSGetMessageData(
 					    mScenarioBmg2, SMS_getNormalStage(shineID));
 					strncpy(mScenarioText2->getStringPtr(), scenarioName2, 127);
 
-					mSelectShineMgr->mRumbleOption[mSelectedShine]
+					mShineMgr->mRumbleOption[mCursor]
 					    ->mShouldRumble
 					    = true;
 
-					mShineMarks[mSelectedShine]->mWhite = mSelectedMarkCol;
-					mShineMarks[mSelectedShine]->setAlpha(mSelectedMarkAlpha);
+					mShineMarks[mCursor]->mWhite = mSelectedMarkCol;
+					mShineMarks[mCursor]->setAlpha(mSelectedMarkAlpha);
 
-					if (mNumUnlockedShines > 1) {
-						if ((mSelectedShine != (mNumUnlockedShines - 1))
+					if (mNumSlots > 1) {
+						if ((mCursor != (mNumSlots - 1))
 						    && !mArrowR->isVisible()) {
 							mArrowR->show();
 						}
-						if (mSelectedShine > 0 && !mArrowL->isVisible()) {
+						if (mCursor > 0 && !mArrowL->isVisible()) {
 							mArrowL->show();
 						}
 					}
 
-					mMenuState = MENU_ANIM_LOOP;
+					mState = MENU_ANIM_LOOP;
 				}
 			}
 		}
 			// fall through
 		case MENU_ANIM_LOOP: {
-			if (mNumUnlockedShines > 1) {
+			if (mNumSlots > 1) {
 				if (mArrowL->isVisible()) {
 					s32 x = mArrowAnimPos * 0.5f * SMSGetAnmFrameRate();
 					mArrowL->move(mArrowLBounds.x1 - x, mArrowLBounds.y1);
@@ -716,7 +725,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 				}
 
 				s32 alpha = mArrowL->getAlpha();
-				if (mSelectedShine == 0) {
+				if (mCursor == 0) {
 					if (alpha != 0) {
 						alpha -= 4;
 						if (alpha < 0) {
@@ -757,7 +766,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 					}
 				}
 			}
-			if (mMenuState != MENU_INPUT_LOOP) {
+			if (mState != MENU_INPUT_LOOP) {
 
 				bool updated = true;
 				updated &= mScenarioPane1->update();
@@ -765,10 +774,10 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 
 				if (updated) {
 					mScenarioPane1->getPane()->hide();
-					mMenuState = MENU_INPUT_LOOP;
+					mState = MENU_INPUT_LOOP;
 				}
 			}
-			s32 alpha = mShineMarks[mSelectedShine]->getAlpha();
+			s32 alpha = mShineMarks[mCursor]->getAlpha();
 			if (mMarkPulseDir) {
 				u8 alphaRef = mSelectedMarkAlpha;
 				alpha       = alpha + 6;
@@ -783,7 +792,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 					alpha         = 64;
 				}
 			}
-			mShineMarks[mSelectedShine]->setAlpha(alpha);
+			mShineMarks[mCursor]->setAlpha(alpha);
 
 		} break;
 		case DISAPPEAR_MENU: {
@@ -886,14 +895,14 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 				                     col2, col1);
 
 				if (updated) {
-					mMenuState            = WAIT_BEFORE_CLOSE;
+					mState            = WAIT_BEFORE_CLOSE;
 					mSelectShineAnimFrame = 0;
 				}
 			}
 		} break;
 
 		case CLOSE_MENU:
-			mCloseMenu = true;
+			mDisabled = true;
 			break;
 
 		default:

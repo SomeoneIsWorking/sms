@@ -38,10 +38,10 @@ JKRSolidHeap::JKRSolidHeap(void* data, u32 size, JKRHeap* parent,
                            bool errorFlag)
     : JKRHeap(data, size, parent, errorFlag)
 {
-	mFreeSize = mSize;
-	mCurStart = mStart;
-	mCurEnd   = mEnd;
-	unk74     = nullptr;
+	mFreeSize  = mSize;
+	mCurStart  = mStart;
+	mCurEnd    = mEnd;
+	mStateList = nullptr;
 }
 
 JKRSolidHeap::~JKRSolidHeap() { dispose(); }
@@ -166,10 +166,10 @@ void JKRSolidHeap::freeAll()
 {
 	lock();
 	JKRHeap::freeAll();
-	mFreeSize = mSize;
-	mCurStart = mStart;
-	mCurEnd   = mEnd;
-	unk74     = nullptr;
+	mFreeSize  = mSize;
+	mCurStart  = mStart;
+	mCurEnd    = mEnd;
+	mStateList = nullptr;
 	unlock();
 }
 
@@ -180,9 +180,8 @@ void JKRSolidHeap::freeTail()
 		dispose(mCurEnd, mEnd);
 	mFreeSize += (u8*)mEnd - (u8*)mCurEnd;
 	mCurEnd = mEnd;
-	// more stuff, unk74 has size 18
-	for (UnknownStruct* s = unk74; s != nullptr; s = s->unk10) {
-		s->unkC = mEnd;
+	for (State* state = mStateList; state != nullptr; state = state->mNext) {
+		state->mCurEnd = mEnd;
 	}
 	unlock();
 }
@@ -239,7 +238,7 @@ bool JKRSolidHeap::dump()
 void JKRSolidHeap::state_register(TState* state, u32 param_1) const
 {
 	setState_u32ID_(state, param_1);
-	setState_uUsedSize_(state, getUsedSize_((JKRSolidHeap*)this));
+	setState_uUsedSize_(state, getUsedSize((JKRSolidHeap*)this));
 	// impossible to properly figure out unless new debug
 	// builds of jsystem games are discovered
 	// + it really doesn't matter

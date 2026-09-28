@@ -90,7 +90,13 @@ public:
 	/* 0x218 */ JUTRect unk218[22];
 	/* 0x378 */ TExPane* unk378[13];
 	/* 0x3AC */ TExPane* unk3AC;
-	/* 0x3B0 */ char unk3B0[0x430 - 0x3B0];
+	/* 0x3B0 */ char unk3B0[0x424 - 0x3B0];
+	// The pair the transition block clears and hides: both are TExPane pointers
+	// (the code calls getPane() on them, exactly as on the 'cu_a'/'cu_b' pair in
+	// unk128), set to null on clear_selection and hidden on return_to_gameplay.
+	/* 0x424 */ TExPane* unk424;
+	/* 0x428 */ TExPane* unk428;
+	/* 0x42C */ char unk42C[0x430 - 0x42C];
 	/* 0x430 */ J2DPane* unk430;
 	/* 0x434 */ JUTRect unk434;
 	/* 0x444 */ TBoundPane* unk444;

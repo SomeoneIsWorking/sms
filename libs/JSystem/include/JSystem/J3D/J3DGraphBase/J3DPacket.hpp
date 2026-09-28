@@ -173,15 +173,36 @@ public:
 	bool isChanged() const { return unk3C & DIFF_FLAG; }
 	uintptr_t getMaterialID() const { return unk3C; }
 	void setMaterialID(uintptr_t id) { unk3C = id; }
+	// `unk44` is the same pointer widened to the host's pointer width, so it is
+	// read back through a typed accessor rather than by comparing the raw word
+	// against a pointer.
+	J3DMaterialAnm* getMaterialAnmID() const { return (J3DMaterialAnm*)unk44; }
 	void setMaterialAnmID(J3DMaterialAnm* materialAnm)
 	{
 		unk44 = (uintptr_t)materialAnm;
 	}
 
+	// The material ID is a pointer to the unique material shifted down (see
+	// J3DMaterial, which stores `&material >> 4` in the same field), so the top
+	// bits of the word are free and carry the "changed"/"unique" flags. This
+	// fork widened the word from u32 to uintptr_t for LP64 host builds, so the
+	// flag comes from the top of the field's own width: bit 31 on the 32-bit
+	// GameCube target, bit 63 on a 64-bit host. Tracking the width is what
+	// stops the flag from overlapping a real host pointer's bits.
+	//
+	// The width still has to be a compile-time constant, but C++98 does not
+	// allow sizeof in an enumerator initialiser, so the bit position is taken
+	// from a static const. DIFF_FLAG cannot be an enumerator at all: a C++98
+	// enumerator's value must be representable as int, and 1 << 63 is not. It
+	// is a static const of the field's own unsigned type instead, which also
+	// keeps the shift itself well defined at 32 bits.
+	static const int DIFF_BITS = sizeof(uintptr_t) * CHAR_BIT;
+
 	enum {
-		DIFF_BIT  = (sizeof(uintptr_t) * CHAR_BIT - 1),
-		DIFF_FLAG = 1 << DIFF_BIT,
+		DIFF_BIT = DIFF_BITS - 1,
 	};
+
+	static const uintptr_t DIFF_FLAG = (uintptr_t)1 << DIFF_BIT;
 
 private:
 	bool isHideAllShapePacket_();

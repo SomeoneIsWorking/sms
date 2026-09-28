@@ -228,7 +228,7 @@ void J3DDeformer::base(J3DModel*) { }
 void J3DDeformer::normalize(float* vec)
 {
 	f32 inv = 1.0f
-	          / std::sqrtf(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
+	          / sqrtf(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
 	vec[0] *= inv;
 	vec[1] *= inv;
 	vec[2] *= inv;

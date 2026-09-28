@@ -7,7 +7,7 @@ void TMarioGamePad::reset()
 {
 	setButtonRepeat(0xf00000f, 20.0f / SMSGetAnmFrameRate(),
 	                6.0f / SMSGetAnmFrameRate());
-	_E4             = 0;
+	mNeutralKeyTimer             = 0;
 	mDisabledFrames = 0;
 }
 
@@ -21,58 +21,58 @@ void TMarioGamePad::updateMeaning()
 
 	u32 prevMeaning = resetMeaning();
 
-	updateMeaning(START, MEANING_0x1, prevMeaning);
+	updateMeaning(START, MEANING_START, prevMeaning);
 
-	if (checkFlag(PAD_FLAG_0x80)) {
-		updateMeaning(A, MEANING_0x20, prevMeaning);
-		updateMeaning(B, MEANING_0x40, prevMeaning);
+	if (checkFlag(PAD_FLAG_GUIDE_INPUT)) {
+		updateMeaning(A, MEANING_MENU_A, prevMeaning);
+		updateMeaning(B, MEANING_MENU_B, prevMeaning);
 		mCompSPos[4 * 2]     = mMainStick.mPosX;
 		mCompSPos[4 * 2 + 1] = mMainStick.mPosY;
 		goto finalize;
 	}
 
-	if (checkFlag(PAD_FLAG_0x1)) {
+	if (checkFlag(PAD_FLAG_MENU_INPUT)) {
 		// Some kind of 2d menu navigation, i think maybe for debug menu
 		if (mButton.mRepeat & (MAINSTICK_UP | DPAD_UP)) {
-			mMeaning |= MEANING_0x2;
+			mMeaning |= MEANING_MENU_UP;
 		}
 		if (mButton.mRepeat & (MAINSTICK_DOWN | DPAD_DOWN)) {
-			mMeaning |= MEANING_0x4;
+			mMeaning |= MEANING_MENU_DOWN;
 		}
 		if (mButton.mRepeat & (MAINSTICK_LEFT | DPAD_LEFT)) {
-			mMeaning |= MEANING_0x8;
+			mMeaning |= MEANING_MENU_LEFT;
 		}
 		if (mButton.mRepeat & (MAINSTICK_RIGHT | DPAD_RIGHT)) {
-			mMeaning |= MEANING_0x10;
+			mMeaning |= MEANING_MENU_RIGHT;
 		}
-		updateMeaning(A, MEANING_0x20, prevMeaning);
-		updateMeaning(B, MEANING_0x40, prevMeaning);
+		updateMeaning(A, MEANING_MENU_A, prevMeaning);
+		updateMeaning(B, MEANING_MENU_B, prevMeaning);
 		goto finalize;
 	}
 
-	if (!checkFlag(PAD_FLAG_0x2)) {
+	if (!checkFlag(PAD_FLAG_GAME_INPUT)) {
 		goto finalize;
 	}
 
-	if (checkFlag(PAD_FLAG_0x8)) {
+	if (checkFlag(PAD_FLAG_TALK_SELECT)) {
 		// Menu navigation
 		if (mButton.mRepeat & (MAINSTICK_UP | DPAD_UP)) {
-			mMeaning |= MEANING_0x80000;
+			mMeaning |= MEANING_SELECT_UP;
 		}
 		if (mButton.mRepeat & (MAINSTICK_DOWN | DPAD_DOWN)) {
-			mMeaning |= MEANING_0x100000;
+			mMeaning |= MEANING_SELECT_DOWN;
 		}
-		updateMeaning(A, MEANING_0x20000, prevMeaning);
-		updateMeaning(B, MEANING_0x40000, prevMeaning);
+		updateMeaning(A, MEANING_SELECT_A, prevMeaning);
+		updateMeaning(B, MEANING_SELECT_B, prevMeaning);
 		mCompSPos[1 * 2]     = (f32)(mButton.mAnalogL);
 		mCompSPos[1 * 2 + 1] = (f32)(mButton.mAnalogR);
-		updateMeaning(R, MEANING_0x400, prevMeaning);
-		updateMeaning(Z, MEANING_0x1000, prevMeaning);
-		updateMeaning(L, MEANING_0x2000, prevMeaning);
+		updateMeaning(R, MEANING_R, prevMeaning);
+		updateMeaning(Z, MEANING_Z, prevMeaning);
+		updateMeaning(L, MEANING_L, prevMeaning);
 		goto finalize;
 	}
 
-	if (checkFlag(PAD_FLAG_0x10)) {
+	if (checkFlag(PAD_FLAG_NO_INPUT)) {
 		goto finalize;
 	}
 
@@ -83,30 +83,30 @@ void TMarioGamePad::updateMeaning()
 			mCompSPos[1 * 2]     = (f32)mButton.mAnalogL;
 			mCompSPos[1 * 2 + 1] = (f32)mButton.mAnalogR;
 
-			updateMeaning(R, MEANING_0x400, prevMeaning);
-			updateMeaning(Z, MEANING_0x1000, prevMeaning);
-			updateMeaning(L, MEANING_0x2000, prevMeaning);
+			updateMeaning(R, MEANING_R, prevMeaning);
+			updateMeaning(Z, MEANING_Z, prevMeaning);
+			updateMeaning(L, MEANING_L, prevMeaning);
 			mCompSPos[2 * 2]     = mMainStick.mPosX;
 			mCompSPos[2 * 2 + 1] = mMainStick.mPosY;
-			updateMeaning(A, MEANING_0x10000, prevMeaning);
-			updateMeaning(B, MEANING_0x10000, prevMeaning);
-			updateMeaning(Y, MEANING_0x4000, prevMeaning);
+			updateMeaning(A, MEANING_CAM_AB, prevMeaning);
+			updateMeaning(B, MEANING_CAM_AB, prevMeaning);
+			updateMeaning(Y, MEANING_Y, prevMeaning);
 
 			if (((_DE & 0x1) != 0)
-			    || (((_DC & 1) != 0 && ((prevMeaning & MEANING_0x200) != 0)))) {
-				mMeaning |= MEANING_0x200;
+			    || (((_DC & 1) != 0 && ((prevMeaning & MEANING_UNK200) != 0)))) {
+				mMeaning |= MEANING_UNK200;
 			}
 
-			updateMeaning(X, MEANING_0x200000, prevMeaning);
+			updateMeaning(X, MEANING_X, prevMeaning);
 		} else {
 			f32 stickScaling = 1.0f;
 			bool _unk3       = false;
-			if (0 < _E4) {
-				_E4 -= 1;
+			if (0 < mNeutralKeyTimer) {
+				mNeutralKeyTimer -= 1;
 			}
 
-			if (0 < _E4) {
-				s16 _unk2 = 0x3d - _E4;
+			if (0 < mNeutralKeyTimer) {
+				s16 _unk2 = 0x3d - mNeutralKeyTimer;
 				_unk3     = true;
 				if (_unk2 <= 0x28) {
 					stickScaling = 0.0f;
@@ -125,32 +125,32 @@ void TMarioGamePad::updateMeaning()
 
 			mCompSPos[1 * 2]     = (f32)mButton.mAnalogL;
 			mCompSPos[1 * 2 + 1] = (f32)mButton.mAnalogR;
-			updateMeaning(A, MEANING_0x80, prevMeaning);
+			updateMeaning(A, MEANING_A, prevMeaning);
 
 			if ((mFlags & 0x4) != 0) {
-				updateMeaning(B, MEANING_0x800, prevMeaning);
+				updateMeaning(B, MEANING_TALK_B, prevMeaning);
 			} else {
 				if ((mFlags & 0x20) == 0) {
-					updateMeaning(B, MEANING_0x100, prevMeaning);
+					updateMeaning(B, MEANING_B, prevMeaning);
 				}
 			}
 
-			updateMeaning(R, MEANING_0x400, prevMeaning);
-			updateMeaning(Z, MEANING_0x1000, prevMeaning);
-			updateMeaning(L, MEANING_0x2000, prevMeaning);
+			updateMeaning(R, MEANING_R, prevMeaning);
+			updateMeaning(Z, MEANING_Z, prevMeaning);
+			updateMeaning(L, MEANING_L, prevMeaning);
 
 			mCompSPos[3 * 2]     = mSubStick.mPosX;
 			mCompSPos[3 * 2 + 1] = mSubStick.mPosY;
 
-			updateMeaning(Y, MEANING_0x4000, prevMeaning);
-			updateMeaning(L, MEANING_0x8000, prevMeaning);
+			updateMeaning(Y, MEANING_Y, prevMeaning);
+			updateMeaning(L, MEANING_CAM_L, prevMeaning);
 
 			if (((_DE & 0x1) != 0)
-			    || (((_DC & 1) != 0 && ((prevMeaning & MEANING_0x200) != 0)))) {
-				mMeaning |= MEANING_0x200;
+			    || (((_DC & 1) != 0 && ((prevMeaning & MEANING_UNK200) != 0)))) {
+				mMeaning |= MEANING_UNK200;
 			}
 
-			updateMeaning(X, MEANING_0x200000, prevMeaning);
+			updateMeaning(X, MEANING_X, prevMeaning);
 		}
 	}
 
@@ -159,9 +159,9 @@ finalize:
 	mDisabledFrameMeaning = prevMeaning & ~mMeaning;
 }
 
-void TMarioGamePad::onNeutralMarioKey() { _E4 = 0x3c; }
+void TMarioGamePad::onNeutralMarioKey() { mNeutralKeyTimer = 0x3c; }
 
-u32 TMarioGamePad::read()
+void TMarioGamePad::read()
 {
 	JUTGamePad::read();
 
@@ -170,8 +170,4 @@ u32 TMarioGamePad::read()
 	if (checkReset(&resetPort)) {
 		handleReset(resetPort);
 	}
-	// SUNBRIGHT-KEEP (native fix): u32 read() with no return is UB the decomp
-	// inherited from MWERKS (result unused); GCC -O2 miscompiles on it. Return
-	// 0.
-	return 0;
 }

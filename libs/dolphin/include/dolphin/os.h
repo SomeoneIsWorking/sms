@@ -218,13 +218,18 @@ inline void OSf32tos8(f32* f, s8* out) // 'register' removed: ill-formed in C++1
 #endif // clang-format on
 }
 
-#elif defined(SUNBRIGHT_NATIVE_HOST)
+#else
 
 // Native host build: the GC version is a paired-single quantized store
 // (psq_st type s8, scale 0) gated behind GEKKO/__MWERKS__. Provide a portable
 // equivalent: saturating f32 -> s8. RUNTIME LANDMINE: GC quantized stores
 // round-to-nearest; this truncates after clamp. Verify the rounding against the
 // SDK when the audio path is exercised (used by JASTrack pan/vol conversion).
+//
+// Every non-GEKKO build takes this branch, not only a host build: the two call
+// sites (JASTrack.cpp:402, :493) sit outside any SMS_NATIVE_PLATFORM block, so
+// keying the fallback on a host-only macro left them undeclared in the C++98
+// mode the decomp also has to parse.
 inline void OSf32tos8(f32* f, s8* out)
 {
 	f32 v = *f;

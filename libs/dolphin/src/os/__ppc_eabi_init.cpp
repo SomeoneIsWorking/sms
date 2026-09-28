@@ -8,6 +8,14 @@ extern "C" {
 void __OSPSInit();
 void __OSCacheInit();
 
+/* The two functions below are MWCC `asm` functions: the whole definition is
+ * Gekko assembly that MWCC emits into the .init section, and no other compiler
+ * in this tree can parse the construct, let alone the instructions. GEKKO is
+ * defined for this object by the decomp's own build (configure.py, cflags_base
+ * -> cflags_dolphin), and it is the key dolphin/os.h already uses to select its
+ * MWCC-only inline assembly. Everything else in this file is ordinary C++ and
+ * is compiled either way. */
+#ifdef GEKKO
 asm void __init_hardware(void)
 {
 #ifdef __MWERKS__ // clang-format off
@@ -45,14 +53,15 @@ loop:
 	blr
 #endif // clang-format on
 }
+#endif // GEKKO
 
 static void __init_cpp();
 
 void __init_user() { __init_cpp(); }
 
 typedef void (*voidfunctionptr)(); // pointer to function returning void
-__declspec(section ".init") extern voidfunctionptr _ctors[];
-__declspec(section ".init") extern voidfunctionptr _dtors[];
+MWCC_SECTION(".init") extern voidfunctionptr _ctors[];
+MWCC_SECTION(".init") extern voidfunctionptr _dtors[];
 
 static void __init_cpp()
 {

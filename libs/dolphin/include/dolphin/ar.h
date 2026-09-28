@@ -25,16 +25,13 @@ typedef u32 ARMemAddr;
 #endif
 typedef void (*ARQCallback)(ARQRequestRef pointerToARQRequest);
 
-struct ARQRequest {
-	/* 0x00 */ struct ARQRequest* next;
-	/* 0x04 */ u32 owner;
-	/* 0x08 */ u32 type;
-	/* 0x0C */ u32 priority;
-	/* 0x10 */ u32 source;
-	/* 0x14 */ u32 dest;
-	/* 0x18 */ u32 length;
-	/* 0x1C */ ARQCallback callback;
-};
+// ARQRequest itself, and every ARQ* entry point that takes or returns one, is
+// declared in <dolphin/arq.h> (commit "Split ARQ declarations into
+// dolphin/arq.h as in the SDK"). It used to be defined here as well, which is
+// harmless on a case-insensitive filesystem and a redefinition of every field on
+// a case-sensitive one, so this header keeps the forward declaration the SDK
+// split leaves behind and nothing more.
+struct ARQRequest;
 
 #define ARQ_DMA_ALIGNMENT 32
 
@@ -48,11 +45,9 @@ struct ARQRequest {
 
 typedef struct ARQRequest ARQRequest;
 
-#define ARQ_TYPE_MRAM_TO_ARAM ARAM_DIR_MRAM_TO_ARAM
-#define ARQ_TYPE_ARAM_TO_MRAM ARAM_DIR_ARAM_TO_MRAM
-
-#define ARQ_PRIORITY_LOW  0
-#define ARQ_PRIORITY_HIGH 1
+// arq.c lives in <dolphin/arq.h> too, so the ARQ* constants and entry points
+// are declared there alongside the request struct they operate on. They were
+// duplicated here before that split.
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,18 +65,6 @@ void ARReset(void);
 void ARSetSize(void);
 u32 ARGetBaseAddress(void);
 u32 ARGetSize(void);
-
-// arq.c
-void ARQInit(void);
-void ARQReset(void);
-void ARQPostRequest(struct ARQRequest* request, u32 owner, u32 type,
-                    u32 priority, ARMemAddr source, ARMemAddr dest, u32 length,
-                    ARQCallback callback);
-void ARQRemoveRequest(struct ARQRequest* request);
-void ARQRemoveOwnerRequest(u32 owner);
-void ARQFlushQueue(void);
-void ARQSetChunkSize(u32 size);
-u32 ARQGetChunkSize(void);
 
 #ifdef __cplusplus
 }

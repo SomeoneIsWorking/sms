@@ -258,7 +258,7 @@ f32 TOscillator::calc(s16* table)
 				prop = 1.0f;
 			}
 
-			f32 valAbs = std::fabsf(
+			f32 valAbs = fabsf(
 			    temp_f31 * (prop * (table[idx + 1] - table[idx]) + table[idx]));
 
 			if (mPhaseChangeRate < 0.0f)

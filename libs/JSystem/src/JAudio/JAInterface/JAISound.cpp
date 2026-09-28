@@ -241,8 +241,8 @@ f32 JAISound::setDistancePanCommon()
 	if (JAIGlobalParameter::audioCameraMax == 1) {
 		FabricatedPositionInfo& info = unk1C[0];
 
-		f32 distanceX = std::fabsf(info.mCamSpacePos.x);
-		f32 distanceZ = std::fabsf(info.mCamSpacePos.z);
+		f32 distanceX = fabsf(info.mCamSpacePos.x);
+		f32 distanceZ = fabsf(info.mCamSpacePos.z);
 
 		if (distanceX < 1.0f && distanceZ < 1.0f)
 			return 0.5f;
@@ -300,14 +300,14 @@ f32 JAISound::setPositionDopplarCommon(u32 param_1)
 	                - (unk1C->mCamSpacePos.z - unk1C->mPrevCamSpacePos.z);
 
 	f32 lenSq = toCam_x * toCam_x + toCam_y * toCam_y + toCam_z * toCam_z;
-	f32 len   = std::sqrtf(lenSq);
+	f32 len   = sqrtf(lenSq);
 
 	f32 diff3_x = toCam_x + velDiff_x;
 	f32 diff3_y = toCam_y + velDiff_y;
 	f32 diff3_z = toCam_z + velDiff_z;
 
 	f32 lenSq2 = diff3_x * diff3_x + diff3_y * diff3_y + diff3_z * diff3_z;
-	f32 len2   = std::sqrtf(lenSq2);
+	f32 len2   = sqrtf(lenSq2);
 
 	f32 result = 1.0f
 	             / (1.0f

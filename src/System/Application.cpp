@@ -2,7 +2,7 @@
 #include <sb_log.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <types.h>
+#include <dolphin/types.h>
 #include <dolphin/os.h>
 #include <dolphin/vi.h>
 #include <dolphin/gx.h>
@@ -177,28 +177,28 @@ void SMSLoadArchiveARAM(TARAMBlock* param_1, const char* param_2)
 		strcpy(loc, ".szs");
 		s32 entryNum = DVDConvertPathToEntrynum(compressedArcPath);
 		if (entryNum != -1) {
-			param_1->unk0 = JKRDvdAramRipper::loadToAram(
+			param_1->mBlock = JKRDvdAramRipper::loadToAram(
 			    compressedArcPath, 0, EXPAND_SWITCH_DEFAULT, 0, 0);
-			param_1->unk4 = true;
+			param_1->mIsCompressed = true;
 		}
 	}
 
 	// If that fails, then try to load the uncompressed version
-	if (param_1->unk0 == nullptr) {
-		param_1->unk0 = JKRDvdAramRipper::loadToAram(
+	if (param_1->mBlock == nullptr) {
+		param_1->mBlock = JKRDvdAramRipper::loadToAram(
 		    (char*)param_2, 0, EXPAND_SWITCH_DEFAULT, 0, 0);
-		param_1->unk4 = false;
+		param_1->mIsCompressed = false;
 	}
 }
 
 void SMSMountAramArchive(JKRMemArchive* param_1, TARAMBlock& param_2)
 {
-	if (param_2.unk4) {
-		JKRAram::aramToMainRam(param_2.unk0, (u8*)gpMarDirector->getUnkD4(), 0,
+	if (param_2.mIsCompressed) {
+		JKRAram::aramToMainRam(param_2.mBlock, (u8*)gpMarDirector->getUnkD4(), 0,
 		                       0, EXPAND_SWITCH_DECOMPRESS, 0x64000, nullptr,
 		                       -1, nullptr);
 	} else {
-		JKRAram::aramToMainRam(param_2.unk0, (u8*)gpMarDirector->getUnkD4(), 0,
+		JKRAram::aramToMainRam(param_2.mBlock, (u8*)gpMarDirector->getUnkD4(), 0,
 		                       0, EXPAND_SWITCH_DEFAULT, 0, nullptr, -1,
 		                       nullptr);
 	}
@@ -208,7 +208,7 @@ void SMSMountAramArchive(JKRMemArchive* param_1, TARAMBlock& param_2)
 		const u8* d = (const u8*)gpMarDirector->getUnkD4();
 		OSReport("[SBDBG] SMSMountAramArchive: aram->main expand=%d unk0=%p "
 		         "first8=%02x%02x%02x%02x%02x%02x%02x%02x mountFixed=%d\n",
-		         (int)param_2.unk4, (void*)param_2.unk0, d[0], d[1], d[2], d[3],
+		         (int)param_2.mIsCompressed, (void*)param_2.mBlock, d[0], d[1], d[2], d[3],
 		         d[4], d[5], d[6], d[7], (int)ok);
 	}
 #endif
@@ -227,7 +227,7 @@ JKRArchive* SMSSwitch2DArchive(const char* param_1, TARAMBlock& param_2)
 	// return early with the loaded archive.
 	if (!arch) {
 		char path[64];
-		std::snprintf(path, sizeof path, "/data/%s.arc", param_1);
+		snprintf(path, sizeof path, "/data/%s.arc", param_1);
 		void* blob = SMSLoadArchive(path, nullptr, 0, JKRGetRootHeap());
 		if (!blob)
 			OSPanic(__FILE__, __LINE__,
@@ -310,7 +310,7 @@ void TApplication::initialize()
 	                       SMSGetGCLogoRenderHeight());
 	TFlagManager::start(JKRGetCurrentHeap());
 	TTimeRec::start(0xDFC0);
-	TTimeRec::instance()->unk81C |= 1;
+	TTimeRec::instance()->mFlags.on(1);
 	TDrawSyncManager::smInstance->setCallback(0, 0xDFC0, 0xDFFF,
 	                                          TTimeRec::instance());
 	mMeter = new TProcessMeter(2);
@@ -485,9 +485,8 @@ void TApplication::initialize_nlogoAfter()
 		u32 lVar3 = JKRGetRootHeap()->getSize(bufStageArcBin);
 		JSUMemoryInputStream stream(bufStageArcBin, lVar3);
 		JDrama::TNameRefGen::getInstance()->load(stream);
-		unk30 = JDrama::TNameRefGen::search<
-		    TNameRefPtrAryT<TNameRefAryT<TScenarioArchiveName> > >(
-		    "ステージ毎シナリオアーカイブ名群");
+		unk30 = ((TNameRefPtrAryT<TNameRefAryT<TScenarioArchiveName> >*)JDrama::TNameRefGen::search(
+		    "ステージ毎シナリオアーカイブ名群"));
 #ifdef SMS_NATIVE_PLATFORM
 		if (SB_LOG_ON("jkr"))
 			OSReport("[app] initialize_nlogoAfter set unk30=%p\n",
@@ -845,8 +844,8 @@ int TApplication::gameLoop()
 		mDisplay->startRendering();
 
 		// TODO: TimeRec BS
-		TTimeRec::startTimerTwice(mDisplay->unk60->mLastRetraceTime, 0);
-		TTimeRec::snapGxTimeStatic(0);
+		TTimeRec::startFrameSt(mDisplay->unk60->mLastRetraceTime);
+		TTimeRec::snapGXTimeSt(0);
 
 		TMarioGamePad::read();
 		for (int i = 0; i < 4; i++) {
@@ -919,7 +918,7 @@ int TApplication::gameLoop()
 				gpMSound->mainLoop();
 		}
 
-		TTimeRec::endTimer();
+		TTimeRec::snapCPUTime(0);
 
 		THPPlayerDrawDone();
 		mDisplay->endRendering();
@@ -1070,18 +1069,18 @@ JKRMemArchive* TApplication::mountStageArchive()
 			TScenarioArchiveName& e0 = tmp[s][0];
 			OSReport("[stagetab] [%d] n=%d mName='%s' archive='%s'\n", s, n,
 			         e0.getName() ? e0.getName() : "(null)",
-			         e0.mArchiveName ? e0.mArchiveName : "(null)");
+			         e0.mArcName ? e0.mArcName : "(null)");
 		}
 	}
 #endif
 	if (mCurrArea.getStage() < tmp.size()) {
 		if (mCurrArea.getScenario() < tmp[mCurrArea.getStage()].size()) {
 			// The loadable archive filename is the SECOND string of the
-			// TScenarioArchiveName record (mArchiveName, e.g. "airport0.arc"); getName()
+			// TScenarioArchiveName record (mArcName, e.g. "airport0.arc"); getName()
 			// (mName) is the SJIS editor DISPLAY name (e.g. "空港 0") and does not
 			// name a file on the disc. Loading getName() fails for every stage.
 			const char* scenarioArcName
-			    = tmp[mCurrArea.getStage()][mCurrArea.getScenario()].mArchiveName;
+			    = tmp[mCurrArea.getStage()][mCurrArea.getScenario()].mArcName;
 
 			DVDChangeDir("/data/scene");
 			void* archBlob

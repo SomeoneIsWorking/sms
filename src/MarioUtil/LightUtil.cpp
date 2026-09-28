@@ -28,6 +28,9 @@ extern JDrama::TAmbAry*   gpTLightCommonAmbAry;     // r13-0x6118
 JDrama::TLightAry* gpTLightCommonLightAry;
 JDrama::TAmbAry*   gpTLightCommonAmbAry;
 
+// Returned by getLightPosition for an index the scene has no light for.
+static const JGeometry::TVec3<f32> kZeroLightPos(0.0f, 0.0f, 0.0f);
+
 TLightCommon::TLightCommon(const char* name)
     : JDrama::TViewObj(name)
     // Retail ctor (@0x80229fbc, Ghidra): +0x10 (mShininess) is written twice —
@@ -86,7 +89,7 @@ static JDrama::TLightAry* sb_light_ary_or_search()
 {
 	JDrama::TLightAry* la = gpTLightCommonLightAry;
 	if (!la) {
-		la = JDrama::TNameRefGen::search<JDrama::TLightAry>("Light Group");
+		la = ((JDrama::TLightAry*)JDrama::TNameRefGen::search("Light Group"));
 		gpTLightCommonLightAry = la;
 	}
 	return la;
@@ -95,7 +98,7 @@ static JDrama::TAmbAry* sb_amb_ary_or_search()
 {
 	JDrama::TAmbAry* aa = gpTLightCommonAmbAry;
 	if (!aa) {
-		aa = JDrama::TNameRefGen::search<JDrama::TAmbAry>("Ambient Group");
+		aa = ((JDrama::TAmbAry*)JDrama::TNameRefGen::search("Ambient Group"));
 		gpTLightCommonAmbAry = aa;
 	}
 	return aa;
@@ -115,11 +118,15 @@ static JDrama::TAmbAry* sb_amb_ary_or_search()
 // getters (defined earlier in this file) read from them.
 void TLightCommon::loadAfter()
 {
-	mAmbAry = static_cast<JDrama::TAmbAry*>(
+	gpTLightCommonAmbAry = static_cast<JDrama::TAmbAry*>(
 	    JDrama::TNameRefGen::search("Ambient Group"));
-	mLightAry = static_cast<JDrama::TLightAry*>(
+	gpTLightCommonLightAry = static_cast<JDrama::TLightAry*>(
 	    JDrama::TNameRefGen::search("Light Group"));
-	mLightPos  = &mLightAry->getLight(0)->mPosition;
+	// The third cache this stores in the DOL is the SDA1 slot at -0x6110, which
+	// getLightPos() above resolves through the same group search; the host has
+	// no separate slot for it, so it is not duplicated here.
+	JDrama::TLightAry* lightAry = sb_light_ary_or_search();
+	JDrama::TAmbAry*   ambAry   = sb_amb_ary_or_search();
 	mShininess = 50.0f;
 	for (int i = 0; i < 4; ++i) {
 		JDrama::TIdxLight& L = lightAry->mLights[i + mLightBaseIdx];
@@ -222,8 +229,7 @@ const JGeometry::TVec3<f32>* TLightCommon::getLightPosition(int idx)
 	// C_MTXMultVec, 2026-07-16). Same policy as the null-ary case: safe zero.
 	if (!la || !la->mLights
 	    || (u32)(idx + mLightBaseIdx) >= (u32)la->mLightCount) {
-		static const JGeometry::TVec3<f32> kZero{0.0f, 0.0f, 0.0f};
-		return &kZero;
+		return &kZeroLightPos;
 	}
 	JDrama::TIdxLight& L  = la->mLights[idx + mLightBaseIdx];
 	return &L.mPosition;
@@ -268,7 +274,7 @@ void TLightCommon::setLight(const JDrama::TGraphics* graphics, int idx)
 	GXColor primaryColor                              = getLightColor(gi);
 	const bool effectEnabled = gpLightManager && gpLightManager->mEffectEnabled
 	                           && gpLightManager->mEffectValid;
-	GXColor effectColor { };
+	GXColor effectColor = { 0, 0, 0, 0 };
 	if (effectEnabled) {
 		effectColor   = gpLightManager->mEffectColor;
 		effectColor.a = static_cast<u8>(
@@ -276,7 +282,7 @@ void TLightCommon::setLight(const JDrama::TGraphics* graphics, int idx)
 		                     * gpLightManager->mEffectAlphaScale));
 	}
 
-	GXLightObj obj{};
+	GXLightObj obj = { { 0 } };
 
 	// --- GX_LIGHT0 — positional world light (Light-Group[idx+mLightBaseIdx]). ---
 	{
@@ -349,8 +355,10 @@ void TLightCommon::setLight(const JDrama::TGraphics* graphics, int idx)
 	// so their per-material ambient is faithfully discarded) rendered its
 	// not-directly-lit faces black. Faithful RE completion, not a tuning constant.
 	GXColor sb_amb = getAmbColor(idx);
+#ifdef SMS_NATIVE_PLATFORM
 	SB_LOGC("setlight", "idx=%d getAmbColor=(%02x,%02x,%02x,%02x) mUseLocalColor=%d mAmbBaseIdx=%d",
 	        idx, sb_amb.r, sb_amb.g, sb_amb.b, sb_amb.a, (int)mUseLocalColor, (int)mAmbBaseIdx);
+#endif
 	GXSetChanAmbColor(GX_COLOR0A0, sb_amb);
 #ifdef SMS_NATIVE_PLATFORM
 	if (sb_native_j3d_publish_stage_lighting) {
@@ -405,7 +413,7 @@ void TLightCommon::perform(u32 flag, JDrama::TGraphics* graphics)
 		const JGeometry::TVec3<f32>* pos = getLightPosition(0);
 		GXColor                       col = getLightColor(0);
 
-		GXLightObj obj{};
+		GXLightObj obj = { { 0 } };
 		GXInitLightPos(&obj, pos->x, pos->y, pos->z);
 		GXInitLightColor(&obj, col);
 		GXInitLightAttn(&obj, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
@@ -945,8 +953,8 @@ void TLightWithDBSetManager::loadAfter()
 {
 	JDrama::TLightAry* group = static_cast<JDrama::TLightAry*>(
 	    JDrama::TNameRefGen::search("Light Group"));
-	mEffectLightColor = group->getLight(0)->getColor();
-	mEffectLightPos   = group->getLight(0)->mPosition;
+	mEffectColor = group->getLight(0)->getColor();
+	mEffectPos   = group->getLight(0)->mPosition;
 }
 
 // Native port of TLightWithDBSetManager::perform (@0x80228394, 63 insns).

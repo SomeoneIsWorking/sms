@@ -6,6 +6,12 @@
 #include <dolphin/os.h>
 #include <dolphin/gx.h>
 #include <dolphin/gd.h>
+// Used by the SMS_NATIVE_PLATFORM diagnostic probes below (getenv, fprintf,
+// snprintf). Not included unconditionally: the MWCC build does not need them.
+#ifdef SMS_NATIVE_PLATFORM
+#include <stdio.h>
+#include <stdlib.h>
+#endif
 
 J3DShapeMtx::LoadPipeline J3DShapeMtx::mtxLoadPipeline[4] = {
 	&J3DShapeMtx::loadMtxIndx_PNGP,
@@ -240,7 +246,7 @@ void J3DShape::makeVtxArrayCmd()
 		if (array[i] != 0)
 			GDSetArray((GXAttr)(i + GX_VA_POS), array[i], stride[i]);
 		else
-			GDSetArrayRaw((GXAttr)(i + GX_VA_POS), nullptr, stride[i]);
+			GDSetArrayRaw((GXAttr)(i + GX_VA_POS), (u32)0, stride[i]);
 	}
 }
 

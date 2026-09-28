@@ -1,5 +1,6 @@
 #include <JSystem/JSupport/JSUInputStream.hpp> // JSU_BE32 / JSU_BE32_INPLACE
 #include <Map/MapEventSink.hpp>
+#include <Enemy/GateKeeper.hpp>
 #include <Map/PollutionManager.hpp>
 #include <Map/MapCollisionEntry.hpp>
 #include <Map/MapStaticObject.hpp>
@@ -369,8 +370,11 @@ bool TMapEventSinkBianco::watch()
 
 void TMapEventSinkBianco::loadAfter()
 {
-	TMapEventSinkInPollutionReset::loadAfter();
-	TMapStaticObj* ref = (TMapStaticObj*)JDrama::TNameRef::search(
+	this->TMapEventSinkInPollutionReset::loadAfter();
+	// The fork's own shine lookup for the raised slope. Nothing reads it yet --
+	// watch() is still a TODO -- so it keeps its own name instead of shadowing
+	// the terrain lookup below, which the joint code uses.
+	TMapStaticObj* slopeShine = (TMapStaticObj*)JDrama::TNameRef::search(
 	    "鏡内地形シャイン（坂上げ用）");
 
 	TMapStaticObj* ref
@@ -433,6 +437,6 @@ void TMapEventSinkShadowMario::initBuilding(int i, JSUMemoryInputStream& stream)
 void TMapEventSinkShadowMario::initWithBuildingNum(JSUMemoryInputStream& stream)
 {
 	TMapEventSink::initWithBuildingNum(stream);
-	unk64 = new JDrama::TNameRef*[mBuildingNum];
+	unk64 = new JDrama::TPlacement*[mBuildingNum];
 	unk68 = new const char*[mBuildingNum];
 }

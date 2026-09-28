@@ -2,6 +2,7 @@
 #define MAP_MAP_EVENT_SINK_HPP
 
 #include <Map/MapEvent.hpp>
+#include <JSystem/JDrama/JDRPlacement.hpp> // TPlacement element type of unk64
 
 class TMapCollisionWarp;
 class TMapCollisionMove;
@@ -125,7 +126,7 @@ public:
 	void raiseBuilding(int);
 
 public:
-	/* 0x64 */ JDrama::TNameRef** unk64; // TODO: derived type
+	/* 0x64 */ JDrama::TPlacement** unk64; // holds the placements named by unk68
 	/* 0x68 */ const char** unk68;
 };
 

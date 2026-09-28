@@ -24,8 +24,6 @@ TMapWireManager* gpMapWireManager;
 #include <MSound/MSSetSound.hpp>
 #include <MSound/MSoundBGM.hpp>
 
-TMapWireManager* gpMapWireManager;
-
 f32 TMapWireActor::mCommonAttackRadius = 200.0f;
 f32 TMapWireActor::mCommonAttackHeight = 200.0f;
 

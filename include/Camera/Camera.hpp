@@ -57,6 +57,11 @@ public:
 		NOTICE_MODE_UNK2 = 2,
 	};
 
+	// Restored from upstream (6ae2aa86): TMarDirector::setup2 hands the pad the
+	// Mario actor already owns to the polar sub-camera, and the merge dropped
+	// this accessor from the header while the call site kept it.
+	void setGamePad(TMarioGamePad* pad) { unk120 = pad; }
+
 	CPolarSubCamera(const char* = "<CPolarCamera>");
 
 	virtual void loadAfter();

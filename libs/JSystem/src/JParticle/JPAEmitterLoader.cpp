@@ -5,7 +5,7 @@
 #include <JSystem/JParticle/JPASweepShape.hpp>
 #include <JSystem/JParticle/JPAExTexShape.hpp>
 #include <JSystem/JUtility/JUTAssert.hpp>
-#include <types.h>
+#include <dolphin/types.h>
 #ifdef SMS_NATIVE_PLATFORM
 #include <dolphin/os.h>
 #include <JSystem/JParticle/JPASwap.h>

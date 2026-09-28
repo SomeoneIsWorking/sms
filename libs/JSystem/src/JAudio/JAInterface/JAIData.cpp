@@ -5,6 +5,7 @@
 #include <JSystem/JAudio/JAInterface/JAISystemInterface.hpp>
 #include <JSystem/JAudio/JAInterface/JAIConst.hpp>
 #include <JSystem/JAudio/JASystem/JASDvdThread.hpp>
+#include <JSystem/JUtility/JUTAssert.hpp>
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdlib>
 #endif
@@ -178,14 +179,14 @@ void JAIData::initSeParaLinkBuffer()
 
 #ifdef SMS_NATIVE_PLATFORM
 	if (getenv("SB_JAI_DBG"))
-		OSReport("[SBDBG] initSeParaLinkBuffer unk1D0=%p seRegistMax=%u "
+		OSReport("[SBDBG] initSeParaLinkBuffer mSeParameterBuffer=%p seRegistMax=%u "
 		         "seCategoryMax=%u\n",
-		         (void*)unk1D0, JAIGlobalParameter::seRegistMax,
+		         (void*)mSeParameterBuffer, JAIGlobalParameter::seRegistMax,
 		         JAIGlobalParameter::getParamSeCategoryMax());
 #endif
 
-	unk1C8 = &unk1D0[0];
-	unk1CC = nullptr;
+	mSeParameterFreeHead = &mSeParameterBuffer[0];
+	mSeParameterUsedHead = nullptr;
 
 	mSeParameterBuffer[0].mPrev = nullptr;
 	mSeParameterBuffer[0].mNext = &mSeParameterBuffer[1];
@@ -484,14 +485,15 @@ void JAIData::getInfoPointer(u32 sound_id, void** result)
 		}
 	}
 
-	u32 tmp = param_1 & 0x3FF;
+	u32 tmp = sound_id & JAISoundID_IndexMask;
 	// Bounds check is `tmp < count`, NOT `count < tmp` (the decomp reversed the
 	// cmpl operands). Verified against the original PPC (getInfoPointer @80303f60:
-	// `cmpl r4,r0` with r4=id&0x3FF, r0=unk2[thing], branch-to-null unless tmp<count).
-	// With it reversed, every lookup with tmp==0 (e.g. the JAI init sound 0x80000800)
-	// returned null -> unk38 never set -> processFrameWork null-deref.
-	if (table->unk78 && tmp < table->unk2[thing])
-		*param_2 = &table->unk30[thing][tmp];
+	// `cmpl r4,r0` with r4=id&0x3FF, r0=mSoundMax[category], branch-to-null
+	// unless tmp<count). With it reversed, every lookup with tmp==0 (e.g. the JAI
+	// init sound 0x80000800) returned null -> mInfo never set -> processFrameWork
+	// null-deref.
+	if (table->mData && tmp < table->mSoundMax[category])
+		*result = &table->mCategorySoundInfos[category][tmp];
 	else
 		*result = nullptr;
 }
@@ -603,26 +605,26 @@ void JAIData::initData()
 	    JAIGlobalParameter::seqPlayTrackMax * sizeof(JAISeqUpdateData));
 	for (int i = 0; i < JAIGlobalParameter::seqPlayTrackMax; ++i) {
 		// Original decomp hardcodes 0x7BC (= 33 * 0x3C, i.e. (seqTrackMax + 1) *
-		// sizeof(FabricatedUnk4CStruct) with LP32 struct sizes: TTrack* (4) +
+		// sizeof(JAIPlayerParameter) with LP32 struct sizes: TTrack* (4) +
 		// TPortArgs (0x28) + TPortCmd (0x10) = 0x3C bytes per slot). On LP64
 		// the struct is ~0x58 bytes each, so 0x7BC only holds ~22 slots and
-		// rootInit's `unk4C[seqTrackMax]` write at slot 32 overruns into the
-		// next heap allocation, stomping data->unk4[0] (the per-scene track-
-		// count table pointer). Compute the size from sizeof() so it is right
-		// on both LP32 and LP64.
-		unk180[i].unk4C
-		    = (JAISeqUpdateData::FabricatedUnk4CStruct*)unk1F4->allocHeap(
+		// rootInit's `mPlayerParams[seqTrackMax]` write at slot 32 overruns into
+		// the next heap allocation, stomping mCategoryInfoTable (the per-scene
+		// track-count table pointer). Compute the size from sizeof() so it is
+		// right on both LP32 and LP64.
+		mSeqTrackInfo[i].mPlayerParams
+		    = (JAIPlayerParameter*)unk1F4->allocHeap(
 		        (JAIGlobalParameter::seqTrackMax + 1)
-		        * sizeof(JAISeqUpdateData::FabricatedUnk4CStruct));
-		unk1E0[i]       = 0;
-		unk180[i].unk0  = 0;
-		unk180[i].unk1  = 0;
-		unk180[i].unk2  = 0;
-		unk180[i].unk3  = 0;
-		unk180[i].unk8  = 0;
-		unk180[i].unk48 = 0;
+		        * sizeof(JAIPlayerParameter));
+		mDefaultSeqHandle[i]          = 0;
+		mSeqTrackInfo[i].mPauseMode   = 0;
+		mSeqTrackInfo[i].mPauseVolume = 0;
+		mSeqTrackInfo[i].mPrepareFlag = false;
+		mSeqTrackInfo[i].mLoadingFlag = false;
+		mSeqTrackInfo[i].unk8         = 0;
+		mSeqTrackInfo[i].mSound       = 0;
 
-		unk180[i].unk24 = (f32*)unk1F4->allocHeap(
+		mSeqTrackInfo[i].mTrackVolume = (f32*)unk1F4->allocHeap(
 		    JAIGlobalParameter::seqTrackMax * sizeof(f32));
 		mSeqTrackInfo[i].mTrackPan = (f32*)unk1F4->allocHeap(
 		    JAIGlobalParameter::seqTrackMax * sizeof(f32));
@@ -655,7 +657,8 @@ void JAIData::initData()
 		// size actually needed for the u8*[soundSceneMax] table, and the
 		// loop below writes past the block into whatever the JAI heap put
 		// next. Use sizeof(u8*) so the alloc is right on both LP32 and LP64.
-		unk4 = (u8**)unk1F4->allocHeap(JAIGlobalParameter::soundSceneMax * sizeof(u8*));
+		mCategoryInfoTable = (JAICategoryInfo**)unk1F4->allocHeap(
+		    JAIGlobalParameter::soundSceneMax * sizeof(u8*));
 		for (int i = 0; i < JAIGlobalParameter::soundSceneMax; ++i)
 			mCategoryInfoTable[i] = JAIConst::sCInfos_0;
 	}
@@ -716,18 +719,18 @@ void JAIData::initInfoDataWork(JAISoundTable* soundTable, char* path)
 		// idx} entries (stride 4 from offset 6) must be read big-endian, else the
 		// byteswapped count drives a huge `new u16[count]` in TFlagManager (and a
 		// wrong idx into the JAISoundInfo array). Read explicitly big-endian.
-		const u8* e = soundTable->unk78 + 6 + (u32)i * 4;
-		soundTable->unk2[i] = (u16)(((u16)e[0] << 8) | e[1]);
+		const u8* e = soundTable->mData + 6 + (u32)i * 4;
+		soundTable->mSoundMax[i] = (u16)(((u16)e[0] << 8) | e[1]);
 		u32 idx             = (u16)(((u16)e[2] << 8) | e[3]);
 #else
-		soundTable->unk2[i]
-		    = reinterpret_cast<u16*>(soundTable->unk78 + 6)[i * 2];
-		u32 idx = reinterpret_cast<u16*>(soundTable->unk78 + 8)[i * 2];
+		soundTable->mSoundMax[i]
+		    = reinterpret_cast<u16*>(soundTable->mData + 6)[i * 2];
+		u32 idx = reinterpret_cast<u16*>(soundTable->mData + 8)[i * 2];
 #endif
-		soundTable->unk30[i]
-		    = &(reinterpret_cast<JAISoundInfo*>(soundTable->unk78 + 0x50)[idx]);
-		if (i < 0x10 && soundTable->unk2[i] != 0) {
-			soundTable->unk1 = i + 1;
+		soundTable->mCategorySoundInfos[i]
+		    = &(reinterpret_cast<JAISoundInfo*>(soundTable->mData + 0x50)[idx]);
+		if (i < 0x10 && soundTable->mSoundMax[i] != 0) {
+			soundTable->mCategoryMax = i + 1;
 		}
 	}
 }

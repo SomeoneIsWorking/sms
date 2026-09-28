@@ -249,7 +249,7 @@ void JAIBasic::sendPlayingSeCommand()
 			JAISound::FabricatedPositionInfo* infos = sound->unk1C;
 			for (u8 k = 0; k < JAIGlobalParameter::audioCameraMax; ++k) {
 				f32* dPtr = &infos[k].unk18;
-				*dPtr     = std::sqrtf(*dPtr);
+				*dPtr     = sqrtf(*dPtr);
 			}
 
 			u8 state = sound->mState;

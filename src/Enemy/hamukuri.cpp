@@ -2590,7 +2590,7 @@ DEFINE_NERVE(TNerveDoroHamuKuriRobCap, TLiveActor)
 			                manager->unk70->mPosition.z);
 		self->setGoalPath(target);
 	} else if (self->unk1F8 != manager->unk70) {
-		self->setGoalPathMario();
+		self->setGoalPath((THitActor*)gpMarioAddress);
 		return true;
 	}
 

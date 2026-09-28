@@ -160,14 +160,6 @@ void JUTGamePad::read()
 	}
 
 	checkResetSwitch();
-	// SUNBRIGHT-KEEP (native fix): the decomp declares read() as u32 but has no
-	// return (a MWERKS-ism: the result is unused, so the original left r3
-	// as-is). Falling off the end of a non-void function is UB; GCC -O2
-	// exploits it (treats the function end as unreachable) and miscompiles the
-	// post-loop control flow -> the pad-list loop re-enters its body with a
-	// null link. reset_mask is the meaningful computed value; returning it is
-	// harmless.
-	return reset_mask;
 }
 
 void JUTGamePad::assign()
@@ -358,7 +350,7 @@ u32 JUTGamePad::CStick::update(s8 x, s8 y, JUTGamePad::EStickMode mode,
 
 	mPosX  = (f32)x / clamp;
 	mPosY  = (f32)y / clamp;
-	mValue = std::sqrtf((mPosX * mPosX) + (mPosY * mPosY));
+	mValue = sqrtf((mPosX * mPosX) + (mPosY * mPosY));
 
 	if (mValue > 1.0f) {
 		if (mode == EStickMode1) {

@@ -418,7 +418,7 @@ void TLiveActor::perform(u32 param_1, JDrama::TGraphics* param_2)
 #ifdef VERSION_GMSP01
 		f32 frame;
 #endif
-		if (cue & CUE_CALC_ANIM) {
+		if (param_1 & CUE_CALC_ANIM) {
 			mMActor->frameUpdate();
 #ifdef VERSION_GMSP01
 			if (mLiveFlag & LIVE_FLAG_CALC_INT_FRAME) {

@@ -28,56 +28,69 @@ u16 (*TTrack::sCallBackFunc)(TTrack*, u16) = nullptr;
 u8 TTrack::sOscTable[5] = { 1, 2, 8, 4, 16 };
 
 TTrack::TTrack()
-    : unk2C0(0)
+    : mParent(0)
     , mOuterParam(0)
-    , unk308(0)
-    , unk3A8(0)
+    , mTrackRoute(0)
+    , mConnectName(0)
 {
-	unk3AC = 0.0f;
-	unk3B0 = 0.0f;
-	unk3B4 = 0;
-	unk3B8 = 0x78;
-	unk3BA = 0x78;
+	mTickCounter = 0.0f;
+	mTickRate    = 0.0f;
+	unk3B4       = 0;
+	mTempo       = 0x78;
+	mTimeBase    = 0x78;
 
-	unk3BC = 0;
-	unk3BD = 0;
-	unk3BE = 0;
-	unk3BF = 0;
-	unk3C0 = 0;
-	unk3C1 = 0;
-	unk3C2 = 0;
-	unk3C3 = 0;
-	unk3C4 = 0;
+	unk3BC          = 0;
+	unk3BD          = 0;
+	mInnerMemory    = 0;
+	mTranspose      = 0;
+	mTransposeTotal = 0;
+	mPauseStatus    = 0;
+	mMute           = 0;
+	mVolumeMode     = 0;
+	mSeqState       = 0;
 
-	unk3CB = 0;
-	unk3CC = 0;
-	unk3CD = 0;
+	mTimeRelate = 0;
+	mConnected  = 0;
+	mPause      = 0;
 
 	for (int i = 0; i < 16; ++i)
-		unk2C4[i] = nullptr;
+		mChildren[i] = nullptr;
 
 	for (int i = 0; i < 3; ++i)
-		unk3C8[i] = unk3C5[i] = 0;
+		mPanSwitchParent[i] = mPanSwitchExt[i] = 0;
 
 	for (int i = 0; i < 12; ++i)
-		unk37C[i] = Player::sAdsTable[i];
+		mAdsTable[i] = Player::sAdsTable[i];
 	for (int i = 0; i < 6; ++i)
-		unk394[i] = Player::sRelTable[i];
+		mRelTable[i] = Player::sRelTable[i];
 
 	for (int i = 0; i < 2; ++i)
-		unk3A0[i] = 0xf;
+		mOscMode[i] = 0xf;
 
 	mChannelUpdater.init();
 
 	Calc::bzero(&mTimedParam, sizeof(mTimedParam));
 
 	for (int i = 0; i < 2; ++i)
-		unk33C[i].setOsc(&unk30C[i]);
+		mOscillators[i].setOsc(&mOscData[i]);
 }
 
 void TTrack::setInterrupt(u16 interrupt) { mIntrMgr.request(interrupt); }
 
-void TTrack::tryInterrupt() { }
+// The header declares bool TTrack::tryInterrupt(); mainProc() in this file
+// carries the same test inlined, so the out-of-line definition is unreachable
+// from here. It is spelled as the declared contract rather than a `void` stub.
+bool TTrack::tryInterrupt()
+{
+	if (mSeqCtrl.isIntr())
+		return false;
+
+	void* intr = mIntrMgr.checkIntr();
+	if (intr == nullptr)
+		return false;
+
+	return mSeqCtrl.callIntr(intr);
+}
 
 void TTrack::setBankNumber(u8 bank) { }
 
@@ -89,13 +102,13 @@ bool TTrack::assignExtBuffer(TOuterParam* buffer)
 	return true;
 }
 
-void TTrack::setInnerMemory(u8 param) { unk3BE = param; }
+void TTrack::setInnerMemory(u8 param) { mInnerMemory = param; }
 
-void TTrack::setPanSwitchExt(u8 param1, u8 param2) { unk3C5[param2] = param1; }
+void TTrack::setPanSwitchExt(u8 param1, u8 param2) { mPanSwitchExt[param2] = param1; }
 
 void TTrack::setPanSwitchParent(u8 param1, u8 param2)
 {
-	unk3C8[param2] = param1;
+	mPanSwitchParent[param2] = param1;
 }
 
 u8 TTrack::getBank() const { return 0; }
@@ -151,14 +164,14 @@ void TTrack::initTimed()
 
 int TTrack::noteOn(u8 param_1, s32 param_2, s32 param_3, s32 param_4)
 {
-	if (unk3C2 && (unk3C1 & 0x40))
+	if (mMute && (mPauseStatus & 0x40))
 		return -1;
 
 	u32 index = param_1;
 	if (mNoteMgr.getChannel(index))
 		noteOff(param_1, 0);
 
-	TTrack* r24      = unk2C0;
+	TTrack* r24      = mParent;
 	TChannelMgr* r30 = &mChannelUpdater;
 	TTrack* r3       = r24;
 	while (!r30->mManagedChannels || !r30->unk8) {
@@ -167,7 +180,7 @@ int TTrack::noteOn(u8 param_1, s32 param_2, s32 param_3, s32 param_4)
 			break;
 		}
 		r30 = &r24->mChannelUpdater;
-		r3  = r3->unk2C0;
+		r3  = r3->mParent;
 	}
 
 	if (unk3BC == 4) {
@@ -219,21 +232,21 @@ int TTrack::noteOn(u8 param_1, s32 param_2, s32 param_3, s32 param_4)
 	                  mRegisterParam.mPanPower[2], mRegisterParam.mPanPower[3]);
 
 	for (u8 i = 0; i < 2; ++i) {
-		u32 someThing = unk3A0[i];
+		u32 someThing = mOscMode[i];
 		if (someThing != 0xF && someThing != 0xE) {
 			if (someThing >= 8) {
 				someThing -= 8;
 				if (chan->isOsc(someThing))
-					chan->copyOsc(someThing, &unk30C[i]);
+					chan->copyOsc(someThing, &mOscData[i]);
 			} else if (someThing >= 4) {
 				someThing -= 4;
-				s16* v = unk30C[i].unkC;
+				s16* v = mOscData[i].mRelTable;
 				if (chan->isOsc(someThing)) {
-					chan->copyOsc(someThing, &unk30C[i]);
-					unk30C[i].unkC = v;
+					chan->copyOsc(someThing, &mOscData[i]);
+					mOscData[i].mRelTable = v;
 				}
 			}
-			chan->overwriteOsc(someThing, &unk30C[i]);
+			chan->overwriteOsc(someThing, &mOscData[i]);
 		}
 	}
 
@@ -270,7 +283,20 @@ int TTrack::gateOn(u8 param_1, s32 param_2, s32 param_3, s32 param_4)
 	return 0;
 }
 
-void TTrack::checkNoteStop(s32 param) { }
+// The header declares bool TTrack::checkNoteStop(s32); mainProc() in this file
+// carries the same test inlined, so the out-of-line definition is unreachable
+// from here. It is spelled as the declared contract rather than a `void` stub.
+bool TTrack::checkNoteStop(s32 param)
+{
+	TChannel* chan = mNoteMgr.getChannel(param);
+	if (chan == nullptr)
+		return true;
+
+	if (chan->unk1 == 0xff)
+		return true;
+
+	return false;
+}
 
 void TTrack::oscSetupFull(u8 param_1, u32 param_2, u32 param_3)
 {
@@ -281,37 +307,37 @@ void TTrack::oscSetupFull(u8 param_1, u32 param_2, u32 param_3)
 	bool var5 = param_1 & 0x20 ? true : false;
 
 	if (var3) {
-		unk30C[var1]      = Player::sEnvelopeDef;
-		unk30C[var1].unk0 = var2;
+		mOscData[var1]      = Player::sEnvelopeDef;
+		mOscData[var1].mTarget = var2;
 		if (var2 == 1)
-			unk30C[var1].unk14 = 1.0f;
+			mOscData[var1].mVertex = 1.0f;
 	}
 
 	if (var4) {
 		if (param_2 == 0)
-			unk30C[var1].unk8 = nullptr;
+			mOscData[var1].mAdsTable = nullptr;
 
-		unk30C[var1].unk8 = (s16*)(mSeqCtrl.mRawFilePtr + param_2);
+		mOscData[var1].mAdsTable = (s16*)(mSeqCtrl.mRawFilePtr + param_2);
 	}
 
 	if (!var5)
 		return;
 
 	if (param_3 == 0)
-		unk30C[var1].unkC = Player::sRelTable;
+		mOscData[var1].mRelTable = Player::sRelTable;
 
-	unk30C[var1].unkC = (s16*)(mSeqCtrl.mRawFilePtr + param_2);
+	mOscData[var1].mRelTable = (s16*)(mSeqCtrl.mRawFilePtr + param_2);
 }
 
 void TTrack::oscSetupSimpleEnv(u8 param_1, u32 param_2)
 {
 	switch (param_1) {
 	case 0:
-		unk30C[0]      = Player::sEnvelopeDef;
-		unk30C[0].unk8 = (s16*)(mSeqCtrl.mRawFilePtr + param_2);
+		mOscData[0]      = Player::sEnvelopeDef;
+		mOscData[0].mAdsTable = (s16*)(mSeqCtrl.mRawFilePtr + param_2);
 		break;
 	case 1:
-		unk30C[0].unkC = (s16*)(mSeqCtrl.mRawFilePtr + param_2);
+		mOscData[0].mRelTable = (s16*)(mSeqCtrl.mRawFilePtr + param_2);
 		break;
 	}
 }
@@ -320,22 +346,22 @@ void TTrack::oscUpdateParam(u8 param_1, f32 param_2)
 {
 	switch (param_1) {
 	case 6:
-		unk30C[0].unk10 = param_2;
+		mOscData[0].mWidth = param_2;
 		break;
 	case 7:
-		unk30C[0].unk4 = param_2;
+		mOscData[0].mRate = param_2;
 		break;
 	case 8:
-		unk30C[0].unk14 = param_2;
+		mOscData[0].mVertex = param_2;
 		break;
 	case 9:
-		unk30C[1].unk10 = param_2;
+		mOscData[1].mWidth = param_2;
 		break;
 	case 10:
-		unk30C[1].unk4 = param_2;
+		mOscData[1].mRate = param_2;
 		break;
 	case 11:
-		unk30C[1].unk14 = param_2;
+		mOscData[1].mVertex = param_2;
 		break;
 	}
 }
@@ -344,13 +370,13 @@ void TTrack::oscSetupSimple(u8 param_1)
 {
 	switch (param_1) {
 	case 0:
-		unk30C[1] = Player::sVibratoDef;
+		mOscData[1] = Player::sVibratoDef;
 		break;
 	case 1:
-		unk30C[0] = Player::sTremoroDef;
+		mOscData[0] = Player::sTremoroDef;
 		break;
 	case 2:
-		unk30C[1] = Player::sTremoroDef;
+		mOscData[1] = Player::sTremoroDef;
 		break;
 	}
 }
@@ -384,10 +410,10 @@ void TTrack::updateTrackAll()
 	mChannelUpdater.unk5A[1] = local_4c;
 
 	curVolume = mTimedParam.mInnerParam.mVolume.mCurrentValue;
-	if (unk3C3 == 0)
+	if (mVolumeMode == 0)
 		curVolume = curVolume * curVolume;
 
-	if (unk3C2 != 0)
+	if (mMute != 0)
 		curVolume = 0.0f;
 
 	curPitch = Player::pitchToCent(mTimedParam.mInnerParam.mPitch.mCurrentValue,
@@ -399,22 +425,22 @@ void TTrack::updateTrackAll()
 
 	if (mOuterParam) {
 		if (mOuterParam->checkOuterSwitch(1))
-			curVolume *= mOuterParam->unk4;
+			curVolume *= mOuterParam->mVolume;
 
 		if (mOuterParam->checkOuterSwitch(2))
-			curPitch *= mOuterParam->unk8;
+			curPitch *= mOuterParam->mPitch;
 
 		if (mOuterParam->checkOuterSwitch(4))
-			curFxmix = panCalc(curFxmix, mOuterParam->unkC, fVar6, unk3C5[1]);
+			curFxmix = panCalc(curFxmix, mOuterParam->mFxmix, fVar6, mPanSwitchExt[1]);
 
 		if (mOuterParam->checkOuterSwitch(0x10))
-			curDolby = panCalc(curDolby, mOuterParam->unk10, fVar6, unk3C5[2]);
+			curDolby = panCalc(curDolby, mOuterParam->mDolby, fVar6, mPanSwitchExt[2]);
 
 		if (mOuterParam->checkOuterSwitch(8))
-			curPan = panCalc(curPan, mOuterParam->unk14, fVar6, unk3C8[0]);
+			curPan = panCalc(curPan, mOuterParam->mPan, fVar6, mPanSwitchParent[0]);
 	}
 
-	if (!unk2C0 || (unk3BC & 1)) {
+	if (!mParent || (unk3BC & 1)) {
 		mChannelUpdater.mVolume = curVolume;
 		mChannelUpdater.mPitch  = curPitch;
 		mChannelUpdater.mPan    = curPan;
@@ -422,14 +448,14 @@ void TTrack::updateTrackAll()
 		mChannelUpdater.mDolby  = curDolby;
 	} else {
 		f32 fVar6               = mRegisterParam.mPanPower[4] / 32767.0f;
-		mChannelUpdater.mVolume = unk2C0->mChannelUpdater.mVolume * curVolume;
-		mChannelUpdater.mPitch  = unk2C0->mChannelUpdater.mPitch * curPitch;
+		mChannelUpdater.mVolume = mParent->mChannelUpdater.mVolume * curVolume;
+		mChannelUpdater.mPitch  = mParent->mChannelUpdater.mPitch * curPitch;
 		mChannelUpdater.mPan
-		    = panCalc(curPan, unk2C0->mChannelUpdater.mPan, fVar6, unk3C8[0]);
+		    = panCalc(curPan, mParent->mChannelUpdater.mPan, fVar6, mPanSwitchParent[0]);
 		mChannelUpdater.mFxmix = panCalc(
-		    curFxmix, unk2C0->mChannelUpdater.mFxmix, fVar6, unk3C8[1]);
+		    curFxmix, mParent->mChannelUpdater.mFxmix, fVar6, mPanSwitchParent[1]);
 		mChannelUpdater.mDolby = panCalc(
-		    curDolby, unk2C0->mChannelUpdater.mDolby, fVar6, unk3C8[2]);
+		    curDolby, mParent->mChannelUpdater.mDolby, fVar6, mPanSwitchParent[2]);
 
 		if (mOuterParam && mOuterParam->checkOuterSwitch(0x80)) {
 			for (u8 i = 0; i < 8; ++i)
@@ -474,21 +500,21 @@ void TTrack::updateTrack(u32 param)
 		mChannelUpdater.unk5A[1] = local_4c;
 	}
 
-	if ((param & 0x40) && !unk2C0)
+	if ((param & 0x40) && !mParent)
 		updateTempo();
 
 	if (param & 1) {
 		curVolume = mTimedParam.mInnerParam.mVolume.mCurrentValue;
-		if (!unk3C3)
+		if (!mVolumeMode)
 			curVolume *= curVolume;
 
-		if (unk3C2)
+		if (mMute)
 			curVolume = 0.0f;
 
 		if (mOuterParam && mOuterParam->checkOuterSwitch(1))
-			curVolume *= mOuterParam->unk4;
+			curVolume *= mOuterParam->mVolume;
 
-		if (unk3CD && (unk3C1 & 1))
+		if (mPause && (mPauseStatus & 1))
 			curVolume *= mTimedParam.mInnerParam.unk100.mCurrentValue;
 	}
 
@@ -497,28 +523,28 @@ void TTrack::updateTrack(u32 param)
 		    mTimedParam.mInnerParam.mPitch.mCurrentValue, mRegisterParam.unkE);
 
 		if (mOuterParam && mOuterParam->checkOuterSwitch(2))
-			curPitch *= mOuterParam->unk8;
+			curPitch *= mOuterParam->mPitch;
 	}
 
 	if (param & 8) {
 		curPan = mTimedParam.mInnerParam.mPan.mCurrentValue;
 
 		if (mOuterParam && mOuterParam->checkOuterSwitch(8))
-			curPan = panCalc(curPan, mOuterParam->unk14, fVar3, unk3C5[0]);
+			curPan = panCalc(curPan, mOuterParam->mPan, fVar3, mPanSwitchExt[0]);
 	}
 
 	if (param & 4) {
 		curFxmix = mTimedParam.mInnerParam.mFxmix.mCurrentValue;
 
 		if (mOuterParam && mOuterParam->checkOuterSwitch(4))
-			curFxmix = panCalc(curFxmix, mOuterParam->unkC, fVar3, unk3C5[1]);
+			curFxmix = panCalc(curFxmix, mOuterParam->mFxmix, fVar3, mPanSwitchExt[1]);
 	}
 
 	if (param & 0x10) {
 		curDolby = mTimedParam.mInnerParam.mDolby.mCurrentValue;
 
 		if (mOuterParam && mOuterParam->checkOuterSwitch(0x10))
-			curDolby = panCalc(curDolby, mOuterParam->unk10, fVar3, unk3C5[2]);
+			curDolby = panCalc(curDolby, mOuterParam->mDolby, fVar3, mPanSwitchExt[2]);
 	}
 
 	if (param & 0xf000) {
@@ -542,9 +568,9 @@ void TTrack::updateTrack(u32 param)
 	}
 
 	for (int i = 0; i < 2; ++i) {
-		if (unk3A0[i] == 0xE) {
-			f32 off = unk33C[i].getOffsetNoCount();
-			switch (unk33C[i].getOsc()->unk0) {
+		if (mOscMode[i] == 0xE) {
+			f32 off = mOscillators[i].getOffsetNoCount();
+			switch (mOscillators[i].getOsc()->mTarget) {
 			case 1:
 				curPitch *= off;
 				break;
@@ -564,7 +590,7 @@ void TTrack::updateTrack(u32 param)
 		}
 	}
 
-	if (!unk2C0 || (unk3BC & 1)) {
+	if (!mParent || (unk3BC & 1)) {
 		if (param & 1)
 			mChannelUpdater.mVolume = curVolume;
 		if (param & 2)
@@ -579,39 +605,39 @@ void TTrack::updateTrack(u32 param)
 		fVar3 = mRegisterParam.mPanPower[4] / 32767.0f;
 		if (param & 1)
 			mChannelUpdater.mVolume
-			    = unk2C0->mChannelUpdater.mVolume * curVolume;
+			    = mParent->mChannelUpdater.mVolume * curVolume;
 		if (param & 2)
-			mChannelUpdater.mPitch = unk2C0->mChannelUpdater.mPitch * curPitch;
+			mChannelUpdater.mPitch = mParent->mChannelUpdater.mPitch * curPitch;
 		if (param & 8)
-			mChannelUpdater.mPan = panCalc(curPan, unk2C0->mChannelUpdater.mPan,
-			                               fVar3, unk3C8[0]);
+			mChannelUpdater.mPan = panCalc(curPan, mParent->mChannelUpdater.mPan,
+			                               fVar3, mPanSwitchParent[0]);
 		if (param & 4)
 			mChannelUpdater.mFxmix = panCalc(
-			    curFxmix, unk2C0->mChannelUpdater.mFxmix, fVar3, unk3C8[1]);
+			    curFxmix, mParent->mChannelUpdater.mFxmix, fVar3, mPanSwitchParent[1]);
 		if (param & 0x10)
 			mChannelUpdater.mDolby = panCalc(
-			    curDolby, unk2C0->mChannelUpdater.mDolby, fVar3, unk3C8[2]);
+			    curDolby, mParent->mChannelUpdater.mDolby, fVar3, mPanSwitchParent[2]);
 	}
 }
 
 void TTrack::updateTempo()
 {
-	if (unk2C0 == 0) {
-		unk3B0 = unk3BA;
-		unk3B0 *= unk3B8;
-		unk3B0 /= Kernel::getDacRate();
-		unk3B0 *= 80.0f;
-		unk3B0 /= 60.0f;
+	if (mParent == 0) {
+		mTickRate = mTimeBase;
+		mTickRate *= mTempo;
+		mTickRate /= Kernel::getDacRate();
+		mTickRate *= 80.0f;
+		mTickRate /= 60.0f;
 		if (mOuterParam->checkOuterSwitch(0x40))
-			unk3B0 *= mOuterParam->unk18;
+			mTickRate *= mOuterParam->mTempo;
 	} else {
-		unk3B0 = unk2C0->unk3B0;
-		unk3BA = unk2C0->unk3BA;
+		mTickRate = mParent->mTickRate;
+		mTimeBase = mParent->mTimeBase;
 	}
 
 	for (u32 i = 0; i < 16; ++i)
-		if (unk2C4[i] && unk2C4[i]->unk3C4)
-			unk2C4[i]->updateTempo();
+		if (mChildren[i] && mChildren[i]->mSeqState)
+			mChildren[i]->updateTempo();
 }
 
 void TTrack::updateSeq(u32 param_1, bool param_2)
@@ -628,8 +654,8 @@ void TTrack::updateSeq(u32 param_1, bool param_2)
 	}
 
 	for (int i = 0; i < 16; ++i) {
-		TTrack* track = unk2C4[i];
-		if (track && track->unk3C4) {
+		TTrack* track = mChildren[i];
+		if (track && track->mSeqState) {
 			if (param_2)
 				track->updateSeq(uVar3, param_2);
 			else
@@ -641,39 +667,39 @@ void TTrack::updateSeq(u32 param_1, bool param_2)
 void TTrack::incSelfOsc()
 {
 	for (int i = 0; i < 2; ++i)
-		if (unk3A0[i] == 0xE)
-			unk33C[i].getOffset();
+		if (mOscMode[i] == 0xE)
+			mOscillators[i].getOffset();
 
 	for (int i = 0; i < 16; ++i)
-		if (unk2C4[i])
-			unk2C4[i]->incSelfOsc();
+		if (mChildren[i])
+			mChildren[i]->incSelfOsc();
 }
 
 s8 TTrack::mainProc()
 {
-	if (unk2C0 && unk3BD == 1) {
-		f32 thing = (f32)unk3B8 / unk2C0->unk3B8;
+	if (mParent && unk3BD == 1) {
+		f32 thing = (f32)mTempo / mParent->mTempo;
 		if (thing > 1.0f)
 			thing = 1.0f;
-		unk3AC += thing;
-		if (unk3AC < 1.0f)
+		mTickCounter += thing;
+		if (mTickCounter < 1.0f)
 			return 0;
-		unk3AC -= 1.0f;
+		mTickCounter -= 1.0f;
 	}
 
-	if (unk2C0 && mChannelUpdater.mManagedChannels != 0) {
+	if (mParent && mChannelUpdater.mManagedChannels != 0) {
 		TChannel* head = mChannelUpdater.getListHead(0);
 		if (head) {
-			unk2C0->mChannelUpdater.addListHead(head, 0);
-			head->unk4 = &unk2C0->mChannelUpdater;
+			mParent->mChannelUpdater.addListHead(head, 0);
+			head->unk4 = &mParent->mChannelUpdater;
 			--mChannelUpdater.mManagedChannels;
-			++unk2C0->mChannelUpdater.mManagedChannels;
+			++mParent->mChannelUpdater.mManagedChannels;
 		}
 	}
 
-	unk3C0 = unk3BF;
-	if (unk2C0)
-		unk3C0 += unk2C0->unk3C0;
+	mTransposeTotal = mTranspose;
+	if (mParent)
+		mTransposeTotal += mParent->mTransposeTotal;
 	mIntrMgr.request(7);
 	mIntrMgr.timerProcess();
 
@@ -686,7 +712,7 @@ s8 TTrack::mainProc()
 				mSeqCtrl.callIntr(intr);
 		}
 
-		if (unk3CD != 0 && (unk3C1 & 2))
+		if (mPause != 0 && (mPauseStatus & 2))
 			goto bail; // TODO: is this goto real? looks quite real to me
 
 		if (mSeqCtrl.mWaitTimer == -1) {
@@ -738,22 +764,22 @@ s8 TTrack::mainProc()
 				f32 cur = param->mCurrentValue;
 				switch ((u8)i) {
 				case TIMED_Osc0_Width:
-					unk30C[0].unk10 = cur;
+					mOscData[0].mWidth = cur;
 					break;
 				case TIMED_Osc0_Rate:
-					unk30C[0].unk4 = cur;
+					mOscData[0].mRate = cur;
 					break;
 				case TIMED_Osc0_Vertex:
-					unk30C[0].unk14 = cur;
+					mOscData[0].mVertex = cur;
 					break;
 				case TIMED_Osc1_Width:
-					unk30C[1].unk10 = cur;
+					mOscData[1].mWidth = cur;
 					break;
 				case TIMED_Osc1_Rate:
-					unk30C[1].unk4 = cur;
+					mOscData[1].mRate = cur;
 					break;
 				case TIMED_Osc1_Vertex:
-					unk30C[1].unk14 = cur;
+					mOscData[1].mVertex = cur;
 					break;
 				}
 			}
@@ -761,8 +787,8 @@ s8 TTrack::mainProc()
 	}
 
 	for (int i = 0; i < 2; ++i)
-		if (unk3A0[i] == 0xE)
-			r31 |= sOscTable[unk30C[i].unk0];
+		if (mOscMode[i] == 0xE)
+			r31 |= sOscTable[mOscData[i].mTarget];
 
 bail:
 	unk3B4 |= r31;
@@ -770,11 +796,11 @@ bail:
 	updateSeq(0, false);
 
 	for (int i = 0; i < 16; ++i) {
-		TTrack* child = unk2C4[i];
-		if (child && child->unk3C4) {
+		TTrack* child = mChildren[i];
+		if (child && child->mSeqState) {
 			if (child->mainProc() == -1) {
 				child->closeTrack();
-				unk2C4[i] = nullptr;
+				mChildren[i] = nullptr;
 			}
 		}
 	}
@@ -787,10 +813,10 @@ int TTrack::seqTimeToDspTime(s32 param_1, u8 param_2)
 	f32 res = param_1;
 	res *= param_2;
 	res /= 100.0f;
-	if (unk3CB) {
-		res /= unk3B0;
+	if (mTimeRelate) {
+		res /= mTickRate;
 	} else {
-		res = (res * 120.0f) / unk3BA;
+		res = (res * 120.0f) / mTimeBase;
 		if (Kernel::getOutputRate() == 0)
 			res = (res * Kernel::getSubFrames()) / 10.0f;
 	}
@@ -1003,10 +1029,10 @@ void TTrack::writeRegParam(u8 param)
 	mRegisterParam.unk0[3]      = uVar5;
 
 	if (uVar10 == 6) {
-		if (unk3A0[0] != 0xE)
-			unk3A0[0] = 0xF;
-		if (unk3A0[1] != 0xE)
-			unk3A0[1] = 0xF;
+		if (mOscMode[0] != 0xE)
+			mOscMode[0] = 0xF;
+		if (mOscMode[1] != 0xE)
+			mOscMode[1] = 0xF;
 	}
 
 	if (uVar10 == 7)
@@ -1024,21 +1050,21 @@ int TTrack::setSeqData(u8* data, s32 size, Player::SEQ_PLAYMODE mode)
 	if (result == -1)
 		return -1;
 
-	unk308 = result;
+	mTrackRoute = result;
 	unk3BC = 3;
 	initTrack(data, 0, nullptr);
 	mChannelUpdater.initAllocChannel(0);
-	unk3AC = 0.0f;
-	unk3B0 = 1.0f;
+	mTickCounter = 0.0f;
+	mTickRate = 1.0f;
 	updateTrackAll();
-	unk3C4 = 2;
+	mSeqState = 2;
 
 	return result;
 }
 
 bool TTrack::startSeq()
 {
-	switch (unk3C4) {
+	switch (mSeqState) {
 	case 0:
 		return false;
 	case 1:
@@ -1046,7 +1072,7 @@ bool TTrack::startSeq()
 	case 3:
 		return false;
 	case 2:
-		unk3C4 = 1;
+		mSeqState = 1;
 		break;
 	}
 #ifdef SMS_NATIVE_PLATFORM
@@ -1063,19 +1089,19 @@ void TTrack::stopSeqMain() { }
 
 bool TTrack::stopSeq()
 {
-	switch (unk3C4) {
+	switch (mSeqState) {
 	case 0:
 		break;
 
 	case 2:
-		unk3C4 = 0;
-		if (unk3BE == 1)
+		mSeqState = 0;
+		if (mInnerMemory == 1)
 			TrackMgr::backTrack(this);
 		TrackMgr::deAllocRoot(this);
 		break;
 
 	default:
-		unk3C4 = 3;
+		mSeqState = 3;
 		break;
 	}
 	return true;
@@ -1083,7 +1109,7 @@ bool TTrack::stopSeq()
 
 void TTrack::allNoteOff()
 {
-	if (!unk2C0)
+	if (!mParent)
 		for (u8 i = 0; i < 8; ++i)
 			noteOff(i, 10);
 	else
@@ -1093,49 +1119,49 @@ void TTrack::allNoteOff()
 
 bool TTrack::closeTrack()
 {
-	if (!unk3C4)
+	if (!mSeqState)
 		return false;
 
 	allNoteOff();
 
 	mNoteMgr.init();
-	unk3C4 = 0;
+	mSeqState = 0;
 
-	if (unk3BE == 1)
+	if (mInnerMemory == 1)
 		TrackMgr::backTrack(this);
 
 	for (u8 i = 0; i < 16; ++i)
-		if (unk2C4[i]) {
-			unk2C4[i]->closeTrack();
-			unk2C4[i] = nullptr;
+		if (mChildren[i]) {
+			mChildren[i]->closeTrack();
+			mChildren[i] = nullptr;
 		}
 
 #ifdef SMS_NATIVE_PLATFORM
-	// Clear the PARENT's back-reference to this track. The parent only nulls unk2C4[] when IT
+	// Clear the PARENT's back-reference to this track. The parent only nulls mChildren[] when IT
 	// closes (loop above); a child that self-closes (cmdCloseTrack / mainProc end) and returns
 	// to the TrackMgr pool otherwise leaves a stale parent ref. getChild() then hands back a
 	// repurposed/freed pool slot, and the per-frame SE-port setup (JAISystemInterface::trackInit
 	// -> outerInit -> args->mTrack) captures it -> portCmdMain/setSePortParameter deref a freed
 	// track -> SIGSEGV (2026-07-17 use-after-free, exposed once real sequences drive SE ports).
-	if (unk2C0) {
+	if (mParent) {
 		for (u8 i = 0; i < 16; ++i)
-			if (unk2C0->unk2C4[i] == this) {
-				unk2C0->unk2C4[i] = nullptr;
+			if (mParent->mChildren[i] == this) {
+				mParent->mChildren[i] = nullptr;
 				break;
 			}
 	}
 #endif
 
-	unk3C2 = 0;
+	mMute = 0;
 
-	if (unk2C0)
-		unk2C0->mChannelUpdater.receiveAllChannels(&mChannelUpdater);
+	if (mParent)
+		mParent->mChannelUpdater.receiveAllChannels(&mChannelUpdater);
 	else
 		ChGlobal::releaseAll(&mChannelUpdater);
 
-	if (unk3CC) {
+	if (mConnected) {
 		TrackMgr::unRegistTrack(this);
-		unk3CC = nullptr;
+		mConnected = 0;
 	}
 
 	return false;
@@ -1143,9 +1169,9 @@ bool TTrack::closeTrack()
 
 void TTrack::muteTrack(u8 flag)
 {
-	unk3C2 = flag;
+	mMute = flag;
 	unk3B4 |= 1;
-	if (unk3C2 && (unk3C1 & 0x20)) {
+	if (mMute && (mPauseStatus & 0x20)) {
 		for (u8 i = 0; i < 8; ++i) {
 			TChannel* chan = mNoteMgr.getChannel(i);
 			if (chan) {
@@ -1156,7 +1182,7 @@ void TTrack::muteTrack(u8 flag)
 	}
 
 	for (int i = 0; i < 16; ++i) {
-		TTrack* track = unk2C4[i];
+		TTrack* track = mChildren[i];
 		if (track)
 			track->muteTrack(flag);
 	}
@@ -1168,69 +1194,69 @@ void TTrack::initTrack(void* data, u32 size, TTrack* parent)
 {
 	mSeqCtrl.init(data, size);
 	if (parent == nullptr) {
-		unk3B8 = 0x78;
-		unk3BA = 0x30;
-		unk3CB = 1;
-		unk3CD = 0;
-		unk3C1 = 10;
-		unk3C3 = 0;
-		unk3C2 = 0;
+		mTempo = 0x78;
+		mTimeBase = 0x30;
+		mTimeRelate = 1;
+		mPause = 0;
+		mPauseStatus = 10;
+		mVolumeMode = 0;
+		mMute = 0;
 	} else {
-		unk3B8 = parent->unk3B8;
+		mTempo = parent->mTempo;
 		unk3BD = 0;
-		unk3B0 = parent->unk3B0;
-		unk3BA = parent->unk3BA;
-		unk3CB = parent->unk3CB;
-		unk3CD = parent->unk3CD;
-		unk3C1 = parent->unk3C1;
-		unk3C3 = parent->unk3C3;
-		unk3C2 = parent->unk3C2;
+		mTickRate = parent->mTickRate;
+		mTimeBase = parent->mTimeBase;
+		mTimeRelate = parent->mTimeRelate;
+		mPause = parent->mPause;
+		mPauseStatus = parent->mPauseStatus;
+		mVolumeMode = parent->mVolumeMode;
+		mMute = parent->mMute;
 	}
 
 	mNoteMgr.init();
-	unk3C4 = 1;
-	unk2C0 = parent;
+	mSeqState = 1;
+	mParent = parent;
 	mIntrMgr.init();
 
 	initTimed();
 
-	if ((unk3BC & 2) || !unk2C0) {
+	if ((unk3BC & 2) || !mParent) {
 		mRegisterParam.init();
 		for (int i = 0; i < 3; ++i) {
-			unk3C5[i]                = 0;
-			unk3C8[i]                = 0;
+			mPanSwitchExt[i]                = 0;
+			mPanSwitchParent[i]                = 0;
 			mChannelUpdater.unk62[i] = 0x1A;
 		}
 	} else {
-		mRegisterParam.inherit(unk2C0->mRegisterParam);
+		mRegisterParam.inherit(mParent->mRegisterParam);
 		for (int i = 0; i < 3; ++i) {
-			unk3C5[i]                = unk2C0->unk3C5[i];
-			unk3C8[i]                = unk2C0->unk3C8[i];
-			mChannelUpdater.unk62[i] = unk2C0->mChannelUpdater.unk62[i];
+			mPanSwitchExt[i]                = mParent->mPanSwitchExt[i];
+			mPanSwitchParent[i]                = mParent->mPanSwitchParent[i];
+			mChannelUpdater.unk62[i] = mParent->mChannelUpdater.unk62[i];
 		}
 	}
 
 	for (u8 i = 0; i < 16; ++i)
-		unk2C4[i] = nullptr;
+		mChildren[i] = nullptr;
 
-	unk30C[0] = Player::sEnvelopeDef;
-	unk3A0[0] = 0xf;
-	unk30C[1] = Player::sVibratoDef;
-	unk33C[1].initStart();
-	unk3A0[1] = 0xe;
+	mOscData[0] = Player::sEnvelopeDef;
+	mOscMode[0] = 0xf;
+	mOscData[1] = Player::sVibratoDef;
+	mOscillators[1].initStart();
+	mOscMode[1] = 0xe;
 
-	unk3BF = 0;
-	unk3C0 = 0;
+	mTranspose = 0;
+	mTransposeTotal = 0;
 	mTrackPort.init();
-	unk3CC = 0;
+	mConnected = 0;
 }
 
 int TTrack::startTrack(TTrack* parent, u8 param2, u8 param3, u32 param4)
 {
-	unk308 = (((parent->unk308 << 4) | param2) & 0xfffffff)
-	         | ((parent->unk308 & 0xf0000000) + 0x10000000);
+	mTrackRoute = (((parent->mTrackRoute << 4) | param2) & 0xfffffff)
+	         | ((parent->mTrackRoute & 0xf0000000) + 0x10000000);
 
-	unk3A8 = 0;
+	mConnectName = 0;
 	unk3BC = param3;
 	initTrack(parent->mSeqCtrl.mRawFilePtr, param4, parent);
 	if (mOuterParam)
@@ -1242,7 +1268,7 @@ int TTrack::startTrack(TTrack* parent, u8 param2, u8 param3, u32 param4)
 
 TTrack* TTrack::openTrack(u8 param)
 {
-	TTrack* oldTrack = unk2C4[param];
+	TTrack* oldTrack = mChildren[param];
 	if (oldTrack)
 		oldTrack->closeTrack();
 
@@ -1250,7 +1276,7 @@ TTrack* TTrack::openTrack(u8 param)
 	if (!newTrack)
 		return nullptr;
 
-	unk2C4[param] = newTrack;
+	mChildren[param] = newTrack;
 	return newTrack;
 }
 
@@ -1332,9 +1358,9 @@ u16 TTrack::readRegDirect(u8 reg)
 	case 44:
 		result = 0;
 		for (i = 15; i >= 0; --i) {
-			TTrack* child = unk2C4[i];
+			TTrack* child = mChildren[i];
 			result <<= 1;
-			if (child && child->unk3C4)
+			if (child && child->mSeqState)
 				result |= 1;
 		}
 		break;
@@ -1437,7 +1463,7 @@ TTrack* TTrack::routeTrack(u32 route)
 	TTrack* found  = this;
 	u32 iterations = route >> 28;
 	for (int i = 0; i < iterations; ++i, route >>= 4) {
-		found = found->unk2C4[route & 0xF];
+		found = found->mChildren[route & 0xF];
 
 		if (found)
 			continue;
@@ -1486,11 +1512,11 @@ void TTrack::checkImportApp(u32 port) { }
 
 void TTrack::pauseTrack(u8 flag)
 {
-	unk3CD = 1;
-	if (unk3C1 & 0x1)
+	mPause = 1;
+	if (mPauseStatus & 0x1)
 		unk3B4 |= 1;
 
-	if (unk3C1 & 0x4) {
+	if (mPauseStatus & 0x4) {
 		for (u8 i = 0; i < 8; ++i) {
 			TChannel* chan = mNoteMgr.getChannel(i);
 			if (chan) {
@@ -1500,7 +1526,7 @@ void TTrack::pauseTrack(u8 flag)
 		}
 	}
 
-	if (unk3C1 & 8) {
+	if (mPauseStatus & 8) {
 		for (u8 i = 0; i < 8; ++i) {
 			TChannel* chan = mNoteMgr.getChannel(i);
 			if (chan)
@@ -1512,15 +1538,15 @@ void TTrack::pauseTrack(u8 flag)
 
 	if (flag == 1) {
 		for (u32 i = 0; i < 16; ++i) {
-			if (unk2C4[i] && unk2C4[i]->unk3C4)
-				unk2C4[i]->pauseTrack(1);
+			if (mChildren[i] && mChildren[i]->mSeqState)
+				mChildren[i]->pauseTrack(1);
 		}
 	}
 }
 
 void TTrack::unPauseTrack(u8 flag)
 {
-	unk3CD = 0;
+	mPause = 0;
 	unk3B4 |= 1;
 
 	for (u8 i = 0; i < 8; ++i) {
@@ -1533,8 +1559,8 @@ void TTrack::unPauseTrack(u8 flag)
 
 	if (flag == 1) {
 		for (u8 i = 0; i < 16; ++i)
-			if (unk2C4[i] && unk2C4[i]->unk3C4)
-				unk2C4[i]->unPauseTrack(1);
+			if (mChildren[i] && mChildren[i]->mSeqState)
+				mChildren[i]->unPauseTrack(1);
 	}
 }
 
@@ -1544,8 +1570,8 @@ void TTrack::unPauseTrackAll() { unPauseTrack(1); }
 
 void TTrack::reset()
 {
-	unk3C4 = 0;
-	unk3C2 = 0;
+	mSeqState = 0;
+	mMute = 0;
 }
 
 f32 TTrack::panCalc(f32 param1, f32 param2, f32 param3, u8 param4)
@@ -1569,25 +1595,25 @@ s32 TTrack::rootCallback(void* param)
 	if (std::getenv("SB_DBG_AUDIO")) {
 		static long nCB = 0; ++nCB;
 		if (nCB <= 3 || nCB % 5000 == 0)
-			std::fprintf(stderr, "[audio] rootCallback #%ld state(unk3C4)=%d tempo(unk3B0)=%.4f acc(unk3AC)=%.4f\n",
-			             nCB, self ? (int)self->unk3C4 : -99, self ? self->unk3B0 : -1.f, self ? self->unk3AC : -1.f);
+			std::fprintf(stderr, "[audio] rootCallback #%ld state(mSeqState)=%d tempo(mTickRate)=%.4f acc(mTickCounter)=%.4f\n",
+			             nCB, self ? (int)self->mSeqState : -99, self ? self->mTickRate : -1.f, self ? self->mTickCounter : -1.f);
 	}
 #endif
-	if (self && self->unk3C4 != 0) {
-		if (self->unk3C4 == 3) {
+	if (self && self->mSeqState != 0) {
+		if (self->mSeqState == 3) {
 			self->updateSeq(0, true);
 			self->closeTrack();
 			TrackMgr::deAllocRoot(self);
 			return -1;
 		} else {
-			self->unk3AC += self->unk3B0;
+			self->mTickCounter += self->mTickRate;
 
 			// TODO: this if is completely wrong, control flow is crazy here,
 			// probably an inline?
-			if (self->unk3AC > 1.0f) {
+			if (self->mTickCounter > 1.0f) {
 				self->updateSeq(0, true);
-				while (self->unk3AC >= 1.0f) {
-					self->unk3AC -= 1.0f;
+				while (self->mTickCounter >= 1.0f) {
+					self->mTickCounter -= 1.0f;
 					if ((int)self->mainProc() != -1)
 						continue;
 

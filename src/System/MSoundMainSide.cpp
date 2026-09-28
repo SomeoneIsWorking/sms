@@ -9,6 +9,7 @@
 #include <Camera/CubeManagerBase.hpp>
 #include <Camera/CubeMapTool.hpp>
 #include <Player/MarioAccess.hpp>
+#include <math.h>
 
 MSStage* MSStage::smMSStage;
 
@@ -607,11 +608,11 @@ MSStage* MSStage::init(u8 param_1, u8)
 			}
 
 			smMSStage = new MSStageDistFade(
-			    gpMSound->unkAC[1].unk0, fVar1, fVar2, uVar6,
+			    gpMSound->unkAC[1].mPosition, fVar1, fVar2, uVar6,
 			    MSMainProc::MSStageInfo::distFadeStageToKage);
 		} else {
 			smMSStage = new MSStageDistFadeMonte(
-			    gpMSound->unkAC[1].unk0, 6000.0f, 1600.0f, 90,
+			    gpMSound->unkAC[1].mPosition, 6000.0f, 1600.0f, 90,
 			    MSMainProc::MSStageInfo::distFadeStageToKage);
 		}
 		break;
@@ -627,7 +628,7 @@ MSStage* MSStage::init(u8 param_1, u8)
 
 	case 3:
 		if (gpCubeSoundChange->unk10 == 1)
-			smMSStage = new MSStageCubeSwitch(param_1);
+			smMSStage = new MSStageCubeSwitch;
 		break;
 	}
 
@@ -661,7 +662,7 @@ MSStageDistFade::MSStageDistFade(const Vec* param_1, f32 param_2, f32 param_3,
 
 static f32 vec_dist(const Vec& a, const Vec& b)
 {
-	return std::sqrtf((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y)
+	return sqrtf((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y)
 	                  + (a.z - b.z) * (a.z - b.z));
 }
 
@@ -699,7 +700,7 @@ void MSStageDistFade::proc()
 	u32 r29 = unk14;
 	u32 r30 = unk4;
 
-	Vec local_68 = gpMSound->unk8->toCamSpace(*unk10);
+	Vec local_68 = gpMSound->mAudioCameras->toCamSpace(*unk10);
 
 	f32 dVar6 = MSHandle::calcPan(local_68, fVar8, 10000.0f);
 	f32 dVar7 = MSHandle::calcDolby(local_68, fVar8);
@@ -774,7 +775,7 @@ void MSStageDistFadeMonte::proc()
 		u32 uVar4 = unk14;
 		u32 uVar8 = unk4;
 
-		Vec local_88 = gpMSound->unk8->toCamSpace(*unk10);
+		Vec local_88 = gpMSound->mAudioCameras->toCamSpace(*unk10);
 		f32 dVar10   = MSHandle::calcPan(local_88, fVar12, 10000.0f);
 		f32 dVar11   = MSHandle::calcDolby(local_88, fVar12);
 		if (uVar8 < uVar4) {
@@ -843,7 +844,7 @@ void MSStageCubeFade::proc()
 
 			f32 d = vec_dist(local_d0, marioPos);
 
-			Vec local_98 = gpMSound->unk8->toCamSpace(local_2c);
+			Vec local_98 = gpMSound->mAudioCameras->toCamSpace(local_2c);
 			f32 dVar6    = MSHandle::calcPan(local_98, d, 10000.0f);
 			f32 dVar7    = MSHandle::calcDolby(local_98, d);
 			MSBgm::setPan(1, dVar6, 1, 0);
@@ -942,7 +943,7 @@ void MSStageCubeFadeMonte::proc()
 			const Vec& marioPos = SMS_GetMarioPos();
 
 			f32 d        = vec_dist(local_d0, marioPos);
-			Vec local_a4 = gpMSound->unk8->toCamSpace(local_e8);
+			Vec local_a4 = gpMSound->mAudioCameras->toCamSpace(local_e8);
 
 			f32 dVar6 = MSHandle::calcPan(local_a4, d, 10000.0f);
 			f32 dVar7 = MSHandle::calcDolby(local_a4, d);

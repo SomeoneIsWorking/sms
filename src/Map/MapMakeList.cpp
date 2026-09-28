@@ -2,7 +2,8 @@
 #include <sb_log.h>
 #include <Map/MapCollisionEntry.hpp>
 #include <Map/MapData.hpp>
-#include <types.h>
+#include <dolphin/types.h>
+#include <stdint.h>
 #ifdef SMS_NATIVE_PLATFORM
 #include <cstdio>
 #include <cstdlib>

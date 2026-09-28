@@ -31,6 +31,7 @@
 #include <MSound/MSSetSound.hpp>
 #include <MSound/MSoundBGM.hpp>
 #include <M3DUtil/InfectiousStrings.hpp>
+#include <math.h>
 
 TModelWaterManager* gpModelWaterManager;
 TWaterHitActor TModelWaterManager::mStaticHitActor;
@@ -448,7 +449,7 @@ void TModelWaterManager::move()
 			    = mParticleVelocitySOA[i].x * mParticleVelocitySOA[i].x
 			      + mParticleVelocitySOA[i].z * mParticleVelocitySOA[i].z;
 			if (horVelSq > mParticleSizeSOA[i] * mParticleSizeSOA[i]) {
-				f32 horLen = std::sqrtf(horVelSq);
+				f32 horLen = sqrtf(horVelSq);
 
 				mParticleVelocitySOA[i].x
 				    *= (mParticleSizeSOA[i] - 0.1f) * (1.0f / horLen);

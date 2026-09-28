@@ -13,6 +13,7 @@
 // rogue includes needed for matching sinit & bss
 #include <MSound/MSSetSound.hpp>
 #include <MSound/MSoundBGM.hpp>
+#include <math.h>
 
 #pragma dont_inline on
 BOOL TMario::winDemo()
@@ -54,7 +55,7 @@ BOOL TMario::readBillboard()
 		if (dx == 0.0f && dz == 0.0f)
 			dx += 1.0f;
 
-		f32 dist = std::sqrtf(dx * dx + dz * dz);
+		f32 dist = sqrtf(dx * dx + dz * dz);
 		if (dist < 100.0f) {
 			JGeometry::TVec3<f32> moveDist;
 			moveDist.x = dx / dist * 2.0f * 50.0f + mPosition.x;

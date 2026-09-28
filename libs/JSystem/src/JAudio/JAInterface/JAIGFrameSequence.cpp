@@ -227,7 +227,7 @@ void JAIBasic::checkPlayingSeqTrack(u32 trackID)
 			MTXMultVec(mAudioCameras[i].nViewMtx, (Vec*)sound->mActorTrans,
 			           &pi->mCamSpacePos);
 
-			pi->unk18 = std::sqrtf(pi->mCamSpacePos.x * pi->mCamSpacePos.x
+			pi->unk18 = sqrtf(pi->mCamSpacePos.x * pi->mCamSpacePos.x
 			                       + pi->mCamSpacePos.y * pi->mCamSpacePos.y
 			                       + pi->mCamSpacePos.z * pi->mCamSpacePos.z);
 

@@ -686,7 +686,7 @@ void TBossPakkunMtxCalc::calcHeadDir(u16 jointIndex)
 void TBossPakkunMtxCalc::joinAnm(int index)
 {
 	J3DAnmTransformKey* anm
-	    = mOwner->getActorKeeper()->getMActorAnmData()->getUnk2C()->getAnmPtr(
+	    = mOwner->getActorKeeper()->getMActorAnmData()->getBckData()->getAnmPtr(
 	        index);
 
 	if (mNewAnm == anm)
@@ -700,7 +700,7 @@ void TBossPakkunMtxCalc::joinAnm(int index)
 void TBossPakkunMtxCalc::setAnm(int index)
 {
 	J3DAnmTransformKey* anm
-	    = mOwner->getActorKeeper()->getMActorAnmData()->getUnk2C()->getAnmPtr(
+	    = mOwner->getActorKeeper()->getMActorAnmData()->getBckData()->getAnmPtr(
 	        index);
 
 	mNewAnm           = anm;
@@ -783,7 +783,7 @@ void TBossPakkun::init(TLiveManager* manager)
 		mSpine->initWith(&TNerveBPWaitL::theNerve());
 	} else if (gpMarDirector->mMap == 0x37) {
 		mSpine->initWith(&TNerveBPFall::theNerve());
-	} else if (gpMarDirector->unk7D == 4) {
+	} else if (gpMarDirector->mScenario == 4) {
 		mSpine->initWith(&TNerveBPSleep::theNerve());
 	} else {
 		mSpine->initWith(&TNerveBPWait::theNerve());
@@ -1412,7 +1412,7 @@ DEFINE_NERVE(TNerveBPWait, TLiveActor)
 	if (spine->getTime() >= boss->getBossPakkunParams()->mSLWaitFrameStg0.get()
 	    && boss->mMActor->isCurAnmAlreadyEnd(ANM_TYPE_BCK)) {
 		if (gpMarDirector->mMap == 2
-		    && (gpMarDirector->unk7D == 0 || gpMarDirector->unk7D == 1)) {
+		    && (gpMarDirector->mScenario == 0 || gpMarDirector->mScenario == 1)) {
 			JGeometry::TVec3<f32>* marioPos = gpMarioPos;
 			if (boss->unk188 == nullptr) {
 				boss->unk188 = static_cast<TAreaCylinderManager*>(
@@ -1429,7 +1429,7 @@ DEFINE_NERVE(TNerveBPWait, TLiveActor)
 			return true;
 		}
 
-		if (gpMarDirector->unk7D == 4) {
+		if (gpMarDirector->mScenario == 4) {
 			f32 tornadoProp = boss->getBossPakkunParams()->mSLTornadoProp.get();
 			if (boss->mTornado->unk98 != 0
 			    || rand() * (1.0f / 32768.0f) < tornadoProp) {

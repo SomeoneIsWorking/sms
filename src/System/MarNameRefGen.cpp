@@ -35,6 +35,7 @@
 #include <Map/MapEventSirena.hpp>
 #include <Map/MapEventDolpic.hpp>
 #include <Map/MapEventMare.hpp>
+#include <Enemy/Beam.hpp>
 #include <Enemy/Conductor.hpp>
 #include <Enemy/EffectObj.hpp>
 #include <Enemy/AreaCylinder.hpp>

@@ -559,8 +559,8 @@ void TNozzleTrigger::movement(const TMarioControllerWork& controllerWork)
 		canSpray = false;
 
 	if (canSpray == true) {
-		unk388 += 150.0f * controllerWork.mAnalogR;
-		if (!unk384 && unk385 == TNozzleTrigger::INACTIVE) {
+		mTriggerFill += 150.0f * controllerWork.mAnalogR;
+		if (!mRumbleOnCharge && mSprayState == TNozzleTrigger::INACTIVE) {
 			if (gpMarDirector->mMoveTickCount % (int)mFludd->mMario->unk568
 			    == 0)
 				SMSRumbleMgr->start(20, (int)mFludd->mMario->unk564,
@@ -1322,7 +1322,7 @@ void TWaterGun::init()
 		unk1CDC->setup(mFluddModel->getModel(), "Mario/WaterGun");
 	}
 
-	unk1CD8 = mFluddModel->getModel()->getModelData()->getJointName()->getIndex(
+	mCurFluddTransformIdx = mFluddModel->getModel()->getModelData()->getJointName()->getIndex(
 	    "nozzle_center");
 
 	for (int i = 0; i < 6; ++i) {

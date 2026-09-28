@@ -423,7 +423,7 @@ static int MarioHeadCtrl(J3DNode* param_1, int param_2)
 			pos.z = gpMarioForCallBack->mPosition.z;
 			JGeometry::TVec3<f32> other = npcResetToPos - pos;
 
-			f32 mult = std::sqrtf(other.x * other.x + other.z * other.z);
+			f32 mult = sqrtf(other.x * other.x + other.z * other.z);
 
 			s16 angle = -matan(mult, other.y);
 			MsMtxSetRotRPH(transform, 0.0f, 0.0f, SHORTANGLE2DEG(angle));

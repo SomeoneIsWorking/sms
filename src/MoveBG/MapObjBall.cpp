@@ -64,7 +64,7 @@ void TResetFruit::perform(u32 param_1, JDrama::TGraphics* param_2)
 	// this line used to hard-code as a STOPGAP -- four orders of magnitude tighter, i.e. very
 	// nearly "exactly stopped". The same constant is loaded by control()'s states 2 and 3 at
 	// 0x801e27f0 for the same velocity-squared test, which is what turned it up.
-	constexpr float kRestThresholdSq = 3.8147e-06f;
+	const float kRestThresholdSq = 3.8147e-06f;
 	if (sb::reset_fruit_should_enter_pinna_park_branch(stage, state, vel_sq, kRestThresholdSq)) {
 		FR_LOG("[fruit] Pinna Park branch predicate fires - body unimplemented, delegating anyway\n");
 		// See DOCUMENTED GAP above. Delegate rather than silently continue as if the branch ran.
@@ -125,9 +125,14 @@ void TCoverFruit::calcRootMatrix()
 // Field-order guard: the ball-physics unkNNN fields must stay in ascending order (their
 // /* 0xNNN */ header comments are GUEST offsets; on the LP64 host they sit past the larger
 // base — accessed by NAME, so host offset is irrelevant, but keep them contiguous/ordered).
-#include <cstddef>
-static_assert(offsetof(TMapObjBall, unk190) - offsetof(TMapObjBall, unk148) == 19 * 4 - 4,
-              "TMapObjBall physics fields not contiguous");
+#include <stddef.h>
+// The same invariant static_assert states, in the C++98 spelling: a typedef that
+// is only valid when the condition holds, so a broken layout fails to compile
+// with this name in the diagnostic.
+typedef char TMapObjBall_physics_fields_are_contiguous
+    [offsetof(TMapObjBall, unk190) - offsetof(TMapObjBall, unk148) == 19 * 4 - 4
+         ? 1
+         : -1];
 
 // Native port of TMapObjBall::initMapObj (@0x801e3ac8, US GMSE01, size 0x4F4). RE'd from the
 // DOL disasm (wide-RE workflow 2026-07-17; every instruction + SDA2 f32 constant resolved). The
@@ -634,7 +639,7 @@ void TResetFruit::control()
 			Mtx held;
 			PSMTXCopy(mHolder->getTakingMtx(), held);
 			held[1][3] += unk190;
-			PSMTXCopy(held, getModel()->mNodeMatrices[0]);
+			PSMTXCopy(held, getModel()->getAnmMtx(0));
 			break;
 		}
 

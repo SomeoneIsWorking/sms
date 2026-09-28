@@ -124,7 +124,7 @@ void TAnimalBase::initNoLoad_(TAnimalBase* other)
 	// (the clone), into the 敵グループ hit-check list — the insert operand is the stack
 	// slot holding `this` (stored at entry, never overwritten). So the group accumulates
 	// N-1 duplicate template pointers; clones are not added here. Do NOT "fix" to `other`.
-	JDrama::TNameRefGen::search<TIdxGroupObj>("敵グループ")->add(this);
+	((TIdxGroupObj*)JDrama::TNameRefGen::search("敵グループ"))->add(this);
 }
 
 // TAnimalBase::init (US GMSE01 @0x80008f70, JP size 0x290). RE'd + verified. Spawn-time
@@ -176,132 +176,6 @@ void TAnimalBase::init(TLiveManager* manager)
 		frameCtrl2->setFrame(frameCtrl2->getEnd() * MsRandF());
 }
 
-void TAnimalBase::initNoLoad_(TAnimalBase* other)
-{
-	other->mPosition.x = 1000.0f * (MsRandF() - 0.5f) + mPosition.x;
-	other->mPosition.z = 1000.0f * (MsRandF() - 0.5f) + mPosition.z;
-	if (mActorType == 0x800001)
-		other->mPosition.y = 1000.0f * MsRandF() + mPosition.y;
-	else
-		other->mPosition.y = mPosition.y - 250.0f * MsRandF();
-
-	other->mScaling = mScaling;
-
-	other->mRotation.x = 0.0f;
-	f32 rotY           = 150.0f * (MsRandF() - 0.5f) + mRotation.y;
-	other->mRotation.y = MsWrap(rotY, 0.0f, 360.0f);
-	other->mRotation.z = 0.0f;
-
-	other->unk3C = unk3C;
-	other->unk124->setGraph(unk124->getGraph());
-	other->mGroundPlane = TMap::getIllegalCheckData();
-	other->init(mManager);
-
-	static_cast<TIdxGroupObj*>(JDrama::TNameRefGen::search("敵グループ"))
-	    ->getChildren()
-	    .push_back(other);
-}
-
-void TAnimalBase::load(JSUMemoryInputStream& stream)
-{
-	TSpineEnemy::load(stream);
-
-	s32 count = stream.readS32() - 1;
-
-	for (int i = 0; i < count; ++i) {
-		TAnimalBase* animal = new TAnimalBase(getActorType(), getName());
-		initNoLoad_(animal);
-	}
-}
-
-void TAnimalBase::loadAfter()
-{
-	TNameRef::loadAfter();
-	if (mActorType == 0x800001)
-		MSoundSESystem::MSRandPlay::registerTrans(MSD_SE_OBJ_KAMOME_SOLO,
-		                                          &mPosition);
-}
-
-void TAnimalBase::calcRootMatrix() { }
-
-BOOL TAnimalBase::receiveMessage(THitActor* sender, u32 msg) { return FALSE; }
-
-void TAnimalBase::perform(u32 cue, JDrama::TGraphics* graphics)
-{
-	if (cue & CUE_MOVE) {
-		if (graphics->unk0 & 2) {
-			mLinearVelocity.zero();
-			control();
-			mPosition += mLinearVelocity;
-			if (mActorType == 0x800001) {
-				SMSGetMSound()->startSeRandPlay(MSD_SE_OBJ_KAMOME_SOLO,
-				                                mInstanceIndex);
-			}
-		}
-		cue &= ~CUE_MOVE;
-	}
-
-	TLiveManager* manager = mManager;
-	s32 sharedAnmNum
-	    = ((TAnimalManagerBase*)manager)->mAnimalSave->mSLSharedAnmNum.get();
-
-	if (cue & CUE_CALC_ANIM) {
-		updateAnmSound();
-		mMActor->frameUpdate();
-		if (!(mLiveFlag & 6))
-			calcRootMatrix();
-		if ((sharedAnmNum != 0 && mInstanceIndex < sharedAnmNum)
-		    || (sharedAnmNum == 0 && !(mLiveFlag & 6)))
-			mMActor->calc();
-		cue &= ~CUE_CALC_ANIM;
-	}
-
-	if (cue & CUE_CALC_VIEW) {
-		if (!(mLiveFlag & 6)) {
-			Mtx save;
-			Mtx local;
-			Mtx world;
-			MTXCopy(j3dSys.mViewMtx, save);
-			CLBCalcRotateZXYTranslateMatrix(local, mRotation, mPosition);
-			MTXConcat(save, local, world);
-			MTXCopy(world, j3dSys.mViewMtx);
-
-			if (sharedAnmNum == 0 || mInstanceIndex < sharedAnmNum) {
-				mMActor->viewCalc();
-			} else {
-				J3DModel* shared
-				    = manager->getObj(mInstanceIndex % sharedAnmNum)
-				          ->getModel();
-				J3DModel* model    = getModel();
-				J3DModelData* data = model->getModelData();
-				int count          = data->getDrawMtxNum();
-
-				model->swapAllMtx();
-
-				Mtx* srcArrays[2];
-				srcArrays[0] = (Mtx*)shared->getAnmMtx(0);
-				srcArrays[1] = (Mtx*)shared->getWeightAnmMtx(0);
-
-				for (u16 i = 0; i < count; ++i) {
-					MTXConcat(world,
-					          srcArrays[data->getDrawMtxFlag(i)]
-					                   [data->getDrawMtxIndex(i)],
-					          model->getDrawMtx(i));
-				}
-
-				model->calcNrmMtx();
-				DCStoreRange(model->getDrawMtxPtr(), count * sizeof(Mtx));
-				DCStoreRange(model->getNrmMtxPtr(), count * sizeof(Mtx33));
-				model->prepareShapePackets();
-			}
-
-			MTXCopy(save, j3dSys.mViewMtx);
-		}
-		cue &= ~CUE_CALC_VIEW;
-	}
-
-	TSpineEnemy::perform(cue, graphics);
-}
 
 // TAnimalBase::resetRandomCurPathNode (US GMSE01 @0x8000868c, JP size 0x21C). RE'd +
 // verified. Picks a fresh random goal point around the current goal node and reseats both

@@ -26,6 +26,7 @@
 // rogue includes needed for matching sinit & bss
 #include <MSound/MSSetSound.hpp>
 #include <MSound/MSoundBGM.hpp>
+#include <math.h>
 
 f32 TMario::getJumpAccelControl() const
 {
@@ -713,7 +714,7 @@ void TMario::throwMario(const JGeometry::TVec3<f32>& param_1, f32 param_2)
 	f32 z           = tmp.z;
 	mFaceAngle.y    = matan(z, tmp.x) + 0x8000;
 	mModelFaceAngle = mFaceAngle.y;
-	mForwardVel     = param_2 * -std::sqrtf(tmp.x * tmp.x + z * z);
+	mForwardVel     = param_2 * -sqrtf(tmp.x * tmp.x + z * z);
 	mVel.y          = tmp.y * param_2;
 }
 
@@ -2380,7 +2381,7 @@ void TMario::thinkYoshiHeadCollision()
 	if (gpMap->isTouchedWallsAndMoveXZ(&record) == true) {
 		f32 dx = record.mCenter.x - headPos.x;
 		f32 dz = record.mCenter.z - headPos.z;
-		f32 f4 = std::sqrtf(dx * dx + dz * dz);
+		f32 f4 = sqrtf(dx * dx + dz * dz);
 
 		f32 f2 = f4;
 		if (f4 > 0.0f) {

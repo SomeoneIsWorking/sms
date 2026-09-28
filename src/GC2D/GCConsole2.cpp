@@ -1363,7 +1363,7 @@ static inline void updateTelopState(TGCConsole2* console, u32 flags)
 	}
 
 	if (gpMarDirector->mState != TMarDirector::STATE_PAUSE_MENU
-	    && gpMarDirector->unk124 == 0 && console->unk55C < 0xffffffff)
+	    && gpMarDirector->mGameState == 0 && console->unk55C < 0xffffffff)
 		++console->unk55C;
 }
 

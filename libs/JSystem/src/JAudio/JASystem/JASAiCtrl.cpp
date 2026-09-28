@@ -10,6 +10,7 @@
 #include <JSystem/JAudio/JASystem/JASHardStream.hpp>
 #include <JSystem/JAudio/JASystem/JASProbe.hpp>
 #include <dolphin/ai.h>
+#include <stdint.h>
 
 namespace JASystem {
 namespace Kernel {

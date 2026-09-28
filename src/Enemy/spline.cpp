@@ -29,7 +29,7 @@ void TSplinePath::makeTable(f32* parametrization, f32* coords, f32* param_3)
 	param_3[mPointNum - 1] = 0.0f;
 	for (int i = 0; i < mPointNum - 1; ++i) {
 		mTmpParamDeltas[i] = parametrization[i + 1] - parametrization[i];
-		if (std::fabsf(mTmpParamDeltas[i]) < 0.0001f) {
+		if (fabsf(mTmpParamDeltas[i]) < 0.0001f) {
 			mTmp[i + 1] = 0.0f;
 		} else {
 			mTmp[i + 1] = (coords[i + 1] - coords[i]) / mTmpParamDeltas[i];
@@ -39,7 +39,7 @@ void TSplinePath::makeTable(f32* parametrization, f32* coords, f32* param_3)
 	param_3[1] = -(mTmpParamDeltas[0] * param_3[0] - (mTmp[2] - mTmp[1]));
 	mTmp[1]    = (parametrization[2] - parametrization[0]) * 2.0f;
 	for (int i = 1; i < mPointNum - 2; ++i) {
-		if (std::fabsf(mTmp[i]) < 0.0001f)
+		if (fabsf(mTmp[i]) < 0.0001f)
 			mTmp[i] = 0.0001f;
 
 		f32 fVar1 = mTmpParamDeltas[i] / mTmp[i];

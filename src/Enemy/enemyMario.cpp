@@ -1548,7 +1548,7 @@ void TEnemyMario::checkController(JDrama::TGraphics*)
 	f32 dx           = gpMarioPos->x - mPosition.x;
 	f32 dz           = gpMarioPos->z - mPosition.z;
 	mAngleToMario    = matan(dz, dx);
-	mDistanceToMario = std::sqrtf(dx * dx + dz * dz);
+	mDistanceToMario = sqrtf(dx * dx + dz * dz);
 
 	u32 previousInput   = unk108->mInput;
 	unk108->mStickHS16  = 0;
@@ -1573,7 +1573,7 @@ void TEnemyMario::checkController(JDrama::TGraphics*)
 	if (unk108->mStickVS16 > 7)
 		unk108->mStickV = unk108->mStickVS16 - 6;
 
-	unk108->mStickDist = std::sqrtf(unk108->mStickH * unk108->mStickH
+	unk108->mStickDist = sqrtf(unk108->mStickH * unk108->mStickH
 	                                + unk108->mStickV * unk108->mStickV);
 	if (unk108->mStickDist > 64.0f) {
 		unk108->mStickH *= 64.0f / unk108->mStickDist;

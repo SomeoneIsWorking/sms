@@ -53,7 +53,7 @@ void J3DMaterialAnm::calc(J3DMaterial* pMaterial) const
 		if (mTexNoAnm[i] != NULL) {
 			u16 texNo;
 			mTexNoAnm[i]->calc(&texNo);
-			pMaterial->setTexNo(i, texNo);
+			pMaterial->getTevBlock()->setTexNo(i, texNo);
 		}
 	}
 

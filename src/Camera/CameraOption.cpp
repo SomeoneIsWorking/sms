@@ -7,6 +7,7 @@
 #include <Player/MarioAccess.hpp>
 #include <JSystem/JMath.hpp>
 #ifdef SMS_NATIVE_PLATFORM
+#include <cstdio>
 #include <sb_log.h>
 #endif
 

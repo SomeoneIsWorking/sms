@@ -278,7 +278,7 @@ void CPolarSubCamera::loadAfter()
 
 	fabricatedInline2();
 
-	if ((unk64 & CAMERA_FLAG_JET_COASTER_SCENE) && gpMarDirector->unk7D == 1) {
+	if ((unk64 & CAMERA_FLAG_JET_COASTER_SCENE) && gpMarDirector->mScenario == 1) {
 		gpMarDirector->fireStartDemoCamera(cJetCoasterDemoBckName, nullptr, -1,
 		                                   0.0f, true, &JetCoasterDemoCallBack,
 		                                   (uintptr_t)this, nullptr,

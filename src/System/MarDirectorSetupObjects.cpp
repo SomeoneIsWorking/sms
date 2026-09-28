@@ -47,7 +47,7 @@ void TMarDirector::decideMarioPosIdx()
 	unkD1 = 0;
 	unkE4 = 1;
 
-	switch (gpApplication.mCurrArea.unk0) {
+	switch (gpApplication.mCurrArea.getStage()) {
 	case 15:
 		unkE4 = 14;
 		gpApplication.mFader->setColor(
@@ -80,7 +80,7 @@ void TMarDirector::decideMarioPosIdx()
 				TFlagManager::getInstance()->setBool(false, 0x30004);
 				unkD0 = 4;
 			} else {
-				switch (SMS_getShineStage(gpApplication.mPrevArea.unk0)) {
+				switch (SMS_getShineStage(gpApplication.mPrevArea.getStage())) {
 				case 2:
 					unkD0 = 1;
 					unkD1 = 2;
@@ -133,35 +133,35 @@ bool TMarDirector::setupObjects()
 {
 	TFlagManager::getInstance()->resetStage();
 	TFlagManager::getInstance()->setFlag(0x60003, 1);
-	switch (gpApplication.mCurrArea.unk0) {
+	switch (gpApplication.mCurrArea.getStage()) {
 	case 1: {
 		TFlagManager::getInstance()->setBool(true, 0x3000D);
 		TFlagManager::getInstance()->setBool(true, 0x30005);
 		if (!TFlagManager::getInstance()->getBool(0x30003)) {
 			TFlagManager::getInstance()->setBool(true, 0x30003);
-			unk4E |= 0x2;
+			onDemoFlag(DEMO_FLAG_CAMERA_DEMO_ON_START);
 		} else {
 			TFlagManager::getInstance()->setBool(true, 0x30000);
 		}
 
-		switch (gpApplication.mCurrArea.unk1) {
+		switch (gpApplication.mCurrArea.getScenario()) {
 		case 0:
 		case 1:
 		case 7:
 		case 9:
-			unk4E |= 0x2;
+			onDemoFlag(DEMO_FLAG_CAMERA_DEMO_ON_START);
 			break;
 
 		case 5:
 			if (!TFlagManager::getInstance()->getBool(0x10386)
 			    && TFlagManager::getInstance()->getFlag(0x40000) >= 3) {
 				TFlagManager::getInstance()->setBool(true, 0x50001);
-				unk4E |= 0x2;
+				onDemoFlag(DEMO_FLAG_CAMERA_DEMO_ON_START);
 			}
 			if (!TFlagManager::getInstance()->getBool(0x10387)
 			    && TFlagManager::getInstance()->getFlag(0x40000) >= 5) {
 				TFlagManager::getInstance()->setBool(true, 0x50002);
-				unk4E |= 0x2;
+				onDemoFlag(DEMO_FLAG_CAMERA_DEMO_ON_START);
 			}
 			break;
 
@@ -171,24 +171,24 @@ bool TMarDirector::setupObjects()
 			if (!TFlagManager::getInstance()->getBool(0x1038F)
 			    && TFlagManager::getInstance()->getShineFlag(33)) {
 				lVar9 = true;
-				unk4E |= 0x2;
+				onDemoFlag(DEMO_FLAG_CAMERA_DEMO_ON_START);
 			}
 			if (lVar9 == 0 && !TFlagManager::getInstance()->getNozzleRight(1, 1)
 			    && TFlagManager::getInstance()->getBool(0x1038F)
 			    && iVar6 >= 25) {
 				lVar9 = 2;
-				unk4E |= 0x2;
+				onDemoFlag(DEMO_FLAG_CAMERA_DEMO_ON_START);
 			}
 			if (lVar9 == 0 && !TFlagManager::getInstance()->getNozzleRight(1, 0)
 			    && TFlagManager::getInstance()->getNozzleRight(1, 1)
 			    && iVar6 >= 30) {
 				lVar9 = 3;
-				unk4E |= 0x2;
+				onDemoFlag(DEMO_FLAG_CAMERA_DEMO_ON_START);
 			}
 			TFlagManager::getInstance()->setFlag(0x60003, lVar9);
 			if (TFlagManager::getInstance()->getFlag(0x40000) >= 20
 			    && !TFlagManager::getInstance()->getFlag(0x60003)) {
-				unk4E |= 0x2;
+				onDemoFlag(DEMO_FLAG_CAMERA_DEMO_ON_START);
 			}
 		}
 			// FALLTHROUGH!!!
@@ -201,14 +201,14 @@ bool TMarDirector::setupObjects()
 		break;
 	}
 	case 5:
-		if (gpApplication.mCurrArea.unk1 != 3)
-			(void)gpApplication.mCurrArea.unk1;
+		if (gpApplication.mCurrArea.getScenario() != 3)
+			(void)gpApplication.mCurrArea.getScenario();
 		else
 			TFlagManager::getInstance()->setBool(true, 0x50003);
 		break;
 	}
 
-	u32 bVar28 = SMS_getShineStage(gpApplication.mCurrArea.unk0);
+	u32 bVar28 = SMS_getShineStage(gpApplication.mCurrArea.getStage());
 	TFlagManager::getInstance()->setBool(true, 0x103A5 + bVar28);
 
 	MSMainProc::setMSoundEnterStage(mMap, mScenario);
@@ -230,21 +230,22 @@ bool TMarDirector::setupObjects()
 	}
 
 	JDrama::TNameRef* root
-	    = JDrama::TNameRefGen::search<JDrama::TNameRef>("Root View Obj");
+	    = ((JDrama::TNameRef*)JDrama::TNameRefGen::search("Root View Obj"));
 
 	JDrama::TNameRefPtrListT<JDrama::TViewObj>* gameObjs;
 	if (root) {
 		gameObjs = (JDrama::TNameRefPtrListT<JDrama::TViewObj>*)root->search(
 		    "ゲームオブジェクト");
 	} else {
-		gameObjs = JDrama::TNameRefGen::search<
-		    JDrama::TNameRefPtrListT<JDrama::TViewObj> >("ゲームオブジェクト");
+		gameObjs = ((JDrama::TNameRefPtrListT<JDrama::TViewObj>*)JDrama::TNameRefGen::search("ゲームオブジェクト"));
 	}
 
 	gameObjs->insert(gpMarioParticleManager);
 	gameObjs->insert(new JDrama::TOrthoProj(0.0f, 0.0f,
 	                                        (u16)SMSGetGameRenderWidth(),
-	                                        (u16)SMSGetGameRenderHeight()));
+	                                        (u16)SMSGetGameRenderHeight(),
+	                                        0.0f,
+	                                        (f32)SMSGetGameRenderWidth()));
 
 	JDrama::TViewObjPtrListT<JDrama::TViewObj>* measurementGroup
 	    = new JDrama::TViewObjPtrListT<JDrama::TViewObj>("計測グループ");
@@ -359,7 +360,7 @@ bool TMarDirector::setupObjects()
 		}
 
 		JDrama::TLookAtCamera* cam
-		    = JDrama::TNameRefGen::search<JDrama::TLookAtCamera>("camera 1");
+		    = ((JDrama::TLookAtCamera*)JDrama::TNameRefGen::search("camera 1"));
 		cam->mAspect = (u16)SMSGetGameVideoWidth() * 0.9134614f
 		               / (u16)SMSGetGameVideoHeight();
 	}
@@ -420,15 +421,14 @@ bool TMarDirector::setupObjects()
 	JDrama::TFrmGXSet* drawInit = new JDrama::TFrmGXSet(unkC0);
 
 	JDrama::TViewObjPtrListT<JDrama::TViewObj>* drawBufferGroup
-	    = JDrama::TNameRefGen::search<
-	        JDrama::TViewObjPtrListT<JDrama::TViewObj> >("Draw Buffer Group");
-	JDrama::TNameRefGen::search<JDrama::TDrawBufObj>("DrawBuf Sky Opa")
+	    = ((JDrama::TViewObjPtrListT<JDrama::TViewObj>*)JDrama::TNameRefGen::search("Draw Buffer Group"));
+	((JDrama::TDrawBufObj*)JDrama::TNameRefGen::search("DrawBuf Sky Opa"))
 	    ->getDrawBuffer()
 	    ->setNonSort();
-	JDrama::TNameRefGen::search<JDrama::TDrawBufObj>("DrawBuf Sky Xlu")
+	((JDrama::TDrawBufObj*)JDrama::TNameRefGen::search("DrawBuf Sky Xlu"))
 	    ->getDrawBuffer()
 	    ->setNonSort();
-	JDrama::TNameRefGen::search<JDrama::TDrawBufObj>("DrawBuf Graffito")
+	((JDrama::TDrawBufObj*)JDrama::TNameRefGen::search("DrawBuf Graffito"))
 	    ->getDrawBuffer()
 	    ->setMatAnmSort();
 	gpLightManager->addChildGroupObj(drawBufferGroup);
@@ -454,8 +454,8 @@ bool TMarDirector::setupObjects()
 	initECTMir(mPerformListGX, perfEventGroup);
 
 	JDrama::TEfbCtrlTex* normalSceneDrawStage
-	    = JDrama::TNameRefGen::search<JDrama::TEfbCtrlTex>(
-	        "通常シーン描画ステージ");
+	    = ((JDrama::TEfbCtrlTex*)JDrama::TNameRefGen::search(
+	        "通常シーン描画ステージ"));
 	normalSceneDrawStage->unk20.on(0x122F);
 	normalSceneDrawStage->mVFilter = SMSVFilter_flicker;
 	TScreenTexture* screenTex
@@ -469,7 +469,7 @@ bool TMarDirector::setupObjects()
 	normalSceneDrawStage->setSrcRect(local_dc);
 
 	JDrama::TViewport* normalSceneViewport
-	    = JDrama::TNameRefGen::search<JDrama::TViewport>("通常シーンViewport");
+	    = ((JDrama::TViewport*)JDrama::TNameRefGen::search("通常シーンViewport"));
 	normalSceneViewport->unk10 = local_dc;
 
 	{
@@ -500,7 +500,7 @@ bool TMarDirector::setupObjects()
 		{
 			JSUMemoryInputStream stream(performListsData,
 			                            auStack_1d8.getFileSize());
-			JSUMemoryInputStream leftoversStream(nullptr, nullptr);
+			JSUMemoryInputStream leftoversStream(nullptr, 0);
 			JDrama::TViewObj* performLists
 			    = (JDrama::TViewObj*)JDrama::TNameRef::genObject(
 			        stream, leftoversStream);
@@ -510,43 +510,43 @@ bool TMarDirector::setupObjects()
 	}
 
 	mPerformListMovement
-	    = JDrama::TNameRefGen::search<TPerformList>("PerformList Movement");
+	    = ((TPerformList*)JDrama::TNameRefGen::search("PerformList Movement"));
 	mPerformListCalcAnim
-	    = JDrama::TNameRefGen::search<TPerformList>("PerformList CalcAnim");
+	    = ((TPerformList*)JDrama::TNameRefGen::search("PerformList CalcAnim"));
 	mPerformListGX
-	    = JDrama::TNameRefGen::search<TPerformList>("PerformList GX");
+	    = ((TPerformList*)JDrama::TNameRefGen::search("PerformList GX"));
 	mPerformListSilhouette
-	    = JDrama::TNameRefGen::search<TPerformList>("PerformList Silhouette");
+	    = ((TPerformList*)JDrama::TNameRefGen::search("PerformList Silhouette"));
 	mPerformListGXPost
-	    = JDrama::TNameRefGen::search<TPerformList>("PerformList GX Post");
+	    = ((TPerformList*)JDrama::TNameRefGen::search("PerformList GX Post"));
 	mShinePfLstMov
-	    = JDrama::TNameRefGen::search<TPerformList>("Shine PfLst Mov");
+	    = ((TPerformList*)JDrama::TNameRefGen::search("Shine PfLst Mov"));
 	mShinePfLstAnm
-	    = JDrama::TNameRefGen::search<TPerformList>("Shine PfLst Anm");
+	    = ((TPerformList*)JDrama::TNameRefGen::search("Shine PfLst Anm"));
 
 	initECDisp(mPerformListGXPost, perfEventGroup, normalScene);
 
 	mPerformListMovement->push_back(
-	    JDrama::TNameRefGen::search<JDrama::TViewObj>("合成3"), 1);
+	    ((JDrama::TViewObj*)JDrama::TNameRefGen::search("合成3")), 1);
 	JDrama::TViewObj* specularSheen
-	    = JDrama::TNameRefGen::search<JDrama::TViewObj>("スペキュラシーン");
+	    = ((JDrama::TViewObj*)JDrama::TNameRefGen::search("スペキュラシーン"));
 	if (specularSheen)
 		mPerformListMovement->push_back(specularSheen, 1);
 
 	JDrama::TViewObj* lensFlare
-	    = JDrama::TNameRefGen::search<JDrama::TViewObj>("レンズフレア");
+	    = ((JDrama::TViewObj*)JDrama::TNameRefGen::search("レンズフレア"));
 	JDrama::TViewObj* sunOcclusionGlow = nullptr;
 	if (lensFlare) {
 		sunOcclusionGlow
-		    = JDrama::TNameRefGen::search<JDrama::TViewObj>("太陽遮蔽物グロー");
+		    = ((JDrama::TViewObj*)JDrama::TNameRefGen::search("太陽遮蔽物グロー"));
 		mPerformListMovement->push_back(sunOcclusionGlow, 1);
 		mPerformListMovement->push_back(lensFlare, 1);
 	}
 
 	JDrama::TViewObj* dialogueCursor
-	    = JDrama::TNameRefGen::search<JDrama::TViewObj>("会話カーソル");
+	    = ((JDrama::TViewObj*)JDrama::TNameRefGen::search("会話カーソル"));
 	JDrama::TViewObj* targetArrow
-	    = JDrama::TNameRefGen::search<JDrama::TViewObj>("ターゲット矢印");
+	    = ((JDrama::TViewObj*)JDrama::TNameRefGen::search("ターゲット矢印"));
 
 	mPerformListMovement->push_back(dialogueCursor, 1);
 	mPerformListCalcAnim->push_back(dialogueCursor, 2);

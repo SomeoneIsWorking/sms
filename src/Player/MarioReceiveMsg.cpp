@@ -572,7 +572,7 @@ BOOL TMario::receiveMessage(THitActor* sender, u32 message)
 	}
 
 	// Remaining range-based dispatch on raw mActorType.
-	switch (sender->mActorType) {
+	switch (sender->getActorType()) {
 	case 0x08000029: // hot/fire-only
 		if (message == HIT_MESSAGE_UNKA) {
 			if (!isInvincible()) {
