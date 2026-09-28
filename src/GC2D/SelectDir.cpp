@@ -19,7 +19,6 @@
 #include <System/MarioGamePad.hpp>
 #include <System/Application.hpp>
 #include <System/Resolution.hpp>
-#include <GC2D/SelectGrad.hpp>
 #include <GC2D/SelectMenu.hpp>
 #include <GC2D/ScrnFader.hpp>
 #include <JSystem/JKernel/JKRMemArchive.hpp>
@@ -203,7 +202,7 @@ int TSelectDir::direct()
 		// animation (startOpenWindow + perform's calc) is not-yet-ported, so the menu
 		// renders at its .blo default layout.
 		if (mSelectMenu)
-			mSelectMenu->setup(mStage, mArchive, mSelectShineMgr, this);
+			mSelectMenu->initData(mStage, mArchive, mSelectShineMgr, this);
 		// TODO(file-select port): startOpenWindow + the open animation / input navigation.
 		return TApplication::APP_STATE_DEFAULT - 1; // 0
 	}

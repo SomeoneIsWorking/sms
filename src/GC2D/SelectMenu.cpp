@@ -1,132 +1,196 @@
-// SelectMenu.cpp — file-select screen view-objects.
-//
-// This translation unit is UN-decompiled in the community decomp (the original was empty).
-// Reconstructed faithfully from the GMSE01 DOL. So far: TSelectGrad (the animated background
-// gradient). TSelectMenu (the file windows) + TSelectShineManager are reconstructed
-// incrementally as the file-select port is fleshed out.
-//
-// TSelectGrad anchors (DOL): ctor 0x80175a4c, setStageColor 0x8017591c, perform 0x80175560.
 
-#include <GC2D/ExPane.hpp>
+#include <dolphin/gx.h>
+#include <dolphin/gx/GXGeometry.h>
+#include <dolphin/gx/GXLighting.h>
+#include <dolphin/gx/GXTev.h>
+#include <dolphin/gx/GXTransform.h>
 #include <GC2D/BoundPane.hpp>
-#include <System/SelectDir.hpp>
-#include <GC2D/SelectShine2.hpp>
-#include <GC2D/SelectGrad.hpp>
+#include <GC2D/ExPane.hpp>
+#include <GC2D/MessageUtil.hpp>
 #include <GC2D/SelectMenu.hpp>
-#include <JSystem/J2D/J2DScreen.hpp>
-#include <JSystem/J2D/J2DTextBox.hpp>
+#include <GC2D/SelectShine2.hpp>
 #include <JSystem/J2D/J2DOrthoGraph.hpp>
 #include <JSystem/J2D/J2DPicture.hpp>
+#include <JSystem/J2D/J2DScreen.hpp>
+#include <JSystem/J2D/J2DScreen.hpp>
+#include <JSystem/J2D/J2DTextBox.hpp>
+#include <JSystem/JDrama/JDRViewObj.hpp>
 #include <JSystem/JKernel/JKRFileLoader.hpp>
-#include <JSystem/ResTIMG.hpp>
+#include <JSystem/JParticle/JPAEmitter.hpp>
+#include <JSystem/JParticle/JPAEmitterManager.hpp>
+#include <JSystem/JUtility/JUTColor.hpp>
+#include <JSystem/JUtility/JUTPoint.hpp>
+#include <JSystem/JUtility/JUTRect.hpp>
+#include <JSystem/JUtility/JUTTexture.hpp>
 #include <MarioUtil/DrawUtil.hpp>
-#include <MSound/MSound.hpp>
-#include <MSound/SoundEffects.hpp>
 #include <MarioUtil/ReinitGX.hpp>
+#include <MSound/MSound.hpp>
+#include <stdio.h>
 #include <System/Application.hpp>
 #include <System/MarioGamePad.hpp>
-#include <GC2D/MessageUtil.hpp>
+#include <System/SelectDir.hpp>
 #include <System/StageUtil.hpp>
-#include <System/FlagManager.hpp>
-#include "timg_swap.h"  // big-endian ResTIMG header -> host (standalone .bti via getGlbResource)
-#include <dolphin/gx.h>
-#include <dolphin/mtx.h>
-#include <cstdio>
-#include <cstdlib>
 
-// ──────────────────────────────────────────────────────────────────────────────
-// TSelectGrad — animated full-screen background gradient.
-// ──────────────────────────────────────────────────────────────────────────────
+// rogue includes needed for matching sinit & bss
+#include <MSound/MSSetSound.hpp>
+#include <MSound/MSoundBGM.hpp>
 
-TSelectGrad::TSelectGrad(const char* name)
-    : JDrama::TViewObj(name)
+// fabricated and not matching
+inline void bzero(void* pDst, u32 len)
 {
-	// ctor @0x80175a4c: default = stage-0 palette (top-left red, bottom-right yellow).
-	mColorIdx[0] = 2;
-	mColorIdx[1] = 0;
-	mColorIdx[2] = 4;
-	mColorA[0] = 0xff; mColorA[1] = 0x00; mColorA[2] = 0x00; mColorA[3] = 0xff; // red
-	mColorB[0] = 0xff; mColorB[1] = 0xff; mColorB[2] = 0x00; mColorB[3] = 0xff; // yellow
+	u8* dst           = (u8*)pDst;
+	u32 alignedBlocks = len / 8;
+	if (alignedBlocks > 0) {
+		for (; alignedBlocks > 0; alignedBlocks--) {
+			*dst++ = 0;
+			*dst++ = 0;
+			*dst++ = 0;
+			*dst++ = 0;
+			*dst++ = 0;
+			*dst++ = 0;
+			*dst++ = 0;
+			*dst++ = 0;
+		}
+
+		len = len % 8;
+		if (len == 0) {
+			return;
+		}
+	}
+
+	for (; len != 0; len--) {
+		*dst++ = 0;
+	}
 }
 
-// setStageColor @0x8017591c: pick the gradient palette by stage id.
+TSelectGrad::TSelectGrad(const char* pName)
+    : JDrama::TViewObj(pName)
+{
+	mRgbAnimCycle[0] = 2;
+	mRgbAnimCycle[1] = 0;
+	mRgbAnimCycle[2] = 4;
+	mTopLeftCol.set(255, 0, 0, 255);
+	mBottomRightCol.set(255, 255, 0, 255);
+}
+
 void TSelectGrad::setStageColor(u8 stage)
 {
 	switch (stage) {
-	case 4:
-		mColorIdx[0] = 2; mColorIdx[1] = 0; mColorIdx[2] = 4;
-		mColorA[0] = 0xff; mColorA[1] = 0x00; mColorA[2] = 0x00; mColorA[3] = 0xff;
-		mColorB[0] = 0xff; mColorB[1] = 0xff; mColorB[2] = 0x00; mColorB[3] = 0xff;
-		break;
 	case 2:
-		mColorIdx[0] = 3; mColorIdx[1] = 1; mColorIdx[2] = 5;
-		mColorA[0] = 0xff; mColorA[1] = 0xff; mColorA[2] = 0x00; mColorA[3] = 0xff;
-		mColorB[0] = 0x00; mColorB[1] = 0xff; mColorB[2] = 0x00; mColorB[3] = 0xff;
+		mRgbAnimCycle[0] = 3;
+		mRgbAnimCycle[1] = 1;
+		mRgbAnimCycle[2] = 5;
+		mTopLeftCol.set(255, 255, 0, 255);
+		mBottomRightCol.set(0, 255, 0, 255);
 		break;
 	case 3:
-		mColorIdx[0] = 4; mColorIdx[1] = 2; mColorIdx[2] = 0;
-		mColorA[0] = 0x00; mColorA[1] = 0xff; mColorA[2] = 0x00; mColorA[3] = 0xff;
-		mColorB[0] = 0x00; mColorB[1] = 0xff; mColorB[2] = 0xff; mColorB[3] = 0xff;
+		mRgbAnimCycle[0] = 4;
+		mRgbAnimCycle[1] = 2;
+		mRgbAnimCycle[2] = 0;
+		mTopLeftCol.set(0, 255, 0, 255);
+		mBottomRightCol.set(0, 255, 255, 255);
 		break;
-	case 0xd:
-		mColorIdx[0] = 0; mColorIdx[1] = 4; mColorIdx[2] = 2;
-		mColorA[0] = 0x00; mColorA[1] = 0x00; mColorA[2] = 0xff; mColorA[3] = 0xff;
-		mColorB[0] = 0xff; mColorB[1] = 0x00; mColorB[2] = 0xff; mColorB[3] = 0xff;
+	case 4:
+		mRgbAnimCycle[0] = 2;
+		mRgbAnimCycle[1] = 0;
+		mRgbAnimCycle[2] = 4;
+		mTopLeftCol.set(255, 0, 0, 255);
+		mBottomRightCol.set(255, 255, 0, 255);
 		break;
-	default:
-		// stages 0,1 (and any other) keep the ctor default palette.
+	case 13:
+		mRgbAnimCycle[0] = 0;
+		mRgbAnimCycle[1] = 4;
+		mRgbAnimCycle[2] = 2;
+		mTopLeftCol.set(0, 0, 255, 255);
+		mBottomRightCol.set(255, 0, 255, 255);
 		break;
 	}
 }
 
-namespace {
-// Faithful per-channel phase animator (perform & 2 block). `phase` indexes a 6-step cycle;
-// at phase 0 the channel ramps up (+2, clamp 255), at phase 3 it ramps down (-2, clamp 0),
-// otherwise it holds. Returns true if the channel reached a limit this frame.
-bool grad_step(u8* c, int phase)
+void TSelectGrad::perform(u32 flags, JDrama::TGraphics* gfx)
 {
-	if (phase == 3) {
-		int v = (int)*c - 2;
-		if (v < 0) { *c = 0; return true; }
-		*c = (u8)v;
-	} else if (phase == 0) {
-		int v = (int)*c + 2;
-		if (v > 0xff) { *c = 0xff; return true; }
-		*c = (u8)v;
-	}
-	return false;
-}
-} // namespace
+	// Maintainer diagnostic, this fork's: SB_SEL_DBG=1 traces the gradient animation
+	// every 120th call. Kept through the convergence to upstream's decompilation,
+	// because a periodic trace of a 6-step colour cycle is the fastest way to tell an
+	// animation that is not advancing from one that is advancing on the wrong phases.
+	{ static int v = -1; if (v < 0) { const char* e = getenv("SB_SEL_DBG"); v = (e && e[0] && e[0] != '0') ? 1 : 0; }
+	  if (v) { static int n = 0; if ((n++ % 120) == 0) fprintf(stderr,
+	        "[sel] TSelectGrad::perform flags=0x%x cycle=%d,%d,%d TL=%d,%d,%d BR=%d,%d,%d\n",
+	        flags, mRgbAnimCycle[0], mRgbAnimCycle[1], mRgbAnimCycle[2],
+	        mTopLeftCol.r, mTopLeftCol.g, mTopLeftCol.b,
+	        mBottomRightCol.r, mBottomRightCol.g, mBottomRightCol.b); } }
 
-// perform @0x80175560.
-void TSelectGrad::perform(u32 flags, JDrama::TGraphics* /*gfx*/)
-{
-	{ static int v=-1; if(v<0){const char*e=getenv("SB_SEL_DBG");v=(e&&e[0]&&e[0]!='0')?1:0;}
-	  if(v){static int n=0; if((n++%120)==0) std::fprintf(stderr,"[sel] TSelectGrad::perform flags=0x%x A=%d,%d,%d B=%d,%d,%d\n",
-	        flags,mColorA[0],mColorA[1],mColorA[2],mColorB[0],mColorB[1],mColorB[2]); } }
-	// ── calc (flag bit 0x2): animate the gradient colours. ──
 	if (flags & 0x2) {
-		bool advance = false;
-		for (int ch = 0; ch < 3; ch++) {
-			// B-corner channel steps with the raw phase; A-corner with phase-1 (mod 6).
-			advance |= grad_step(&mColorB[ch], mColorIdx[ch]);
-			int aphase = mColorIdx[ch] - 1;
-			if (aphase < 0) aphase = 5;
-			grad_step(&mColorA[ch], aphase);
+		bool nextCycle = false;
+		for (s32 i = 0; i < 3; i++) {
+			u8* value = (i == 0) ? &mBottomRightCol.r
+			                     : ((i == 1) ? &mBottomRightCol.g
+			                                 : &mBottomRightCol.b);
+
+			switch (mRgbAnimCycle[i]) {
+			case 0: {
+				s16 newValue = *value + 2;
+				if (newValue > 255) {
+					newValue  = 255;
+					nextCycle = true;
+				}
+				*value = newValue;
+			} break;
+			case 3: {
+				s16 newValue = *value - 2;
+				if (newValue < 0) {
+					newValue  = 0;
+					nextCycle = true;
+				}
+				*value = newValue;
+			} break;
+			}
+
+			s32 topLeftAnimCycle = mRgbAnimCycle[i] - 1;
+			if (topLeftAnimCycle < 0) {
+				topLeftAnimCycle = 5;
+			}
+
+			value = (i == 0) ? &mTopLeftCol.r
+			                 : ((i == 1) ? &mTopLeftCol.g : &mTopLeftCol.b);
+
+			switch (topLeftAnimCycle) {
+			case 0: {
+				s16 newValue = *value + 2;
+				if (newValue > 255) {
+					newValue = 255;
+				}
+				*value = newValue;
+			} break;
+			case 3: {
+				s16 newValue = *value - 2;
+				if (newValue < 0) {
+					newValue = 0;
+				}
+				*value = newValue;
+			} break;
+			}
 		}
-		if (advance) {
-			for (int ch = 0; ch < 3; ch++)
-				if (++mColorIdx[ch] > 5) mColorIdx[ch] = 0;
+
+		if (nextCycle) {
+			// TODO: This doesn't fully match.
+			mRgbAnimCycle[0]++;
+			mRgbAnimCycle[0] = (mRgbAnimCycle[0] >= 6) ? 0 : mRgbAnimCycle[0];
+
+			mRgbAnimCycle[1]++;
+			mRgbAnimCycle[1] = (mRgbAnimCycle[1] >= 6) ? 0 : mRgbAnimCycle[1];
+
+			mRgbAnimCycle[2]++;
+			mRgbAnimCycle[2] = (mRgbAnimCycle[2] >= 6) ? 0 : mRgbAnimCycle[2];
 		}
 	}
 
-	// ── draw (flag bit 0x8): full-screen gradient quad. ──
 	if (flags & 0x8) {
 		GXSetDither(GX_TRUE);
 
-		Mtx pos;
-		PSMTXIdentity(pos);
-		GXLoadPosMtxImm(pos, GX_PNMTX0);
+		Mtx mtx;
+		PSMTXIdentity(mtx);
+		GXLoadPosMtxImm(mtx, GX_PNMTX0);
 
 		GXSetCullMode(GX_CULL_BACK);
 		GXSetNumTexGens(0);
@@ -135,91 +199,120 @@ void TSelectGrad::perform(u32 flags, JDrama::TGraphics* /*gfx*/)
 		GXSetNumChans(1);
 		GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_VTX, 0,
 		              GX_DF_NONE, GX_AF_NONE);
+
 		GXSetChanCtrl(GX_COLOR1A1, GX_FALSE, GX_SRC_REG, GX_SRC_REG, 0,
 		              GX_DF_NONE, GX_AF_NONE);
-		GXColor white = { 0xff, 0xff, 0xff, 0xff };
-		GXSetChanAmbColor(GX_COLOR0A0, white);
+
+		GXSetChanAmbColor(GX_COLOR0A0, (GXColor) { 0xff, 0xff, 0xff, 0xff });
 
 		GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-		GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGB, GX_RGB8, 0);
+		GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_NRM_XYZ, GX_S8, 0);
+
 		GXClearVtxDesc();
 		GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
 		GXSetVtxDesc(GX_VA_CLR0, GX_DIRECT);
 
-		// Averaged (mid-edge) colour = (A + B) / 2 per channel.
-		u8 avg[3];
-		for (int i = 0; i < 3; i++)
-			avg[i] = (u8)(((int)mColorA[i] + (int)mColorB[i]) >> 1);
+		u8 midR = (mTopLeftCol.r + mBottomRightCol.r) >> 1;
+		u8 midG = (mTopLeftCol.g + mBottomRightCol.g) >> 1;
+		u8 midB = (mTopLeftCol.b + mBottomRightCol.b) >> 1;
 
-		// Quad in the ortho space (0,16,600,464), z=-100. Corners:
-		//   (0,16)  = A  | (600,16)  = avg
-		//   (0,464) = avg| (600,464) = B
 		GXBegin(GX_QUADS, GX_VTXFMT0, 4);
 		GXPosition3f32(0.0f, 16.0f, -100.0f);
-		GXColor3u8(mColorA[0], mColorA[1], mColorA[2]);
+		GXColor3u8(mTopLeftCol.r, mTopLeftCol.g, mTopLeftCol.b);
 		GXPosition3f32(600.0f, 16.0f, -100.0f);
-		GXColor3u8(avg[0], avg[1], avg[2]);
+		GXColor3u8(midR, midG, midB);
 		GXPosition3f32(600.0f, 464.0f, -100.0f);
-		GXColor3u8(mColorB[0], mColorB[1], mColorB[2]);
+		GXColor3u8(mBottomRightCol.r, mBottomRightCol.g, mBottomRightCol.b);
 		GXPosition3f32(0.0f, 464.0f, -100.0f);
-		GXColor3u8(avg[0], avg[1], avg[2]);
+		GXColor3u8(midR, midG, midB);
 		GXEnd();
 	}
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// TSelectMenu — the file-slot select windows (scenario_select_1.blo J2DScreen).
-// ──────────────────────────────────────────────────────────────────────────────
-
-// ctor @0x801753d0 — zero-init; the window-colour indices are (re)set in setup.
-TSelectMenu::TSelectMenu(const char* name)
-    : JDrama::TViewObj(name)
-    , mState(0)
-    , mScreen(nullptr)
-    , mGamePad(nullptr)
-    , mShineMgr(nullptr)
-    , mDir(nullptr)
+TSelectMenu::TSelectMenu(const char* pName)
+    : JDrama::TViewObj(pName)
+    , mMenuState(CLOSE_MENU)
+    , mMenuScreen(nullptr)
+    , mLetterBoxTop(nullptr)
+    , mLetterBoxBottom(nullptr)
+    , mStageName(nullptr)
+    , mStageBannerPane(nullptr)
+    , mStageBannerShadow(nullptr)
+    , unk3C(0)
+    , mScenarioPane1(nullptr)
+    , mScenarioText1(nullptr)
+    , mScenarioImg1(nullptr)
+    , mScenarioShadow1(nullptr)
+    , unk50(nullptr)
+    , mSelectNext(false)
+    , unk58()
+    , mScenarioPane2(nullptr)
+    , mScenarioText2(nullptr)
+    , mScenarioImg2(nullptr)
+    , mScenarioShadow2(nullptr)
+    , unk78(nullptr)
+    , mScenarioPaneDist(0)
+    , mShineList(nullptr)
+    , mScorePane(nullptr)
+    , mShineGotMark(nullptr)
+    , mShineUnlockedMark(nullptr)
+    , mMarkPulseDir(true)
+    , mArrowL(nullptr)
+    , mArrowR(nullptr)
+    , mArrowAnimDir(true)
+    , mArrowAnimPos(0)
+    , mArrowLBounds()
+    , mArrowRBounds()
+    , mLetterboxAnimFrame(0)
+    , mSelectShineAnimFrame(0)
     , mStage(0)
-    , mCursor(0)
-    , mNumSlots(0)
-    , mDisabled(0)
-    , mFrameScale(1.0f)
+    , mSelectedShine(0)
+    , mNumUnlockedShines(0)
+    , mSelectedMarkCol(-1)
+    , mMarkCol(-1)
+    , mSelectedMarkAlpha(0)
+    , mMarkAlpha(0)
+    , mCloseMenu(false)
+    , unk14B(0)
+    , mRcpAnmFrameRate(0.0f)
+    , mScenarioBmg(nullptr)
+    , mScenarioBmg2(nullptr)
+    , unk160()
+    , unk164()
+    , unk168(200)
+    , unk16A(200)
+    , mWaitBeforeCloseTimer(10)
 {
-	mColorIdx[0] = 0;
-	mColorIdx[1] = 0;
-	mColorIdx[2] = 0;
 }
 
-// setup @0x8017449c — load the file-slot J2DScreen. (See PORT STATUS in the header: this
-// milestone loads the screen and lets it draw at its .blo defaults; the ~3.5 KB of
-// per-file save-data population and the window panes used by the open animation are TODO.)
-void TSelectMenu::setup(u8 stage, JKRArchive* archive, TSelectShineManager* shineMgr,
-                        TSelectDir* dir)
+void TSelectMenu::initData(u8 stage, JKRArchive* pArch,
+                           TSelectShineManager* pShineMgr,
+                           TSelectDir* pSelectDir)
 {
-	mStage      = stage;
-	mShineMgr   = shineMgr;
-	mDir        = dir;
-	mFrameScale = 1.0f / SMSGetAnmFrameRate();
+	mStage           = stage;
+	mSelectShineMgr  = pShineMgr;
+	mSelectDir       = pSelectDir;
+	mRcpAnmFrameRate = 1.0f / SMSGetAnmFrameRate();
 
-	// Title-ish stages (the DOL's `stage == 10 || stage < 2`) get no select windows:
-	// the menu is suppressed and selection defaults to "none".
-	if (stage == 10 || stage < 2) {
-		mDisabled = 1;
-		mCursor   = 0xff;
+	// Some stages skip the menu.
+	switch (mStage) {
+	case 10:
+	case 1:
+	case 0:
+		mCloseMenu     = true;
+		mSelectedShine = 255;
 		return;
 	}
 
-	// Window colour indices (DOL: *(this+0x14/0x18/0x1c) = 2,0,4) — used by the
-	// not-yet-ported per-window save-data lookups.
-	mColorIdx[0] = 2;
-	mColorIdx[1] = 0;
-	mColorIdx[2] = 4;
+	mMenuScreen      = new J2DSetScreen("scenario_select_1.blo", nullptr);
 
-	mScreen = new J2DSetScreen("scenario_select_1.blo", archive);
-
-	{ static int v=-1; if(v<0){const char*e=getenv("SB_SEL_DBG");v=(e&&e[0]&&e[0]!='0')?1:0;}
-	  if(v){
-		std::fprintf(stderr,"[sel] === pane tree dump (stage=%d) ===\n", stage);
+	// Maintainer diagnostic, this fork's: SB_SEL_DBG=1 dumps the whole J2D pane tree
+	// with its FourCC tags, kinds, visibility, alpha and bounds. This is how the
+	// file-select layout was read at all while the community decomp had this class
+	// empty, and it stays the fastest way to see which pane a name lookup missed.
+	{ static int v = -1; if (v < 0) { const char* e = getenv("SB_SEL_DBG"); v = (e && e[0] && e[0] != '0') ? 1 : 0; }
+	  if (v) {
+		fprintf(stderr, "[sel] === pane tree dump (stage=%d) ===\n", mStage);
 		struct W { static void rec(J2DPane* p, int d) {
 			if (!p) return;
 			char fc[5]={0}; char kc[5]={0};
@@ -229,137 +322,330 @@ void TSelectMenu::setup(u8 stage, JKRArchive* archive, TSelectShineManager* shin
 			kc[0]=(char)(kk>>24); kc[1]=(char)(kk>>16); kc[2]=(char)(kk>>8); kc[3]=(char)kk;
 			for(int i=0;i<4;i++){ if(fc[i]<32||fc[i]>126) fc[i]='.'; if(kc[i]<32||kc[i]>126) kc[i]='.'; }
 			const JUTRect& b = p->getBounds();
-			std::fprintf(stderr,"[sel]  %*s'%s' kind=%s vis=%d alpha=%d bounds=(%d,%d,%d,%d)\n",
+			fprintf(stderr,"[sel]  %*s'%s' kind=%s vis=%d alpha=%d bounds=(%d,%d,%d,%d)\n",
 				d*2,"",fc,kc,(int)p->isVisible(),(int)p->getAlpha(),b.x1,b.y1,b.x2,b.y2);
 			for (JSUTreeIterator<J2DPane> it = p->getFirstChild(); it != p->getEndChild(); ++it)
 				rec(it.getObject(), d+1);
 		}};
-		W::rec(mScreen,0);
-		std::fprintf(stderr,"[sel] === end pane tree ===\n");
+		W::rec(mMenuScreen,0);
+		fprintf(stderr, "[sel] === end pane tree ===\n");
 	  } }
 
-	// ── Per-file save-data population (DOL setup @0x8017449c). ──────────────────────────
-	// This is the foundation milestone of that block: it resolves the menu's panes from the
-	// scenario_select_1.blo screen and sets their resting (pre-animation) visibility from
-	// the save flags. The window-open animation, the slot-indicator (i_o*/i_e*) row, the
-	// score/coin digit textures and the BMG stage-name strings are reconstructed in the
-	// follow-up steps and are marked TODO below. The leading-byte search tags below are the
-	// DOL constants verbatim ("s_0" = 0x00735f30, etc.); J2DScreen::search resolves them
-	// against the loaded panes (probed live), so this is a faithful port, not a guess.
+	mLetterBoxTop    = new TExPane(mMenuScreen, 'msk1');
+	mLetterBoxBottom = new TExPane(mMenuScreen, 'msk2');
+	mStageName       = (J2DTextBox*)mMenuScreen->search('map');
+	mScenarioPane1   = new TExPane(mMenuScreen, 's_0');
+	mScenarioPane2   = new TExPane(mMenuScreen, '0_0');
 
-	// Hide the spare "0_0" file window (DOL line 1: *(0_0 + 0xC) = 0). With both .s_0 and
-	// .0_0 visible at the .blo default, the screen showed "EPISODE 1" twice; the original
-	// hides 0_0 immediately, leaving the single centred s_0 window.
-	mScreen->search(0x00305f30)->hide(); // "0_0"
+	mScenarioPane2->getPane()->hide();
+	unk58            = mScenarioPane1->mPane->getBounds();
+	mScenarioImg1    = (J2DPicture*)mMenuScreen->search('s_2a');
+	mScenarioShadow1 = (J2DPicture*)mMenuScreen->search('s_2b');
+	mScenarioImg2    = (J2DPicture*)mMenuScreen->search('0_2a');
+	mScenarioShadow2 = (J2DPicture*)mMenuScreen->search('0_2b');
+	unk50            = (J2DPicture*)mMenuScreen->search('s_2b');
+	unk78            = (J2DPicture*)mMenuScreen->search('0_2b');
 
-	// Stage banner: the .blo defaults the Bianco banner (bi_0) visible; setup hides it and
-	// shows the banner for THIS stage. The per-stage 3-char prefix table (DOL @0x80388308,
-	// indexed by stage); banner pane tag = (prefix << 8) | 0x30 (e.g. stage 2 → "bi_0",
-	// stage 4 → "mm_0").  Stage→prefix: 0,1 absent; 2 bi_,3 rc_,4 mm_,5 pi_,6 sr_,8 mo_,9 mr_.
-	static const u32 kStagePrefix[11] = {
-	    0, 0, 0x0062695f, 0x0072635f, 0x006d6d5f, 0x0070695f, 0x0073725f, 0,
-	    0x006d6f5f, 0x006d725f, 0,
-	};
-	mScreen->search(0x62695f30)->hide(); // hide default "bi_0" banner group
-	if (stage < 11 && kStagePrefix[stage] != 0) {
-		u32 bannerTag = (kStagePrefix[stage] << 8) | 0x30;
-		if (J2DPane* banner = mScreen->search(bannerTag)) {
-			banner->show();
-			// The banner-half pictures (e.g. mm_a/mm_b) default hidden for non-Bianco
-			// stages; show them so the stage's banner texture draws (the DOL builds the
-			// banner picture at runtime — showing the .blo halves is the equivalent).
-			for (JSUTreeIterator<J2DPane> it = banner->getFirstChild();
-			     it != banner->getEndChild(); ++it)
-				it.getObject()->show();
-		}
+	for (s32 i = 0; i < 8; i++) {
+		char buf[254];
+		snprintf(buf, sizeof(buf), "/select/timg/sc_number_%d.bti", i);
+		mScenarioTex[i] = new JUTTexture((const ResTIMG*)JKRGetResource(buf));
 	}
 
-	// The "100-coin" mark over the score row starts hidden (DOL: *(sc_s + 0xC) = 0); it is
-	// only revealed when that stage's special-shine flag is set (TODO with the score-mark
-	// table). Keeping it hidden is the faithful resting default.
-	mScreen->search(0x73635f73)->hide(); // "sc_s"
+	mScenarioText1 = (J2DTextBox*)mMenuScreen->search('sttx');
+	SMSMakeTextBuffer(mScenarioText1, 0x80);
 
-	// Per-slot episode-mark state + how many file slots exist + the resting cursor. Default
-	// every slot to OPEN (2); each collected shine for this stage marks its slot CLEARED (3)
-	// and extends the slot count; slots past the count are LOCKED (0). (DOL lines computing
-	// *(this+0x150..0x157), *(this+0x13C) numSlots, *(this+0x13B) cursor.)
-	u8 shineStage = SMS_getShineStage(stage);
-	for (int i = 0; i < 8; i++)
-		mEpisodeState[i] = 2;
-	mNumSlots = 0;
-	for (int i = 0; i < 8; i++) {
-		if (SMS_isGetShine(shineStage, (u32)i, false)) {
-			mEpisodeState[i] = 3;
-			mNumSlots = (u8)(i + 2);
-		}
+	mScenarioText2 = (J2DTextBox*)mMenuScreen->search('0ttx');
+	SMSMakeTextBuffer(mScenarioText2, 0x80);
+
+	mScenarioPaneDist = mScenarioPane2->mPane->getBounds().x1
+	                    - mScenarioPane1->mPane->getBounds().x1;
+
+	mShineList = mMenuScreen->search('i_0');
+	mScorePane = mMenuScreen->search('sc_0');
+
+	for (s32 i = 0; i < 10; i++) {
+		char buf[256];
+		snprintf(buf, sizeof(buf), "/select/timg/coin_number_%d.bti", i);
+		mCoinNumTex[i] = new JUTTexture((const ResTIMG*)JKRGetResource(buf));
 	}
-	if (mNumSlots > 8) mNumSlots = 8;
-	if (mNumSlots == 0) mNumSlots = 1;
-	mCursor = (u8)(mNumSlots >= 1 ? mNumSlots - 1 : 0);
-	for (int i = mNumSlots; i < 8; i++)
-		mEpisodeState[i] = 0;
 
-	{ static int v=-1; if(v<0){const char*e=getenv("SB_SEL_DBG");v=(e&&e[0]&&e[0]!='0')?1:0;}
-	  if(v) std::fprintf(stderr,"[sel] setup: shineStage=%d numSlots=%d cursor=%d states=%d%d%d%d%d%d%d%d\n",
-	    shineStage,mNumSlots,mCursor,mEpisodeState[0],mEpisodeState[1],mEpisodeState[2],
-	    mEpisodeState[3],mEpisodeState[4],mEpisodeState[5],mEpisodeState[6],mEpisodeState[7]); }
+	J2DPicture* coinDigits[3];
+	for (s32 i = 0; i < 3; i++) {
+		coinDigits[i] = (J2DPicture*)mMenuScreen->search('sc_1' + i);
+	}
 
-	// ── Score/coin count digits (DOL @0x80174xxx: the sc_1/sc_2/sc_3 picture panes). ──────
-	// The count is this stage's coin/score flag; the three digit panes get their textures
-	// swapped to coin_number_<d>.bti. <100 shows tens+ones (hundreds pane hidden); >=100
-	// shows all three. The compiler emitted the digit split as reciprocal-multiplies
-	// (0.01/0.1); the semantics are integer division — ported as such.
-	{
-		int count = TFlagManager::getInstance()->getFlag(0x20005 + (u32)shineStage);
-		if (count > 999) count = 999;
-		if (count < 0) count = 0;
-		J2DPicture* d1 = (J2DPicture*)mScreen->search(0x73635f31); // "sc_1" hundreds
-		J2DPicture* d2 = (J2DPicture*)mScreen->search(0x73635f32); // "sc_2" tens
-		J2DPicture* d3 = (J2DPicture*)mScreen->search(0x73635f33); // "sc_3" ones
-		// coin_number_<d>.bti is a standalone big-endian ResTIMG loaded directly via
-		// JKRFileLoader::getGlbResource (NOT through JUTResReference, so it is not swapped
-		// by that path); swap it here (idempotent) before binding, or the decode reads
-		// garbage dims (the 2048x2048 SEGV class).
-		auto digitTimg = [](int n) -> const ResTIMG* {
-			char nm[40];
-			std::snprintf(nm, sizeof nm, "/select/timg/coin_number_%d.bti", n);
-			void* t = JKRFileLoader::getGlbResource(nm);
-			if (t) smsport::assets::restimg_swap_to_host(t);
-			return (const ResTIMG*)t;
-		};
-		if (count < 100) {
-			int tens = count / 10;
-			int ones = count - tens * 10;
-			if (d2) d2->changeTexture(digitTimg(tens), 0);
-			if (d3) d3->changeTexture(digitTimg(ones), 0);
-			if (d1) d1->hide(); // no hundreds digit
+	s32 const tags[] = { 0x0,   0x0, 'bi_', 'rc_', 'mm_', 'pi_',
+		                 'sr_', 0x0, 'mo_', 'mr_', 0x0 };
+
+	// TODO: Unused but still compiled in?
+	volatile s32 const unkArr[]
+	    = { 0x0, 0x0, 0x2, 0x3, 0x4, 0x5, 0x6, 0x0, 0x7, 0x8, 0x0 };
+
+	u8* const stages[] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		                   nullptr, nullptr, nullptr, nullptr, nullptr };
+
+	s32 numCoins = TFlagManager::getInstance()->getFlag(SMS_getShineStage(stage)
+	                                                    + 0x20005);
+	if (numCoins > 999) {
+		numCoins = 999;
+	}
+	if (numCoins < 0) {
+		numCoins = 0;
+	}
+	mMenuScreen->search('sc_s')->hide();
+
+	if (numCoins < 100) {
+		s32 digit1 = numCoins * 0.1f;
+		coinDigits[1]->changeTexture(mCoinNumTex[digit1]->getTexInfo(), 0);
+
+		s32 digit2 = numCoins % 10;
+		coinDigits[2]->changeTexture(mCoinNumTex[digit2]->getTexInfo(), 0);
+
+		coinDigits[0]->hide();
+	} else {
+		f32 hundreds = numCoins * 0.01f;
+
+		s32 digit0 = hundreds;
+		coinDigits[0]->changeTexture(mCoinNumTex[digit0]->getTexInfo(), 0);
+
+		s32 digit1 = 0.1f * (numCoins - 100 * (s32)(hundreds));
+		coinDigits[1]->changeTexture(mCoinNumTex[digit1]->getTexInfo(), 0);
+
+		s32 digit2 = numCoins % 10;
+		coinDigits[2]->changeTexture(mCoinNumTex[digit2]->getTexInfo(), 0);
+
+		if (TFlagManager::getInstance()->getShineFlag(stages[mStage][0])) {
+			mMenuScreen->search('sc_s')->show();
+		}
+
+		s8 count = 0;
+		for (s32 i = 1; i < 3; i++) {
+			if (TFlagManager::getInstance()->getShineFlag(stages[mStage][i])) {
+				count++;
+			}
+		}
+
+		if (count == 0) {
+			mMenuScreen->search('sc_0')->add(83, 0);
+			mMenuScreen->search('r_i')->hide();
+		} else if (count == 1) {
+			mMenuScreen->search('r_s2')->hide();
+		}
+
+		// Mark for a gotten shine, but it's unused here.
+		mShineGotMark = new JUTTexture(
+		    (const ResTIMG*)JKRGetResource("/select/timg/sc_mark_1.bti"));
+
+		// Mark for an unlocked shine.
+		mShineUnlockedMark = new JUTTexture(
+		    (const ResTIMG*)JKRGetResource("/select/timg/sc_mark_0.bti"));
+
+		unk160.r = 255;
+		unk160.g = 0;
+		unk160.b = 0;
+		unk160.a = 255;
+
+		unk164.r = 255;
+		unk164.g = 255;
+		unk164.b = 0;
+		unk164.a = 255;
+
+		unk14[0] = 2;
+		unk14[1] = 0;
+		unk14[2] = 4;
+
+		mMenuScreen->search('bi_0')->hide();
+
+		mStageBannerPane = new TExPane(mMenuScreen, tags[mStage] * 0x100 + '0');
+		mStageBannerPane->getPane()->show();
+		mStageBannerText
+		    = new TBoundPane(mMenuScreen, tags[mStage] * 0x100 + 'a');
+		mStageBannerText->getPane()->show();
+		mStageBannerShadow
+		    = new TBoundPane(mMenuScreen, tags[mStage] * 0x100 + 'b');
+		mStageBannerShadow->getPane()->show();
+
+		mScenarioBmg = JKRGetResource("/common/2d/scenarioname.bmg");
+
+		strncpy(mStageName->getStringPtr(),
+		        SMSGetMessageData(mScenarioBmg, tags[mStage] & 0xFFFF), 0x11);
+		mStageName->setFont((JUTFont*)gpSystemFont);
+
+		mShineUnlockStates[0] = 2;
+		mShineUnlockStates[1] = 2;
+		mShineUnlockStates[2] = 2;
+		mShineUnlockStates[3] = 2;
+		mShineUnlockStates[4] = 2;
+		mShineUnlockStates[5] = 2;
+		mShineUnlockStates[6] = 2;
+		mShineUnlockStates[7] = 2;
+
+		// Check which shines are unlocked.
+		for (s8 i = 0; i < 8; i++) {
+			u32 stage = SMS_getShineStage(mStage);
+			if (SMS_isGetShine(stage, i, false)) {
+				mShineUnlockStates[i] = 3;
+				mNumUnlockedShines    = i + 2;
+			}
+		}
+
+		if (mNumUnlockedShines > 8) {
+			mNumUnlockedShines = 8;
+		}
+
+		// Maintainer diagnostic, this fork's: SB_SEL_DBG=1 prints the slot table the
+		// loop above just built, which is the quickest way to see whether a save's
+		// shine flags reached the menu at all.
+		{ static int v = -1; if (v < 0) { const char* e = getenv("SB_SEL_DBG"); v = (e && e[0] && e[0] != '0') ? 1 : 0; }
+		  if (v) fprintf(stderr, "[sel] initData: shineStage=%d unlocked=%d selected=%d states=%d%d%d%d%d%d%d%d\n",
+		    SMS_getShineStage(mStage), mNumUnlockedShines, mSelectedShine,
+		    mShineUnlockStates[0], mShineUnlockStates[1], mShineUnlockStates[2],
+		    mShineUnlockStates[3], mShineUnlockStates[4], mShineUnlockStates[5],
+		    mShineUnlockStates[6], mShineUnlockStates[7]); }
+
+		if (mNumUnlockedShines == 0) {
+			mNumUnlockedShines = 1;
+		}
+
+		s32 lastShineIdx = mNumUnlockedShines - 1;
+		if (lastShineIdx < 0) {
+			lastShineIdx = 0;
+		}
+		mSelectedShine = lastShineIdx;
+
+		if (mNumUnlockedShines < 8) {
+			// TODO: I tried matching this as best as I could but the compiler
+			// keeps unrolling the loops and I'm running out of ideas...
+			bzero(mShineUnlockStates + mNumUnlockedShines,
+			      8 - mNumUnlockedShines);
+		}
+
+		// Show arrows if we have more than one shine unlocked.
+		if (mNumUnlockedShines > 1) {
+			mArrowL = mMenuScreen->search('a_l0' + mNumUnlockedShines);
+			mArrowR = mMenuScreen->search('a_r0' + mNumUnlockedShines);
+
+			// Cache original arrow bounds.
+			mArrowLBounds = mArrowL->getBounds();
+			mArrowRBounds = mArrowR->getBounds();
+
+			if (mSelectedShine != 0) {
+				mArrowL->show();
+			}
+
+			if (mSelectedShine != (mNumUnlockedShines - 1)) {
+				mArrowR->show();
+			}
+		}
+
+		mShineMarks[0] = nullptr;
+		mShineMarks[1] = nullptr;
+		mShineMarks[2] = nullptr;
+		mShineMarks[3] = nullptr;
+		mShineMarks[4] = nullptr;
+		mShineMarks[5] = nullptr;
+		mShineMarks[6] = nullptr;
+		mShineMarks[7] = nullptr;
+
+		// This code displays the icons of the unlocked shines at the bottom of
+		// the screen. It handles even and odd numbers differently to centre
+		// them correctly.
+		s32 i = 0;
+		if ((mNumUnlockedShines & 1) == 1) {
+			// Odd number of shines.
+			s32 firstSlot = (7 - mNumUnlockedShines) / 2;
+			s32 lastSlot  = firstSlot + mNumUnlockedShines - 1;
+
+			for (s32 slot = firstSlot; slot <= lastSlot; slot++) {
+				mShineMarks[i]
+				    = (J2DPicture*)mMenuScreen->search('i_o0' + slot);
+				mShineMarks[i]->show();
+
+				if (mShineUnlockStates[i] == 2 || mShineUnlockStates[i] == 1) {
+					JUTTexture* mark = mShineUnlockedMark;
+					mShineMarks[i]->insert(mark, 0, 1.0f);
+					mShineMarks[i]->remove(1);
+				} else if (mShineUnlockStates[i] == 0) {
+					mShineMarks[i]->hide();
+				}
+				i++;
+			}
 		} else {
-			int hundreds = count / 100;
-			int rem      = count - hundreds * 100;
-			int tens     = rem / 10;
-			int ones     = rem - tens * 10;
-			if (d1) d1->changeTexture(digitTimg(hundreds), 0);
-			if (d2) d2->changeTexture(digitTimg(tens), 0);
-			if (d3) d3->changeTexture(digitTimg(ones), 0);
-		}
-	}
+			// Even number of shines.
+			s32 firstSlot = (8 - mNumUnlockedShines) / 2;
+			s32 lastSlot  = firstSlot + mNumUnlockedShines - 1;
 
-	// TODO(file-select port, next step): the slot-indicator i_o*/i_e* row (revealed by the
-	// open animation), the BMG stage/scenario-name strings, the sc_s score-mark (local_2e0
-	// special-shine table), and the window-open animation / input navigation in perform's
-	// calc path.
+			for (s32 slot = firstSlot; slot <= lastSlot; slot++) {
+				mShineMarks[i]
+				    = (J2DPicture*)mMenuScreen->search('i_e0' + slot);
+				mShineMarks[i]->mVisible = true;
+
+				if (mShineUnlockStates[i] == 2 || mShineUnlockStates[i] == 1) {
+					JUTTexture* mark = mShineUnlockedMark;
+					mShineMarks[i]->insert(mark, 0, 1.0f);
+					mShineMarks[i]->remove(1);
+				} else if (mShineUnlockStates[i] == 0) {
+					mShineMarks[i]->hide();
+				}
+				i++;
+			}
+		}
+
+		mSelectedMarkCol
+		    = ((J2DPicture*)mMenuScreen->search('i_o0'))->getWhite();
+		mSelectedMarkAlpha = 255;
+		mMarkCol   = ((J2DPicture*)mMenuScreen->search('i_o2'))->getWhite();
+		mMarkAlpha = mMenuScreen->search('i_o2')->getAlpha();
+
+		((J2DPicture*)mMenuScreen->search('i_o0'))->setWhite(mMarkCol);
+		((J2DPicture*)mMenuScreen->search('i_o0'))->setAlpha(mMarkAlpha);
+
+		mShineMarks[mSelectedShine]->setWhite(mSelectedMarkCol);
+		mShineMarks[mSelectedShine]->setAlpha(mSelectedMarkAlpha);
+
+		mScenarioImg1->insert(mScenarioTex[mSelectedShine], 0, 1.0f);
+		mScenarioImg1->remove(1);
+		mScenarioShadow1->insert(mScenarioTex[mSelectedShine], 0, 1.0f);
+		mScenarioShadow1->remove(1);
+
+		char buf[254];
+		snprintf(buf, sizeof(buf), "/common/2d/scenarioname.bmg");
+		mScenarioBmg2 = JKRGetResource(buf);
+
+		mScenarioText1->setFont((JUTFont*)gpSystemFont);
+		mScenarioText2->setFont((JUTFont*)gpSystemFont);
+
+		s16 shineID
+		    = SMS_getShineID(SMS_getShineStage(mStage), mSelectedShine, false);
+
+		strncpy(mScenarioText1->getStringPtr(),
+		        SMSGetMessageData(mScenarioBmg2, SMS_getNormalStage(shineID)),
+		        127);
+	}
 }
 
-// perform @0x80172c90 (TViewObj vtable slot 8). calc on flag bit 0x1, draw on bit 0x8.
+void TSelectMenu::startMove()
+{
+	s32 padding[4];
+	JPAEmitterManager* emitter = mSelectDir->mEmitterMgr0;
+	mSelectShineMgr->initData(mShineUnlockStates, mNumUnlockedShines,
+	                          mSelectedShine, emitter);
+	mSelectShineMgr->mRumbleOption[mSelectedShine]->mShouldRumble = true;
+}
+
 void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 {
-	{ static int v=-1; if(v<0){const char*e=getenv("SB_SEL_DBG");v=(e&&e[0]&&e[0]!='0')?1:0;}
-	  if(v){static int n=0; if((n++%120)==0) std::fprintf(stderr,
-	        "[sel] TSelectMenu::perform flags=0x%x state=%d screen=%p disabled=%d\n",
-	        flags, mState, (void*)mScreen, mDisabled); } }
+	// Maintainer diagnostic, this fork's: SB_SEL_DBG=1 traces the menu's state machine
+	// every 120th call. Kept through the convergence; the state names are the recovered
+	// SelectMenuState values, so a trace here names a phase rather than a number.
+	{ static int v = -1; if (v < 0) { const char* e = getenv("SB_SEL_DBG"); v = (e && e[0] && e[0] != '0') ? 1 : 0; }
+	  if (v) { static int n = 0; if ((n++ % 120) == 0) fprintf(stderr,
+	        "[sel] TSelectMenu::perform flags=0x%x state=%d screen=%p closeMenu=%d selected=%d\n",
+	        flags, (int)mMenuState, (void*)mMenuScreen, (int)mCloseMenu, (int)mSelectedShine); } }
 
 	if (flags & 0x1) {
-		switch (mState) {
+		switch (mMenuState) {
 		case LETTERBOX_ANIMATION: {
 			bool updated = true;
 
@@ -367,14 +653,14 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 			updated &= mLetterBoxTop->update();
 			updated &= mLetterBoxBottom->update();
 
-			if (updated || mLetterboxAnimFrame > (s32)(20 * mFrameScale)) {
+			if (updated || mLetterboxAnimFrame > (s32)(20 * mRcpAnmFrameRate)) {
 				// Slide the stage banner from the right side of the screen to
 				// the left.
 				mStageBannerPane->getPane()->show();
 				mStageBannerPane->setPaneOffset(
-				    20 * mFrameScale, 0, 0,
+				    20 * mRcpAnmFrameRate, 0, 0,
 				    601 - mStageBannerPane->mInitialBounds.x1, 0.0f);
-				mState = STAGE_BANNER_SLIDE;
+				mMenuState = STAGE_BANNER_SLIDE;
 			}
 
 			mLetterboxAnimFrame++;
@@ -392,7 +678,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 			if (updated) {
 				// Squash the stage banner on the left side of the screen.
 				JUTRect bounds = mStageBannerText->getPane()->getBounds();
-				s32 time       = 15.0f * mFrameScale;
+				s32 time       = 15.0f * mRcpAnmFrameRate;
 				mStageBannerText->setPanePosition(
 				    time, JUTPoint(0, 0), JUTPoint(0, -6), JUTPoint(0, -10));
 				mStageBannerText->setPaneSize(time, JUTPoint(0, 0),
@@ -403,7 +689,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 				mStageBannerShadow->setPaneSize(time, JUTPoint(0, 0),
 				                                JUTPoint(-110, 12),
 				                                JUTPoint(-160, 20));
-				mState = STAGE_BANNER_SQUASH;
+				mMenuState = STAGE_BANNER_SQUASH;
 			}
 		} break;
 		case STAGE_BANNER_SQUASH: {
@@ -416,7 +702,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 			if (updated) {
 				// Stretch the stage banner after squash.
 				JUTRect bounds = mStageBannerText->getPane()->getBounds();
-				s32 time       = 20.0f * mFrameScale;
+				s32 time       = 20.0f * mRcpAnmFrameRate;
 				mStageBannerText->setPanePosition(
 				    time, JUTPoint(0, -10), JUTPoint(0, -6), JUTPoint(0, 4));
 				mStageBannerText->setPaneSize(time, JUTPoint(-160, 20),
@@ -427,7 +713,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 				mStageBannerShadow->setPaneSize(time, JUTPoint(-160, 20),
 				                                JUTPoint(-110, 12),
 				                                JUTPoint(40, -8));
-				mState = STAGE_BANNER_STRETCH;
+				mMenuState = STAGE_BANNER_STRETCH;
 			}
 		} break;
 		case STAGE_BANNER_STRETCH: {
@@ -440,7 +726,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 			if (updated) {
 				// "Bounce" banner size back to normal.
 				JUTRect bounds = mStageBannerText->getPane()->getBounds();
-				s32 time       = 15.0f * mFrameScale;
+				s32 time       = 15.0f * mRcpAnmFrameRate;
 				mStageBannerText->setPanePosition(
 				    time, JUTPoint(0, 4), JUTPoint(0, 3), JUTPoint(0, 0));
 				mStageBannerText->setPaneSize(time, JUTPoint(40, -8),
@@ -462,7 +748,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 				mScorePane->show();
 				mScorePane->setAlpha(0);
 
-				mState = APPEAR_MENU;
+				mMenuState = APPEAR_MENU;
 			}
 		} break;
 		case APPEAR_MENU: {
@@ -494,12 +780,12 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 			}
 
 			if (updated && (menuAlpha == 255)) {
-				mState = MENU_INPUT_LOOP;
+				mMenuState = MENU_INPUT_LOOP;
 			}
 		} break;
 		case WAIT_BEFORE_CLOSE: {
 			if (mSelectShineAnimFrame > mWaitBeforeCloseTimer) {
-				mState = CLOSE_MENU;
+				mMenuState = CLOSE_MENU;
 			}
 			mSelectShineAnimFrame++;
 		} break;
@@ -509,7 +795,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 				                                   nullptr, 0);
 
 				JUTRect bounds = mLetterBoxTop->getPane()->getBounds();
-				s32 time       = 30.0f * mFrameScale;
+				s32 time       = 30.0f * mRcpAnmFrameRate;
 
 				s32 h = 224;
 				mLetterBoxTop->setPaneSize(time, bounds.getWidth(), h,
@@ -531,12 +817,12 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 				mLetterBoxBottom->setPaneAlpha(
 				    time, 255, mLetterBoxBottom->getPane()->getAlpha());
 
-				mDir->changeOrder();
-				mShineMgr->startClose();
+				mSelectDir->changeOrder();
+				mSelectShineMgr->startClose();
 
 				JGeometry::TVec3<f32> emitterPos(300.0f, 244.0f, 0.0f);
-				JPAEmitterManager* emitter = mDir->mEmitterMgr1;
-				if (mEpisodeState[mCursor] == 3) {
+				JPAEmitterManager* emitter = mSelectDir->mEmitterMgr1;
+				if (mShineUnlockStates[mSelectedShine] == 3) {
 					emitter->createEmitter(emitterPos, 5, nullptr, nullptr);
 				} else {
 					emitter->createEmitter(emitterPos, 4, nullptr, nullptr);
@@ -545,7 +831,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 				emitter->createEmitter(emitterPos, 7, nullptr, nullptr);
 				emitter->createEmitter(emitterPos, 8, nullptr, nullptr);
 
-				mState = DISAPPEAR_MENU;
+				mMenuState = DISAPPEAR_MENU;
 			} else if (mGamePad->checkFrameMeaning(
 			               TMarioGamePad::MEANING_MENU_LEFT)) {
 				if (getPrevIndex() != -1) {
@@ -553,7 +839,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 					                                   0, nullptr, 0);
 
 					u8 prevIndex = getPrevIndex();
-					mShineMgr->startDecrease(mCursor - prevIndex);
+					mSelectShineMgr->startDecrease(mSelectedShine - prevIndex);
 
 					mSelectNext = false;
 
@@ -573,54 +859,54 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 					mScenarioShadow2->insert(mScenarioTex[prevIndex], 0, 1.0f);
 					mScenarioShadow2->remove(1);
 
-					mScenarioImg1->insert(mScenarioTex[mCursor], 0,
+					mScenarioImg1->insert(mScenarioTex[mSelectedShine], 0,
 					                      1.0f);
 					mScenarioImg1->remove(1);
 
-					mScenarioShadow1->insert(mScenarioTex[mCursor], 0,
+					mScenarioShadow1->insert(mScenarioTex[mSelectedShine], 0,
 					                         1.0f);
 					mScenarioShadow1->remove(1);
 
 					s16 shineID = SMS_getShineID(SMS_getShineStage(mStage),
-					                             mCursor, false);
+					                             mSelectedShine, false);
 					const char* scenarioName = SMSGetMessageData(
 					    mScenarioBmg2, SMS_getNormalStage(shineID));
 
 					strncpy(mScenarioText1->getStringPtr(), scenarioName, 127);
 
-					mShineMarks[mCursor]->mWhite = mMarkCol;
-					mShineMarks[mCursor]->setAlpha(mMarkAlpha);
+					mShineMarks[mSelectedShine]->mWhite = mMarkCol;
+					mShineMarks[mSelectedShine]->setAlpha(mMarkAlpha);
 
-					mShineMgr->mRumbleOption[mCursor]
+					mSelectShineMgr->mRumbleOption[mSelectedShine]
 					    ->mShouldRumble
 					    = false;
 
-					mCursor = prevIndex;
+					mSelectedShine = prevIndex;
 
 					s16 shineID2 = SMS_getShineID(SMS_getShineStage(mStage),
-					                              mCursor, false);
+					                              mSelectedShine, false);
 					const char* scenarioName2 = SMSGetMessageData(
 					    mScenarioBmg2, SMS_getNormalStage(shineID));
 					strncpy(mScenarioText2->getStringPtr(), scenarioName2, 127);
 
-					mShineMarks[mCursor]->mWhite = mSelectedMarkCol;
-					mShineMarks[mCursor]->setAlpha(mSelectedMarkAlpha);
+					mShineMarks[mSelectedShine]->mWhite = mSelectedMarkCol;
+					mShineMarks[mSelectedShine]->setAlpha(mSelectedMarkAlpha);
 
-					mShineMgr->mRumbleOption[mCursor]
+					mSelectShineMgr->mRumbleOption[mSelectedShine]
 					    ->mShouldRumble
 					    = true;
 
-					if (mNumSlots > 1) {
-						if ((mCursor != 0) && !mArrowL->isVisible()) {
+					if (mNumUnlockedShines > 1) {
+						if ((mSelectedShine != 0) && !mArrowL->isVisible()) {
 							mArrowL->show();
 						}
-						if (mCursor != (mNumSlots - 1)
+						if (mSelectedShine != (mNumUnlockedShines - 1)
 						    && !mArrowR->isVisible()) {
 							mArrowR->show();
 						}
 					}
 
-					mState = MENU_ANIM_LOOP;
+					mMenuState = MENU_ANIM_LOOP;
 				}
 			} else if (mGamePad->checkFrameMeaning(
 			               TMarioGamePad::MEANING_MENU_RIGHT)) {
@@ -629,7 +915,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 					                                   0, nullptr, 0);
 
 					u8 nextIndex = getNextIndex();
-					mShineMgr->startIncrease(nextIndex - mCursor);
+					mSelectShineMgr->startIncrease(nextIndex - mSelectedShine);
 
 					mSelectNext = true;
 
@@ -649,59 +935,59 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 					mScenarioShadow2->insert(mScenarioTex[nextIndex], 0, 1.0f);
 					mScenarioShadow2->remove(1);
 
-					mScenarioImg1->insert(mScenarioTex[mCursor], 0,
+					mScenarioImg1->insert(mScenarioTex[mSelectedShine], 0,
 					                      1.0f);
 					mScenarioImg1->remove(1);
 
-					mScenarioShadow1->insert(mScenarioTex[mCursor], 0,
+					mScenarioShadow1->insert(mScenarioTex[mSelectedShine], 0,
 					                         1.0f);
 					mScenarioShadow1->remove(1);
 
 					s16 shineID = SMS_getShineID(SMS_getShineStage(mStage),
-					                             mCursor, false);
+					                             mSelectedShine, false);
 					const char* scenarioName = SMSGetMessageData(
 					    mScenarioBmg2, SMS_getNormalStage(shineID));
 
 					strncpy(mScenarioText1->getStringPtr(), scenarioName, 127);
 
-					mShineMgr->mRumbleOption[mCursor]
+					mSelectShineMgr->mRumbleOption[mSelectedShine]
 					    ->mShouldRumble
 					    = false;
-					mShineMarks[mCursor]->mWhite = mMarkCol;
-					mShineMarks[mCursor]->setAlpha(mMarkAlpha);
+					mShineMarks[mSelectedShine]->mWhite = mMarkCol;
+					mShineMarks[mSelectedShine]->setAlpha(mMarkAlpha);
 
-					mCursor = nextIndex;
+					mSelectedShine = nextIndex;
 
 					s16 shineID2 = SMS_getShineID(SMS_getShineStage(mStage),
-					                              mCursor, false);
+					                              mSelectedShine, false);
 					const char* scenarioName2 = SMSGetMessageData(
 					    mScenarioBmg2, SMS_getNormalStage(shineID));
 					strncpy(mScenarioText2->getStringPtr(), scenarioName2, 127);
 
-					mShineMgr->mRumbleOption[mCursor]
+					mSelectShineMgr->mRumbleOption[mSelectedShine]
 					    ->mShouldRumble
 					    = true;
 
-					mShineMarks[mCursor]->mWhite = mSelectedMarkCol;
-					mShineMarks[mCursor]->setAlpha(mSelectedMarkAlpha);
+					mShineMarks[mSelectedShine]->mWhite = mSelectedMarkCol;
+					mShineMarks[mSelectedShine]->setAlpha(mSelectedMarkAlpha);
 
-					if (mNumSlots > 1) {
-						if ((mCursor != (mNumSlots - 1))
+					if (mNumUnlockedShines > 1) {
+						if ((mSelectedShine != (mNumUnlockedShines - 1))
 						    && !mArrowR->isVisible()) {
 							mArrowR->show();
 						}
-						if (mCursor > 0 && !mArrowL->isVisible()) {
+						if (mSelectedShine > 0 && !mArrowL->isVisible()) {
 							mArrowL->show();
 						}
 					}
 
-					mState = MENU_ANIM_LOOP;
+					mMenuState = MENU_ANIM_LOOP;
 				}
 			}
 		}
 			// fall through
 		case MENU_ANIM_LOOP: {
-			if (mNumSlots > 1) {
+			if (mNumUnlockedShines > 1) {
 				if (mArrowL->isVisible()) {
 					s32 x = mArrowAnimPos * 0.5f * SMSGetAnmFrameRate();
 					mArrowL->move(mArrowLBounds.x1 - x, mArrowLBounds.y1);
@@ -725,7 +1011,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 				}
 
 				s32 alpha = mArrowL->getAlpha();
-				if (mCursor == 0) {
+				if (mSelectedShine == 0) {
 					if (alpha != 0) {
 						alpha -= 4;
 						if (alpha < 0) {
@@ -766,7 +1052,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 					}
 				}
 			}
-			if (mState != MENU_INPUT_LOOP) {
+			if (mMenuState != MENU_INPUT_LOOP) {
 
 				bool updated = true;
 				updated &= mScenarioPane1->update();
@@ -774,10 +1060,10 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 
 				if (updated) {
 					mScenarioPane1->getPane()->hide();
-					mState = MENU_INPUT_LOOP;
+					mMenuState = MENU_INPUT_LOOP;
 				}
 			}
-			s32 alpha = mShineMarks[mCursor]->getAlpha();
+			s32 alpha = mShineMarks[mSelectedShine]->getAlpha();
 			if (mMarkPulseDir) {
 				u8 alphaRef = mSelectedMarkAlpha;
 				alpha       = alpha + 6;
@@ -792,7 +1078,7 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 					alpha         = 64;
 				}
 			}
-			mShineMarks[mCursor]->setAlpha(alpha);
+			mShineMarks[mSelectedShine]->setAlpha(alpha);
 
 		} break;
 		case DISAPPEAR_MENU: {
@@ -895,14 +1181,14 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 				                     col2, col1);
 
 				if (updated) {
-					mState            = WAIT_BEFORE_CLOSE;
+					mMenuState            = WAIT_BEFORE_CLOSE;
 					mSelectShineAnimFrame = 0;
 				}
 			}
 		} break;
 
 		case CLOSE_MENU:
-			mDisabled = true;
+			mCloseMenu = true;
 			break;
 
 		default:
@@ -910,14 +1196,88 @@ void TSelectMenu::perform(u32 flags, JDrama::TGraphics* gfx)
 		}
 	}
 
-	// Draw path (DOL: bit 0x8, state in [0,10)). ReInitializeGX + SMS_DrawInit, then draw
-	// the screen through a J2DOrthoGraph built from the graphics viewport.
-	if ((flags & 0x8) && mScreen != nullptr && mState >= 0 && mState < 10) {
-		ReInitializeGX();
-		SMS_DrawInit();
-		J2DOrthoGraph graph(gfx->getViewport());
-		graph.setup2D();
-		graph.setup2D();
-		mScreen->draw(0, 0, &graph);
+	if (flags & 0x8) {
+		if (mMenuState < 10 && mMenuState >= 0) {
+			ReInitializeGX();
+			SMS_DrawInit();
+			J2DOrthoGraph graph(gfx->getViewport());
+			graph.setup2D();
+			graph.setup2D();
+			mMenuScreen->draw(0, 0, &graph);
+		}
 	}
+}
+
+#pragma dont_inline on
+s8 TSelectMenu::getNextIndex()
+{
+	s8 res    = -1;
+	u32 index = mSelectedShine;
+
+	if (index >= 8) {
+		return -1;
+	}
+
+	for (s32 i = index + 1; i < 8; i++) {
+		if (mShineUnlockStates[i] == 2 || mShineUnlockStates[i] == 3) {
+			res = i;
+			break;
+		}
+	}
+	return res;
+}
+#pragma dont_inline off
+
+#pragma dont_inline on
+s8 TSelectMenu::getPrevIndex()
+{
+	s8 res    = -1;
+	u32 index = mSelectedShine;
+
+	if (index == 0) {
+		return -1;
+	}
+
+	for (s32 i = index - 1; i >= 0; i--) {
+		if (mShineUnlockStates[i] == 2 || mShineUnlockStates[i] == 3) {
+			res = i;
+			break;
+		}
+	}
+	return res;
+}
+#pragma dont_inline off
+
+void TSelectMenu::startOpenWindow()
+{
+	if (mCloseMenu == false) {
+		mMenuState = LETTERBOX_ANIMATION;
+		mStageName->hide();
+		mStageBannerPane->getPane()->hide();
+		mScenarioPane1->getPane()->hide();
+		mShineList->hide();
+		mScorePane->hide();
+
+		s32 time = 30.0f * mRcpAnmFrameRate;
+
+		// Set the target positions of the top and bottom letterbox bars.
+		JUTRect rect = mLetterBoxTop->getPane()->getBounds();
+		mLetterBoxTop->setPaneSize(time, rect.getWidth(), rect.getHeight(),
+		                           rect.getWidth(), 0);
+
+		rect = mLetterBoxBottom->getPane()->getBounds();
+		mLetterBoxBottom->setPaneSize(time, rect.getWidth(), rect.getHeight(),
+		                              rect.getWidth(), 0);
+		mLetterBoxBottom->setPaneOffset(time, 0, 0, 0, rect.getHeight());
+
+		MSBgm::startBGM(MSD_BGM_FANFARE_CASINO);
+		mLetterboxAnimFrame = 0u;
+	}
+}
+
+void TSelectMenu::startCloseWindow()
+{
+	// This function is deadstripped so this a complete guess to make the symbol
+	// size match.
+	mCloseMenu = false;
 }
