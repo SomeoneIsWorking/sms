@@ -17,15 +17,15 @@ u32 TDSPChannel::smnFree        = 0x40;
 #ifdef SMS_NATIVE_PLATFORM
 // Audio M2 (native DSP voice renderer, sms-boot/runtime/jas_kernel_native.cpp):
 // expose the static DSPCH voice array so DsyncFrame2 can read each live voice's
-// VPB (DSPBuffer). Returns the VPB for channel i if allocated (unk1 != 1), else
+// VPB (DSPBuffer). Returns the VPB for channel i if allocated (mStatus != 1), else
 // null. No duplication of state — the decomp's sequencer owns/fills DSPCH.
 extern "C" JASystem::DSPInterface::DSPBuffer* sb_jas_dspch_vpb(int i)
 {
 	if (TDSPChannel::DSPCH == nullptr || i < 0 || i >= 64)
 		return nullptr;
-	if (TDSPChannel::DSPCH[i].unk1 == 1) // free channel
+	if (TDSPChannel::DSPCH[i].mStatus == 1) // free channel
 		return nullptr;
-	return TDSPChannel::DSPCH[i].unkC;
+	return TDSPChannel::DSPCH[i].mDSPHandle;
 }
 #endif
 static f32 DSP_LIMIT_RATIO      = 1.1f;
