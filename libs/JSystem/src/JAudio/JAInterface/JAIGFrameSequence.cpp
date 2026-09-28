@@ -42,15 +42,16 @@ void JAIBasic::stopSeq(JAISound* param_1)
 	// corrupted sibling pool handles via the stale unk2C splice. Delete when
 	// the audio arc lands and no release path leaves game-side caches stale.
 	if (param_1->getSeqParameter() == nullptr) {
-		param_1->unk34 = nullptr;
-		param_1->unk1  = 0;
+		param_1->mMainSoundPPointer = nullptr;
+		param_1->mState             = 0;
 		return;
 	}
 #endif
-	param_1->unk34                      = nullptr;
-	param_1->getSeqParameter()->unk1850 = nullptr;
-	if (param_1->unk1 >= 3) {
-		unk0->releaseAutoHeapPointer(param_1->getSeqParameter()->unk1754);
+	param_1->mMainSoundPPointer               = nullptr;
+	param_1->getSeqParameter()->mUpdateData   = nullptr;
+	if (param_1->mState >= 3) {
+		unk0->releaseAutoHeapPointer(
+		    param_1->getSeqParameter()->mAutoHeapPosition);
 	}
 	param_1->mState = SOUNDSTATE_Inactive;
 	releaseSeqParameterPointer(param_1->getSeqParameter());

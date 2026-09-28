@@ -60,7 +60,7 @@ JASystem::TTrack* JAISystemInterface::trackToSeqp(JAISound* param_1, u8 param_2)
 
 #ifdef SMS_NATIVE_PLATFORM
 // LP64 landmine: the decomp addresses TPortArgs as a flat 4-byte-word array from &mTrack
-// (`((f32*)&s->unk4)[param_3]`), which is only correct when mTrack is a 4-byte GC pointer.
+// (`((f32*)&s->mArgs)[arg_no]`), which is only correct when mTrack is a 4-byte GC pointer.
 // On the 64-bit host mTrack is 8 bytes, so every index >= 1 is off by one f32 slot and the
 // per-parameter pushes scatter into the wrong fields (pitch->volume, pan->pitch, ...),
 // leaving mTrackPitch permanently 0 -> DSP pitch 0 -> silence (2026-07-17). param_3 is the
@@ -83,17 +83,17 @@ static void* sb_portarg_slot(JASystem::Kernel::TPortArgs* a, u8 idx)
 }
 #endif
 
-void JAISystemInterface::setSeqPortargsF32(JAISeqUpdateData* param_1,
-                                           u32 param_2, u8 param_3, f32 param_4)
+void JAISystemInterface::setSeqPortargsF32(JAISeqUpdateData* sud, u32 track_no,
+                                           u8 arg_no, f32 value)
 {
-	JAISeqUpdateData::FabricatedUnk4CStruct* s = &param_1->unk4C[param_2];
+	JAIPlayerParameter* s = &sud->mPlayerParams[track_no];
 
 #ifdef SMS_NATIVE_PLATFORM
-	void* slot = sb_portarg_slot(&s->unk4, param_3);
+	void* slot = sb_portarg_slot(&s->mArgs, arg_no);
 	if (slot)
-		*(f32*)slot = param_4;
+		*(f32*)slot = value;
 #else
-	((f32*)&s->unk4)[param_3] = param_4;
+	((f32*)&s->mArgs)[arg_no] = value;
 #endif
 }
 
@@ -106,14 +106,14 @@ void JAISystemInterface::setSeqPortargsPS16(JAISeqUpdateData* sud, u32 track_no,
 void JAISystemInterface::setSeqPortargsU32(JAISeqUpdateData* sud, u32 track_no,
                                            u8 arg_no, u32 value)
 {
-	JAISeqUpdateData::FabricatedUnk4CStruct* s = &param_1->unk4C[param_2];
+	JAIPlayerParameter* s = &sud->mPlayerParams[track_no];
 
 #ifdef SMS_NATIVE_PLATFORM
-	void* slot = sb_portarg_slot(&s->unk4, param_3);
+	void* slot = sb_portarg_slot(&s->mArgs, arg_no);
 	if (slot)
-		*(u32*)slot = param_4;
+		*(u32*)slot = value;
 #else
-	((u32*)&s->unk4)[param_3] = param_4;
+	((u32*)&s->mArgs)[arg_no] = value;
 #endif
 }
 
@@ -209,12 +209,13 @@ void JAISystemInterface::outerInit(JAISeqUpdateData* sud, void* track,
 	if (std::getenv("SB_DBG_AUDIO")) {
 		static int n = 0;
 		if (n < 6) { ++n;
-			std::fprintf(stderr, "[audio] outerInit queue: param_1=%p unk4C=%p slot=%u args=%p track=%p\n",
-			             (void*)param_1, (void*)param_1->unk4C, param_3, (void*)args, (void*)track);
+			std::fprintf(stderr,
+			             "[audio] outerInit queue: sud=%p playerParams=%p track_no=%u args=%p track=%p\n",
+			             (void*)sud, (void*)sud->mPlayerParams, track_no, (void*)args, (void*)track);
 		}
 	}
 #endif
-	param_1->unk4C[param_3].unk2C.addPortCmdOnce();
+	sud->mPlayerParams[track_no].mCmd.addPortCmdOnce();
 }
 
 void JAISystemInterface::setPortParameter(JASystem::Kernel::TPortArgs* args,
@@ -239,7 +240,7 @@ void JAISystemInterface::setSePortParameter(JASystem::Kernel::TPortArgs* args)
 	// or its pool slot been reused, so mTrack (and its mOuterParam) may be stale/wild. Validate
 	// against the static track pool FIRST (before any deref), then the play-state / outer param.
 	// A wild `track` here otherwise reads unmapped memory (const fault 0x1746f5168).
-	if (!JASystem::TrackMgr::isPoolTrack(track) || track->unk3C4 == 0
+	if (!JASystem::TrackMgr::isPoolTrack(track) || track->mSeqState == 0
 	    || track->getOuterParam() == nullptr)
 		return;
 #endif
