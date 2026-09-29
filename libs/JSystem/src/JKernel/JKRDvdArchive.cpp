@@ -8,6 +8,16 @@
 #include <string.h>
 #include <dolphin/os.h>
 
+// The base has two two-argument constructors, JKRArchive(intptr_t, EMountMode)
+// and JKRArchive(const char*, EMountMode). A literal 0 is a null pointer
+// constant, so it is viable for both and the call is ambiguous; this is the
+// entry-number overload the sibling constructor below also selects.
+JKRDvdArchive::JKRDvdArchive()
+    : JKRArchive((intptr_t)0, MOUNT_DVD)
+{
+	JUT_ASSERT_F(false, "UNIMPLEMENTED");
+}
+
 JKRDvdArchive::JKRDvdArchive(s32 entryNum,
                              JKRArchive::EMountDirection mountDirection)
     : JKRArchive(entryNum, MOUNT_DVD)
@@ -46,6 +56,23 @@ JKRDvdArchive::~JKRDvdArchive()
 		mIsMounted = false;
 	}
 }
+
+void JKRDvdArchive::fixedInit(s32 entryNum)
+{
+	JUT_ASSERT_F(false, "UNIMPLEMENTED");
+}
+
+void JKRDvdArchive::mountFixed(s32 entryNum)
+{
+	JUT_ASSERT_F(false, "UNIMPLEMENTED");
+}
+
+void JKRDvdArchive::mountFixed(const char* path)
+{
+	JUT_ASSERT_F(false, "UNIMPLEMENTED");
+}
+
+void JKRDvdArchive::unmountFixed() { JUT_ASSERT_F(false, "UNIMPLEMENTED"); }
 
 bool JKRDvdArchive::open(s32 entryNum)
 {

@@ -1,6 +1,6 @@
-
-#include <JSystem/JKernel/JKRMacro.hpp>
 #include <JSystem/JKernel/JKRThread.hpp>
+#include <JSystem/JUtility/JUTAssert.hpp>
+#include <JSystem/JKernel/JKRMacro.hpp>
 #include <JSystem/JKernel/JKRHeap.hpp>
 
 JSUList<JKRThread> JKRThread::sThreadList;
@@ -14,8 +14,8 @@ JKRThread::JKRThread(u32 stackSize, int msgCount, int threadPrio)
 	}
 
 	mStackSize    = JKR_ALIGN32(stackSize);
-	mStackMemory  = JKRHeap::alloc(mStackSize, 32, mHeap);
-	mThreadRecord = (OSThread*)JKRHeap::alloc(sizeof(OSThread), 32, mHeap);
+	mStackMemory  = JKRAllocFromHeap(mHeap, mStackSize, 32);
+	mThreadRecord = (OSThread*)JKRAllocFromHeap(mHeap, sizeof(OSThread), 32);
 #ifndef SMS_NATIVE_PLATFORM
 	OSCreateThread(mThreadRecord, &JKRThread::start, this,
 	               (void*)((uintptr_t)mStackMemory + mStackSize), mStackSize,
@@ -26,8 +26,8 @@ JKRThread::JKRThread(u32 stackSize, int msgCount, int threadPrio)
 	// dispatch handles the work synchronously.
 #endif
 	mMesgCount  = msgCount;
-	mMesgBuffer = (OSMessage*)JKRHeap::alloc(mMesgCount * sizeof(OSMessage), 0,
-	                                        mHeap);
+	mMesgBuffer = (OSMessage*)JKRAllocFromHeap(
+	    mHeap, mMesgCount * sizeof(OSMessage), 0);
 	OSInitMessageQueue(&mMesgQueue, mMesgBuffer, mMesgCount);
 	JKRThread::sThreadList.append(&mLink);
 }
@@ -37,10 +37,11 @@ JKRThread::JKRThread(OSThread* threadRecord, int msgCount)
 {
 	mHeap         = nullptr;
 	mThreadRecord = threadRecord;
-	mStackSize    = (u32)((uintptr_t)threadRecord->stackEnd - (uintptr_t)threadRecord->stackBase);
-	mStackMemory  = threadRecord->stackBase;
-	mMesgCount    = msgCount;
-	mMesgBuffer   = (OSMessage*)JKRHeap::sSystemHeap->alloc(
+	mStackSize    = (u32)((uintptr_t)threadRecord->stackEnd
+	             - (uintptr_t)threadRecord->stackBase);
+	mStackMemory = threadRecord->stackBase;
+	mMesgCount   = msgCount;
+	mMesgBuffer  = (OSMessage*)JKRHeap::sSystemHeap->alloc(
         mMesgCount * sizeof(OSMessage), 4);
 	OSInitMessageQueue(&mMesgQueue, mMesgBuffer, mMesgCount);
 	JKRThread::sThreadList.append(&mLink);
@@ -66,4 +67,35 @@ JKRThread::~JKRThread()
 void* JKRThread::start(void* thread)
 {
 	return static_cast<JKRThread*>(thread)->run();
+}
+
+// NOTE: sTaskList is declared but not defined: the map does not list it, and a
+// definition would add a JKRTask entry to __sinit_JKRThread_cpp, which the
+// original does not have.
+
+JKRTask::JKRTask()
+    : JKRThread(0, 0, 0)
+{
+	JUT_ASSERT_F(false, "UNIMPLEMENTED");
+}
+
+JKRTask::~JKRTask() { JUT_ASSERT_F(false, "UNIMPLEMENTED"); }
+
+JKRTask* JKRTask::create()
+{
+	JUT_ASSERT_F(false, "UNIMPLEMENTED");
+	return nullptr;
+}
+
+void JKRTask::destroy() { JUT_ASSERT_F(false, "UNIMPLEMENTED"); }
+
+void* JKRTask::run()
+{
+	JUT_ASSERT_F(false, "UNIMPLEMENTED");
+	return nullptr;
+}
+
+void JKRTask::request(void (*func)(void*), void* param)
+{
+	JUT_ASSERT_F(false, "UNIMPLEMENTED");
 }

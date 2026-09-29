@@ -10,6 +10,89 @@
 #include <Strategic/Strategy.hpp>
 #include <dolphin/mtx.h>
 
+TGenerator::TGenerator(const char* name)
+    : JDrama::TViewObj(name)
+{
+	mManagerName = nullptr;
+	mManager     = nullptr;
+	mGraphName   = nullptr;
+	mGraph       = nullptr;
+	mInterval    = 1;
+	mTimer       = 0;
+}
+
+void TGenerator::load(JSUMemoryInputStream& stream)
+{
+	JDrama::TViewObj::load(stream);
+
+	stream >> mPos.x >> mPos.y >> mPos.z;
+	stream >> mRot.x >> mRot.y >> mRot.z;
+
+	f32 unused;
+	stream >> unused >> unused >> unused;
+	stream.readString();
+
+	s32 count = stream.readS32();
+	for (int i = 0; i < count; ++i) {
+		s32 dummy;
+		stream >> dummy;
+		stream.readString();
+	}
+
+	mGraphName   = stream.readString();
+	mManagerName = stream.readString();
+
+	stream >> mInterval;
+
+	s32 timer = mInterval;
+	timer *= MsRandF();
+	mTimer = timer;
+
+	gpConductor->registerGenerator(this);
+}
+
+void TGenerator::perform(u32 cue, JDrama::TGraphics* graphics)
+{
+	if (cue & CUE_MOVE) {
+		mTimer -= 1;
+		if (mTimer < 0)
+			mTimer = mInterval;
+
+		if (mTimer == 0) {
+			if (mManager == nullptr)
+				mManager = (TEnemyManager*)gpConductor->getManagerByName(
+				    mManagerName);
+
+			TSpineEnemy* enemy = mManager->getFarOutEnemy();
+			if (enemy != nullptr) {
+				if (mGraph == nullptr)
+					mGraph = gpConductor->getGraphByName(mGraphName);
+
+				enemy->getTracer()->setGraph(mGraph);
+
+				JGeometry::TVec3<f32> rot(0.0f, 0.0f, 0.0f);
+				JGeometry::TVec3<f32> vel(0.0f, 4.0f, 0.0f);
+
+				Mtx m;
+				MsMtxSetRotRPH(m, mRot.x, mRot.y, mRot.z);
+				MTXMultVec(m, &vel, &vel);
+
+				enemy->resetSRTV(mPos, rot, enemy->mScaling, vel);
+			}
+		}
+	}
+}
+
+TOneShotGenerator::TOneShotGenerator(const char* name)
+    : THitActor(name)
+    , mManagerName(nullptr)
+    , mManager(nullptr)
+    , mGraphName(nullptr)
+    , mGraph(nullptr)
+    , mCount(1)
+{
+}
+
 // Native port of TOneShotGenerator::load (@0x8008f710). RE: scratch/decomp_next3/8008f710.c.
 // Reads two null-terminated names from the scene-load stream. Storage is at +0x70 (first
 // read) and +0x68 (second read); the RE writes to the higher offset first, so preserve the
