@@ -99,11 +99,24 @@ public:
 	// decrement is guarded by `!= 0`, so garbage here would count down for two billion frames.
 	/* 0x194 */ int unk194;
 
-	// Set by the ctor (@0x801e1bf4). GUEST offsets 0x198/0x19c/0x1a4; on the LP64 host these
-	// are just named members (host offset irrelevant — accessed by name only). unk19c is the
-	// fruit's TEV register-0 tint, bound in initMapObj via SMS_InitPacket_OneTevColor.
+	// Written by the ctor (@0x801e1bf4) and read NOWHERE in the recovered tree, so it has no
+	// determinate name and keeps its placeholder. The evidence that settles it is recorded
+	// rather than guessed: retail's ctor loads this from a small-data constant at
+	// r2 - 0x2428 = 0x80414778, and that constant is 0x0 (read out of the DOL's DATA7), so
+	// `= 0.0f` here is bit-faithful rather than a placeholder standing in for a real value.
+	// A field nothing reads has no recoverable meaning until something is recovered that
+	// reads it.
 	/* 0x198 */ f32 unk198;
-	/* 0x19c */ GXColorS10 unk19c;
+	// The ctor's TEV register-0 tint. Renamed from unk19c: the single read passes this
+	// field's address to SMS_InitPacket_OneTevColor with GX_TEVREG0, and the ctor
+	// (@0x801e1bf4) stores 255 into all four components. That is the whole of what is
+	// known about it, and the name says exactly that much -- it is a descriptive name for a
+	// recovered fact, not a claim to have recovered Nintendo's own identifier.
+	/* 0x19c */ GXColorS10 mTevReg0Color;
+	// Written to 0 by the ctor and read once, to gate a second makeObjDead() in Ricco
+	// Harbour (mMap == 3, US 0x801e2994). Nothing in the recovered tree ever sets it
+	// non-zero, so what sets it in retail is not known and the name cannot be better than
+	// this. Same shape as unk194 above: a field the ctor seeds and no recovered code drives.
 	/* 0x1a4 */ u8 unk1a4;
 };
 

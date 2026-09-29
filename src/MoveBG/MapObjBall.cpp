@@ -388,26 +388,36 @@ void TMapObjBall::calcCurrentMtx()
 }
 
 // Native port of TResetFruit ctor (@0x801e1bf4): base TMapObjBall ctor, then init the fruit's
-// TEV tint (unk19c = opaque white) + unk198 (0.0, SDA2[-0x2428]) + unk1a4 (0). Ported here;
+// TEV tint (mTevReg0Color = 255 per component) + unk198 (0.0) + unk1a4 (0). Ported here;
 // stub removed from movebg_stubs.cpp.
+//
+// Verified against the retail body rather than transcribed from it. Retail writes
+// `0xff` as four 16-bit stores at +0x19c/+0x19e/+0x1a0/+0x1a2, which is 255 per component of
+// the GXColorS10 -- so the component values here are retail's, not a guess at "white". The
+// float at +0x198 is retail's `*(f32*)(r2 - 0x2428)`, and the constant at that address
+// (0x80414778, DATA7 of the DOL) is 0x0, so `0.0f` is the real initial value. The byte at
+// +0x1a4 is a plain zero store. unk194 is the one member retail's ctor does NOT touch; the
+// zero here is a deliberate port deviation, explained in the header.
 TResetFruit::TResetFruit(const char* name) : TMapObjBall(name)
 {
 	unk194 = 0; // see the header: retail leaves this uninitialised, the port must not
 	unk198 = 0.0f;
 	unk1a4 = 0;
-	unk19c.r = 0xff;
-	unk19c.g = 0xff;
-	unk19c.b = 0xff;
-	unk19c.a = 0xff;
+	mTevReg0Color.r = 0xff;
+	mTevReg0Color.g = 0xff;
+	mTevReg0Color.b = 0xff;
+	mTevReg0Color.a = 0xff;
 }
 
 // Native port of TResetFruit::initMapObj (@0x801e1c5c). Chains to the (now-ported)
-// TMapObjBall::initMapObj (builds model + physics), then binds the ctor-set white TEV color
-// into TEV register 0 of the model's material packet. Raw arg (GXTevRegID)1 == GX_TEVREG0.
+// TMapObjBall::initMapObj (builds model + physics), then binds the ctor's TEV color into
+// TEV register 0 of the model's material packet -- the only read of that field in the tree,
+// and the reason it is named rather than left a placeholder. Raw arg (GXTevRegID)1 ==
+// GX_TEVREG0.
 void TResetFruit::initMapObj()
 {
 	TMapObjBall::initMapObj();
-	SMS_InitPacket_OneTevColor(getModel(), 0, GX_TEVREG0, &unk19c);
+	SMS_InitPacket_OneTevColor(getModel(), 0, GX_TEVREG0, &mTevReg0Color);
 }
 
 // Native port of TResetFruit::makeObjAppeared (@0x801e2084, US GMSE01, size 0x130).
@@ -731,7 +741,7 @@ void TResetFruit::control()
 	// ── state 13: the wait is over, put the fruit back ─────────────────────────────────────
 	// 0x801e28e4, 56 instructions, ported complete. State 12 advances here after 0xf0 frames.
 	//
-	//   801e2904  li 0xff ; sth 0x19c/0x19e/0x1a0   ; unk19c is a GXColorS10 -- r,g,b restored,
+	//   801e2904  li 0xff ; sth 0x19c/0x19e/0x1a0   ; mTevReg0Color is a GXColorS10 -- r,g,b restored,
 	//                                                 ALPHA (0x1a2) deliberately untouched
 	//   801e2918  bl awake__11TMapObjBaseFv
 	//   801e2920  mState = 0xb   <-- set, then overwritten with 0xa at 0x801e2990. Retail does
@@ -745,9 +755,9 @@ void TResetFruit::control()
 		if (mStateTimer > 0)
 			break;
 
-		unk19c.r = 255;
-		unk19c.g = 255;
-		unk19c.b = 255;
+		mTevReg0Color.r = 255;
+		mTevReg0Color.g = 255;
+		mTevReg0Color.b = 255;
 
 		awake();
 		mState = 0xb;

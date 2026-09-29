@@ -56,6 +56,18 @@ public:
 	/* 0x2A0 */ J2DTextBox* unk2A0[2];
 	/* 0x2A8 */ JPABaseEmitter* unk2A8[3];
 	/* 0x2B4 */ u8 unk2B4;
+	// Not retail's layout: this fork replaced upstream's `u8 unk2A8; u8 unk2A9; void*
+	// unk2AC; void* unk2B0` with a `JPABaseEmitter* unk2A8[3]` spine, which is why the
+	// placeholder offsets shift. Retail's ctor (@0x80172800) stores to +0x2B4 and +0x2B8 and
+	// never touches +0x2B5, so this member is one this port added and retail leaves
+	// uninitialised -- the same shape as TResetFruit::unk194.
+	//
+	// It keeps its placeholder because every use of it sits inside a region this port never
+	// recovered: the two blocks in ConsoleStr.cpp that set and clear it test the same
+	// condition (`gpMarDirector->mState != 4`) and have empty bodies under
+	// "// TODO: uknown stuff". A field whose only readers are unrecovered code has no
+	// recoverable meaning; naming it would be naming the port's guess at the region rather
+	// than anything the binary says. Recovering that region would settle it.
 	/* 0x2B5 */ u8 unk2B5;
 	/* 0x2B8 */ int unk2B8;
 	/* 0x2BC */ int unk2BC;
