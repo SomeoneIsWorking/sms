@@ -49,6 +49,54 @@
 // that WRITE it are faithful, and so the next porter finds the analysis instead of redoing it.
 static u8 sGuideMountCountdown;
 
+// ── the constructor ──────────────────────────────────────────────────────────────────────────
+//
+// Recovered from upstream (8b1822a1 "Some quick & dirty Guide", 2026-09-28) and kept through the
+// 2026-09-29 merge d13cd028, which dropped the whole upstream file by preferring ours. The member
+// list is upstream's, verbatim; the ten members it names all exist at the offsets the decomp
+// assigns them in include/GC2D/Guide.hpp, and every initialiser is the value the retail
+// constructor stores.
+//
+// This was not cosmetic here. `new TGuide` at src/System/MarNameRefGen.cpp:216 is the only way the
+// guide screen comes into existence, and with no constructor at all unk10 was whatever the arena
+// handed back. The ported perform() below then reads unk10 as the state machine's current state
+// and unkBC as the screen: an uninitialised state falls into sb::guide::step_transition's
+// `default:` arm and the guide can never leave it, and a non-null junk unkBC would be drawn. The
+// ctor is what makes unk10 = 8 (the "before the guide appears" state the draw gate below excludes)
+// and unkBC = nullptr true by construction.
+//
+// Two things upstream has here that are NOT taken:
+//
+//   setup_wait. Upstream names the same global `setup_wait`; the analysis above identifies it as
+//   the mount-delay byte and this file's sGuideMountCountdown is that same object, with the RE
+//   that says so. Adding a second file-scope u8 for the same word would be a second owner.
+//
+//   scNormalStageTable. Upstream declares `static u32 scNormalStageTable[] = {0,1,2,3,4,0xd,6,8,9,0xa}`
+//   and nothing in the file reads it. It exists upstream to make the .sbss layout line up in a
+//   matched build; this port does not build a matched image, and an unread table here would be
+//   dead code with no owner. Not recovered, not needed.
+//
+// unk424/unk428, the two fork-local TExPane* the transition block clears and hides, are
+// deliberately NOT initialised here, matching retail. The ported perform() cannot observe an
+// uninitialised value: step_transition returns return_to_gameplay only from state 11, and state 11
+// is reachable only from state 7, which is reachable only from state 0, which is entered from
+// state 10 with clear_selection set — and that assignment is what nulls both pointers. An
+// initialiser would be an invented retail claim, not a recovered one.
+TGuide::TGuide(const char* name)
+    : JDrama::TViewObj(name)
+    , unk10(8)
+    , unkBC(nullptr)
+    , unkC0(nullptr)
+    , unkC4(0)
+    , unkC5(0)
+    , unk160(0xff)
+    , unk164(1)
+    , unk434(0, 0, 0, 0)
+    , unk480(-1)
+    , unk48C(0, 0, 0, 0)
+{
+}
+
 // TGuide::setup — US 0x8017b464, 0x5C bytes.
 //
 //   8017b474  or.  r31, r4, r4      ; test the archive argument

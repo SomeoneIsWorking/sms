@@ -442,9 +442,9 @@ f32 MSound::getDistFromCamera(Vec* pos)
 f32 MSound::getDistPowFromCamera(const Vec& pos)
 {
 	const Vec* cam = mAudioCameras->mPosition;
-	f32 dy         = std::powf(pos.y - cam->y, 2.0f);
-	f32 dx         = std::powf(pos.x - cam->x, 2.0f);
-	f32 dz         = std::powf(pos.z - cam->z, 2.0f);
+	f32 dy         = powf(pos.y - cam->y, 2.0f);
+	f32 dx         = powf(pos.x - cam->x, 2.0f);
+	f32 dz         = powf(pos.z - cam->z, 2.0f);
 	return dx + dy + dz;
 }
 #endif

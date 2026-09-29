@@ -1,6 +1,7 @@
 #include <MoveBG/MapObjTree.hpp>
 #include <Map/MapCollisionEntry.hpp>
 #include <Map/MapCollisionManager.hpp>
+#include <Map/MapData.hpp> // TBGCheckData - Mario's ground plane (touchPlayer)
 #include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
 #include <cstdio>
 #include <cmath>
@@ -11,11 +12,42 @@
 
 // TMapObjTree — trees whose leaves each carry a moving collision object.
 //
-// The upstream decomp has an EMPTY MapObjTree.cpp; these three bodies
-// (TMapObjLeaf ctor, initEach, initMapObj) are a cold reverse-engineering of
-// the US GMSE01 DOL, not a transcription of existing decomp source. Ground
-// truth + full derivation: debug_journal/2026-07-15_mapobjtree_initmapobj_port_re.md
-// and scratch/re/mapobjtree_port_dossier.md. Address anchors are cited inline.
+// The TMapObjLeaf ctor, initEach, initMapObj, controlLeaf, perform and the two bodies
+// below are a cold reverse-engineering of the US GMSE01 DOL, not a transcription of
+// existing decomp source. Ground truth + full derivation:
+// debug_journal/2026-07-15_mapobjtree_initmapobj_port_re.md and
+// scratch/re/mapobjtree_port_dossier.md. Address anchors are cited inline.
+//
+// (Corrected 2026-09-28: the comment here used to claim "the upstream decomp has an
+// EMPTY MapObjTree.cpp". That premise, from eb2fd714, is stale — upstream/main ships
+// 344 lines, including the TMapObjTree ctor and touchPlayer that eb2fd714 dropped
+// along with the rest. Those two are recovered below from upstream, mapped onto this
+// fork's field names.)
+
+// TMapObjTree ctor. Restored 2026-09-28 from upstream (src/MoveBG/MapObjTree.cpp:196),
+// which zero-initialises every species/leaf field and starts the leaf sway frozen.
+// Field mapping (upstream -> this fork), all confirmed against initEach below, which
+// assigns the same five constants to the same five fields:
+//   mMinCanopyRadius    -> unk148     mLeafTouchImpulse   -> unk15C
+//   mMaxCanopyRadius    -> unk14C     mLeafHipDropImpulse -> unk160
+//   mLeafNum            -> mLeafCount mLeafStiffness      -> unk164
+//   mLeaves             -> mLeaves    mLeafDamping        -> unk168
+//   mFreezeLeaves       -> unk158
+// Upstream also zeroes a 0x16C field (unk16C) that this fork's header does not declare
+// and that nothing here reads; it is not reconstructed.
+TMapObjTree::TMapObjTree(const char* name)
+    : TMapObjGeneral(name)
+    , unk148(0.0f)
+    , unk14C(0.0f)
+    , mLeafCount(0)
+    , mLeaves(nullptr)
+    , unk158(1) // leaves start frozen; the first touchPlayer unfreezes them
+    , unk15C(0.0f)
+    , unk160(0.0f)
+    , unk164(0.0f)
+    , unk168(0.0f)
+{
+}
 
 // Element ctor @0x801f6ef4: zero the two leading f32s, identity the joint
 // matrix, and allocate a default TMapCollisionMove into +8. (initMapObj later
@@ -27,6 +59,31 @@ TMapObjLeaf::TMapObjLeaf()
 	unk4 = 0.0f;
 	PSMTXIdentity(mMtx);
 	mCollision = new TMapCollisionMove();
+}
+
+// TMapObjTree::touchPlayer. Restored 2026-09-28 from upstream (src/MoveBG/MapObjTree.cpp:46),
+// dropped by our eb2fd714. Any player touch unfreezes the leaf sway (unk158 = 0), and
+// when the player is actually standing on THIS tree's collision the leaf under Mario gets
+// an angular-velocity kick: bigger for a hip attack than for standing on it.
+//
+// The same field mapping as the ctor above, with upstream's mLeafTouchImpulse -> unk15C
+// and mLeafHipDropImpulse -> unk160 (the values initEach writes match upstream's
+// mLeafTouchImpulse / mLeafHipDropImpulse arm-for-arm). The ground-plane data index
+// reaches the leaf array directly, which is why TBGCheckData::getData()/getActor() are
+// the two accessors used here.
+void TMapObjTree::touchPlayer(THitActor* /* player */)
+{
+	unk158 = 0;
+
+	const TBGCheckData* groundPlane = SMS_GetMarioGroundPlane();
+	s16 data = groundPlane->getData();
+	if (groundPlane->getActor() != this || data < 0 || data >= mLeafCount)
+		return;
+
+	if (marioHipAttack())
+		mLeaves[data].unk4 += unk160;
+	else if (marioIsOn())
+		mLeaves[data].unk4 += unk15C;
 }
 
 // initEach @0x801f6a64: flat switch on THitActor::mActorType (0x4C) selecting

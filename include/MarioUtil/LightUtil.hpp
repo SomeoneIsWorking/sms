@@ -29,7 +29,12 @@ public:
 	virtual void perform(u32, JDrama::TGraphics*);
 
 	void calcLightBorder();
-	void getEffectLightColor() const;
+	// Signatures restored 2026-09-28 from upstream (src/MarioUtil/LightUtil.cpp)
+	// after the 2026-07-17 rebase 9fcbdaca had downgraded them to `void` while
+	// dropping the bodies. `void getEffectLightColor()` forced a body that
+	// discards its result; `void getLightIndex/getAmbIndex` forced a body that
+	// discards the -1/not-found answer the four makeDrawBuffer ports rely on.
+	GXColor getEffectLightColor() const;
 	void setEffectLight(const JDrama::TGraphics*, GXLightObj*);
 	// Retail @0x802281b8 returns the Vec* global @r13-0x6110, which
 	// TLightCommon::loadAfter (@0x80229e30) publishes as
@@ -130,8 +135,8 @@ public:
 	virtual void perform(u32, JDrama::TGraphics*);
 	virtual void makeDrawBuffer() = 0;
 
-	void getAmbIndex(const char*);
-	void getLightIndex(const char*);
+	int getAmbIndex(const char*);
+	int getLightIndex(const char*);
 	void getLightDrawBuffer(int);
 	void getXluDrawBuffer(int);
 	void getOpaDrawBuffer(int);

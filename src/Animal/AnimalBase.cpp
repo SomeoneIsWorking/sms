@@ -35,6 +35,21 @@
 // See debug_journal/2026-08-05_msrandf_negative_rng_delfino_segv.md.
 static inline f32 sAnmRand01() { return (f32)rand() * (1.0f / (f32)(RAND_MAX + 1.0f)); }
 
+// TAnimalBase::TAnimalBase. Restored 2026-09-28
+// from upstream (src/Animal/AnimalBase.cpp:42); our fork's ab11c517 (2026-07-17) replaced
+// the whole file with a cold-RE version and kept receiveMessage/calcRootMatrix but
+// dropped the ctor, leaving three live call sites without a body:
+//   src/Animal/AnimalBase.cpp:87   new TAnimalBase(getActorType(), getName())
+//   src/Animal/Bird.cpp:128        TAnimalBird::TAnimalBird -> TAnimalBase(0, name)
+//   src/System/MarNameRefGen_Enemy.cpp:99  new TAnimalBase(0x80001)
+// The actor type is the only thing the ctor stores; everything else is
+// TSpineEnemy's ctor plus the per-spawn init() pass.
+TAnimalBase::TAnimalBase(u32 actorType, const char* name)
+    : TSpineEnemy(name)
+{
+	mActorType = actorType;
+}
+
 // Native port of TAnimalBase::loadAfter (US GMSE01 @0x80008bec, size 0x48). RE'd from disasm
 // (workflow 2026-07-17, verified vs the binary). TAnimalBase's TU is unnamed in the US map, so
 // the address was located by structural fingerprint in the 0x80007c80..0x8000abc4 gap and
@@ -225,6 +240,71 @@ void TAnimalBase::getRotationFlyToDir(JGeometry::TVec3<f32>* rotation,
 	rot.x       = MsWrap(rot.x, -180.0f, 180.0f);
 	rotation->x = MsWrap(rotation->x, -180.0f, 180.0f);
 	CLBChaseGeneralConstantSpecifySpeed<f32>(&rotation->x, rot.x, 0.1f * speed);
+}
+
+// TAnimalBase::execWalk. Restored 2026-09-28 from upstream (src/Animal/AnimalBase.cpp:266),
+// the same strcmp-free steer step our TBaseNPC::execWalk (src/NPC/NpcWalkTurn.cpp:17) does,
+// with the animal's own save-parameter set. Shape kept from upstream: chase mMarchSpeed
+// toward the save's max (or toward 0) at the save's accel/decel, pick the turn speed from
+// whether we are actually moving, then steer toward the goal path node and advance along
+// the model's local +Z.
+//
+// Adapted to this port:
+//   * the goal node is reached through the fork's accessor getUnkF4() (upstream reads the
+//     unkF4 field directly; the same accessor is used by resetRandomCurPathNode above);
+//   * CLBChaseGeneralConstantSpecifySpeed<f32> is spelled with the explicit template
+//     argument, as getRotationFlyToDir above does.
+//
+// KNOWN GAP, reported not papered over: the final velocity step calls SMS_Eular2Quat,
+// which our header declares (include/MarioUtil/MathUtil.hpp:91) but which has NO
+// definition anywhere in this fork - upstream defines it in this same file at line 25 and
+// our ab11c517 dropped it with everything else. Upstream also carries a standing
+// "TODO: quaternions are still wrong" note on exactly this step, so the call is faithful
+// to upstream and the missing definition is a separate hole, not something to invent here.
+void TAnimalBase::execWalk(bool moving)
+{
+	TAnimalSaveIndividual* save =
+	    static_cast<TAnimalManagerBase*>(mManager)->mAnimalSave;
+
+	if (moving) {
+		f32 speed = save->mSLMaxMarchSpeed.get() * SMSGetAnmFrameRate();
+		f32 accel = save->mSLMarchAccel.get() * SMSGetAnmFrameRate()
+		            * SMSGetAnmFrameRate();
+		CLBChaseGeneralConstantSpecifySpeed<f32>(&mMarchSpeed, speed, accel);
+	} else {
+		f32 decel = save->mSLMarchDecrease.get() * SMSGetAnmFrameRate()
+		            * SMSGetAnmFrameRate();
+		CLBChaseGeneralConstantSpecifySpeed<f32>(&mMarchSpeed, 0.0f, decel);
+	}
+
+	// Standing still turns slower than walking.
+	if (mMarchSpeed < 0.001f)
+		mTurnSpeed = save->mSLWaitTurnSpeed.get() * SMSGetAnmFrameRate();
+	else
+		mTurnSpeed = save->mSLWalkTurnSpeed.get() * SMSGetAnmFrameRate();
+
+	f32 turnSpeed  = mTurnSpeed;
+	f32 marchSpeed = mMarchSpeed;
+
+	JGeometry::TVec3<f32> diff = getUnkF4().getPoint();
+	diff -= mPosition;
+
+	// Already on top of the goal node: hold position, do not re-steer.
+	f32 dist = diff.length();
+	if (dist < 100.0f)
+		return;
+
+	// Slow down into the turn rather than overshooting the node.
+	if (dist <= 2.0f * calcMinimumTurnRadius(marchSpeed, turnSpeed))
+		turnSpeed = calcTurnSpeedToReach(marchSpeed, 0.5f * dist);
+
+	getRotationFlyToDir(&mRotation, diff, marchSpeed, turnSpeed);
+
+	// Forward is local +Z scaled by the current march speed.
+	JGeometry::TQuat4<f32> quat = SMS_Eular2Quat(mRotation);
+	JGeometry::TVec3<f32> forward;
+	quat.rotate(JGeometry::TVec3<f32>(0.0f, 0.0f, marchSpeed), forward);
+	mLinearVelocity = forward;
 }
 
 // TAnimalBase::perform (US GMSE01 @0x800088a8, JP size 0x338). RE'd + verified. Per-frame

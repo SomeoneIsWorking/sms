@@ -639,6 +639,31 @@ static int sb_find_named_index(T* arr, int count, const char* needle)
 	return -1;
 }
 
+// TLightWithDBSet::getLightIndex / getAmbIndex — the two name-lookup loops the
+// four makeDrawBuffer ports run to find this set's light/ambient base index.
+// Restored 2026-09-28 from upstream (src/MarioUtil/LightUtil.cpp:287 and :295),
+// which had the same strcmp-over-ary loop. Adapted to this port: the group
+// singletons are reached through sb_light_ary_or_search() / sb_amb_ary_or_search()
+// (the ctor NULLs the raw SDA1 caches, see the lazy-repopulate note above), and
+// the loop itself is the shared sb_find_named_index() helper rather than a second
+// copy of it. -1 is the "needle absent from this scene" answer the makeDrawBuffer
+// ports already treat as a first-class result.
+int TLightWithDBSet::getLightIndex(const char* name)
+{
+	JDrama::TLightAry* lightAry = sb_light_ary_or_search();
+	if (!lightAry)
+		return -1;
+	return sb_find_named_index(lightAry->mLights, lightAry->mLightCount, name);
+}
+
+int TLightWithDBSet::getAmbIndex(const char* name)
+{
+	JDrama::TAmbAry* ambAry = sb_amb_ary_or_search();
+	if (!ambAry)
+		return -1;
+	return sb_find_named_index(ambAry->mAmbColors, ambAry->mAmbColorCount, name);
+}
+
 // Native port of TIndirectLightWithDBSet::makeDrawBuffer (@0x802289ac, 114 insns).
 // Two name-lookup loops -> alloc mDrawBuffers[mBufferCount] -> for each: alloc a
 // TLightDrawBuffer + a TLightCommon owner, wire owner via setLight, and seed
@@ -942,6 +967,49 @@ void TLightWithDBSetManager::calcLightBorder()
 	unk3C = -(fVar6 * unk40 - fVar4) / fVar5;
 	unk38 = kY0 - (unk40 * x0 * x0 + x0 * unk3C);
 #endif
+}
+
+// TLightWithDBSetManager::setEffectLight / getEffectLightColor. Restored
+// 2026-09-28 from upstream (src/MarioUtil/LightUtil.cpp:484 and :498), which had
+// the same body: gate on both effect bytes, transform the effect position by the
+// VIEW matrix, and program GX_LIGHT1 as a spot light with a distance falloff.
+// Adapted to this port:
+//   * upstream's mEffectLightPos / unk54 / unk55 / unk28 are this fork's
+//     mEffectPos / mEffectEnabled / mEffectValid / mEffectAlphaScale;
+//   * MTXMultVec -> PSMTXMultVec (dolphin SDK), the same call TLightCommon::setLight
+//     uses, through the same getViewMtx() accessor;
+//   * the alpha scale uses this fork's explicit f32->int->u8 chain rather than the
+//     C++ implicit `u8 *= float` narrowing, matching getLightColor/getAmbColor and the
+//     L1 block of TLightCommon::setLight;
+//   * the distance-attenuation curve is GX_DA_MEDIUM (3), the value RE'd off the
+//     SDA2 constant and used by the L1 block of TLightCommon::setLight, not
+//     upstream's GX_DA_STEEP (2). Both are the same spot(1, off) + (1000, 0.5)
+//     setup; only the curve differs, and the US disassembly is the authority here.
+void TLightWithDBSetManager::setEffectLight(const JDrama::TGraphics* graphics,
+                                            GXLightObj* light)
+{
+	if (!mEffectEnabled || !mEffectValid)
+		return;
+
+	MtxPtr view = const_cast<JDrama::TGraphics*>(graphics)->getViewMtx();
+	JGeometry::TVec3<f32> eyePos;
+	PSMTXMultVec(view,
+	             const_cast<JGeometry::TVec3<f32>*>(&mEffectPos),
+	             &eyePos);
+	GXInitLightPos(light, eyePos.x, eyePos.y, eyePos.z);
+	GXInitLightColor(light, getEffectLightColor());
+	GXInitLightAttnA(light, 1.0f, 0.0f, 0.0f);
+	GXInitLightDistAttn(light, /*ref_distance=*/ 1000.0f,
+	                    /*ref_brightness=*/ 0.5f, GX_DA_MEDIUM);
+	GXLoadLightObjImm(light, GX_LIGHT1);
+}
+
+GXColor TLightWithDBSetManager::getEffectLightColor() const
+{
+	GXColor result = mEffectColor;
+	result.a = static_cast<u8>(
+	    static_cast<int>(static_cast<f32>(result.a) * mEffectAlphaScale));
+	return result;
 }
 
 // Native port of TLightWithDBSetManager::loadAfter (@0x80228490, 41 insns).
