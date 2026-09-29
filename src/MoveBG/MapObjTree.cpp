@@ -2,13 +2,45 @@
 #include <Map/MapCollisionEntry.hpp>
 #include <Map/MapCollisionManager.hpp>
 #include <Map/MapData.hpp> // TBGCheckData - Mario's ground plane (touchPlayer)
+#include <Map/MapEventSink.hpp>
+#include <Map/PollutionManager.hpp>
+#include <Camera/CameraShake.hpp>
 #include <JSystem/J3D/J3DGraphAnimator/J3DModel.hpp>
+#include <JSystem/JDrama/JDRNameRefGen.hpp>
+#include <macros.h> // ARRAY_COUNT
+#include <MarioUtil/PacketUtil.hpp>
+#include <MarioUtil/RandomUtil.hpp>
+#include <MarioUtil/RumbleMgr.hpp>
+#include <MSound/MSound.hpp>
+#include <System/EmitterViewObj.hpp>
+#include <System/MarDirector.hpp>
+#include <System/Particles.hpp>
 #include <cstdio>
 #include <cmath>
 #include <dolphin/mtx.h>
 #include <MoveBG/MapObjGeneral.hpp>
 #include <Strategic/LiveActor.hpp>
 #include <Player/MarioAccess.hpp>
+
+// Frames between scale-tree dust puffs (upstream src/MoveBG/MapObjTree.cpp:30).
+static int sWaitTime = 1;
+
+// Scale-tree species constants. Restored 2026-09-29 from upstream
+// (src/MoveBG/MapObjTree.cpp:31-34), lost with the TMapObjTreeScale bodies
+// below in the 2026-09-28 merge d13cd0284: `git show
+// d13cd0284^2:src/MoveBG/MapObjTree.cpp` carries all four, `git show
+// d13cd0284:...` carries none. Without them the class's control() has nothing
+// to scale by.
+//
+// mBananaTreeJumpPower is the same casualty and is LIVE here:
+// src/Map/MapData.cpp:13 reads it and nothing in this fork defines it.
+// mNearMiddle / mMiddleFar are declared in the header, read nowhere, and are
+// not defined upstream either - left alone.
+f32 TMapObjTreeScale::mScaleMin           = 0.1f;
+f32 TMapObjTreeScale::mScaleSpeedXZ       = 0.007f;
+f32 TMapObjTreeScale::mStatusChangeScaleY = 0.3f;
+f32 TMapObjTreeScale::mScaleSpeedY        = 0.005f;
+f32 TMapObjTree::mBananaTreeJumpPower     = 1000.0f;
 
 // TMapObjTree — trees whose leaves each carry a moving collision object.
 //
@@ -264,4 +296,188 @@ void TMapObjTree::perform(u32 param_1, JDrama::TGraphics* param_2)
 	}
 
 	TMapObjGeneral::perform(param_1, param_2);
+}
+
+// ---------------------------------------------------------------------------
+// TMapObjTreeScale - the Bianco/Delfino trees that grow when the water is
+// clean.
+// ---------------------------------------------------------------------------
+//
+// The whole class body is restored 2026-09-29 from upstream
+// (src/MoveBG/MapObjTree.cpp: ctor 336, startScaleUp 211, touchWater 219,
+// control 230, beSmall 303, loadAfter 321), which this fork lost in the
+// 2026-09-28 merge d13cd0284 - present at d13cd0284^2, absent from d13cd0284 -
+// while keeping the declarations. It is the one hole in this pass with a LIVE
+// call site: src/System/MarNameRefGen_MapObj.cpp:232 does `return new
+// TMapObjTreeScale;`, so the constructor and, through it, the three virtual
+// overrides (control/touchWater/loadAfter) that the vtable names had no
+// definition in this tree.
+//
+// FIELD MAPPING: none needed. This fork's include/MoveBG/MapObjTree.hpp:56-79
+// and upstream's include/MoveBG/MapObjTree.hpp spell TMapObjTreeScale
+// identically - the same three state constants (STATE_SMALL 0xB,
+// STATE_SCALING_UP_Y_ONLY 0xC, STATE_SCALING_UP 0xD) at the same offsets
+// (mParticlePositions 0x170[30], mNextFreeParticlePos 0x2D8, mParticleEmitTimer
+// 0x2DC, unk2E0 0x2E0) and the same four statics. The three base-class members
+// the bodies touch (mState, from TMapObjBase +0xFC; mPosition and mScaling,
+// from JDrama::TActor/TPlacement) keep their names in this fork too.
+//
+// The lifecycle is upstream's: a polluted map (or Delfino, map 4) loads the
+// tree already small, and beSmall() hides its shape packets; clean water starts
+// the Y-only growth, and the growth is finished in control() by turning the
+// tree into a normal, collidable map object.
+
+// beSmall: the "just spawned under water" state. Shrink to the species minimum,
+// go to sleep (no control pass), take no collisions, become a non-attackable
+// solid, and hide every shape packet so nothing of the tree is drawn while it
+// is under water.
+void TMapObjTreeScale::beSmall()
+{
+	mScaling.set(mScaleMin, mScaleMin, mScaleMin);
+	sleep();
+	offHitFlag(HIT_FLAG_NO_COLLISION);
+	onHitFlag(HIT_FLAG_CANNOT_ATTACK);
+	setObjHitData(0);
+	mDamageRadius = mAttackRadius;
+	calcEntryRadius();
+	mDamageHeight = 30.0f;
+	calcEntryRadius();
+	removeMapCollision();
+	offMapObjFlag(MAP_OBJ_FLAG_UNK100);
+	mActorType = 0x4000003B;
+	mState     = STATE_SMALL;
+	SMS_HideAllShapePacket(getModel());
+}
+
+// startScaleUp: the transition out of STATE_SMALL. Wake the object back up,
+// give it the grown-tree actor type, drop its map collision (it has none until
+// the growth completes) and enter the Y-only growth step.
+void TMapObjTreeScale::startScaleUp()
+{
+	awake();
+	mActorType = 0x40000039;
+	removeMapCollision();
+	mState = STATE_SCALING_UP_Y_ONLY;
+}
+
+// touchWater: a fully grown tree keeps the general map object's water reaction;
+// a scaled-down one starts growing instead of being pushed around.
+u32 TMapObjTreeScale::touchWater(THitActor* water)
+{
+	if (mScaling.x == 1.0f)
+		return TMapObjGeneral::touchWater(water);
+
+	if (isState(STATE_SMALL))
+		startScaleUp();
+
+	return 1;
+}
+
+// control: the growth driver. STATE_SMALL waits for clean water (never on
+// Delfino, where map 4 is permanently polluted); STATE_SCALING_UP_Y_ONLY raises
+// only Y until it passes the species' status-change scale; STATE_SCALING_UP
+// then brings X and Z up and, on completion, hands the tree back to the map as
+// a normal object. While either growth step is running the tree keeps its hit
+// data empty, and outside the demo-mode carve-out it rumbles the camera and
+// puffs dust from a ring buffer of positions.
+void TMapObjTreeScale::control()
+{
+	switch (mState) {
+	case STATE_SMALL:
+		if (SMSGetMarDirector()->getCurrentMap() != 4
+		    && !gpPollution->isPolluted(mPosition.x, mPosition.y, mPosition.z))
+			startScaleUp();
+		break;
+
+	case STATE_SCALING_UP_Y_ONLY:
+		SMSGetMSound()->startSoundActor(MSD_SE_OBJ_TREE_APPEAR, &mPosition, 0,
+		                                nullptr, 0, 4);
+		mScaling.y += mScaleSpeedY;
+		if (mScaling.y > mStatusChangeScaleY)
+			mState = STATE_SCALING_UP;
+		break;
+
+	case STATE_SCALING_UP:
+		SMSGetMSound()->startSoundActor(MSD_SE_OBJ_TREE_APPEAR, &mPosition, 0,
+		                                nullptr, 0, 4);
+		if (mScaling.y < 1.0f)
+			mScaling.y += mScaleSpeedY;
+		else
+			mScaling.y = 1.0f;
+
+		if (mScaling.x < 1.0f) {
+			mScaling.x += mScaleSpeedXZ;
+			mScaling.z += mScaleSpeedXZ;
+		} else {
+			mScaling.x = 1.0f;
+			mScaling.z = 1.0f;
+			onMapObjFlag(MAP_OBJ_FLAG_UNK100);
+			getModel()->calc();
+			offHitFlag(HIT_FLAG_CANNOT_ATTACK);
+			setUpCurrentMapCollision();
+			mState = STATE_NORMAL;
+		}
+		break;
+
+	default:
+		TMapObjGeneral::control();
+		break;
+	}
+
+	if (isState(STATE_SCALING_UP_Y_ONLY) || isState(STATE_SCALING_UP)) {
+		setObjHitData(0);
+		if (SMSGetMarDirector()->getCurrentMap() != 2
+		    || (!SMSGetMarDirector()->isDemoModeNow()
+		        && (unk2E0 == nullptr || unk2E0->isBuried(1)))) {
+			SMSRumbleMgr->start(0x13, &mPosition);
+			gpCameraShake->keepShake(CAM_SHAKE_MODE_UNK5, 1.0f);
+		}
+
+		if (mParticleEmitTimer > sWaitTime) {
+			// circular buffer of particle positions
+			mParticlePositions[mNextFreeParticlePos].set(
+			    mPosition.x + 400.0f * MsRandF() - 200.0f, mPosition.y,
+			    mPosition.z + 400.0f * MsRandF() - 200.0f);
+
+			gpMarioParticleManager->emit(
+			    PARTICLE_MS_RAKU_KIE, &mParticlePositions[mNextFreeParticlePos],
+			    2, this);
+			++mNextFreeParticlePos;
+			if (mNextFreeParticlePos >= ARRAY_COUNT(mParticlePositions))
+				mNextFreeParticlePos = 0;
+			mParticleEmitTimer = 0;
+		}
+		++mParticleEmitTimer;
+	}
+}
+
+// loadAfter: base load, then the map's own state decides whether the tree is
+// born small, and the named event object for the sinking terrain is looked up.
+// The name is upstream's, spelled in the game archive: "Event (Bianco terrain
+// sinking)".
+void TMapObjTreeScale::loadAfter()
+{
+	TMapObjGeneral::loadAfter();
+
+	if (SMSGetMarDirector()->getCurrentMap() == 4
+	    || gpPollution->isPolluted(mPosition.x, mPosition.y, mPosition.z)) {
+		beSmall();
+	}
+
+	unk2E0 = (TMapEventSink*)JDrama::TNameRefGen::getInstance()
+	             ->getRootNameRef()
+	             ->search("イベント（地形沈むビアンコ）");
+}
+
+// The scale tree is a plain TMapObjTree plus its own particle ring and its
+// event reference; the leaf array and per-species constants are the base
+// class's.
+TMapObjTreeScale::TMapObjTreeScale(const char* name)
+    : TMapObjTree(name)
+    , mNextFreeParticlePos(0)
+    , mParticleEmitTimer(0)
+    , unk2E0(nullptr)
+{
+	for (int i = 0; i < ARRAY_COUNT(mParticlePositions); ++i)
+		mParticlePositions[i].zero();
 }

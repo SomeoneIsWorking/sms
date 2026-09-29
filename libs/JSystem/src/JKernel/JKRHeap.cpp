@@ -133,6 +133,45 @@ void JKRHeap::freeAll()
 	}
 }
 
+// The four bodies below are restored 2026-09-29 from upstream
+// (libs/JSystem/src/JKernel/JKRHeap.cpp:120,131,233,240), which had them before
+// the 2026-09-28 merge d13cd0284 and which this file lost with the rest of that
+// region: `git show d13cd0284^2:libs/JSystem/src/JKernel/JKRHeap.cpp` has all
+// four, `git show d13cd0284:...` has none. They are the JKR C-API backing
+// (JKRResize/JKRGetSize/JKRSetErrorFlag/JKRSetErrorHandler); no call site in
+// this fork names them today, but the header declares them and a
+// declared-and-undefined static is an unresolved symbol the moment anything
+// does.
+//
+// resize/getSize route to the owning heap exactly as JKRHeap::free does: an
+// explicit heap wins, otherwise the root tree is searched. Neither the LP64
+// cast nor the tagged host-pointer path of free() applies here: a
+// resize/getSize request names a block inside a JKR arena, and the
+// host-overflow blocks this port hands out are not resizable. fillMemory is NOT
+// restored - upstream's is JUT_ASSERT_F(false, "UNIMPLEMENTED"), which is "not
+// decompiled", not an implementation.
+s32 JKRHeap::resize(void* ptr, u32 size, JKRHeap* heap)
+{
+	if (!heap) {
+		heap = findFromRoot(ptr);
+		if (!heap) {
+			return -1;
+		}
+	}
+	return heap->resize(ptr, size);
+}
+
+s32 JKRHeap::getSize(void* ptr, JKRHeap* heap)
+{
+	if (!heap) {
+		heap = findFromRoot(ptr);
+		if (!heap) {
+			return -1;
+		}
+	}
+	return heap->getSize(ptr);
+}
+
 JKRHeap* JKRHeap::findFromRoot(void* ptr)
 {
 	if (sRootHeap != nullptr)
@@ -236,6 +275,31 @@ void JKRHeap::copyMemory(void* dst, void* src, u32 size)
 void JKRDefaultMemoryErrorRoutine(void* heap, u32 size, int alignment)
 {
 	OSErrorLine(694, "abort\n");
+}
+
+// setErrorFlag / setErrorHandler restored 2026-09-29 from upstream
+// (libs/JSystem/src/JKernel/JKRHeap.cpp:233,240); see the note above the
+// statics for the provenance. Both return the PREVIOUS value, which is the
+// whole point of the pair: the retail save/load path brackets a heap with
+// JKRSetErrorFlag(false) ... JKRSetErrorFlag(saved). A null handler falls back
+// to JKRDefaultMemoryErrorRoutine (defined just above) rather than clearing the
+// handler, so a later OOM still aborts through the routine instead of silently
+// returning null memory.
+bool JKRHeap::setErrorFlag(bool errorFlag)
+{
+	bool prev  = mErrorFlag;
+	mErrorFlag = errorFlag;
+	return prev;
+}
+
+JKRHeapErrorHandler* JKRHeap::setErrorHandler(JKRHeapErrorHandler* errorHandler)
+{
+	JKRHeapErrorHandler* prev = mErrorHandler;
+	if (!errorHandler) {
+		errorHandler = JKRDefaultMemoryErrorRoutine;
+	}
+	mErrorHandler = errorHandler;
+	return prev;
 }
 
 #ifdef SMS_NATIVE_PLATFORM

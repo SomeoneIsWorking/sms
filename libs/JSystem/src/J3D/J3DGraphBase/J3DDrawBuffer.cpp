@@ -73,6 +73,25 @@ J3DDrawBuffer::J3DDrawBuffer(u32 size)
 	frameInit();
 }
 
+// ~J3DDrawBuffer restored 2026-09-29 from upstream
+// (libs/JSystem/src/J3D/J3DGraphBase/J3DDrawBuffer.cpp:39). The merge d13cd0284
+// dropped it with the rest of this file's upstream region (present at
+// d13cd0284^2, absent at d13cd0284); an earlier removal, 81640984 ("NPC render:
+// fix map-gone double draw-buffer entry"), is not the cause - the destructor
+// was back in the tree before the merge.
+//
+// mBuffer is the placement-new'd packet-pointer array the ctor allocates
+// (`new (0x20) J3DPacket*[size]`), so the matching release is delete[]. The
+// packets themselves are not owned: frameInit clears the slots and nothing
+// here frees a J3DPacket.
+J3DDrawBuffer::~J3DDrawBuffer()
+{
+	if (mBuffer) {
+		delete[] mBuffer;
+		mBuffer = nullptr;
+	}
+}
+
 #ifdef SMS_NATIVE_PLATFORM
 // SB_FI_TRACE: scene_drive registers the scene's two draw buffers here; frameInit() then
 // backtraces whenever EITHER is reset, so we can find what clears the map mid-conductor-walk.
@@ -193,15 +212,31 @@ bool J3DDrawBuffer::entryMatSort(J3DMatPacket* packet)
 		hash = (u32)(uintptr_t)texture->getResTIMG(texNo);
 	}
 
-	if (packet->unk3C & 0x80000000) {
+	// `unk3C` is the packet's copy of J3DMaterial::unk18: makeDisplayList()
+	// assigns that field into this one wholesale (J3DMaterial.cpp:824), so the
+	// word is either a real `(uintptr_t)&material >> 4` id or the flag-only
+	// `DIFF_FLAG | UNIQUE_FLAG` that the no-unique-materials loader branch writes
+	// (J3DModelLoader.cpp:437/480). What tells the two apart is the top bit of
+	// the field itself -- which is what J3DMatPacket::DIFF_FLAG names, and the
+	// same bit isChanged() and isSame() read, and MapObjInit.cpp:10829 masks out.
+	//
+	// Naming it rather than repeating 0x80000000 is not cosmetic. This field was
+	// widened from u32 to uintptr_t for LP64 host builds, so on a 64-bit host the
+	// literal would spell bit 31 -- a bit of the host pointer, not a flag. That
+	// inverts the branch exactly: a real material id tests SET and takes the
+	// unsorted path, and the flag-only word this branch exists for tests clear and
+	// gets hashed and dedup'd instead. On the 32-bit GameCube target DIFF_FLAG is
+	// 0x80000000, so the tested value and the branch taken are unchanged.
+	if (packet->unk3C & J3DMatPacket::DIFF_FLAG) {
 #ifdef SMS_NATIVE_PLATFORM
 		// PC-engine draw-list invariant: this is the "no-merge, always prepend to
-		// slot 0" path for unsorted/indirect materials (unk3C bit31). Unlike the
-		// hashed branch below (which dedups via isSame), it does NOT guard against
-		// re-entering the SAME packet. When an object enters a model via both
-		// entry() and update() in one frameInit window (e.g. TShimmer::perform does
-		// unk48->entry() for flag bit 0x4 AND unk48->update() for bit 0x200, and the
-		// indirect-scene flag 0x40000204 sets both), the packet gets prepended twice.
+		// slot 0" path for unsorted/indirect materials (the unk3C DIFF_FLAG). Unlike
+		// the hashed branch below (which dedups via isSame), it does NOT guard
+		// against re-entering the SAME packet. When an object enters a model via
+		// both entry() and update() in one frameInit window (e.g. TShimmer::perform
+		// does unk48->entry() for flag bit 0x4 AND unk48->update() for bit 0x200, and
+		// the indirect-scene flag 0x40000204 sets both), the packet gets prepended
+		// twice.
 		//
 		// The original eeccde1 fix only checked the SLOT HEAD (mBuffer[0] == packet),
 		// which catches a packet entered twice CONSECUTIVELY (the TShimmer self-loop).

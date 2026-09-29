@@ -54,7 +54,14 @@ extern "C" {
 #endif
 
 // ar.c
-ARQCallback ARRegisterDMACallback(ARQCallback callback);
+// The AR DMA completion callback takes no argument -- it is the internal
+// __ARQInterruptServiceRoutine that ARQPostRequest hooks here -- so it is its
+// own type, distinct from ARQCallback, which carries an ARQRequest back out to
+// game code. Upstream's split commit introduced this in ar.h and changed
+// ar.c's ARRegisterDMACallback to use it; our tree had the ar.c half only.
+typedef void (*ARCallback)(void);
+
+ARCallback ARRegisterDMACallback(ARCallback callback);
 u32 ARGetDMAStatus(void);
 void ARStartDMA(u32 type, ARMemAddr mainmem_addr, u32 aram_addr, u32 length);
 u32 ARAlloc(u32 length);

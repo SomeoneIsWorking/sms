@@ -3,6 +3,10 @@
 #include <JSystem/JAudio/JASystem/JASSystemHeap.hpp>
 #include <JSystem/JKernel/JKRHeap.hpp>
 #include <dolphin/types.h>
+// The deleted include/types.h supplied <string.h> as a side effect. strlen/strcpy/strncpy/
+// strcat/strcmp below are unconditional, so the dependency is stated rather than inherited --
+// this is also the line upstream carries at this exact position.
+#include <string.h>
 #ifdef SMS_NATIVE_PLATFORM
 #include <dolphin/os.h>
 #endif

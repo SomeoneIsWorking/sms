@@ -99,29 +99,7 @@ void TMarioGamePad::updateMeaning()
 
 			updateMeaning(X, MEANING_X, prevMeaning);
 		} else {
-			f32 stickScaling = 1.0f;
-			bool _unk3       = false;
-			if (0 < mNeutralKeyTimer) {
-				mNeutralKeyTimer -= 1;
-			}
-
-			if (0 < mNeutralKeyTimer) {
-				s16 _unk2 = 0x3d - mNeutralKeyTimer;
-				_unk3     = true;
-				if (_unk2 <= 0x28) {
-					stickScaling = 0.0f;
-				} else {
-					stickScaling = CLBCalcRatio<s16>(0x28, 0x3c, _unk2);
-				}
-			}
-
-			if (_unk3) {
-				mCompSPos[0 * 2]     = stickScaling * mMainStick.mPosX;
-				mCompSPos[0 * 2 + 1] = stickScaling * mMainStick.mPosY;
-			} else {
-				mCompSPos[0 * 2]     = mMainStick.mPosX;
-				mCompSPos[0 * 2 + 1] = mMainStick.mPosY;
-			}
+			considerMarioStick(&mCompSPos[0 * 2]);
 
 			mCompSPos[1 * 2]     = (f32)mButton.mAnalogL;
 			mCompSPos[1 * 2 + 1] = (f32)mButton.mAnalogR;
@@ -157,6 +135,43 @@ void TMarioGamePad::updateMeaning()
 finalize:
 	mEnabledFrameMeaning  = mMeaning & ~prevMeaning;
 	mDisabledFrameMeaning = prevMeaning & ~mMeaning;
+}
+
+// considerMarioStick restored 2026-09-29 from upstream
+// (src/System/MarioGamePad.cpp:130). Our merge d13cd0284 lost it together with
+// its call site: the pre-merge file (d13cd0284^2) had both
+// `considerMarioStick(&mCompSPos[0 * 2]);` and the definition, and this fork's
+// replacement inlined the body into updateMeaning instead, leaving the
+// declaration (include/System/MarioGamePad.hpp:193) with no definition
+// anywhere. The call is restored with it, so the neutral-stick ramp is
+// implemented once.
+//
+// The neutral-key window: pressing neutral (onNeutralMarioKey, mNeutralKeyTimer
+// = 0x3c) counts the window down here; inside it the stick fades in over the
+// frames after 0x28, so the first 40 frames of a neutral press contribute
+// nothing to the analog read Mario steers by.
+void TMarioGamePad::considerMarioStick(f32* stick)
+{
+	f32 stickScaling = 1.0f;
+	bool isScaled    = false;
+
+	if (0 < mNeutralKeyTimer)
+		mNeutralKeyTimer -= 1;
+
+	if (0 < mNeutralKeyTimer) {
+		s16 frame = 0x3d - mNeutralKeyTimer;
+		isScaled  = true;
+		stickScaling
+		    = frame <= 0x28 ? 0.0f : CLBCalcRatio<s16>(0x28, 0x3c, frame);
+	}
+
+	if (isScaled) {
+		stick[0] = stickScaling * mMainStick.mPosX;
+		stick[1] = stickScaling * mMainStick.mPosY;
+	} else {
+		stick[0] = mMainStick.mPosX;
+		stick[1] = mMainStick.mPosY;
+	}
 }
 
 void TMarioGamePad::onNeutralMarioKey() { mNeutralKeyTimer = 0x3c; }

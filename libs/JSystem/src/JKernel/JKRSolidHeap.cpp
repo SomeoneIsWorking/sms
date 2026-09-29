@@ -46,6 +46,36 @@ JKRSolidHeap::JKRSolidHeap(void* data, u32 size, JKRHeap* parent,
 
 JKRSolidHeap::~JKRSolidHeap() { dispose(); }
 
+// adjustSize restored 2026-09-29 from upstream
+// (libs/JSystem/src/JKernel/JKRSolidHeap.cpp:44), lost with the same merge
+// region as the JKRHeap statics (d13cd0284; present at d13cd0284^2, absent at
+// d13cd0284). Grows the solid heap's header+data block in the PARENT heap to
+// cover everything handed out so far: newSize is the used prefix rounded up to
+// 0x20, headerSize is the gap between `this` and the data start, and the resize
+// is refused (the block keeps its size) unless the parent agrees. The
+// mEnd/mCurStart/mCurEnd rebase after a successful resize leaves the heap fully
+// allocated and free-size 0, which is why a solid heap never shrinks back.
+s32 JKRSolidHeap::adjustSize()
+{
+	JKRHeap* parent = getParent();
+	if (!parent) {
+		return -1;
+	}
+
+	lock();
+	u32 headerSize = (uintptr_t)mStart - (uintptr_t)this;
+	u32 newSize    = ALIGN_NEXT((uintptr_t)mCurStart - (uintptr_t)mStart, 0x20);
+	if (parent->resize(this, headerSize + newSize) != -1) {
+		mFreeSize = 0;
+		mSize     = newSize;
+		mEnd      = (void*)((uintptr_t)mStart + mSize);
+		mCurStart = mEnd;
+		mCurEnd   = mEnd;
+	}
+	unlock();
+	return headerSize + newSize;
+}
+
 void* JKRSolidHeap::alloc(u32 size, int alignment)
 {
 	lock();
@@ -197,6 +227,44 @@ s32 JKRSolidHeap::getSize(void* ptr)
 {
 	JUTWarningConsole_f("getSize: cannot get memory block size (%08x)\n", ptr);
 	return -1;
+}
+
+// restoreState restored 2026-09-29 from upstream
+// (libs/JSystem/src/JKernel/JKRSolidHeap.cpp:171), same provenance as
+// adjustSize above. Rolls the solid heap back to a state recorded by
+// recordState: the state list is walked for a matching id (id 0 means the
+// head), every block handed out since the snapshot is returned to the free list
+// with dispose() - the two ranges between the recorded and current cursors -
+// and the cursors/free size are then restored, popping the snapshot off the
+// list.
+//
+// recordState itself is NOT restored: upstream's is JUT_ASSERT_F(false,
+// "UNIMPLEMENTED"), and this fork's own state_register/state_compare
+// (libs/JSystem/src/JKernel/JKRSolidHeap.cpp:238,251, from the MKDD binary) are
+// the live half of the pair. Without a populated mStateList, restoreState finds
+// no state and returns without touching the heap.
+void JKRSolidHeap::restoreState(u32 id)
+{
+	State* state = mStateList;
+	lock();
+	if (id != 0) {
+		while (state != nullptr && id != state->mId) {
+			state = state->mNext;
+		}
+	}
+	if (state != nullptr) {
+		if (state->mCurStart != mCurStart) {
+			dispose(state->mCurStart, mCurStart);
+		}
+		if (state->mCurEnd != mCurEnd) {
+			dispose(mCurEnd, state->mCurEnd);
+		}
+		mFreeSize  = state->mFreeSize;
+		mCurStart  = state->mCurStart;
+		mCurEnd    = state->mCurEnd;
+		mStateList = state->mNext;
+	}
+	unlock();
 }
 
 bool JKRSolidHeap::check()
